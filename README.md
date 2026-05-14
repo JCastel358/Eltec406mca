@@ -1,5 +1,7 @@
 # Eltec 406MCA Single-Sensor Tester
 
+Code for industrial automation process.
+
 This is the first single-sensor test program for the 406MCA sensitivity,
 polarity, and offset procedure. It uses the LabJack T7-Pro through the
 `labjack.ljm` Python package and includes simulator mode so the operator flow
