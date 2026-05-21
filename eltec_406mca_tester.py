@@ -5,8 +5,7 @@ Reads a 10 Hz pyroelectric detector waveform from a LabJack T7-Pro, checks
 sensitivity, polarity, and DC offset, then logs a simple CSV result.
 
 Default wiring:
-    AIN0: AM502 amplifier output waveform
-    AIN1: DC offset voltage
+    AIN0: sensor or conditioned waveform
     AIN2: blade sync signal
 
 Run:
@@ -36,8 +35,11 @@ except Exception:  # pragma: no cover - hardware library may not exist on dev PC
 
 MODEL_NAME = "406MCA"
 WAVEFORM_CHANNEL = "AIN0"
-OFFSET_CHANNEL = "AIN1"
 SYNC_CHANNEL = "AIN2"
+DEFAULT_EMITTER_PWM_CHANNEL = "DIO0"
+DEFAULT_EMITTER_PWM_FREQUENCY_HZ = 10.0
+DEFAULT_EMITTER_PWM_DUTY_CYCLE = 50.0
+T7_PWM_CORE_CLOCK_HZ = 80_000_000.0
 
 EXPECTED_FREQUENCY_HZ = 10.0
 FREQUENCY_TOLERANCE_HZ = 0.1
@@ -45,12 +47,34 @@ OFFSET_MIN_V = 0.3
 OFFSET_MAX_V = 1.2
 DEFAULT_SAMPLE_RATE_HZ = 1000.0
 DEFAULT_MAX_CAPTURE_CYCLES = 80
+DEFAULT_SETTLE_CYCLES = 5
 DEFAULT_STABILITY_TOLERANCE = 0.10
-DEFAULT_STABILITY_WINDOW_CYCLES = 3
-DEFAULT_AM502_GAIN = 100.0
+DEFAULT_STABILITY_WINDOW_CYCLES = 20
+DEFAULT_AM502_GAIN = 1.0
+DEFAULT_WAVEFORM_INPUT_RANGE_LABEL = "+/-1 V (x10)"
+DEFAULT_STREAM_RESOLUTION_INDEX = 1
+DEFAULT_STREAM_SETTLING_US = 0.0
+WAVEFORM_SETTLING_READS = 3
+SYNC_INPUT_RANGE_V = 10.0
+PROCEDURE_SYNC_EDGE = "Rising"
+POLARITY_RESPONSE_SPACING_FRACTION = 0.20
+POLARITY_SEARCH_START_FRACTION = 0.00
+POLARITY_SEARCH_END_FRACTION = 0.30
+POLARITY_SAMPLE_WINDOW_FRACTION = 0.03
+POLARITY_MIN_CONFIDENCE = 0.10
+POLARITY_SEARCH_STEPS = 31
 POSITIVE_POLARITY = "POSITIVE"
 NEGATIVE_POLARITY = "NEGATIVE"
 UNKNOWN_POLARITY = "UNKNOWN"
+
+LABJACK_AIN0_RANGE_OPTIONS = {
+    "+/-10 V (x1)": 10.0,
+    "+/-1 V (x10)": 1.0,
+    "+/-0.1 V (x100)": 0.1,
+    "+/-0.01 V (x1000)": 0.01,
+}
+
+LABJACK_T7_PWM_CHANNELS = ["DIO0", "DIO2", "DIO3", "DIO4", "DIO5"]
 
 FILTER_SPECS_MV = {
     "-3 filter": 25.0,
@@ -89,6 +113,7 @@ class WaveformMetrics:
     polarity: str
     measured_frequency_hz: float | None
     cycles_used: int
+    offset_v: float | None = None
     cycle_pp_mv: list[float] = field(default_factory=list)
     all_cycle_pp_mv: list[float] = field(default_factory=list)
     stabilized: bool = False
@@ -99,6 +124,21 @@ class WaveformMetrics:
     waveform_v: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), repr=False)
     sync_v: np.ndarray = field(default_factory=lambda: np.array([], dtype=float), repr=False)
     sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ
+    ignored_initial_cycles: int = 0
+    input_range_v: float = LABJACK_AIN0_RANGE_OPTIONS[DEFAULT_WAVEFORM_INPUT_RANGE_LABEL]
+    polarity_confidence: float | None = None
+    polarity_response_start_fraction: float | None = None
+    polarity_response_end_fraction: float | None = None
+    polarity_delta_mv: float | None = None
+
+
+@dataclass
+class PolarityEstimate:
+    polarity: str
+    confidence: float | None = None
+    response_start_fraction: float | None = None
+    response_end_fraction: float | None = None
+    delta_v: float | None = None
 
 
 @dataclass
@@ -117,11 +157,56 @@ def default_results_path() -> Path:
     return docs / "406mca_results.csv"
 
 
+def labjack_ain0_range_from_label(label: str) -> float:
+    try:
+        return LABJACK_AIN0_RANGE_OPTIONS[label]
+    except KeyError as exc:
+        raise ValueError(f"Unknown LabJack AIN0 range: {label}") from exc
+
+
+def labjack_range_offset_warning(input_range_v: float, range_label: str) -> str | None:
+    if input_range_v >= OFFSET_MIN_V:
+        return None
+    return (
+        f"{range_label} cannot measure the normal {OFFSET_MIN_V:.1f} to {OFFSET_MAX_V:.1f} V offset on AIN0. "
+        "Use +/-1 V (x10) for about 0.66 V offsets, or +/-10 V (x1) if the offset can exceed 1 V. "
+        "The LabJack range gain improves resolution, but it cannot remove the DC offset."
+    )
+
+
+def normalize_pwm_channel(channel: str) -> str:
+    cleaned = channel.strip().upper()
+    if cleaned.startswith("FIO"):
+        cleaned = "DIO" + cleaned[3:]
+    if cleaned not in LABJACK_T7_PWM_CHANNELS:
+        raise ValueError(
+            f"PWM channel must be one of {', '.join(LABJACK_T7_PWM_CHANNELS)} on the LabJack T7-Pro."
+        )
+    return cleaned
+
+
+def calculate_pwm_roll_and_config(
+    frequency_hz: float,
+    duty_cycle_percent: float,
+) -> tuple[int, int]:
+    if frequency_hz <= 0:
+        raise ValueError("Emitter PWM frequency must be positive.")
+    if duty_cycle_percent < 0 or duty_cycle_percent > 100:
+        raise ValueError("Emitter PWM duty cycle must be between 0 and 100 percent.")
+
+    roll_value = int(round(T7_PWM_CORE_CLOCK_HZ / frequency_hz))
+    if roll_value <= 0 or roll_value > 0xFFFFFFFF:
+        raise ValueError("Emitter PWM frequency is outside the Clock0 range for a T7-Pro.")
+    config_a = int(round(roll_value * duty_cycle_percent / 100.0))
+    config_a = min(max(config_a, 0), roll_value)
+    return roll_value, config_a
+
+
 def find_sync_edges(
     sync_v: np.ndarray,
     sample_rate_hz: float,
     expected_frequency_hz: float = EXPECTED_FREQUENCY_HZ,
-    edge: str = "Rising",
+    edge: str = PROCEDURE_SYNC_EDGE,
 ) -> tuple[list[int], float | None, list[str]]:
     warnings: list[str] = []
     sync_v = np.asarray(sync_v, dtype=float)
@@ -209,6 +294,50 @@ def cycle_peak_to_peak_values(
     return cycle_pp_v
 
 
+def estimate_offset_from_waveform(
+    waveform_v: np.ndarray,
+    segments: list[tuple[int, int]],
+) -> float | None:
+    waveform_v = np.asarray(waveform_v, dtype=float)
+    if waveform_v.size == 0:
+        return None
+
+    total = 0.0
+    count = 0
+    for start, end in segments:
+        start = max(0, int(start))
+        end = min(len(waveform_v), int(end))
+        if end <= start:
+            continue
+        cycle = waveform_v[start:end]
+        total += float(np.sum(cycle))
+        count += int(cycle.size)
+
+    if count == 0:
+        return float(np.mean(waveform_v))
+    return total / count
+
+
+def samples_from_segments(
+    waveform_v: np.ndarray,
+    segments: list[tuple[int, int]],
+) -> np.ndarray:
+    waveform_v = np.asarray(waveform_v, dtype=float)
+    if waveform_v.size == 0:
+        return waveform_v
+
+    pieces = []
+    for start, end in segments:
+        start = max(0, int(start))
+        end = min(len(waveform_v), int(end))
+        if end > start:
+            pieces.append(waveform_v[start:end])
+
+    if not pieces:
+        return waveform_v
+    return np.concatenate(pieces)
+
+
 def select_stable_cycle_window(
     segments: list[tuple[int, int]],
     cycle_pp_v: list[float],
@@ -250,29 +379,77 @@ def select_stable_cycle_window(
     ), start
 
 
+def segment_window_mean(
+    waveform_v: np.ndarray,
+    start: int,
+    end: int,
+    center_fraction: float,
+    window_fraction: float = POLARITY_SAMPLE_WINDOW_FRACTION,
+) -> float:
+    length = max(1, end - start)
+    center = start + int(round(center_fraction * length))
+    half_width = max(1, int(round(window_fraction * length / 2.0)))
+    window_start = max(start, center - half_width)
+    window_end = min(end, center + half_width + 1)
+    if window_end <= window_start:
+        return float(waveform_v[min(max(start, center), end - 1)])
+    return float(np.mean(waveform_v[window_start:window_end]))
+
+
 def estimate_polarity(
     waveform_v: np.ndarray,
     segments: list[tuple[int, int]],
     cycle_pp_v: list[float],
-) -> str:
+) -> PolarityEstimate:
     if not segments or not cycle_pp_v:
-        return UNKNOWN_POLARITY
+        return PolarityEstimate(UNKNOWN_POLARITY)
 
     pp_reference = float(np.median(cycle_pp_v))
     if pp_reference <= 0:
-        return UNKNOWN_POLARITY
+        return PolarityEstimate(UNKNOWN_POLARITY)
 
-    deltas = []
-    for start, end in segments:
-        length = end - start
-        base_idx = min(end - 1, start + max(1, int(0.05 * length)))
-        probe_idx = min(end - 1, start + max(2, int(0.25 * length)))
-        deltas.append(float(waveform_v[probe_idx] - waveform_v[base_idx]))
+    response_spacing = POLARITY_RESPONSE_SPACING_FRACTION
+    search_start = max(0.0, POLARITY_SEARCH_START_FRACTION)
+    search_end = min(POLARITY_SEARCH_END_FRACTION, 1.0 - response_spacing)
+    if search_end < search_start:
+        return PolarityEstimate(UNKNOWN_POLARITY)
 
-    mean_delta = float(np.mean(deltas))
-    if abs(mean_delta) < 0.10 * pp_reference:
-        return UNKNOWN_POLARITY
-    return POSITIVE_POLARITY if mean_delta > 0 else NEGATIVE_POLARITY
+    best_delta: float | None = None
+    best_start_fraction: float | None = None
+    for response_start_fraction in np.linspace(search_start, search_end, POLARITY_SEARCH_STEPS):
+        response_end_fraction = float(response_start_fraction + response_spacing)
+        deltas = []
+        for start, end in segments:
+            if end - start < 8:
+                continue
+            base = segment_window_mean(waveform_v, start, end, float(response_start_fraction))
+            probe = segment_window_mean(waveform_v, start, end, response_end_fraction)
+            deltas.append(probe - base)
+        if not deltas:
+            continue
+
+        mean_delta = float(np.mean(deltas))
+        if best_delta is None or abs(mean_delta) > abs(best_delta):
+            best_delta = mean_delta
+            best_start_fraction = float(response_start_fraction)
+
+    if best_delta is None or best_start_fraction is None:
+        return PolarityEstimate(UNKNOWN_POLARITY)
+
+    confidence = min(abs(best_delta) / pp_reference, 1.0)
+    response_end_fraction = best_start_fraction + response_spacing
+    if confidence < POLARITY_MIN_CONFIDENCE:
+        polarity = UNKNOWN_POLARITY
+    else:
+        polarity = POSITIVE_POLARITY if best_delta > 0 else NEGATIVE_POLARITY
+
+    return PolarityEstimate(
+        polarity=polarity,
+        confidence=confidence,
+        response_start_fraction=best_start_fraction,
+        response_end_fraction=response_end_fraction,
+        delta_v=best_delta,
+    )
 
 
 def analyze_waveform(
@@ -280,13 +457,17 @@ def analyze_waveform(
     sync_v: np.ndarray,
     sample_rate_hz: float,
     am502_gain: float,
-    sync_edge: str = "Rising",
+    sync_edge: str = PROCEDURE_SYNC_EDGE,
     expected_frequency_hz: float = EXPECTED_FREQUENCY_HZ,
     stability_tolerance: float = DEFAULT_STABILITY_TOLERANCE,
     stability_window_cycles: int = DEFAULT_STABILITY_WINDOW_CYCLES,
+    settle_cycles: int = DEFAULT_SETTLE_CYCLES,
+    input_range_v: float = LABJACK_AIN0_RANGE_OPTIONS[DEFAULT_WAVEFORM_INPUT_RANGE_LABEL],
 ) -> WaveformMetrics:
     waveform_v = np.asarray(waveform_v, dtype=float)
     sync_v = np.asarray(sync_v, dtype=float)
+    settle_cycles = max(0, int(settle_cycles))
+    input_range_v = abs(float(input_range_v))
     warnings: list[str] = []
 
     if waveform_v.size == 0:
@@ -296,17 +477,27 @@ def analyze_waveform(
             polarity=UNKNOWN_POLARITY,
             measured_frequency_hz=None,
             cycles_used=0,
+            offset_v=None,
             warnings=["No waveform samples were captured."],
             waveform_v=waveform_v,
             sync_v=sync_v,
             sample_rate_hz=sample_rate_hz,
+            ignored_initial_cycles=settle_cycles,
+            input_range_v=input_range_v,
         )
 
-    if np.max(waveform_v) >= 9.8 or np.min(waveform_v) <= -9.8:
-        warnings.append("Waveform is near the LabJack +/-10 V input limit; check for clipping or attenuation.")
+    if input_range_v <= 0:
+        input_range_v = LABJACK_AIN0_RANGE_OPTIONS[DEFAULT_WAVEFORM_INPUT_RANGE_LABEL]
+
+    clip_limit_v = input_range_v * 0.98
+    if np.max(waveform_v) >= clip_limit_v or np.min(waveform_v) <= -clip_limit_v:
+        warnings.append(
+            f"Waveform is near the LabJack +/-{input_range_v:g} V AIN0 range; "
+            "choose a larger AIN0 range if the waveform is clipping."
+        )
 
     if am502_gain <= 0:
-        warnings.append("AM502 gain must be positive. Using gain = 1 for this calculation.")
+        warnings.append("Signal gain must be positive. Using gain = 1 for this calculation.")
         am502_gain = 1.0
 
     edges, measured_frequency_hz, sync_warnings = find_sync_edges(
@@ -317,16 +508,17 @@ def analyze_waveform(
     )
     warnings.extend(sync_warnings)
 
-    segments = cycle_segments_from_edges(edges)
+    segments = cycle_segments_from_edges(edges, settle_cycles=settle_cycles)
     used_sync_for_polarity = True
     if not segments:
         segments = fallback_cycle_segments(
             sample_count=len(waveform_v),
             sample_rate_hz=sample_rate_hz,
             expected_frequency_hz=expected_frequency_hz,
+            settle_cycles=settle_cycles,
         )
         used_sync_for_polarity = False
-        warnings.append("Sensitivity was estimated without reliable blade sync cycle boundaries.")
+        warnings.append("Sensitivity and offset were estimated without reliable blade sync cycle boundaries.")
 
     all_cycle_pp_v = cycle_peak_to_peak_values(waveform_v, segments)
     stable_segments, cycle_pp_v, stabilized, stability_change_pct, stabilization_cycle = select_stable_cycle_window(
@@ -348,17 +540,32 @@ def analyze_waveform(
         warnings.append("No valid waveform cycles were available for sensitivity measurement.")
 
     if used_sync_for_polarity:
-        polarity = estimate_polarity(waveform_v, stable_segments, cycle_pp_v)
+        polarity_estimate = estimate_polarity(waveform_v, stable_segments, cycle_pp_v)
     else:
-        polarity = UNKNOWN_POLARITY
+        polarity_estimate = PolarityEstimate(UNKNOWN_POLARITY)
+
+    offset_segments = stable_segments if stable_segments else segments
+    offset_v = estimate_offset_from_waveform(waveform_v, offset_segments)
+    offset_samples = samples_from_segments(waveform_v, offset_segments)
+    if offset_v is not None and offset_v < OFFSET_MIN_V and offset_samples.size:
+        offset_min_v = float(np.min(offset_samples))
+        offset_max_v = float(np.max(offset_samples))
+        if abs(offset_v) < 0.15 and offset_min_v < -0.05 and offset_max_v > 0.05:
+            warnings.append(
+                "AIN0 average is near ground even though the waveform swings both positive and negative "
+                f"(mean {offset_v:.3f} V, min {offset_min_v:.3f} V, max {offset_max_v:.3f} V). "
+                "The amplifier/waveform output may be AC-coupled or centered at 0 V, so AIN0 is not carrying "
+                "the 0.3 to 1.2 V offset."
+            )
 
     sensitivity_v = amplified_pp_v / am502_gain
     return WaveformMetrics(
         sensitivity_mv=sensitivity_v * 1000.0,
         sensitivity_amplified_mv=amplified_pp_v * 1000.0,
-        polarity=polarity,
+        polarity=polarity_estimate.polarity,
         measured_frequency_hz=measured_frequency_hz,
         cycles_used=len(cycle_pp_v),
+        offset_v=offset_v,
         cycle_pp_mv=[value * 1000.0 for value in cycle_pp_v],
         all_cycle_pp_mv=[value * 1000.0 for value in all_cycle_pp_v],
         stabilized=stabilized,
@@ -369,7 +576,31 @@ def analyze_waveform(
         waveform_v=waveform_v,
         sync_v=sync_v,
         sample_rate_hz=sample_rate_hz,
+        ignored_initial_cycles=settle_cycles,
+        input_range_v=input_range_v,
+        polarity_confidence=polarity_estimate.confidence,
+        polarity_response_start_fraction=polarity_estimate.response_start_fraction,
+        polarity_response_end_fraction=polarity_estimate.response_end_fraction,
+        polarity_delta_mv=None if polarity_estimate.delta_v is None else polarity_estimate.delta_v * 1000.0,
     )
+
+
+def format_polarity_detail(waveform_metrics: WaveformMetrics | None) -> str | None:
+    if waveform_metrics is None or waveform_metrics.polarity_confidence is None:
+        return None
+
+    confidence_pct = waveform_metrics.polarity_confidence * 100.0
+    parts = [f"confidence {confidence_pct:.0f}% of cycle p-p"]
+    if (
+        waveform_metrics.polarity_response_start_fraction is not None
+        and waveform_metrics.polarity_response_end_fraction is not None
+    ):
+        start_pct = waveform_metrics.polarity_response_start_fraction * 100.0
+        end_pct = waveform_metrics.polarity_response_end_fraction * 100.0
+        parts.append(f"response window {start_pct:.0f}-{end_pct:.0f}% after rising sync")
+    if waveform_metrics.polarity_delta_mv is not None:
+        parts.append(f"delta {waveform_metrics.polarity_delta_mv:.2f} mV")
+    return ", ".join(parts)
 
 
 def evaluate_result(
@@ -406,7 +637,9 @@ def evaluate_result(
             )
 
         if polarity != POSITIVE_POLARITY:
-            fail_reasons.append(f"Polarity is {polarity}; expected {POSITIVE_POLARITY}.")
+            detail = format_polarity_detail(waveform_metrics)
+            detail_suffix = "" if detail is None else f" ({detail})"
+            fail_reasons.append(f"Polarity is {polarity}; expected {POSITIVE_POLARITY}.{detail_suffix}")
 
     return FinalResult(
         passed=not fail_reasons,
@@ -458,6 +691,7 @@ def simulate_waveform_samples(
 
     amplified_pp_v = (sensitivity_mv / 1000.0) * am502_gain
     waveform_v = triangle * (amplified_pp_v / 2.0)
+    waveform_v += simulate_offset_v(case_name)
     waveform_v += np.random.normal(0.0, noise_rms_v, size=sample_count)
 
     sync_v = np.where(phase < 0.5, 5.0, 0.0)
@@ -506,19 +740,62 @@ class LabJackT7:
         self.handle = ljm.openS("T7", "ANY", self.identifier)
         self.configure_analog_inputs()
 
-    def configure_analog_inputs(self) -> None:
+    def configure_analog_inputs(
+        self,
+        waveform_range_v: float = LABJACK_AIN0_RANGE_OPTIONS[DEFAULT_WAVEFORM_INPUT_RANGE_LABEL],
+    ) -> None:
         if self.handle is None:
             raise RuntimeError("LabJack is not connected.")
-        for channel in (WAVEFORM_CHANNEL, OFFSET_CHANNEL, SYNC_CHANNEL):
+        channel_ranges = {
+            WAVEFORM_CHANNEL: float(waveform_range_v),
+            SYNC_CHANNEL: SYNC_INPUT_RANGE_V,
+        }
+        for channel, input_range_v in channel_ranges.items():
             for name, value in (
                 (f"{channel}_NEGATIVE_CH", 199),
-                (f"{channel}_RANGE", 10.0),
+                (f"{channel}_RANGE", input_range_v),
                 (f"{channel}_RESOLUTION_INDEX", 0),
             ):
-                try:
-                    ljm.eWriteName(self.handle, name, value)
-                except Exception:
-                    pass
+                ljm.eWriteName(self.handle, name, value)
+        ljm.eWriteName(self.handle, "STREAM_RESOLUTION_INDEX", DEFAULT_STREAM_RESOLUTION_INDEX)
+        ljm.eWriteName(self.handle, "STREAM_SETTLING_US", DEFAULT_STREAM_SETTLING_US)
+
+    def configure_emitter_pwm(
+        self,
+        channel: str = DEFAULT_EMITTER_PWM_CHANNEL,
+        frequency_hz: float = DEFAULT_EMITTER_PWM_FREQUENCY_HZ,
+        duty_cycle_percent: float = DEFAULT_EMITTER_PWM_DUTY_CYCLE,
+    ) -> None:
+        if self.handle is None:
+            raise RuntimeError("LabJack is not connected.")
+        channel = normalize_pwm_channel(channel)
+        roll_value, config_a = calculate_pwm_roll_and_config(frequency_hz, duty_cycle_percent)
+        for name, value in (
+            (f"{channel}_EF_ENABLE", 0),
+            ("DIO_EF_CLOCK0_ENABLE", 0),
+            ("DIO_EF_CLOCK0_DIVISOR", 1),
+            ("DIO_EF_CLOCK0_ROLL_VALUE", roll_value),
+            (f"{channel}_EF_INDEX", 0),
+            (f"{channel}_EF_CLOCK_SOURCE", 0),
+            (f"{channel}_EF_CONFIG_A", config_a),
+            ("DIO_EF_CLOCK0_ENABLE", 1),
+            (f"{channel}_EF_ENABLE", 1),
+        ):
+            ljm.eWriteName(self.handle, name, value)
+
+    def disable_emitter_pwm(self, channel: str = DEFAULT_EMITTER_PWM_CHANNEL) -> None:
+        if self.handle is None:
+            return
+        channel = normalize_pwm_channel(channel)
+        for name, value in (
+            (f"{channel}_EF_ENABLE", 0),
+            ("DIO_EF_CLOCK0_ENABLE", 0),
+            (channel, 0),
+        ):
+            try:
+                ljm.eWriteName(self.handle, name, value)
+            except Exception:
+                pass
 
     def close(self) -> None:
         if self.handle is not None and ljm is not None:
@@ -526,15 +803,6 @@ class LabJackT7:
                 ljm.close(self.handle)
             finally:
                 self.handle = None
-
-    def read_average(self, channel: str, samples: int = 25, delay_s: float = 0.01) -> float:
-        if self.handle is None:
-            raise RuntimeError("LabJack is not connected.")
-        readings = []
-        for _ in range(samples):
-            readings.append(float(ljm.eReadName(self.handle, channel)))
-            time.sleep(delay_s)
-        return float(np.mean(readings))
 
     def read_waveform_stream(
         self,
@@ -544,11 +812,16 @@ class LabJackT7:
         max_capture_cycles: int = DEFAULT_MAX_CAPTURE_CYCLES,
         stability_tolerance: float = DEFAULT_STABILITY_TOLERANCE,
         stability_window_cycles: int = DEFAULT_STABILITY_WINDOW_CYCLES,
+        settle_cycles: int = DEFAULT_SETTLE_CYCLES,
+        waveform_range_v: float = LABJACK_AIN0_RANGE_OPTIONS[DEFAULT_WAVEFORM_INPUT_RANGE_LABEL],
     ) -> tuple[np.ndarray, np.ndarray, float]:
         if self.handle is None:
             raise RuntimeError("LabJack is not connected.")
 
-        scan_names = [WAVEFORM_CHANNEL, SYNC_CHANNEL]
+        self.configure_analog_inputs(waveform_range_v=waveform_range_v)
+        # Direct pyroelectric outputs can be high impedance. Sample AIN0 more
+        # than once after the sync channel and keep the final, settled value.
+        scan_names = [SYNC_CHANNEL] + [WAVEFORM_CHANNEL] * WAVEFORM_SETTLING_READS
         scan_list = ljm.namesToAddresses(len(scan_names), scan_names)[0]
         scans_per_read = max(20, int(sample_rate_hz / 10.0))
         target_scans = int(math.ceil((max_capture_cycles / expected_frequency_hz) * sample_rate_hz))
@@ -556,6 +829,7 @@ class LabJackT7:
         waveform: list[float] = []
         sync: list[float] = []
         actual_scan_rate = float(sample_rate_hz)
+        stable_check_cycles = max(0, int(settle_cycles)) + (stability_window_cycles * 2)
 
         try:
             actual_scan_rate = float(
@@ -574,9 +848,9 @@ class LabJackT7:
                 arr = arr[valid]
                 if arr.size == 0:
                     continue
-                waveform.extend(arr[:, 0].tolist())
-                sync.extend(arr[:, 1].tolist())
-                if len(waveform) >= int((stability_window_cycles * 2 / expected_frequency_hz) * actual_scan_rate):
+                sync.extend(arr[:, 0].tolist())
+                waveform.extend(arr[:, -1].tolist())
+                if len(waveform) >= int((stable_check_cycles / expected_frequency_hz) * actual_scan_rate):
                     metrics = analyze_waveform(
                         np.asarray(waveform, dtype=float),
                         np.asarray(sync, dtype=float),
@@ -586,6 +860,8 @@ class LabJackT7:
                         expected_frequency_hz=expected_frequency_hz,
                         stability_tolerance=stability_tolerance,
                         stability_window_cycles=stability_window_cycles,
+                        settle_cycles=settle_cycles,
+                        input_range_v=waveform_range_v,
                     )
                     if metrics.stabilized:
                         break
@@ -626,7 +902,7 @@ class TesterApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Eltec 406MCA Single-Sensor Tester")
-        self.minsize(1060, 720)
+        self.minsize(1160, 740)
 
         self.device: LabJackT7 | None = None
         self.offset_v: float | None = None
@@ -645,14 +921,20 @@ class TesterApp(tk.Tk):
         self.simulator_var = tk.BooleanVar(value=False)
         self.sim_case_var = tk.StringVar(value="Random good sensor")
         self.am502_gain_var = tk.StringVar(value=f"{DEFAULT_AM502_GAIN:.0f}")
-        self.sync_edge_var = tk.StringVar(value="Rising")
+        self.labjack_range_var = tk.StringVar(value=DEFAULT_WAVEFORM_INPUT_RANGE_LABEL)
+        self.sync_edge_var = tk.StringVar(value=PROCEDURE_SYNC_EDGE)
         self.csv_path_var = tk.StringVar(value=str(default_results_path()))
+        self.emitter_pwm_enabled_var = tk.BooleanVar(value=False)
+        self.emitter_pwm_channel_var = tk.StringVar(value=DEFAULT_EMITTER_PWM_CHANNEL)
+        self.emitter_pwm_frequency_var = tk.StringVar(value=f"{DEFAULT_EMITTER_PWM_FREQUENCY_HZ:g}")
+        self.emitter_pwm_duty_var = tk.StringVar(value=f"{DEFAULT_EMITTER_PWM_DUTY_CYCLE:g}")
 
         self.status_var = tk.StringVar(value="Checking LabJack...")
         self.offset_display_var = tk.StringVar(value="Not measured")
         self.sensitivity_display_var = tk.StringVar(value="Not measured")
         self.polarity_display_var = tk.StringVar(value="Not measured")
         self.frequency_display_var = tk.StringVar(value="Not measured")
+        self.emitter_pwm_display_var = tk.StringVar(value="Off")
         self.overall_display_var = tk.StringVar(value="READY")
 
     def _build_ui(self) -> None:
@@ -689,16 +971,39 @@ class TesterApp(tk.Tk):
 
         self._add_labeled_entry(controls, 0, "Sensor ID", self.sensor_id_var)
         self._add_labeled_combo(controls, 1, "Filter/setup", self.filter_var, list(FILTER_SPECS_MV.keys()))
-        self._add_labeled_combo(controls, 2, "Sync edge", self.sync_edge_var, ["Rising", "Falling"])
-        self._add_labeled_entry(controls, 3, "AM502 gain", self.am502_gain_var)
+        self._add_labeled_static(controls, 2, "Sync edge", PROCEDURE_SYNC_EDGE)
+        self._add_labeled_entry(controls, 3, "External gain", self.am502_gain_var)
+        self._add_labeled_combo(
+            controls,
+            4,
+            "LabJack AIN0 range",
+            self.labjack_range_var,
+            list(LABJACK_AIN0_RANGE_OPTIONS.keys()),
+        )
 
         sim_check = ttk.Checkbutton(controls, text="Simulator mode", variable=self.simulator_var)
-        sim_check.grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 2))
-        self._add_labeled_combo(controls, 5, "Sim case", self.sim_case_var, SIM_CASES)
+        sim_check.grid(row=5, column=0, columnspan=2, sticky="w", pady=(12, 2))
+        self._add_labeled_combo(controls, 6, "Sim case", self.sim_case_var, SIM_CASES)
 
-        ttk.Label(controls, text="CSV log").grid(row=6, column=0, sticky="w", pady=(14, 2))
+        pwm_check = ttk.Checkbutton(
+            controls,
+            text="Emitter PWM output",
+            variable=self.emitter_pwm_enabled_var,
+        )
+        pwm_check.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 2))
+        self._add_labeled_combo(
+            controls,
+            8,
+            "PWM DIO",
+            self.emitter_pwm_channel_var,
+            LABJACK_T7_PWM_CHANNELS,
+        )
+        self._add_labeled_entry(controls, 9, "PWM Hz", self.emitter_pwm_frequency_var)
+        self._add_labeled_entry(controls, 10, "PWM duty %", self.emitter_pwm_duty_var)
+
+        ttk.Label(controls, text="CSV log").grid(row=11, column=0, sticky="w", pady=(14, 2))
         csv_entry = ttk.Entry(controls, textvariable=self.csv_path_var, width=38)
-        csv_entry.grid(row=7, column=0, columnspan=2, sticky="ew")
+        csv_entry.grid(row=12, column=0, columnspan=2, sticky="ew")
 
         self.connect_button = ttk.Button(
             controls,
@@ -706,7 +1011,7 @@ class TesterApp(tk.Tk):
             command=self.connect_labjack,
             style="Large.TButton",
         )
-        self.connect_button.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(18, 8))
+        self.connect_button.grid(row=13, column=0, columnspan=2, sticky="ew", pady=(18, 8))
 
         self.test_button = ttk.Button(
             controls,
@@ -714,16 +1019,22 @@ class TesterApp(tk.Tk):
             command=self.start_waveform_test,
             style="Large.TButton",
         )
-        self.test_button.grid(row=9, column=0, columnspan=2, sticky="ew", pady=8)
+        self.test_button.grid(row=14, column=0, columnspan=2, sticky="ew", pady=8)
 
         wiring = (
             "Wiring:\n"
-            "AIN0 = AM502 waveform\n"
-            "AIN1 = DC offset\n"
+            "AIN0 = sensor/waveform signal\n"
             "AIN2 = blade sync\n\n"
+            "Offset is averaged from AIN0 stable cycles.\n"
+            f"First {DEFAULT_SETTLE_CYCLES} blade cycles are ignored for sensitivity.\n\n"
+            "LabJack range gain improves ADC resolution only.\n"
+            "The returned volts are not divided by that gain.\n\n"
+            "Use +/-1 V for offset signals near 0.66 V.\n"
+            "PWM DIO = MOSFET gate signal.\n"
+            "Use common ground with the 5 V emitter supply.\n"
             "Close LJStreamM/Kipling before using hardware mode."
         )
-        ttk.Label(controls, text=wiring, justify="left").grid(row=10, column=0, columnspan=2, sticky="w", pady=(18, 0))
+        ttk.Label(controls, text=wiring, justify="left").grid(row=15, column=0, columnspan=2, sticky="w", pady=(18, 0))
 
         results = ttk.Frame(main)
         results.grid(row=0, column=1, sticky="nsew")
@@ -743,13 +1054,14 @@ class TesterApp(tk.Tk):
 
         cards = ttk.Frame(results)
         cards.grid(row=1, column=0, sticky="ew", pady=(12, 12))
-        for col in range(4):
+        for col in range(5):
             cards.columnconfigure(col, weight=1)
 
         self.offset_card = self._metric_card(cards, 0, "Offset", self.offset_display_var)
         self.sensitivity_card = self._metric_card(cards, 1, "Sensitivity", self.sensitivity_display_var)
         self.polarity_card = self._metric_card(cards, 2, "Polarity", self.polarity_display_var)
         self.frequency_card = self._metric_card(cards, 3, "Frequency", self.frequency_display_var)
+        self.emitter_pwm_card = self._metric_card(cards, 4, "Emitter PWM", self.emitter_pwm_display_var)
 
         lower = ttk.Frame(results)
         lower.grid(row=2, column=0, sticky="nsew")
@@ -794,6 +1106,10 @@ class TesterApp(tk.Tk):
         combo = ttk.Combobox(parent, textvariable=variable, values=values, state="readonly", width=24)
         combo.grid(row=row, column=1, sticky="ew", pady=5)
 
+    def _add_labeled_static(self, parent: ttk.Frame, row: int, label: str, value: str) -> None:
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=5, padx=(0, 8))
+        ttk.Label(parent, text=value, font=("Segoe UI", 11, "bold")).grid(row=row, column=1, sticky="w", pady=5)
+
     def _metric_card(self, parent: ttk.Frame, column: int, label: str, value_var: tk.StringVar) -> tk.Frame:
         frame = tk.Frame(parent, bg="#ffffff", bd=1, relief="solid")
         frame.grid(row=0, column=column, sticky="ew", padx=4)
@@ -813,6 +1129,16 @@ class TesterApp(tk.Tk):
         if self.simulator_var.get():
             self.status_var.set("Simulator mode is active. Hardware connection is skipped.")
             return
+        range_label = self.labjack_range_var.get()
+        try:
+            waveform_range_v = labjack_ain0_range_from_label(range_label)
+        except ValueError as exc:
+            messagebox.showerror("Invalid setup", str(exc))
+            return
+        range_warning = labjack_range_offset_warning(waveform_range_v, range_label)
+        if range_warning is not None:
+            messagebox.showerror("AIN0 range too small for offset", range_warning)
+            return
         self.set_busy(True)
 
         def worker() -> None:
@@ -820,10 +1146,11 @@ class TesterApp(tk.Tk):
                 if self.device is None:
                     self.device = LabJackT7()
                 self.device.connect()
+                self.device.configure_analog_inputs(waveform_range_v=waveform_range_v)
             except Exception as exc:
                 self.after(0, lambda exc=exc: self.hardware_error(exc))
             else:
-                self.after(0, lambda: self.status_var.set("Connected to LabJack T7. Ready to test."))
+                self.after(0, lambda: self.status_var.set(f"Connected to LabJack T7. AIN0 range is {range_label}."))
             finally:
                 self.after(0, lambda: self.set_busy(False))
 
@@ -836,31 +1163,6 @@ class TesterApp(tk.Tk):
         self.status_var.set(text)
         messagebox.showerror("LabJack connection problem", text)
 
-    def read_offset_value(self) -> float:
-        if self.simulator_var.get():
-            offset = simulate_offset_v(self.sim_case_var.get())
-            time.sleep(0.25)
-            return offset
-        self.ensure_connected()
-        return self.device.read_average(OFFSET_CHANNEL)
-
-    def read_offset(self) -> None:
-        self.set_busy(True)
-        self.overall_display_var.set("READING OFFSET")
-        self.set_overall_color("#e8edf3", "#1f2937")
-
-        def worker() -> None:
-            try:
-                offset = self.read_offset_value()
-            except Exception as exc:
-                self.after(0, lambda exc=exc: self.hardware_error(exc))
-            else:
-                self.after(0, lambda: self.on_offset_read(offset))
-            finally:
-                self.after(0, lambda: self.set_busy(False))
-
-        threading.Thread(target=worker, daemon=True).start()
-
     def update_offset_card(self, offset: float) -> bool:
         self.offset_v = offset
         if OFFSET_MIN_V <= offset <= OFFSET_MAX_V:
@@ -871,51 +1173,72 @@ class TesterApp(tk.Tk):
         self.set_card_color(self.offset_card, "#fee2e2")
         return False
 
-    def on_offset_read(self, offset: float) -> None:
-        offset_ok = self.update_offset_card(offset)
-        if offset_ok:
-            self.overall_display_var.set("OFFSET OK")
-            self.set_overall_color("#dcfce7", "#166534")
-            self.write_note(
-                [
-                    f"Offset reading: {offset:.6f} V",
-                    f"Offset is within the {OFFSET_MIN_V:.1f} to {OFFSET_MAX_V:.1f} V specification.",
-                ]
-            )
-        else:
-            self.overall_display_var.set("OFFSET FAIL")
-            self.set_overall_color("#fee2e2", "#991b1b")
-            self.write_note(
-                [
-                    f"Offset reading: {offset:.6f} V",
-                    f"Offset is outside the {OFFSET_MIN_V:.1f} to {OFFSET_MAX_V:.1f} V specification.",
-                ]
-            )
+    def read_emitter_pwm_config(self) -> tuple[bool, str, float, float]:
+        enabled = self.emitter_pwm_enabled_var.get()
+        channel = normalize_pwm_channel(self.emitter_pwm_channel_var.get())
+        try:
+            frequency_hz = float(self.emitter_pwm_frequency_var.get())
+            duty_cycle = float(self.emitter_pwm_duty_var.get())
+        except ValueError as exc:
+            raise ValueError("Emitter PWM frequency and duty cycle must be numbers.") from exc
+        calculate_pwm_roll_and_config(frequency_hz, duty_cycle)
+        return enabled, channel, frequency_hz, duty_cycle
 
     def start_waveform_test(self) -> None:
         try:
             gain = float(self.am502_gain_var.get())
         except ValueError:
-            messagebox.showerror("Invalid setup", "AM502 gain must be a number.")
+            messagebox.showerror("Invalid setup", "External gain must be a number.")
             return
 
         if gain <= 0:
-            messagebox.showerror("Invalid setup", "AM502 gain must be positive.")
+            messagebox.showerror("Invalid setup", "External gain must be positive.")
+            return
+
+        try:
+            pwm_enabled, pwm_channel, pwm_frequency_hz, pwm_duty_cycle = self.read_emitter_pwm_config()
+        except ValueError as exc:
+            messagebox.showerror("Invalid emitter PWM setup", str(exc))
+            return
+
+        range_label = self.labjack_range_var.get()
+        try:
+            waveform_range_v = labjack_ain0_range_from_label(range_label)
+        except ValueError as exc:
+            messagebox.showerror("Invalid setup", str(exc))
+            return
+        range_warning = labjack_range_offset_warning(waveform_range_v, range_label)
+        if range_warning is not None:
+            messagebox.showerror("AIN0 range too small for offset", range_warning)
             return
 
         self.set_busy(True)
-        self.overall_display_var.set("MEASURING OFFSET")
+        self.overall_display_var.set("WAITING FOR STABLE WAVE")
         self.set_overall_color("#e8edf3", "#1f2937")
-        self.write_note(["Measuring offset..."])
+        self.offset_display_var.set("From AIN0")
+        if pwm_enabled:
+            self.emitter_pwm_display_var.set(f"{pwm_frequency_hz:g} Hz {pwm_duty_cycle:g}%")
+            self.set_card_color(self.emitter_pwm_card, "#dbeafe")
+        else:
+            self.emitter_pwm_display_var.set("Off")
+            self.set_card_color(self.emitter_pwm_card, "#ffffff")
+        self.write_note(
+            [
+                "Capturing waveform and estimating offset from AIN0 stable cycles...",
+                f"Ignoring the first {DEFAULT_SETTLE_CYCLES} blade cycles for sensitivity.",
+                f"Polarity is referenced to the {PROCEDURE_SYNC_EDGE.lower()} edge of AIN2.",
+                f"AIN0 range is {range_label}; external gain correction is x{gain:g}.",
+                (
+                    f"Emitter PWM is enabled on {pwm_channel} at {pwm_frequency_hz:g} Hz, "
+                    f"{pwm_duty_cycle:g}% duty."
+                    if pwm_enabled
+                    else "Emitter PWM is off."
+                ),
+            ]
+        )
 
         def worker() -> None:
             try:
-                offset = self.read_offset_value()
-                self.after(0, lambda offset=offset: self.update_offset_card(offset))
-                self.after(0, lambda: self.overall_display_var.set("WAITING FOR STABLE WAVE"))
-                self.after(0, lambda: self.set_overall_color("#fef3c7", "#92400e"))
-                self.after(0, lambda: self.write_note(["Capturing waveform until the cycle average stabilizes..."]))
-
                 if self.simulator_var.get():
                     waveform, sync, actual_rate = simulate_waveform_samples(
                         filter_setup=self.filter_var.get(),
@@ -927,10 +1250,17 @@ class TesterApp(tk.Tk):
                     time.sleep(0.5)
                 else:
                     self.ensure_connected()
+                    if pwm_enabled:
+                        self.device.configure_emitter_pwm(
+                            channel=pwm_channel,
+                            frequency_hz=pwm_frequency_hz,
+                            duty_cycle_percent=pwm_duty_cycle,
+                        )
                     waveform, sync, actual_rate = self.device.read_waveform_stream(
                         sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
                         expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
-                        sync_edge=self.sync_edge_var.get(),
+                        sync_edge=PROCEDURE_SYNC_EDGE,
+                        waveform_range_v=waveform_range_v,
                     )
 
                 metrics = analyze_waveform(
@@ -938,9 +1268,10 @@ class TesterApp(tk.Tk):
                     sync_v=sync,
                     sample_rate_hz=actual_rate,
                     am502_gain=gain,
-                    sync_edge=self.sync_edge_var.get(),
+                    sync_edge=PROCEDURE_SYNC_EDGE,
+                    input_range_v=waveform_range_v,
                 )
-                final = evaluate_result(offset, metrics, self.filter_var.get())
+                final = evaluate_result(metrics.offset_v, metrics, self.filter_var.get())
                 append_result_csv(
                     Path(self.csv_path_var.get()),
                     sensor_id=self.sensor_id_var.get().strip() or "UNLABELED",
@@ -952,6 +1283,8 @@ class TesterApp(tk.Tk):
             else:
                 self.after(0, lambda: self.on_test_complete(metrics, final))
             finally:
+                if not self.simulator_var.get() and pwm_enabled and self.device is not None:
+                    self.device.disable_emitter_pwm(pwm_channel)
                 self.after(0, lambda: self.set_busy(False))
 
         threading.Thread(target=worker, daemon=True).start()
@@ -964,7 +1297,10 @@ class TesterApp(tk.Tk):
         offset_text = "Not measured" if final.offset_v is None else f"{final.offset_v:.3f} V"
         self.offset_display_var.set(offset_text + (" PASS" if offset_ok else " FAIL"))
         self.sensitivity_display_var.set(f"{metrics.sensitivity_mv:.2f} mV")
-        self.polarity_display_var.set(metrics.polarity)
+        if metrics.polarity_confidence is None:
+            self.polarity_display_var.set(metrics.polarity)
+        else:
+            self.polarity_display_var.set(f"{metrics.polarity} {metrics.polarity_confidence * 100:.0f}%")
         if metrics.measured_frequency_hz is None:
             self.frequency_display_var.set("No sync")
         else:
@@ -980,6 +1316,12 @@ class TesterApp(tk.Tk):
             self.frequency_card,
             "#fef9c3" if metrics.warnings else "#dcfce7",
         )
+        if self.emitter_pwm_enabled_var.get():
+            self.emitter_pwm_display_var.set("Stopped")
+            self.set_card_color(self.emitter_pwm_card, "#dbeafe")
+        else:
+            self.emitter_pwm_display_var.set("Off")
+            self.set_card_color(self.emitter_pwm_card, "#ffffff")
 
         if final.passed:
             self.overall_display_var.set("PASS")
@@ -988,7 +1330,7 @@ class TesterApp(tk.Tk):
             self.overall_display_var.set("FAIL")
             self.set_overall_color("#ef4444", "#450a0a")
 
-        self.write_messages(final.fail_reasons, final.warnings)
+        self.write_messages(final.fail_reasons, final.warnings, metrics)
         self.redraw_waveform()
         self.status_var.set(f"Test complete. Result was saved to {self.csv_path_var.get()}")
 
@@ -1011,7 +1353,12 @@ class TesterApp(tk.Tk):
         for child in card.winfo_children():
             child.configure(bg=bg)
 
-    def write_messages(self, fail_reasons: list[str], warnings: list[str]) -> None:
+    def write_messages(
+        self,
+        fail_reasons: list[str],
+        warnings: list[str],
+        waveform_metrics: WaveformMetrics | None = None,
+    ) -> None:
         self.message_text.configure(state="normal")
         self.message_text.delete("1.0", "end")
         if fail_reasons:
@@ -1024,6 +1371,10 @@ class TesterApp(tk.Tk):
             self.message_text.insert("end", "\nWARNINGS\n")
             for warning in warnings:
                 self.message_text.insert("end", f"- {warning}\n")
+        polarity_detail = format_polarity_detail(waveform_metrics)
+        if polarity_detail is not None:
+            self.message_text.insert("end", "\nPOLARITY CHECK\n")
+            self.message_text.insert("end", f"- {waveform_metrics.polarity}: {polarity_detail}.\n")
         self.message_text.configure(state="disabled")
 
     def write_note(self, lines: list[str]) -> None:
@@ -1068,10 +1419,36 @@ class TesterApp(tk.Tk):
         top = 18
         mid_bottom = int(height * 0.70)
         wave_y = mid_bottom - (waveform[idx] - wave_min) / (wave_max - wave_min) * (mid_bottom - top)
-        points = []
-        for px, py in zip(x, wave_y):
-            points.extend([float(px), float(py)])
-        canvas.create_line(points, fill="#38bdf8", width=2)
+
+        ignored_cycles = max(0, int(metrics.ignored_initial_cycles))
+        ignored_until_idx = 0
+        if ignored_cycles > 0:
+            if len(metrics.edges) > ignored_cycles:
+                ignored_until_idx = min(n - 1, max(0, int(metrics.edges[ignored_cycles])))
+            else:
+                period_samples = max(1, int(round(metrics.sample_rate_hz / EXPECTED_FREQUENCY_HZ)))
+                ignored_until_idx = min(n - 1, ignored_cycles * period_samples)
+
+        if ignored_until_idx > 0:
+            ignored_until_x = ignored_until_idx / max(1, n - 1) * (width - 20) + 10
+            canvas.create_rectangle(10, top, ignored_until_x, mid_bottom, fill="#2a1c12", outline="")
+
+        def draw_waveform_section(mask: np.ndarray, color: str, line_width: int) -> None:
+            section_points = []
+            for px, py, include in zip(x, wave_y, mask):
+                if include:
+                    section_points.extend([float(px), float(py)])
+                elif len(section_points) >= 4:
+                    canvas.create_line(section_points, fill=color, width=line_width)
+                    section_points = []
+                else:
+                    section_points = []
+            if len(section_points) >= 4:
+                canvas.create_line(section_points, fill=color, width=line_width)
+
+        ignored_mask = idx < ignored_until_idx
+        draw_waveform_section(ignored_mask, "#fb923c", 2)
+        draw_waveform_section(~ignored_mask, "#38bdf8", 2)
 
         sync_top = int(height * 0.76)
         sync_bottom = height - 18
@@ -1091,6 +1468,15 @@ class TesterApp(tk.Tk):
             canvas.create_line(px, 12, px, height - 12, fill="#475569", dash=(3, 5))
 
         canvas.create_text(12, 12, anchor="nw", text="AIN0 waveform", fill="#38bdf8", font=("Segoe UI", 10, "bold"))
+        if ignored_until_idx > 0:
+            canvas.create_text(
+                120,
+                12,
+                anchor="nw",
+                text=f"ignored first {ignored_cycles} cycles",
+                fill="#fb923c",
+                font=("Segoe UI", 10, "bold"),
+            )
         canvas.create_text(12, sync_top, anchor="nw", text="AIN2 blade sync", fill="#facc15", font=("Segoe UI", 10, "bold"))
         canvas.create_text(
             width - 12,
@@ -1103,6 +1489,11 @@ class TesterApp(tk.Tk):
 
     def on_close(self) -> None:
         if self.device is not None:
+            if self.emitter_pwm_enabled_var.get():
+                try:
+                    self.device.disable_emitter_pwm(self.emitter_pwm_channel_var.get())
+                except Exception:
+                    pass
             self.device.close()
         self.destroy()
 
