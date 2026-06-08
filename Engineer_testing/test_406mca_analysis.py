@@ -149,6 +149,31 @@ def test_am502_gain_is_divided_out():
     assert metrics.sensitivity_amplified_mv > metrics.sensitivity_mv * 90.0
 
 
+def test_noise_and_snr_are_measured_from_stable_cycles():
+    filter_setup = "-3 filter"
+    np.random.seed(7)
+    waveform, sync, sample_rate = simulate_waveform_samples(
+        filter_setup=filter_setup,
+        case_name="Known good",
+        sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+        cycles=DEFAULT_MAX_CAPTURE_CYCLES,
+        am502_gain=DEFAULT_AM502_GAIN,
+        noise_rms_v=0.0015,
+    )
+    metrics = analyze_waveform(
+        waveform,
+        sync,
+        sample_rate,
+        am502_gain=DEFAULT_AM502_GAIN,
+    )
+    assert metrics.stabilized
+    assert metrics.noise_rms_mv is not None
+    assert 1.0 <= metrics.noise_rms_mv <= 2.1
+    assert metrics.signal_rms_mv is not None and metrics.signal_rms_mv > metrics.noise_rms_mv
+    assert metrics.signal_to_noise_db is not None and metrics.signal_to_noise_db > 10.0
+    assert metrics.noise_cycles_used == metrics.cycles_used
+
+
 def test_slow_settling_waveform_uses_stable_cycles():
     filter_setup = "-3 filter"
     settled_mv = FILTER_SPECS_MV[filter_setup] * 1.35
@@ -214,6 +239,7 @@ def main():
         test_rising_polarity_handles_phase_shifted_negative_response,
         test_low_and_high_offset_fail,
         test_am502_gain_is_divided_out,
+        test_noise_and_snr_are_measured_from_stable_cycles,
         test_slow_settling_waveform_uses_stable_cycles,
         test_unstable_waveform_fails,
         test_near_ground_waveform_average_warns_about_missing_dc_offset,

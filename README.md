@@ -3,7 +3,7 @@
 Code for industrial automation process.
 
 This is the first single-sensor test program for the 406MCA sensitivity,
-polarity, and offset procedure. It uses the LabJack T7-Pro through the
+polarity, offset, noise, and SNR procedure. It uses the LabJack T7-Pro through the
 `labjack.ljm` Python package and includes simulator mode so the operator flow
 and analysis can be tested without hardware connected.
 
@@ -39,6 +39,13 @@ cd C:\Users\vma\Documents\Eltec406MCATester
 python test_406mca_analysis.py
 ```
 
+To analyze voltage/distance sweep results and generate a Word report:
+
+```powershell
+cd C:\Users\vma\Documents\Eltec406MCATester
+python analyze_406mca_snr_results.py
+```
+
 ## Operator Workflow
 
 1. Enter or scan the sensor ID.
@@ -48,7 +55,7 @@ python test_406mca_analysis.py
 
 The app logs one row per waveform test with:
 
-`timestamp, sensor_id, model, filter_setup, offset_v, sensitivity_mv, polarity, pass_fail, fail_reasons`
+`timestamp, sensor_id, model, filter_setup, distance_cm, input_voltage_v, offset_v, sensitivity_mv, noise_rms_mv, snr_db, polarity, pass_fail, fail_reasons`
 
 ## Current 406MCA Limits
 
@@ -84,6 +91,13 @@ the early rising-edge response region for the strongest signed waveform change
 and reports the response phase window and confidence as a percentage of the
 cycle peak-to-peak value.
 
+Noise is estimated from the same stable blade-sync cycles used for sensitivity.
+The app aligns the stable cycles by phase, subtracts the average cycle shape,
+and reports the residual RMS as gain-corrected noise in millivolts. SNR is
+reported in dB from signal RMS divided by noise RMS. The optional `Distance cm`
+and `Input voltage V` fields are logged with each row so runs at different
+distances and input voltages can be compared in the CSV.
+
 If the measured `AIN0` average is near `0 V`, the waveform output is not carrying
 the detector offset. Check that the waveform output path is DC-coupled and
 referenced to the same ground. If that output is intentionally AC-coupled or
@@ -93,6 +107,46 @@ Frequency, clipping, and stability issues are shown as warnings. The pass/fail
 decision is based on sensitivity, polarity, offset, and whether the waveform
 stabilized before the capture limit.
 
+## Finding the Best Input Voltage for SNR
+
+Use the same sensor, filter/setup, gain, LabJack range, wiring, emitter drive
+method, and fixture alignment for the whole comparison. For each distance, sweep
+the same voltage points. Keep every run's distance entered in `Distance cm` and
+voltage entered in `Input voltage V` so the CSV can be grouped later.
+
+1. Choose a safe voltage sweep before starting. Stay within the sensor, emitter,
+   fixture, and LabJack input limits. If the safe range is unknown, start low and
+   increase in small steps.
+2. Pick 5 to 10 voltage points across the range you want to compare. Smaller
+   steps near the expected best voltage are useful.
+3. Pick the distances you want to test, such as `45 cm`, `55 cm`, and `65 cm`.
+   Use the same voltage list at every distance.
+4. Set the first distance, enter it in `Distance cm`, then run the full voltage
+   sweep at that distance.
+5. At each voltage, wait for the fixture and waveform to settle before clicking
+   `Start Test`.
+6. Run at least 3 tests per voltage and distance. Use 5 tests per point if the
+   readings vary a lot.
+7. Move to the next distance and repeat the same voltage sweep.
+8. Watch for clipping warnings, unstable waveform warnings, offset failures, or
+   polarity failures. Do not treat a voltage as the best choice if it only looks
+   good because the waveform is clipping or unstable.
+9. After the first sweep, repeat the best few voltage and distance combinations
+   in reverse order. This helps catch drift from warm-up, sensor heating, or setup
+   changes.
+10. Compare each distance and voltage combination by the average `snr_db`. Higher
+   is better. Also check `noise_rms_mv`, `sensitivity_mv`, pass/fail, and warning
+   messages.
+11. If two settings are within about 1 to 2 dB of each other, prefer the lower,
+   safer voltage and the easier fixture distance unless there is a production
+   reason to choose the more demanding setting.
+
+To have Codex help choose the best voltage, provide the CSV rows from the sweep
+or the CSV file, plus any hard limits such as maximum voltage, maximum current,
+temperature concerns, required fixture distance, or a required minimum
+sensitivity. The useful columns are `distance_cm`, `input_voltage_v`, `sensor_id`,
+`filter_setup`, `sensitivity_mv`, `noise_rms_mv`, `snr_db`, `pass_fail`, and
+`fail_reasons`.
 ## Safety Notes
 
 - Keep the AIN0 signal within the LabJack analog input range.

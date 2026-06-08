@@ -98,8 +98,12 @@ CSV_FIELDS = [
     "sensor_id",
     "model",
     "filter_setup",
+    "distance_cm",
+    "input_voltage_v",
     "offset_v",
     "sensitivity_mv",
+    "noise_rms_mv",
+    "snr_db",
     "polarity",
     "pass_fail",
     "fail_reasons",
@@ -114,6 +118,12 @@ class WaveformMetrics:
     measured_frequency_hz: float | None
     cycles_used: int
     offset_v: float | None = None
+    noise_rms_mv: float | None = None
+    noise_rms_amplified_mv: float | None = None
+    signal_rms_mv: float | None = None
+    signal_to_noise_ratio: float | None = None
+    signal_to_noise_db: float | None = None
+    noise_cycles_used: int = 0
     cycle_pp_mv: list[float] = field(default_factory=list)
     all_cycle_pp_mv: list[float] = field(default_factory=list)
     stabilized: bool = False
@@ -338,6 +348,46 @@ def samples_from_segments(
     return np.concatenate(pieces)
 
 
+def estimate_noise_from_segments(
+    waveform_v: np.ndarray,
+    segments: list[tuple[int, int]],
+) -> tuple[float | None, float | None, int]:
+    waveform_v = np.asarray(waveform_v, dtype=float)
+    if waveform_v.size == 0:
+        return None, None, 0
+
+    cycles: list[np.ndarray] = []
+    cycle_lengths: list[int] = []
+    for start, end in segments:
+        start = max(0, int(start))
+        end = min(len(waveform_v), int(end))
+        if end <= start:
+            continue
+        cycle = waveform_v[start:end]
+        if cycle.size >= 8:
+            cycles.append(cycle)
+            cycle_lengths.append(int(cycle.size))
+
+    if len(cycles) < 2:
+        return None, None, len(cycles)
+
+    points_per_cycle = int(round(float(np.median(cycle_lengths))))
+    points_per_cycle = min(max(points_per_cycle, 8), 2000)
+    target_phase = np.linspace(0.0, 1.0, points_per_cycle, endpoint=False)
+    aligned_cycles = []
+    for cycle in cycles:
+        source_phase = np.linspace(0.0, 1.0, cycle.size, endpoint=False)
+        aligned_cycles.append(np.interp(target_phase, source_phase, cycle))
+
+    cycle_matrix = np.vstack(aligned_cycles)
+    template = np.mean(cycle_matrix, axis=0)
+    residual = cycle_matrix - template
+    noise_rms_v = float(np.sqrt(np.mean(residual * residual)))
+    noise_rms_v *= math.sqrt(cycle_matrix.shape[0] / (cycle_matrix.shape[0] - 1))
+    signal_rms_v = float(np.sqrt(np.mean((template - np.mean(template)) ** 2)))
+    return noise_rms_v, signal_rms_v, cycle_matrix.shape[0]
+
+
 def select_stable_cycle_window(
     segments: list[tuple[int, int]],
     cycle_pp_v: list[float],
@@ -478,6 +528,7 @@ def analyze_waveform(
             measured_frequency_hz=None,
             cycles_used=0,
             offset_v=None,
+            noise_cycles_used=0,
             warnings=["No waveform samples were captured."],
             waveform_v=waveform_v,
             sync_v=sync_v,
@@ -558,6 +609,31 @@ def analyze_waveform(
                 "the 0.3 to 1.2 V offset."
             )
 
+    noise_segments = stable_segments if stable_segments else segments
+    noise_rms_amplified_v, signal_rms_amplified_v, noise_cycles_used = estimate_noise_from_segments(
+        waveform_v,
+        noise_segments,
+    )
+    noise_rms_v: float | None = None
+    signal_rms_v: float | None = None
+    signal_to_noise_ratio: float | None = None
+    signal_to_noise_db: float | None = None
+    if noise_rms_amplified_v is not None and signal_rms_amplified_v is not None:
+        noise_rms_v = noise_rms_amplified_v / am502_gain
+        signal_rms_v = signal_rms_amplified_v / am502_gain
+        if noise_rms_v <= 0:
+            if signal_rms_v > 0:
+                signal_to_noise_ratio = math.inf
+                signal_to_noise_db = math.inf
+        else:
+            signal_to_noise_ratio = signal_rms_v / noise_rms_v
+            if signal_to_noise_ratio > 0:
+                signal_to_noise_db = 20.0 * math.log10(signal_to_noise_ratio)
+            else:
+                signal_to_noise_db = -math.inf
+    elif noise_cycles_used < 2 and segments:
+        warnings.append("Noise and SNR were not estimated because fewer than two complete cycles were available.")
+
     sensitivity_v = amplified_pp_v / am502_gain
     return WaveformMetrics(
         sensitivity_mv=sensitivity_v * 1000.0,
@@ -566,6 +642,12 @@ def analyze_waveform(
         measured_frequency_hz=measured_frequency_hz,
         cycles_used=len(cycle_pp_v),
         offset_v=offset_v,
+        noise_rms_mv=None if noise_rms_v is None else noise_rms_v * 1000.0,
+        noise_rms_amplified_mv=None if noise_rms_amplified_v is None else noise_rms_amplified_v * 1000.0,
+        signal_rms_mv=None if signal_rms_v is None else signal_rms_v * 1000.0,
+        signal_to_noise_ratio=signal_to_noise_ratio,
+        signal_to_noise_db=signal_to_noise_db,
+        noise_cycles_used=noise_cycles_used,
         cycle_pp_mv=[value * 1000.0 for value in cycle_pp_v],
         all_cycle_pp_mv=[value * 1000.0 for value in all_cycle_pp_v],
         stabilized=stabilized,
@@ -601,6 +683,60 @@ def format_polarity_detail(waveform_metrics: WaveformMetrics | None) -> str | No
     if waveform_metrics.polarity_delta_mv is not None:
         parts.append(f"delta {waveform_metrics.polarity_delta_mv:.2f} mV")
     return ", ".join(parts)
+
+
+def format_snr_db(value: float | None, digits: int = 1) -> str | None:
+    if value is None:
+        return None
+    if math.isinf(value):
+        return "inf dB" if value > 0 else "-inf dB"
+    return f"{value:.{digits}f} dB"
+
+
+def format_noise_snr_card(waveform_metrics: WaveformMetrics | None) -> str:
+    if waveform_metrics is None or waveform_metrics.noise_rms_mv is None:
+        return "Not measured"
+
+    noise_text = f"{waveform_metrics.noise_rms_mv:.3f} mV"
+    snr_text = format_snr_db(waveform_metrics.signal_to_noise_db)
+    if snr_text is None:
+        return noise_text
+    return f"{noise_text}\nSNR {snr_text}"
+
+
+def format_noise_detail(waveform_metrics: WaveformMetrics | None) -> str | None:
+    if waveform_metrics is None or waveform_metrics.noise_rms_mv is None:
+        return None
+
+    parts = [f"gain-corrected noise RMS {waveform_metrics.noise_rms_mv:.3f} mV"]
+    if waveform_metrics.signal_rms_mv is not None:
+        parts.append(f"signal RMS {waveform_metrics.signal_rms_mv:.3f} mV")
+    snr_text = format_snr_db(waveform_metrics.signal_to_noise_db)
+    if snr_text is not None:
+        parts.append(f"SNR {snr_text}")
+    if waveform_metrics.noise_cycles_used:
+        parts.append(f"estimated from {waveform_metrics.noise_cycles_used} stable cycles")
+    return ", ".join(parts)
+
+
+def format_csv_float(value: float | None, digits: int = 6) -> str:
+    if value is None:
+        return ""
+    if math.isinf(value):
+        return "inf" if value > 0 else "-inf"
+    return f"{value:.{digits}f}"
+
+
+def csv_needs_header(csv_path: Path) -> bool:
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
+        return True
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+            reader = csv.reader(csv_file)
+            existing_header = next(reader, [])
+    except OSError:
+        return True
+    return existing_header != CSV_FIELDS
 
 
 def evaluate_result(
@@ -704,18 +840,27 @@ def append_result_csv(
     sensor_id: str,
     filter_setup: str,
     final_result: FinalResult,
+    input_voltage_v: float | None = None,
+    distance_cm: float | None = None,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    write_header = not csv_path.exists()
+    write_header = csv_needs_header(csv_path)
+    waveform_metrics = final_result.waveform_metrics
     row = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "sensor_id": sensor_id,
         "model": MODEL_NAME,
         "filter_setup": filter_setup,
-        "offset_v": "" if final_result.offset_v is None else f"{final_result.offset_v:.6f}",
-        "sensitivity_mv": ""
-        if final_result.sensitivity_mv is None
-        else f"{final_result.sensitivity_mv:.6f}",
+        "distance_cm": format_csv_float(distance_cm),
+        "input_voltage_v": format_csv_float(input_voltage_v),
+        "offset_v": format_csv_float(final_result.offset_v),
+        "sensitivity_mv": format_csv_float(final_result.sensitivity_mv),
+        "noise_rms_mv": ""
+        if waveform_metrics is None
+        else format_csv_float(waveform_metrics.noise_rms_mv),
+        "snr_db": ""
+        if waveform_metrics is None
+        else format_csv_float(waveform_metrics.signal_to_noise_db),
         "polarity": final_result.polarity,
         "pass_fail": "PASS" if final_result.passed else "FAIL",
         "fail_reasons": "; ".join(final_result.fail_reasons),
@@ -918,6 +1063,8 @@ class TesterApp(tk.Tk):
     def _build_variables(self) -> None:
         self.sensor_id_var = tk.StringVar(value="")
         self.filter_var = tk.StringVar(value="-3 filter")
+        self.distance_cm_var = tk.StringVar(value="")
+        self.input_voltage_var = tk.StringVar(value="")
         self.simulator_var = tk.BooleanVar(value=False)
         self.sim_case_var = tk.StringVar(value="Random good sensor")
         self.am502_gain_var = tk.StringVar(value=f"{DEFAULT_AM502_GAIN:.0f}")
@@ -932,6 +1079,7 @@ class TesterApp(tk.Tk):
         self.status_var = tk.StringVar(value="Checking LabJack...")
         self.offset_display_var = tk.StringVar(value="Not measured")
         self.sensitivity_display_var = tk.StringVar(value="Not measured")
+        self.noise_snr_display_var = tk.StringVar(value="Not measured")
         self.polarity_display_var = tk.StringVar(value="Not measured")
         self.frequency_display_var = tk.StringVar(value="Not measured")
         self.emitter_pwm_display_var = tk.StringVar(value="Off")
@@ -965,61 +1113,78 @@ class TesterApp(tk.Tk):
         main.columnconfigure(1, weight=1)
         main.rowconfigure(0, weight=1)
 
-        controls = ttk.LabelFrame(main, text="Operator Controls", padding=12)
-        controls.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
+        left_panel = ttk.Frame(main)
+        left_panel.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
+        left_panel.columnconfigure(0, weight=1)
+        left_panel.rowconfigure(0, weight=1)
+
+        controls_shell = ttk.LabelFrame(left_panel, text="Operator Controls", padding=0)
+        controls_shell.grid(row=0, column=0, sticky="nsew")
+        controls_shell.columnconfigure(0, weight=1)
+        controls_shell.rowconfigure(0, weight=1)
+
+        controls_canvas = tk.Canvas(
+            controls_shell,
+            width=365,
+            bg="#f4f6f8",
+            highlightthickness=0,
+            bd=0,
+        )
+        controls_scrollbar = ttk.Scrollbar(controls_shell, orient="vertical", command=controls_canvas.yview)
+        controls_canvas.configure(yscrollcommand=controls_scrollbar.set)
+        controls_canvas.grid(row=0, column=0, sticky="nsew")
+        controls_scrollbar.grid(row=0, column=1, sticky="ns")
+
+        controls = ttk.Frame(controls_canvas, padding=12)
+        controls_window = controls_canvas.create_window((0, 0), window=controls, anchor="nw")
+
+        def update_controls_scroll_region(_event: tk.Event | None = None) -> None:
+            controls_canvas.configure(scrollregion=controls_canvas.bbox("all"))
+
+        def fit_controls_to_canvas(event: tk.Event) -> None:
+            controls_canvas.itemconfigure(controls_window, width=event.width)
+
+        controls.bind("<Configure>", update_controls_scroll_region)
+        controls_canvas.bind("<Configure>", fit_controls_to_canvas)
         controls.columnconfigure(1, weight=1)
 
         self._add_labeled_entry(controls, 0, "Sensor ID", self.sensor_id_var)
         self._add_labeled_combo(controls, 1, "Filter/setup", self.filter_var, list(FILTER_SPECS_MV.keys()))
-        self._add_labeled_static(controls, 2, "Sync edge", PROCEDURE_SYNC_EDGE)
-        self._add_labeled_entry(controls, 3, "External gain", self.am502_gain_var)
+        self._add_labeled_entry(controls, 2, "Distance cm", self.distance_cm_var)
+        self._add_labeled_entry(controls, 3, "Input voltage V", self.input_voltage_var)
+        self._add_labeled_static(controls, 4, "Sync edge", PROCEDURE_SYNC_EDGE)
+        self._add_labeled_entry(controls, 5, "External gain", self.am502_gain_var)
         self._add_labeled_combo(
             controls,
-            4,
+            6,
             "LabJack AIN0 range",
             self.labjack_range_var,
             list(LABJACK_AIN0_RANGE_OPTIONS.keys()),
         )
 
         sim_check = ttk.Checkbutton(controls, text="Simulator mode", variable=self.simulator_var)
-        sim_check.grid(row=5, column=0, columnspan=2, sticky="w", pady=(12, 2))
-        self._add_labeled_combo(controls, 6, "Sim case", self.sim_case_var, SIM_CASES)
+        sim_check.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 2))
+        self._add_labeled_combo(controls, 8, "Sim case", self.sim_case_var, SIM_CASES)
 
         pwm_check = ttk.Checkbutton(
             controls,
             text="Emitter PWM output",
             variable=self.emitter_pwm_enabled_var,
         )
-        pwm_check.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 2))
+        pwm_check.grid(row=9, column=0, columnspan=2, sticky="w", pady=(12, 2))
         self._add_labeled_combo(
             controls,
-            8,
+            10,
             "PWM DIO",
             self.emitter_pwm_channel_var,
             LABJACK_T7_PWM_CHANNELS,
         )
-        self._add_labeled_entry(controls, 9, "PWM Hz", self.emitter_pwm_frequency_var)
-        self._add_labeled_entry(controls, 10, "PWM duty %", self.emitter_pwm_duty_var)
+        self._add_labeled_entry(controls, 11, "PWM Hz", self.emitter_pwm_frequency_var)
+        self._add_labeled_entry(controls, 12, "PWM duty %", self.emitter_pwm_duty_var)
 
-        ttk.Label(controls, text="CSV log").grid(row=11, column=0, sticky="w", pady=(14, 2))
+        ttk.Label(controls, text="CSV log").grid(row=13, column=0, sticky="w", pady=(14, 2))
         csv_entry = ttk.Entry(controls, textvariable=self.csv_path_var, width=38)
-        csv_entry.grid(row=12, column=0, columnspan=2, sticky="ew")
-
-        self.connect_button = ttk.Button(
-            controls,
-            text="Connect",
-            command=self.connect_labjack,
-            style="Large.TButton",
-        )
-        self.connect_button.grid(row=13, column=0, columnspan=2, sticky="ew", pady=(18, 8))
-
-        self.test_button = ttk.Button(
-            controls,
-            text="Start Test",
-            command=self.start_waveform_test,
-            style="Large.TButton",
-        )
-        self.test_button.grid(row=14, column=0, columnspan=2, sticky="ew", pady=8)
+        csv_entry.grid(row=14, column=0, columnspan=2, sticky="ew")
 
         wiring = (
             "Wiring:\n"
@@ -1035,6 +1200,26 @@ class TesterApp(tk.Tk):
             "Close LJStreamM/Kipling before using hardware mode."
         )
         ttk.Label(controls, text=wiring, justify="left").grid(row=15, column=0, columnspan=2, sticky="w", pady=(18, 0))
+
+        action_buttons = ttk.Frame(left_panel, padding=(0, 10, 0, 0))
+        action_buttons.grid(row=1, column=0, sticky="ew")
+        action_buttons.columnconfigure(0, weight=1)
+
+        self.connect_button = ttk.Button(
+            action_buttons,
+            text="Connect",
+            command=self.connect_labjack,
+            style="Large.TButton",
+        )
+        self.connect_button.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+
+        self.test_button = ttk.Button(
+            action_buttons,
+            text="Start Test",
+            command=self.start_waveform_test,
+            style="Large.TButton",
+        )
+        self.test_button.grid(row=1, column=0, sticky="ew")
 
         results = ttk.Frame(main)
         results.grid(row=0, column=1, sticky="nsew")
@@ -1054,14 +1239,15 @@ class TesterApp(tk.Tk):
 
         cards = ttk.Frame(results)
         cards.grid(row=1, column=0, sticky="ew", pady=(12, 12))
-        for col in range(5):
+        for col in range(6):
             cards.columnconfigure(col, weight=1)
 
         self.offset_card = self._metric_card(cards, 0, "Offset", self.offset_display_var)
         self.sensitivity_card = self._metric_card(cards, 1, "Sensitivity", self.sensitivity_display_var)
-        self.polarity_card = self._metric_card(cards, 2, "Polarity", self.polarity_display_var)
-        self.frequency_card = self._metric_card(cards, 3, "Frequency", self.frequency_display_var)
-        self.emitter_pwm_card = self._metric_card(cards, 4, "Emitter PWM", self.emitter_pwm_display_var)
+        self.noise_snr_card = self._metric_card(cards, 2, "Noise / SNR", self.noise_snr_display_var)
+        self.polarity_card = self._metric_card(cards, 3, "Polarity", self.polarity_display_var)
+        self.frequency_card = self._metric_card(cards, 4, "Frequency", self.frequency_display_var)
+        self.emitter_pwm_card = self._metric_card(cards, 5, "Emitter PWM", self.emitter_pwm_display_var)
 
         lower = ttk.Frame(results)
         lower.grid(row=2, column=0, sticky="nsew")
@@ -1195,6 +1381,27 @@ class TesterApp(tk.Tk):
             messagebox.showerror("Invalid setup", "External gain must be positive.")
             return
 
+        distance_text = self.distance_cm_var.get().strip()
+        distance_cm: float | None = None
+        if distance_text:
+            try:
+                distance_cm = float(distance_text)
+            except ValueError:
+                messagebox.showerror("Invalid setup", "Distance cm must be blank or a number.")
+                return
+            if distance_cm <= 0:
+                messagebox.showerror("Invalid setup", "Distance cm must be positive.")
+                return
+
+        input_voltage_text = self.input_voltage_var.get().strip()
+        input_voltage_v: float | None = None
+        if input_voltage_text:
+            try:
+                input_voltage_v = float(input_voltage_text)
+            except ValueError:
+                messagebox.showerror("Invalid setup", "Input voltage must be blank or a number.")
+                return
+
         try:
             pwm_enabled, pwm_channel, pwm_frequency_hz, pwm_duty_cycle = self.read_emitter_pwm_config()
         except ValueError as exc:
@@ -1216,6 +1423,8 @@ class TesterApp(tk.Tk):
         self.overall_display_var.set("WAITING FOR STABLE WAVE")
         self.set_overall_color("#e8edf3", "#1f2937")
         self.offset_display_var.set("From AIN0")
+        self.noise_snr_display_var.set("Measuring")
+        self.set_card_color(self.noise_snr_card, "#ffffff")
         if pwm_enabled:
             self.emitter_pwm_display_var.set(f"{pwm_frequency_hz:g} Hz {pwm_duty_cycle:g}%")
             self.set_card_color(self.emitter_pwm_card, "#dbeafe")
@@ -1228,6 +1437,16 @@ class TesterApp(tk.Tk):
                 f"Ignoring the first {DEFAULT_SETTLE_CYCLES} blade cycles for sensitivity.",
                 f"Polarity is referenced to the {PROCEDURE_SYNC_EDGE.lower()} edge of AIN2.",
                 f"AIN0 range is {range_label}; external gain correction is x{gain:g}.",
+                (
+                    f"Distance will be logged as {distance_cm:g} cm."
+                    if distance_cm is not None
+                    else "Distance is blank for this run."
+                ),
+                (
+                    f"Input voltage will be logged as {input_voltage_v:g} V."
+                    if input_voltage_v is not None
+                    else "Input voltage is blank for this run."
+                ),
                 (
                     f"Emitter PWM is enabled on {pwm_channel} at {pwm_frequency_hz:g} Hz, "
                     f"{pwm_duty_cycle:g}% duty."
@@ -1277,6 +1496,8 @@ class TesterApp(tk.Tk):
                     sensor_id=self.sensor_id_var.get().strip() or "UNLABELED",
                     filter_setup=self.filter_var.get(),
                     final_result=final,
+                    input_voltage_v=input_voltage_v,
+                    distance_cm=distance_cm,
                 )
             except Exception as exc:
                 self.after(0, lambda exc=exc: self.hardware_error(exc))
@@ -1297,6 +1518,7 @@ class TesterApp(tk.Tk):
         offset_text = "Not measured" if final.offset_v is None else f"{final.offset_v:.3f} V"
         self.offset_display_var.set(offset_text + (" PASS" if offset_ok else " FAIL"))
         self.sensitivity_display_var.set(f"{metrics.sensitivity_mv:.2f} mV")
+        self.noise_snr_display_var.set(format_noise_snr_card(metrics))
         if metrics.polarity_confidence is None:
             self.polarity_display_var.set(metrics.polarity)
         else:
@@ -1310,6 +1532,10 @@ class TesterApp(tk.Tk):
         self.set_card_color(
             self.sensitivity_card,
             "#dcfce7" if metrics.sensitivity_mv >= FILTER_SPECS_MV[self.filter_var.get()] else "#fee2e2",
+        )
+        self.set_card_color(
+            self.noise_snr_card,
+            "#dbeafe" if metrics.noise_rms_mv is not None else "#fef9c3",
         )
         self.set_card_color(self.polarity_card, "#dcfce7" if metrics.polarity == POSITIVE_POLARITY else "#fee2e2")
         self.set_card_color(
@@ -1371,6 +1597,10 @@ class TesterApp(tk.Tk):
             self.message_text.insert("end", "\nWARNINGS\n")
             for warning in warnings:
                 self.message_text.insert("end", f"- {warning}\n")
+        noise_detail = format_noise_detail(waveform_metrics)
+        if noise_detail is not None:
+            self.message_text.insert("end", "\nNOISE / SNR\n")
+            self.message_text.insert("end", f"- {noise_detail}.\n")
         polarity_detail = format_polarity_detail(waveform_metrics)
         if polarity_detail is not None:
             self.message_text.insert("end", "\nPOLARITY CHECK\n")
