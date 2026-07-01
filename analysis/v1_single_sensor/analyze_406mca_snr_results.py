@@ -25,7 +25,9 @@ from datetime import datetime
 from pathlib import Path
 
 
-DEFAULT_RESULTS_CSV = Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "406mca_results.csv"
+DEFAULT_RESULTS_CSV = (
+    Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v1_single_sensor" / "406mca_results.csv"
+)
 DEFAULT_TIE_DB = 1.0
 DEFAULT_MIN_RUNS = 3
 

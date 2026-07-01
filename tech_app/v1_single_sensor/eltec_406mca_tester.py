@@ -163,7 +163,9 @@ class FinalResult:
 
 
 def default_results_path() -> Path:
-    docs = Path.home() / "Documents" / "Eltec_406MCA_Test_Results"
+    # Each tester version keeps its data in its own subfolder so results can be
+    # tracked and analyzed per version.
+    docs = Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v1_single_sensor"
     return docs / "406mca_results.csv"
 
 

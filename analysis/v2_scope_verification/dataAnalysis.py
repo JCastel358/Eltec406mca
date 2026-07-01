@@ -27,7 +27,10 @@ from pathlib import Path
 from typing import Iterable
 
 
-DEFAULT_RESULTS_DIR = Path.home() / "Documents" / "Eltec_406MCA_Test_Results"
+# The scope-verification (v2) tester writes into this per-version subfolder.
+DEFAULT_RESULTS_DIR = (
+    Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v2_scope_verification"
+)
 SCOPE_CSV_PATTERN = "406mca_scope_verification_lot_*.csv"
 REPORT_FILENAME = "406MCA_Data_Analysis_Report.html"
 NORMALIZED_ROWS_FILENAME = "406MCA_Normalized_Rows.csv"
