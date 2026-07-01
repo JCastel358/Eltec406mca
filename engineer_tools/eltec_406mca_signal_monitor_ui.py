@@ -13,6 +13,7 @@ Run:
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -21,6 +22,12 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 import numpy as np
+
+# The signal math + LabJack wrapper live in the v1 single-sensor tester
+# (tech_app/v1_single_sensor). Add it to the import path.
+_V1_TESTER_DIR = Path(__file__).resolve().parents[1] / "tech_app" / "v1_single_sensor"
+if str(_V1_TESTER_DIR) not in sys.path:
+    sys.path.insert(0, str(_V1_TESTER_DIR))
 
 from eltec_406mca_signal_monitor import (
     DEFAULT_BASELINE_SECONDS,

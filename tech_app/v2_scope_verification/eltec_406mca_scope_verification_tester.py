@@ -21,9 +21,12 @@ import csv
 import json
 import math
 import random
+import struct
 import threading
 import time
 import tkinter as tk
+import zlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -49,6 +52,10 @@ DEFAULT_SAMPLE_RATE_HZ = 1000.0
 DEFAULT_OFFSET_READ_SAMPLES = 80
 DEFAULT_OFFSET_READ_DELAY_S = 0.01
 DEFAULT_MAX_CAPTURE_CYCLES = 80
+LIVE_OFFSET_READ_SAMPLES = 5
+LIVE_OFFSET_POLL_INTERVAL_S = 0.20
+LIVE_SENSITIVITY_CAPTURE_CYCLES = 20
+MANUAL_SNAPSHOT_CYCLES = 20
 DEFAULT_SETTLE_CYCLES = 0
 DEFAULT_STABILITY_TOLERANCE = 0.10
 DEFAULT_STABILITY_WINDOW_CYCLES = 5
@@ -86,8 +93,10 @@ FILTER_SPECS_MV = {
 }
 
 SCOPE_GOOD_TAG = "GOOD"
+SCOPE_SENSOR_BAD_TAG = "SB"
 SCOPE_VERIFICATION_CHOICES = [
     "GOOD - Scope good / code verified",
+    "SB - Sensor bad",
     "GO/D - Good offset/no signal",
     "O - No sensitivity",
     "LS - Low sensitivity",
@@ -97,6 +106,8 @@ SCOPE_VERIFICATION_CHOICES = [
     "HO - High offset",
     "LO - Low offset",
     "D - No offset",
+    "TO - Technician says offset bad",
+    "TS - Technician says sensitivity bad",
     "HRV - High ref volt",
     "LRV - Low ref volt",
     "RP - Reversed polarity",
@@ -110,6 +121,11 @@ SCOPE_VERIFICATION_CHOICES = [
     "Drop - Dropped",
 ]
 DEFAULT_SCOPE_VERIFICATION_CHOICE = SCOPE_VERIFICATION_CHOICES[0]
+READING_MATCH = "Matches"
+READING_MISMATCH = "Wrong"
+SENSOR_STATUS_GOOD = "Good"
+SENSOR_STATUS_BAD = "Bad"
+SENSOR_STATUS_SKIPPED = "Skipped"
 
 CSV_FIELDS = [
     "timestamp",
@@ -126,14 +142,23 @@ CSV_FIELDS = [
     "pass_fail",
     "fail_reasons",
     "scope_pass_fail",
+    "sensor_pass_fail",
+    "operator_sensor_status",
     "scope_tag",
     "scope_reason",
     "operator_polarity",
+    "operator_offset_match",
+    "operator_offset_sensor_status",
+    "operator_sensitivity_match",
+    "operator_sensitivity_sensor_status",
     "actual_offset_v",
     "actual_offset_delta_v",
     "actual_sensitivity_mv",
     "actual_sensitivity_delta_mv",
+    "operator_comments",
+    "tester_sensor_disagreement",
     "waveform_snapshot_path",
+    "manual_waveform_snapshot_paths",
 ]
 
 
@@ -187,15 +212,25 @@ class FinalResult:
 class ScopeVerification:
     tag: str
     reason: str
+    sensor_passed: bool | None = None
     offset_v: float | None = None
     offset_delta_v: float | None = None
     sensitivity_mv: float | None = None
     sensitivity_delta_mv: float | None = None
+    operator_sensor_status: str = ""
     operator_polarity: str = ""
+    offset_match: str = ""
+    offset_sensor_status: str = ""
+    sensitivity_match: str = ""
+    sensitivity_sensor_status: str = ""
+    comment: str = ""
 
 
 def results_root_dir() -> Path:
-    return Path.home() / "Documents" / "Eltec_406MCA_Test_Results"
+    # Each tester version keeps its data in its own subfolder so results can be
+    # tracked and analyzed per version. Autosave and waveform-snapshot folders
+    # derive from this path, so they follow automatically.
+    return Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v2_scope_verification"
 
 
 def default_results_path() -> Path:
@@ -778,6 +813,29 @@ def simulate_waveform_samples(
     return waveform_v, sync_v, sample_rate_hz
 
 
+def ensure_csv_schema(csv_path: Path) -> None:
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
+        return
+
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+            reader = csv.DictReader(csv_file)
+            existing_fields = reader.fieldnames or []
+            if existing_fields == CSV_FIELDS:
+                return
+            rows = list(reader)
+    except Exception:
+        return
+
+    temp_path = csv_path.with_name(f"{csv_path.stem}_schema_update{csv_path.suffix}")
+    with temp_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=CSV_FIELDS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({field: row.get(field, "") for field in CSV_FIELDS})
+    temp_path.replace(csv_path)
+
+
 def append_result_csv(
     csv_path: Path,
     sensor_id: str,
@@ -789,9 +847,19 @@ def append_result_csv(
     lot_number: str = "",
     sensor_number: int | None = None,
     waveform_snapshot_path: Path | str | None = None,
+    manual_waveform_snapshot_paths: list[Path | str] | None = None,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    write_header = not csv_path.exists()
+    ensure_csv_schema(csv_path)
+    write_header = not csv_path.exists() or csv_path.stat().st_size == 0
+    sensor_passed = (
+        scope_verification.tag == SCOPE_GOOD_TAG
+        if scope_verification.sensor_passed is None
+        else scope_verification.sensor_passed
+    )
+    sensor_pass_fail = "PASS" if sensor_passed else "FAIL"
+    tester_sensor_disagreement = final_result.passed != sensor_passed
+    manual_paths_text = "; ".join(str(path) for path in (manual_waveform_snapshot_paths or []))
     row = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "lot_number": lot_number,
@@ -808,10 +876,16 @@ def append_result_csv(
         "polarity": final_result.polarity,
         "pass_fail": "PASS" if final_result.passed else "FAIL",
         "fail_reasons": "; ".join(final_result.fail_reasons),
-        "scope_pass_fail": "PASS" if scope_verification.tag == SCOPE_GOOD_TAG else "FAIL",
+        "scope_pass_fail": sensor_pass_fail,
+        "sensor_pass_fail": sensor_pass_fail,
+        "operator_sensor_status": scope_verification.operator_sensor_status,
         "scope_tag": scope_verification.tag,
         "scope_reason": scope_verification.reason,
         "operator_polarity": scope_verification.operator_polarity,
+        "operator_offset_match": scope_verification.offset_match,
+        "operator_offset_sensor_status": scope_verification.offset_sensor_status,
+        "operator_sensitivity_match": scope_verification.sensitivity_match,
+        "operator_sensitivity_sensor_status": scope_verification.sensitivity_sensor_status,
         "actual_offset_v": ""
         if scope_verification.offset_v is None
         else f"{scope_verification.offset_v:.6f}",
@@ -824,7 +898,10 @@ def append_result_csv(
         "actual_sensitivity_delta_mv": ""
         if scope_verification.sensitivity_delta_mv is None
         else f"{scope_verification.sensitivity_delta_mv:.6f}",
+        "operator_comments": scope_verification.comment,
+        "tester_sensor_disagreement": "YES" if tester_sensor_disagreement else "NO",
         "waveform_snapshot_path": "" if waveform_snapshot_path is None else str(waveform_snapshot_path),
+        "manual_waveform_snapshot_paths": manual_paths_text,
     }
     with csv_path.open("a", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=CSV_FIELDS)
@@ -902,6 +979,7 @@ class LabJackT7:
         expected_frequency_hz: float,
         sync_edge: str,
         max_capture_cycles: int = DEFAULT_MAX_CAPTURE_CYCLES,
+        stop_when_stable: bool = True,
         stability_tolerance: float = DEFAULT_STABILITY_TOLERANCE,
         stability_window_cycles: int = DEFAULT_STABILITY_WINDOW_CYCLES,
         settle_cycles: int = DEFAULT_SETTLE_CYCLES,
@@ -942,7 +1020,7 @@ class LabJackT7:
                     continue
                 sync.extend(arr[:, 0].tolist())
                 waveform.extend(arr[:, -1].tolist())
-                if len(waveform) >= int((stable_check_cycles / expected_frequency_hz) * actual_scan_rate):
+                if stop_when_stable and len(waveform) >= int((stable_check_cycles / expected_frequency_hz) * actual_scan_rate):
                     metrics = analyze_waveform(
                         np.asarray(waveform, dtype=float),
                         np.asarray(sync, dtype=float),
@@ -991,9 +1069,7 @@ def probe_labjack_status() -> tuple[bool, str]:
     return True, "T7 detected. Press Connect when the fixture is wired."
 
 
-def suggest_scope_verification_choice(final_result: FinalResult | None, operator_polarity: str = "") -> str:
-    if operator_polarity == "Bad":
-        return "RP - Reversed polarity"
+def suggest_scope_verification_choice(final_result: FinalResult | None) -> str:
     if final_result is None or final_result.passed:
         return DEFAULT_SCOPE_VERIFICATION_CHOICE
 
@@ -1014,58 +1090,278 @@ def suggest_scope_verification_choice(final_result: FinalResult | None, operator
     return "N - Noisy"
 
 
-def save_failed_waveform_snapshot(
+def plot_text_line(text: str, max_chars: int = 180) -> str:
+    cleaned = " ".join(text.split())
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return cleaned[: max(0, max_chars - 3)].rstrip() + "..."
+
+
+def png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(data))
+        + chunk_type
+        + data
+        + struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+    )
+
+
+def write_rgb_png(
+    path: Path,
+    width: int,
+    height: int,
+    pixels: bytearray,
+    text_chunks: dict[str, str] | None = None,
+) -> None:
+    rows = []
+    stride = width * 3
+    for y in range(height):
+        rows.append(b"\x00" + bytes(pixels[y * stride : (y + 1) * stride]))
+
+    with path.open("wb") as png_file:
+        png_file.write(b"\x89PNG\r\n\x1a\n")
+        png_file.write(png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)))
+        for key, value in (text_chunks or {}).items():
+            safe_key = "".join(ch for ch in key if 32 <= ord(ch) <= 126).strip()[:79] or "Comment"
+            safe_value = value.replace("\x00", " ")
+            png_file.write(png_chunk(b"tEXt", safe_key.encode("latin-1", "replace") + b"\x00" + safe_value.encode("utf-8", "replace")))
+        png_file.write(png_chunk(b"IDAT", zlib.compress(b"".join(rows), level=6)))
+        png_file.write(png_chunk(b"IEND", b""))
+
+
+def set_rgb_pixel(pixels: bytearray, width: int, height: int, x: int, y: int, color: tuple[int, int, int]) -> None:
+    if x < 0 or x >= width or y < 0 or y >= height:
+        return
+    idx = (y * width + x) * 3
+    pixels[idx : idx + 3] = bytes(color)
+
+
+def draw_rgb_line(
+    pixels: bytearray,
+    width: int,
+    height: int,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    color: tuple[int, int, int],
+) -> None:
+    x0_i = int(round(x0))
+    y0_i = int(round(y0))
+    x1_i = int(round(x1))
+    y1_i = int(round(y1))
+    dx = abs(x1_i - x0_i)
+    dy = -abs(y1_i - y0_i)
+    sx = 1 if x0_i < x1_i else -1
+    sy = 1 if y0_i < y1_i else -1
+    err = dx + dy
+    while True:
+        set_rgb_pixel(pixels, width, height, x0_i, y0_i, color)
+        if x0_i == x1_i and y0_i == y1_i:
+            break
+        e2 = 2 * err
+        if e2 >= dy:
+            err += dy
+            x0_i += sx
+        if e2 <= dx:
+            err += dx
+            y0_i += sy
+
+
+def draw_rgb_rect_outline(
+    pixels: bytearray,
+    width: int,
+    height: int,
+    left: int,
+    top: int,
+    right: int,
+    bottom: int,
+    color: tuple[int, int, int],
+) -> None:
+    draw_rgb_line(pixels, width, height, left, top, right, top, color)
+    draw_rgb_line(pixels, width, height, right, top, right, bottom, color)
+    draw_rgb_line(pixels, width, height, right, bottom, left, bottom, color)
+    draw_rgb_line(pixels, width, height, left, bottom, left, top, color)
+
+
+def draw_signal_trace(
+    pixels: bytearray,
+    width: int,
+    height: int,
+    signal: np.ndarray,
+    left: int,
+    top: int,
+    right: int,
+    bottom: int,
+    color: tuple[int, int, int],
+) -> None:
+    signal = np.asarray(signal, dtype=float)
+    if signal.size < 2:
+        return
+    signal_min = float(np.min(signal))
+    signal_max = float(np.max(signal))
+    if abs(signal_max - signal_min) < 1e-9:
+        signal_max = signal_min + 1.0
+    plot_width = max(1, right - left)
+    plot_height = max(1, bottom - top)
+    previous_x = left
+    previous_y = bottom - (float(signal[0]) - signal_min) / (signal_max - signal_min) * plot_height
+    for idx in range(1, signal.size):
+        x = left + idx / max(1, signal.size - 1) * plot_width
+        y = bottom - (float(signal[idx]) - signal_min) / (signal_max - signal_min) * plot_height
+        draw_rgb_line(pixels, width, height, previous_x, previous_y, x, y, color)
+        previous_x = x
+        previous_y = y
+
+
+def save_waveform_snapshot_fallback_png(
+    snapshot_path: Path,
+    metrics: WaveformMetrics,
+    title: str,
+    detail_lines: list[str],
+) -> None:
+    width = 1000
+    height = 620
+    pixels = bytearray([255, 255, 255] * width * height)
+    grid = (226, 232, 240)
+    axis = (71, 85, 105)
+    wave_color = (2, 132, 199)
+    sync_color = (202, 138, 4)
+
+    wave_box = (60, 45, width - 28, 385)
+    sync_box = (60, 435, width - 28, height - 36)
+    for left, top, right, bottom in (wave_box, sync_box):
+        draw_rgb_rect_outline(pixels, width, height, left, top, right, bottom, axis)
+        for step in range(1, 5):
+            x = left + (right - left) * step // 5
+            y = top + (bottom - top) * step // 5
+            draw_rgb_line(pixels, width, height, x, top, x, bottom, grid)
+            draw_rgb_line(pixels, width, height, left, y, right, y, grid)
+
+    draw_signal_trace(pixels, width, height, metrics.waveform_v, *wave_box, wave_color)
+    if metrics.sync_v.size:
+        draw_signal_trace(pixels, width, height, metrics.sync_v, *sync_box, sync_color)
+
+    metadata = {
+        "Title": title,
+        "Details": "\n".join(detail_lines),
+        "Sample rate": f"{metrics.sample_rate_hz:.6g} Hz",
+        "AIN0": "Top trace",
+        "AIN2": "Bottom trace",
+    }
+    write_rgb_png(snapshot_path, width, height, pixels, metadata)
+
+
+def save_waveform_snapshot_image(
     lot_number: str,
     sensor_id: str,
     metrics: WaveformMetrics | None,
-    final_result: FinalResult,
+    title: str,
+    detail_lines: list[str],
+    filename_suffix: str,
 ) -> Path | None:
     if metrics is None or metrics.waveform_v.size == 0:
         return None
+
+    snapshot_dir = results_root_dir() / "waveform_snapshots" / f"lot_{safe_filename_part(lot_number)}"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = safe_filename_part(filename_suffix)
+    snapshot_path = snapshot_dir / f"{safe_filename_part(sensor_id)}_{timestamp}_{suffix}.png"
 
     try:
         import matplotlib
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
+        time_axis = np.arange(metrics.waveform_v.size, dtype=float) / max(metrics.sample_rate_hz, 1.0)
+        fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+        fig.suptitle(title)
+        axes[0].plot(time_axis, metrics.waveform_v, color="#0284c7", linewidth=1.0)
+        axes[0].set_ylabel("AIN0 V")
+        axes[0].grid(True, alpha=0.25)
+        axes[1].plot(time_axis[: metrics.sync_v.size], metrics.sync_v, color="#ca8a04", linewidth=1.0)
+        axes[1].set_ylabel("AIN2 V")
+        axes[1].set_xlabel("Seconds")
+        axes[1].grid(True, alpha=0.25)
+
+        if detail_lines:
+            axes[0].text(
+                0.01,
+                0.98,
+                "\n".join(detail_lines),
+                transform=axes[0].transAxes,
+                va="top",
+                ha="left",
+                fontsize=9,
+                bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": "#cbd5e1"},
+            )
+        fig.tight_layout()
+        fig.savefig(snapshot_path, dpi=140)
+        plt.close(fig)
     except Exception:
+        save_waveform_snapshot_fallback_png(snapshot_path, metrics, title, detail_lines)
+        detail_path = snapshot_path.with_suffix(".txt")
+        detail_path.write_text(
+            title + "\n" + "\n".join(detail_lines) + "\n",
+            encoding="utf-8",
+        )
+    return snapshot_path
+
+
+def save_failed_waveform_snapshot(
+    lot_number: str,
+    sensor_id: str,
+    metrics: WaveformMetrics | None,
+    final_result: FinalResult,
+) -> Path | None:
+    if metrics is None:
         return None
-
-    snapshot_dir = results_root_dir() / "waveform_snapshots" / f"lot_{safe_filename_part(lot_number)}"
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    snapshot_path = snapshot_dir / f"{safe_filename_part(sensor_id)}_{timestamp}.png"
-
-    time_axis = np.arange(metrics.waveform_v.size, dtype=float) / max(metrics.sample_rate_hz, 1.0)
-    fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-    fig.suptitle(f"{MODEL_NAME} {sensor_id} failed verification")
-    axes[0].plot(time_axis, metrics.waveform_v, color="#0284c7", linewidth=1.0)
-    axes[0].set_ylabel("AIN0 V")
-    axes[0].grid(True, alpha=0.25)
-    axes[1].plot(time_axis[: metrics.sync_v.size], metrics.sync_v, color="#ca8a04", linewidth=1.0)
-    axes[1].set_ylabel("AIN2 V")
-    axes[1].set_xlabel("Seconds")
-    axes[1].grid(True, alpha=0.25)
-
     detail_lines = [
+        f"Lot: {lot_number}",
+        f"Sensor: {sensor_id}",
         f"Sensitivity: {metrics.sensitivity_mv:.2f} mV",
         f"Polarity: {metrics.polarity}",
-        "Failures: " + "; ".join(final_result.fail_reasons),
+        "Failures: " + plot_text_line("; ".join(final_result.fail_reasons), 220),
     ]
-    axes[0].text(
-        0.01,
-        0.98,
-        "\n".join(detail_lines),
-        transform=axes[0].transAxes,
-        va="top",
-        ha="left",
-        fontsize=9,
-        bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": "#cbd5e1"},
+    return save_waveform_snapshot_image(
+        lot_number=lot_number,
+        sensor_id=sensor_id,
+        metrics=metrics,
+        title=f"{MODEL_NAME} {sensor_id} failed verification",
+        detail_lines=detail_lines,
+        filename_suffix="auto_fail",
     )
-    fig.tight_layout()
-    fig.savefig(snapshot_path, dpi=140)
-    plt.close(fig)
-    return snapshot_path
+
+
+def save_manual_waveform_snapshot(
+    lot_number: str,
+    sensor_id: str,
+    metrics: WaveformMetrics | None,
+    comment: str = "",
+) -> Path | None:
+    if metrics is None:
+        return None
+    detail_lines = [
+        f"Lot: {lot_number}",
+        f"Sensor: {sensor_id}",
+        f"Sensitivity: {metrics.sensitivity_mv:.2f} mV",
+        f"Scope signal: {metrics.sensitivity_amplified_mv:.2f} mV",
+        f"Polarity: {metrics.polarity}",
+    ]
+    if metrics.measured_frequency_hz is not None:
+        detail_lines.append(f"Sync: {metrics.measured_frequency_hz:.3f} Hz")
+    if comment.strip():
+        detail_lines.append("Comment: " + plot_text_line(comment, 220))
+    return save_waveform_snapshot_image(
+        lot_number=lot_number,
+        sensor_id=sensor_id,
+        metrics=metrics,
+        title=f"{MODEL_NAME} {sensor_id} manual waveform snapshot",
+        detail_lines=detail_lines,
+        filename_suffix=f"manual_{MANUAL_SNAPSHOT_CYCLES}_cycles",
+    )
 
 
 class TesterApp(tk.Tk):
@@ -1776,6 +2072,7 @@ class GuidedTesterApp(tk.Tk):
         self.minsize(980, 700)
 
         self.device: LabJackT7 | None = None
+        self.hardware_lock = threading.Lock()
         self.busy = False
         self.step = self.LOT_STEP
 
@@ -1788,9 +2085,20 @@ class GuidedTesterApp(tk.Tk):
         self.advance_after_offset_capture = False
         self.advance_after_signal_capture = False
         self.default_focus_widget: tk.Widget | None = None
+        self.live_read_stop_event: threading.Event | None = None
+        self.live_read_token = 0
 
         self.offset_v: float | None = None
         self.pending_offset_v: float | None = None
+        self.live_offset_value_v: float | None = None
+        self.operator_offset_value_v: float | None = None
+        self.live_sensitivity_metrics: WaveformMetrics | None = None
+        self.live_sensitivity_result: FinalResult | None = None
+        self.operator_sensitivity_value_mv: float | None = None
+        self.offset_sensor_status = ""
+        self.sensitivity_sensor_status = ""
+        self.operator_sensor_status = ""
+        self.manual_waveform_snapshot_paths: list[Path] = []
         self.last_waveform_metrics: WaveformMetrics | None = None
         self.last_result: FinalResult | None = None
         self.last_filter_setup = DEFAULT_FILTER_SETUP
@@ -1801,6 +2109,7 @@ class GuidedTesterApp(tk.Tk):
         self._build_ui()
         self.bind("<Return>", self.on_enter_key)
         self.bind("<KP_Enter>", self.on_enter_key)
+        self.bind("<BackSpace>", self.on_backspace_key)
         self.bind("<Escape>", self.on_escape_key)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.after(200, self.startup_probe)
@@ -1814,12 +2123,22 @@ class GuidedTesterApp(tk.Tk):
         self.csv_path_var = tk.StringVar(value=str(default_results_path()))
         self.scope_offset_var = tk.StringVar(value="")
         self.scope_sensitivity_var = tk.StringVar(value="")
-        self.operator_polarity_var = tk.StringVar(value="Good")
+        self.operator_sensor_status_var = tk.StringVar(value="")
+        self.operator_polarity_var = tk.StringVar(value="")
+        self.operator_offset_match_var = tk.StringVar(value="")
+        self.operator_offset_sensor_status_var = tk.StringVar(value="")
+        self.operator_sensitivity_match_var = tk.StringVar(value="")
+        self.operator_sensitivity_sensor_status_var = tk.StringVar(value="")
         self.scope_verification_var = tk.StringVar(value=DEFAULT_SCOPE_VERIFICATION_CHOICE)
 
         self.status_var = tk.StringVar(value="Checking LabJack...")
         self.step_title_var = tk.StringVar(value="")
         self.step_instruction_var = tk.StringVar(value="")
+        self.live_offset_reading_var = tk.StringVar(value="Reading...")
+        self.live_sensitivity_reading_var = tk.StringVar(value="Reading...")
+        self.live_sensitivity_detail_var = tk.StringVar(value="")
+        self.comment_status_var = tk.StringVar(value="")
+        self.snapshot_status_var = tk.StringVar(value="")
         self.offset_display_var = tk.StringVar(value="Not measured")
         self.sensitivity_display_var = tk.StringVar(value="Not measured")
         self.polarity_display_var = tk.StringVar(value="Not measured")
@@ -1836,8 +2155,8 @@ class GuidedTesterApp(tk.Tk):
         style.configure("Step.TLabel", background="#f4f6f8", font=("Segoe UI", 15))
         style.configure("CurrentStep.TLabel", background="#dbeafe", foreground="#1e3a8a", font=("Segoe UI", 15, "bold"))
         style.configure("DoneStep.TLabel", background="#dcfce7", foreground="#14532d", font=("Segoe UI", 15, "bold"))
-        style.configure("Large.TButton", font=("Segoe UI", 17, "bold"), padding=(18, 14))
-        style.configure("Small.TButton", font=("Segoe UI", 13, "bold"), padding=(10, 8))
+        style.configure("Large.TButton", font=("Segoe UI", 15, "bold"), padding=(14, 10))
+        style.configure("Small.TButton", font=("Segoe UI", 12, "bold"), padding=(8, 6))
         style.configure("TCombobox", font=("Segoe UI", 18))
         style.configure("TEntry", font=("Segoe UI", 20))
         self.option_add("*TCombobox*Listbox.font", ("Segoe UI", 20))
@@ -1879,7 +2198,7 @@ class GuidedTesterApp(tk.Tk):
         self.content = ttk.Frame(body, padding=22)
         self.content.grid(row=0, column=1, sticky="nsew")
         self.content.columnconfigure(0, weight=1)
-        self.content.rowconfigure(3, weight=1)
+        self.content.rowconfigure(2, weight=1)
 
         self.render_step()
 
@@ -1898,6 +2217,7 @@ class GuidedTesterApp(tk.Tk):
             child.destroy()
 
     def render_step(self) -> None:
+        self.stop_live_reading()
         self.clear_content()
         self.default_focus_widget = None
         self.update_progress_labels()
@@ -1915,9 +2235,26 @@ class GuidedTesterApp(tk.Tk):
         self.update_navigation_state()
         self.after_idle(self.focus_default_widget)
 
+    def stop_live_reading(self) -> None:
+        self.live_read_token += 1
+        if self.live_read_stop_event is not None:
+            self.live_read_stop_event.set()
+            self.live_read_stop_event = None
+
+    def start_live_reading_for_current_step(self) -> None:
+        if self.busy:
+            return
+        if self.step == self.OFFSET_STEP:
+            self.start_live_offset_reading()
+        elif self.step == self.SENSITIVITY_STEP:
+            self.start_live_sensitivity_reading()
+
     def render_navigation(self) -> None:
+        spacer = ttk.Frame(self.content)
+        spacer.grid(row=2, column=0, sticky="nsew")
+
         footer = ttk.Frame(self.content)
-        footer.grid(row=2, column=0, sticky="ew", pady=(22, 0))
+        footer.grid(row=3, column=0, sticky="ew", pady=(10, 0))
         footer.columnconfigure(0, weight=1)
         self.back_button = ttk.Button(footer, text="Back", command=self.go_back, style="Large.TButton")
         self.back_button.grid(row=0, column=0, sticky="w")
@@ -1925,9 +2262,6 @@ class GuidedTesterApp(tk.Tk):
         self.secondary_button.grid(row=0, column=1, sticky="e", padx=(0, 10))
         self.primary_button = ttk.Button(footer, text="Next", command=self.go_next, style="Large.TButton")
         self.primary_button.grid(row=0, column=2, sticky="e")
-
-        spacer = ttk.Frame(self.content)
-        spacer.grid(row=3, column=0, sticky="nsew")
 
     def set_default_focus(self, widget: tk.Widget) -> None:
         self.default_focus_widget = widget
@@ -1992,60 +2326,168 @@ class GuidedTesterApp(tk.Tk):
         message.grid(row=0, column=1, sticky="w", padx=(0, 26), pady=24)
 
     def render_offset_step(self) -> None:
-        self.step_title_var.set(f"{self.current_sensor_id}: enter offset reading")
-        ttk.Label(self.content, textvariable=self.step_title_var, font=("Segoe UI", 32, "bold")).grid(row=0, column=0, sticky="w")
+        self.step_title_var.set(f"{self.current_sensor_id}: Offset")
+        ttk.Label(self.content, textvariable=self.step_title_var, font=("Segoe UI", 30, "bold")).grid(row=0, column=0, sticky="w")
 
         panel = ttk.Frame(self.content)
-        panel.grid(row=1, column=0, sticky="new", pady=(28, 0))
-        panel.columnconfigure(1, weight=1)
-        offset_entry = self._add_labeled_entry(panel, 0, "Offset V", self.scope_offset_var, width=18)
-        self.set_default_focus(offset_entry)
+        panel.grid(row=1, column=0, sticky="new", pady=(18, 0))
+        panel.columnconfigure(0, weight=1)
+        ttk.Label(panel, text="LabJack", font=("Segoe UI", 18, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            panel,
+            textvariable=self.live_offset_reading_var,
+            font=("Segoe UI", 76, "bold"),
+            bg="#f4f6f8",
+            fg="#1e3a8a",
+        ).grid(row=1, column=0, sticky="w", pady=(2, 4))
+        ttk.Label(panel, text="Matches meter?", font=("Segoe UI", 20, "bold")).grid(row=2, column=0, sticky="w")
+        self.add_operator_tools(panel, 3)
+        self.start_live_offset_reading()
 
     def render_sensitivity_step(self) -> None:
-        self.step_title_var.set(f"{self.current_sensor_id}: switch to testing sensitivity")
-        ttk.Label(self.content, textvariable=self.step_title_var, font=("Segoe UI", 32, "bold")).grid(row=0, column=0, sticky="w")
+        self.step_title_var.set(f"{self.current_sensor_id}: Sensitivity")
+        ttk.Label(self.content, textvariable=self.step_title_var, font=("Segoe UI", 30, "bold")).grid(row=0, column=0, sticky="w")
 
         panel = ttk.Frame(self.content)
-        panel.grid(row=1, column=0, sticky="new", pady=(28, 0))
-        panel.columnconfigure(1, weight=1)
-        sensitivity_entry = self._add_labeled_entry(panel, 0, "Scope sensitivity mV", self.scope_sensitivity_var, width=18)
-        self.set_default_focus(sensitivity_entry)
-        self._add_labeled_combo(panel, 1, "Polarity", self.operator_polarity_var, ["Good", "Bad"], width=12)
+        panel.grid(row=1, column=0, sticky="new", pady=(18, 0))
+        panel.columnconfigure(0, weight=1)
+        ttk.Label(panel, text="LabJack", font=("Segoe UI", 18, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            panel,
+            textvariable=self.live_sensitivity_reading_var,
+            font=("Segoe UI", 70, "bold"),
+            bg="#f4f6f8",
+            fg="#1e3a8a",
+        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(panel, textvariable=self.live_sensitivity_detail_var, font=("Segoe UI", 18, "bold")).grid(
+            row=2, column=0, sticky="w", pady=(0, 10)
+        )
+
+        ttk.Label(panel, text="Matches meter?", font=("Segoe UI", 20, "bold")).grid(row=3, column=0, sticky="w")
+        self.add_operator_tools(panel, 4)
+        self.start_live_sensitivity_reading()
 
     def render_result_step(self) -> None:
-        overall_failed = self.current_sensor_failed()
-        self.overall_display_var.set("FAIL" if overall_failed else "PASS")
-        title_color = "#991b1b" if overall_failed else "#14532d"
+        self.ensure_operator_sensor_status_default()
+        sensor_failed = self.current_sensor_failed()
+        self.overall_display_var.set("FAIL" if sensor_failed else "PASS")
+        title_color = "#991b1b" if sensor_failed else "#14532d"
+        technician_decision = self.technician_decision_label()
         ttk.Label(
             self.content,
-            text=f"{self.current_sensor_id}: {self.overall_display_var.get()}",
-            font=("Segoe UI", 36, "bold"),
+            text=f"{self.current_sensor_id}: Technician says {technician_decision}",
+            font=("Segoe UI", 32, "bold"),
             foreground=title_color,
         ).grid(row=0, column=0, sticky="w")
 
         panel = ttk.Frame(self.content)
-        panel.grid(row=1, column=0, sticky="new", pady=(28, 0))
-        panel.columnconfigure(1, weight=1)
-        self._add_labeled_static(panel, 0, "Offset V", self.scope_offset_var.get())
-        if self.is_offset_only_failure():
-            self._add_labeled_static(panel, 1, "Scope sensitivity mV", "Skipped")
-            self._add_labeled_static(panel, 2, "Polarity", "Skipped")
-        else:
-            self._add_labeled_static(panel, 1, "Scope sensitivity mV", self.scope_sensitivity_var.get())
-            self._add_labeled_static(panel, 2, "Polarity", self.operator_polarity_var.get())
+        panel.grid(row=1, column=0, sticky="new", pady=(18, 0))
+        for column in range(3):
+            panel.columnconfigure(column, weight=1)
 
-        if overall_failed:
+        self._add_result_tile(panel, 0, 0, "Computer Algorithm", self.tester_result_label())
+        self._add_result_tile(panel, 0, 1, "Technician Decision", technician_decision)
+        self._add_result_tile(panel, 0, 2, "Computer vs Tech", "DISAGREE" if self.tester_sensor_disagrees() else "MATCH")
+
+        row = 1
+        self.add_sensor_disposition_buttons(panel, row)
+        row += 1
+
+        detail = self.result_short_detail()
+        if detail:
+            ttk.Label(panel, text=detail, font=("Segoe UI", 15, "bold")).grid(
+                row=row, column=0, columnspan=3, sticky="w", pady=(14, 4)
+            )
+            row += 1
+
+        if sensor_failed:
             self._add_labeled_combo(
                 panel,
-                3,
+                row,
                 "Failure reason",
                 self.scope_verification_var,
                 SCOPE_VERIFICATION_CHOICES,
-                width=54,
+                width=42,
                 dropdown_rows=8,
             )
+            row += 1
         else:
             self.scope_verification_var.set(DEFAULT_SCOPE_VERIFICATION_CHOICE)
+
+        tools = ttk.Frame(panel)
+        tools.grid(row=row, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        ttk.Button(tools, text="Comment", command=self.open_comment_window, style="Small.TButton").grid(
+            row=0, column=0, padx=(0, 10)
+        )
+        ttk.Button(tools, text="Waveform", command=self.capture_manual_waveform_snapshot, style="Small.TButton").grid(
+            row=0, column=1
+        )
+
+    def add_sensor_disposition_buttons(self, parent: ttk.Frame, row: int) -> None:
+        button_frame = ttk.Frame(parent)
+        button_frame.grid(row=row, column=0, columnspan=3, sticky="ew", pady=(18, 10))
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+
+        selected = self.operator_sensor_status
+        good_relief = tk.SUNKEN if selected == SENSOR_STATUS_GOOD else tk.RAISED
+        bad_relief = tk.SUNKEN if selected == SENSOR_STATUS_BAD else tk.RAISED
+        good_border = 6 if selected == SENSOR_STATUS_GOOD else 3
+        bad_border = 6 if selected == SENSOR_STATUS_BAD else 3
+
+        self.sensor_good_button = tk.Button(
+            button_frame,
+            text="SENSOR GOOD",
+            command=lambda: self.set_operator_sensor_status(SENSOR_STATUS_GOOD),
+            font=("Segoe UI", 26, "bold"),
+            bg="#16a34a",
+            fg="white",
+            activebackground="#15803d",
+            activeforeground="white",
+            relief=good_relief,
+            bd=good_border,
+            padx=24,
+            pady=18,
+        )
+        self.sensor_good_button.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+        self.sensor_bad_button = tk.Button(
+            button_frame,
+            text="SENSOR BAD",
+            command=lambda: self.set_operator_sensor_status(SENSOR_STATUS_BAD),
+            font=("Segoe UI", 26, "bold"),
+            bg="#dc2626",
+            fg="white",
+            activebackground="#b91c1c",
+            activeforeground="white",
+            relief=bad_relief,
+            bd=bad_border,
+            padx=24,
+            pady=18,
+        )
+        self.sensor_bad_button.grid(row=0, column=1, sticky="ew", padx=(10, 0))
+
+    def _add_result_tile(self, parent: ttk.Frame, row: int, column: int, label: str, value: str) -> None:
+        tile = ttk.Frame(parent, padding=(0, 0, 18, 0))
+        tile.grid(row=row, column=column, sticky="ew", padx=(0, 10))
+        ttk.Label(tile, text=label, font=("Segoe UI", 15, "bold")).grid(row=0, column=0, sticky="w")
+        color = "#991b1b" if value in ("FAIL", "BAD", "DISAGREE") else "#14532d"
+        ttk.Label(tile, text=value, font=("Segoe UI", 28, "bold"), foreground=color).grid(row=1, column=0, sticky="w")
+
+    def technician_decision_label(self) -> str:
+        return "BAD" if self.current_sensor_failed() else "GOOD"
+
+    def result_short_detail(self) -> str:
+        pieces = [
+            f"Offset: {self.operator_offset_sensor_status_var.get() or 'Not reviewed'}",
+        ]
+        if self.sensitivity_was_skipped():
+            pieces.append("Sensitivity: Skipped")
+        else:
+            pieces.append(f"Sensitivity: {self.operator_sensitivity_sensor_status_var.get() or 'Not reviewed'}")
+            pieces.append(f"Tester polarity: {self.polarity_display_var.get()}")
+        pieces.append(f"Technician: {self.operator_sensor_status_var.get() or 'Not selected'}")
+        return "  |  ".join(pieces)
 
     def _add_labeled_entry(
         self,
@@ -2101,6 +2543,53 @@ class GuidedTesterApp(tk.Tk):
             row=row, column=1, sticky="w", pady=12
         )
 
+    def add_operator_tools(self, parent: ttk.Frame, row: int) -> None:
+        tools = ttk.Frame(parent)
+        tools.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        tools.columnconfigure(3, weight=1)
+
+        self.bad_reading_button = ttk.Button(
+            tools,
+            text="Wrong (Backspace)",
+            command=self.mark_current_reading_bad,
+            style="Small.TButton",
+        )
+        if self.step in (self.OFFSET_STEP, self.SENSITIVITY_STEP):
+            self.bad_reading_button.grid(row=0, column=0, sticky="w", padx=(0, 10))
+
+        self.comment_button = ttk.Button(tools, text="Comment", command=self.open_comment_window, style="Small.TButton")
+        self.comment_button.grid(row=0, column=1, sticky="w", padx=(0, 10))
+
+        self.snapshot_button = ttk.Button(
+            tools,
+            text="Waveform",
+            command=self.capture_manual_waveform_snapshot,
+            style="Small.TButton",
+        )
+        self.snapshot_button.grid(row=0, column=2, sticky="w")
+
+        ttk.Label(tools, textvariable=self.comment_status_var, font=("Segoe UI", 12)).grid(
+            row=1, column=0, columnspan=4, sticky="w", pady=(4, 0)
+        )
+        ttk.Label(tools, textvariable=self.snapshot_status_var, font=("Segoe UI", 12)).grid(
+            row=2, column=0, columnspan=4, sticky="w"
+        )
+
+    def update_comment_snapshot_status(self) -> None:
+        comment = self.notes_var.get().strip()
+        if comment:
+            self.comment_status_var.set(f"Comment saved ({len(comment)} chars)")
+        else:
+            self.comment_status_var.set("")
+
+        count = len(self.manual_waveform_snapshot_paths)
+        if count == 0:
+            self.snapshot_status_var.set("")
+        elif count == 1:
+            self.snapshot_status_var.set("1 waveform snapshot saved")
+        else:
+            self.snapshot_status_var.set(f"{count} waveform snapshots saved")
+
     def button_is_enabled(self, button: ttk.Button) -> bool:
         return button.winfo_exists() and "disabled" not in button.state()
 
@@ -2112,26 +2601,313 @@ class GuidedTesterApp(tk.Tk):
         self.go_next()
         return "break"
 
+    def on_backspace_key(self, _event: tk.Event) -> str | None:
+        if self.step not in (self.OFFSET_STEP, self.SENSITIVITY_STEP):
+            return None
+        if self.busy:
+            return "break"
+        self.mark_current_reading_bad()
+        return "break"
+
     def on_escape_key(self, _event: tk.Event) -> str | None:
         if self.step == self.RESULT_STEP and self.button_is_enabled(self.secondary_button):
             self.save_and_end_batch()
             return "break"
         return None
 
+    def mark_current_reading_bad(self) -> None:
+        if self.busy:
+            return
+        if self.step == self.OFFSET_STEP:
+            self.finish_offset_step(match=READING_MISMATCH)
+        elif self.step == self.SENSITIVITY_STEP:
+            self.finish_sensitivity_step(match=READING_MISMATCH)
+
+    def open_comment_window(self) -> None:
+        dialog = tk.Toplevel(self)
+        dialog.title(f"Comment for {self.current_sensor_id}")
+        dialog.minsize(620, 420)
+        dialog.configure(bg="#f4f6f8")
+        dialog.transient(self)
+
+        frame = ttk.Frame(dialog, padding=16)
+        frame.grid(row=0, column=0, sticky="nsew")
+        dialog.rowconfigure(0, weight=1)
+        dialog.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+        frame.columnconfigure(0, weight=1)
+
+        ttk.Label(frame, text=f"{self.current_sensor_id} comment", font=("Segoe UI", 18, "bold")).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 10)
+        )
+        text = tk.Text(frame, wrap="word", font=("Segoe UI", 13), undo=True)
+        text.grid(row=1, column=0, sticky="nsew")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
+        scroll.grid(row=1, column=1, sticky="ns")
+        text.configure(yscrollcommand=scroll.set)
+        text.insert("1.0", self.notes_var.get())
+
+        buttons = ttk.Frame(frame)
+        buttons.grid(row=2, column=0, columnspan=2, sticky="e", pady=(14, 0))
+
+        def save_comment() -> None:
+            self.notes_var.set(text.get("1.0", "end-1c").strip())
+            self.update_comment_snapshot_status()
+            self.write_autosave("operator_comment_updated")
+            dialog.destroy()
+
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy, style="Small.TButton").grid(
+            row=0, column=0, padx=(0, 10)
+        )
+        ttk.Button(buttons, text="Save Comment", command=save_comment, style="Small.TButton").grid(row=0, column=1)
+        text.focus_set()
+
+    def open_reading_mismatch_dialog(
+        self,
+        measurement: str,
+        units: tuple[str, ...],
+        on_save: Callable[[float | None, str], None],
+        on_cancel: Callable[[], None],
+    ) -> None:
+        dialog = tk.Toplevel(self)
+        dialog.title(f"{self.current_sensor_id} {measurement} mismatch")
+        dialog.minsize(620, 430)
+        dialog.configure(bg="#f4f6f8")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        frame = ttk.Frame(dialog, padding=16)
+        frame.grid(row=0, column=0, sticky="nsew")
+        dialog.rowconfigure(0, weight=1)
+        dialog.columnconfigure(0, weight=1)
+        frame.rowconfigure(4, weight=1)
+        frame.columnconfigure(1, weight=1)
+
+        value_var = tk.StringVar(value="")
+        sensor_status_var = tk.StringVar(value=SENSOR_STATUS_GOOD)
+
+        ttk.Label(frame, text=f"{measurement.title()} reading is wrong", font=("Segoe UI", 18, "bold")).grid(
+            row=0, column=0, columnspan=2, sticky="w", pady=(0, 12)
+        )
+        entry = self._add_labeled_entry(frame, 1, "Ground truth value", value_var, width=18)
+        self._add_labeled_combo(
+            frame,
+            2,
+            "Sensor status",
+            sensor_status_var,
+            [SENSOR_STATUS_GOOD, SENSOR_STATUS_BAD],
+            width=12,
+        )
+        ttk.Label(frame, text="Comment", font=("Segoe UI", 20, "bold")).grid(
+            row=3, column=0, sticky="nw", pady=12, padx=(0, 18)
+        )
+        text = tk.Text(frame, wrap="word", font=("Segoe UI", 13), height=7, undo=True)
+        text.grid(row=4, column=0, columnspan=2, sticky="nsew")
+        text.insert("1.0", self.notes_var.get())
+
+        buttons = ttk.Frame(frame)
+        buttons.grid(row=5, column=0, columnspan=2, sticky="e", pady=(14, 0))
+
+        def cancel() -> None:
+            dialog.destroy()
+            on_cancel()
+
+        def save() -> None:
+            value_text = value_var.get().strip()
+            actual_value: float | None = None
+            if value_text:
+                try:
+                    actual_value = self.read_required_float(
+                        value_text,
+                        f"Ground truth {measurement}",
+                        allowed_units=units,
+                    )
+                except ValueError as exc:
+                    messagebox.showerror("Invalid ground truth value", str(exc), parent=dialog)
+                    return
+            self.notes_var.set(text.get("1.0", "end-1c").strip())
+            self.update_comment_snapshot_status()
+            dialog.destroy()
+            on_save(actual_value, sensor_status_var.get())
+
+        def save_from_key(_event: tk.Event | None = None) -> str:
+            save()
+            return "break"
+
+        def cancel_from_key(_event: tk.Event | None = None) -> str:
+            cancel()
+            return "break"
+
+        def text_newline(_event: tk.Event | None = None) -> str:
+            text.insert("insert", "\n")
+            return "break"
+
+        dialog.protocol("WM_DELETE_WINDOW", cancel)
+        dialog.bind("<Return>", save_from_key)
+        dialog.bind("<KP_Enter>", save_from_key)
+        dialog.bind("<Escape>", cancel_from_key)
+        text.bind("<Return>", save_from_key)
+        text.bind("<KP_Enter>", save_from_key)
+        text.bind("<Shift-Return>", text_newline)
+        ttk.Button(buttons, text="Cancel", command=cancel, style="Small.TButton").grid(row=0, column=0, padx=(0, 10))
+        ttk.Button(buttons, text="Continue (Enter)", command=save, style="Small.TButton").grid(row=0, column=1)
+        entry.focus_set()
+
+    def capture_manual_waveform_snapshot(self) -> None:
+        if self.busy:
+            return
+        try:
+            _gain, _range_label, waveform_range_v = self.read_setup()
+        except ValueError as exc:
+            messagebox.showerror("Invalid setup", str(exc))
+            return
+
+        lot_number = self.lot_number
+        sensor_id = self.current_sensor_id
+        comment = self.notes_var.get()
+        offset_v = self.pending_offset_v if self.pending_offset_v is not None else self.live_offset_value_v
+        gain = self.last_am502_gain
+        restart_live = self.step in (self.OFFSET_STEP, self.SENSITIVITY_STEP)
+        self.stop_live_reading()
+        self.set_busy(True)
+        self.status_var.set(f"Capturing {MANUAL_SNAPSHOT_CYCLES}-cycle waveform snapshot...")
+
+        def worker() -> None:
+            try:
+                with self.hardware_lock:
+                    self.ensure_connected()
+                    waveform, sync, actual_rate = self.device.read_waveform_stream(
+                        sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+                        expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
+                        sync_edge=PROCEDURE_SYNC_EDGE,
+                        max_capture_cycles=MANUAL_SNAPSHOT_CYCLES,
+                        stop_when_stable=False,
+                        waveform_range_v=waveform_range_v,
+                    )
+                metrics = analyze_waveform(
+                    waveform_v=waveform,
+                    sync_v=sync,
+                    sample_rate_hz=actual_rate,
+                    am502_gain=gain,
+                    sync_edge=PROCEDURE_SYNC_EDGE,
+                    input_range_v=waveform_range_v,
+                    expect_offset_on_waveform=False,
+                )
+                metrics.offset_v = offset_v
+                snapshot_path = save_manual_waveform_snapshot(lot_number, sensor_id, metrics, comment)
+                if snapshot_path is None:
+                    raise RuntimeError("Could not save waveform snapshot. No waveform samples were available.")
+            except Exception as exc:
+                self.after(0, lambda exc=exc: self.on_manual_snapshot_error(exc, restart_live))
+            else:
+                self.after(0, lambda path=snapshot_path: self.on_manual_snapshot_complete(path, restart_live))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_manual_snapshot_complete(self, snapshot_path: Path, restart_live: bool) -> None:
+        self.manual_waveform_snapshot_paths.append(snapshot_path)
+        self.update_comment_snapshot_status()
+        self.write_autosave("manual_waveform_snapshot_saved")
+        self.status_var.set(f"Saved waveform snapshot: {snapshot_path}")
+        self.set_busy(False)
+        if restart_live:
+            self.start_live_reading_for_current_step()
+
+    def on_manual_snapshot_error(self, exc: Exception, restart_live: bool) -> None:
+        self.status_var.set(str(exc))
+        self.set_busy(False)
+        messagebox.showerror("Waveform snapshot problem", str(exc))
+        if restart_live:
+            self.start_live_reading_for_current_step()
+
     def is_offset_only_failure(self) -> bool:
         if self.last_result is None or self.last_result.waveform_metrics is not None:
             return False
         return any("Offset out of range" in reason for reason in self.last_result.fail_reasons)
 
+    def sensitivity_was_skipped(self) -> bool:
+        return self.last_result is None or self.last_result.waveform_metrics is None
+
+    def tester_result_label(self) -> str:
+        if self.last_result is None:
+            return "Not captured"
+        return "PASS" if self.last_result.passed else "FAIL"
+
+    def inferred_sensor_status(self) -> str:
+        if self.last_result is None:
+            return ""
+        if self.offset_sensor_status != SENSOR_STATUS_GOOD:
+            return SENSOR_STATUS_BAD
+        if self.last_result.waveform_metrics is None:
+            return SENSOR_STATUS_BAD
+        if self.sensitivity_sensor_status != SENSOR_STATUS_GOOD:
+            return SENSOR_STATUS_BAD
+        return SENSOR_STATUS_GOOD
+
+    def ensure_operator_sensor_status_default(self) -> None:
+        if self.operator_sensor_status:
+            return
+        self.set_operator_sensor_status(self.inferred_sensor_status(), rerender=False, write_autosave=False)
+
+    def set_operator_sensor_status(
+        self,
+        sensor_status: str,
+        rerender: bool = True,
+        write_autosave: bool = True,
+    ) -> None:
+        if sensor_status not in (SENSOR_STATUS_GOOD, SENSOR_STATUS_BAD):
+            return
+        self.operator_sensor_status = sensor_status
+        self.operator_sensor_status_var.set(sensor_status)
+        if sensor_status == SENSOR_STATUS_GOOD:
+            self.scope_verification_var.set(DEFAULT_SCOPE_VERIFICATION_CHOICE)
+        elif self.scope_verification_var.get() == DEFAULT_SCOPE_VERIFICATION_CHOICE:
+            self.scope_verification_var.set("SB - Sensor bad")
+        if write_autosave:
+            self.write_autosave(f"operator_sensor_{sensor_status.lower()}")
+        if rerender and self.step == self.RESULT_STEP:
+            self.render_step()
+
+    def sensor_passed_current(self) -> bool:
+        if self.last_result is None:
+            return False
+        return (self.operator_sensor_status or self.inferred_sensor_status()) == SENSOR_STATUS_GOOD
+
+    def tester_sensor_disagrees(self) -> bool:
+        if self.last_result is None:
+            return False
+        return self.last_result.passed != self.sensor_passed_current()
+
+    def format_optional_number(self, value: float | None, decimals: int, suffix: str) -> str:
+        if value is None:
+            return "Not measured"
+        return f"{value:.{decimals}f}{suffix}"
+
+    def format_labjack_scope_signal(self) -> str:
+        metrics = self.last_waveform_metrics
+        if metrics is None:
+            return "Not measured"
+        return f"{metrics.sensitivity_amplified_mv:.2f} mV"
+
+    def format_entered_value(self, text: str, suffix: str) -> str:
+        cleaned = text.strip()
+        if not cleaned:
+            return "Not entered"
+        return f"{cleaned}{suffix}"
+
     def make_offset_only_result(self, offset_v: float) -> FinalResult:
+        offset_ok = OFFSET_MIN_V <= offset_v <= OFFSET_MAX_V
+        fail_reasons = []
+        if not offset_ok:
+            fail_reasons.append(
+                f"Offset out of range: {offset_v:.3f} V, expected {OFFSET_MIN_V:.1f} to {OFFSET_MAX_V:.1f} V."
+            )
         return FinalResult(
-            passed=False,
+            passed=offset_ok,
             offset_v=offset_v,
             sensitivity_mv=None,
             polarity=UNKNOWN_POLARITY,
-            fail_reasons=[
-                f"Offset out of range: {offset_v:.3f} V, expected {OFFSET_MIN_V:.1f} to {OFFSET_MAX_V:.1f} V."
-            ],
+            fail_reasons=fail_reasons,
             warnings=[],
             waveform_metrics=None,
         )
@@ -2158,7 +2934,7 @@ class GuidedTesterApp(tk.Tk):
         elif self.step == self.SENSITIVITY_STEP:
             self.show_step(self.OFFSET_STEP)
         elif self.step == self.RESULT_STEP and not self.result_saved:
-            previous_step = self.OFFSET_STEP if self.is_offset_only_failure() else self.SENSITIVITY_STEP
+            previous_step = self.OFFSET_STEP if self.sensitivity_was_skipped() else self.SENSITIVITY_STEP
             self.show_step(previous_step)
 
     def show_step(self, step: str) -> None:
@@ -2175,10 +2951,10 @@ class GuidedTesterApp(tk.Tk):
             self.primary_button.configure(text="Sensor Loaded (Enter)", state="disabled" if self.busy else "normal")
         elif self.step == self.OFFSET_STEP:
             self.back_button.configure(state="disabled" if self.busy else "normal")
-            self.primary_button.configure(text="Next (Enter)", state="disabled" if self.busy else "normal")
+            self.primary_button.configure(text="Matches (Enter)", state="disabled" if self.busy else "normal")
         elif self.step == self.SENSITIVITY_STEP:
             self.back_button.configure(state="disabled" if self.busy else "normal")
-            self.primary_button.configure(text="Next (Enter)", state="disabled" if self.busy else "normal")
+            self.primary_button.configure(text="Matches (Enter)", state="disabled" if self.busy else "normal")
         else:
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
             self.secondary_button.grid()
@@ -2186,7 +2962,16 @@ class GuidedTesterApp(tk.Tk):
             self.primary_button.configure(text="Save + Next Sensor (Enter)", state=state)
             self.secondary_button.configure(text="Save + Exit Batch (Esc)", state=state)
 
-        for name in ("connect_button", "read_offset_button", "capture_signal_button"):
+        for name in (
+            "connect_button",
+            "read_offset_button",
+            "capture_signal_button",
+            "bad_reading_button",
+            "comment_button",
+            "snapshot_button",
+            "sensor_good_button",
+            "sensor_bad_button",
+        ):
             button = getattr(self, name, None)
             if button is not None and button.winfo_exists():
                 button.configure(state="disabled" if self.busy else "normal")
@@ -2242,51 +3027,279 @@ class GuidedTesterApp(tk.Tk):
         self.result_saved = False
         self.offset_v = None
         self.pending_offset_v = None
+        self.live_offset_value_v = None
+        self.operator_offset_value_v = None
+        self.live_sensitivity_metrics = None
+        self.live_sensitivity_result = None
+        self.operator_sensitivity_value_mv = None
+        self.offset_sensor_status = ""
+        self.sensitivity_sensor_status = ""
+        self.operator_sensor_status = ""
+        self.manual_waveform_snapshot_paths = []
         self.last_waveform_metrics = None
         self.last_result = None
         self.scope_offset_var.set("")
         self.scope_sensitivity_var.set("")
-        self.operator_polarity_var.set("Good")
+        self.operator_sensor_status_var.set("")
+        self.operator_polarity_var.set("")
+        self.operator_offset_match_var.set("")
+        self.operator_offset_sensor_status_var.set("")
+        self.operator_sensitivity_match_var.set("")
+        self.operator_sensitivity_sensor_status_var.set("")
         self.scope_verification_var.set(DEFAULT_SCOPE_VERIFICATION_CHOICE)
+        self.live_offset_reading_var.set("Reading...")
+        self.live_sensitivity_reading_var.set("Reading...")
+        self.live_sensitivity_detail_var.set("")
         self.offset_display_var.set("Not measured")
         self.sensitivity_display_var.set("Not measured")
         self.polarity_display_var.set("Not measured")
         self.frequency_display_var.set("Not measured")
         self.overall_display_var.set("READY")
         self.notes_var.set("")
+        self.update_comment_snapshot_status()
         self.status_var.set(f"Ready for {self.current_sensor_id}.")
         self.write_autosave("sensor_started")
 
-    def finish_offset_step(self) -> None:
+    def start_live_offset_reading(self) -> None:
         try:
-            self.read_required_float(self.scope_offset_var.get(), "Operator offset", allowed_units=("v",))
+            gain, range_label, waveform_range_v = self.read_setup()
         except ValueError as exc:
-            messagebox.showerror("Invalid offset", str(exc))
+            self.live_offset_reading_var.set("Invalid setup")
+            self.status_var.set(str(exc))
             return
-        self.write_autosave("operator_offset_entered")
+
+        self.last_filter_setup = self.filter_var.get()
+        self.last_am502_gain = gain
+        self.last_labjack_range_label = range_label
+        self.live_offset_value_v = None
+        self.live_offset_reading_var.set("Reading...")
+        self.offset_display_var.set("Reading...")
+        self.status_var.set("Reading offset from LabJack...")
+
+        stop_event = threading.Event()
+        self.live_read_stop_event = stop_event
+        self.live_read_token += 1
+        token = self.live_read_token
+
+        def worker() -> None:
+            while not stop_event.is_set():
+                try:
+                    with self.hardware_lock:
+                        self.ensure_connected()
+                        offset_v = self.device.read_offset_voltage(
+                            waveform_range_v=waveform_range_v,
+                            samples=LIVE_OFFSET_READ_SAMPLES,
+                            delay_s=DEFAULT_OFFSET_READ_DELAY_S,
+                        )
+                except Exception as exc:
+                    self.after(0, lambda exc=exc: self.on_live_read_error(token, exc))
+                    return
+                self.after(0, lambda offset_v=offset_v: self.on_live_offset_update(token, offset_v))
+                stop_event.wait(LIVE_OFFSET_POLL_INTERVAL_S)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_live_offset_update(self, token: int, offset_v: float) -> None:
+        if token != self.live_read_token or self.step != self.OFFSET_STEP:
+            return
+        self.live_offset_value_v = offset_v
+        self.live_offset_reading_var.set(f"{offset_v:.3f} V")
+        self.offset_display_var.set(f"{offset_v:.3f} V live")
+
+    def start_live_sensitivity_reading(self) -> None:
+        if self.pending_offset_v is None:
+            self.live_sensitivity_reading_var.set("Offset needed")
+            self.live_sensitivity_detail_var.set("")
+            return
+        try:
+            _gain, _range_label, waveform_range_v = self.read_setup()
+        except ValueError as exc:
+            self.live_sensitivity_reading_var.set("Invalid setup")
+            self.status_var.set(str(exc))
+            return
+
+        offset_v = self.pending_offset_v
+        filter_setup = self.last_filter_setup
+        gain = self.last_am502_gain
+        self.live_sensitivity_metrics = None
+        self.live_sensitivity_result = None
+        self.live_sensitivity_reading_var.set("Reading...")
+        self.live_sensitivity_detail_var.set("")
+        self.sensitivity_display_var.set("Reading...")
+        self.status_var.set("Reading sensitivity from LabJack...")
+
+        stop_event = threading.Event()
+        self.live_read_stop_event = stop_event
+        self.live_read_token += 1
+        token = self.live_read_token
+
+        def worker() -> None:
+            while not stop_event.is_set():
+                try:
+                    with self.hardware_lock:
+                        self.ensure_connected()
+                        waveform, sync, actual_rate = self.device.read_waveform_stream(
+                            sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+                            expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
+                            sync_edge=PROCEDURE_SYNC_EDGE,
+                            max_capture_cycles=LIVE_SENSITIVITY_CAPTURE_CYCLES,
+                            stop_when_stable=False,
+                            waveform_range_v=waveform_range_v,
+                        )
+                    metrics = analyze_waveform(
+                        waveform_v=waveform,
+                        sync_v=sync,
+                        sample_rate_hz=actual_rate,
+                        am502_gain=gain,
+                        sync_edge=PROCEDURE_SYNC_EDGE,
+                        input_range_v=waveform_range_v,
+                        expect_offset_on_waveform=False,
+                    )
+                    metrics.offset_v = offset_v
+                    final = evaluate_result(offset_v, metrics, filter_setup)
+                except Exception as exc:
+                    self.after(0, lambda exc=exc: self.on_live_read_error(token, exc))
+                    return
+                self.after(0, lambda metrics=metrics, final=final: self.on_live_sensitivity_update(token, metrics, final))
+                stop_event.wait(0.10)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_live_sensitivity_update(self, token: int, metrics: WaveformMetrics, final: FinalResult) -> None:
+        if token != self.live_read_token or self.step != self.SENSITIVITY_STEP:
+            return
+        self.live_sensitivity_metrics = metrics
+        self.live_sensitivity_result = final
+        self.live_sensitivity_reading_var.set(f"{metrics.sensitivity_amplified_mv:.2f} mV")
+        details = f"{metrics.sensitivity_mv:.2f} mV"
+        if metrics.measured_frequency_hz is not None:
+            details += f" | {metrics.measured_frequency_hz:.3f} Hz"
+        details += f" | {metrics.polarity}"
+        self.live_sensitivity_detail_var.set(details)
+        self.sensitivity_display_var.set(f"{metrics.sensitivity_mv:.2f} mV live")
+        self.polarity_display_var.set(metrics.polarity)
+        if metrics.measured_frequency_hz is None:
+            self.frequency_display_var.set("No sync")
+        else:
+            self.frequency_display_var.set(f"{metrics.measured_frequency_hz:.3f} Hz")
+
+    def on_live_read_error(self, token: int, exc: Exception) -> None:
+        if token != self.live_read_token:
+            return
+        text = str(exc)
+        if "1230" in text or "CLAIMED" in text.upper():
+            text = "The T7 is claimed by another LabJack program. Close LJStreamM/Kipling and try again."
+        if self.step == self.OFFSET_STEP:
+            self.live_offset_reading_var.set("LabJack unavailable")
+        elif self.step == self.SENSITIVITY_STEP:
+            self.live_sensitivity_reading_var.set("LabJack unavailable")
+            self.live_sensitivity_detail_var.set("")
+        self.status_var.set(text)
+
+    def offset_labjack_status(self, offset_v: float) -> str:
+        return SENSOR_STATUS_GOOD if OFFSET_MIN_V <= offset_v <= OFFSET_MAX_V else SENSOR_STATUS_BAD
+
+    def sensitivity_labjack_status(self, metrics: WaveformMetrics) -> str:
+        if not metrics.stabilized:
+            return SENSOR_STATUS_BAD
+        min_sensitivity_mv = FILTER_SPECS_MV[self.last_filter_setup]
+        if metrics.sensitivity_mv < min_sensitivity_mv:
+            return SENSOR_STATUS_BAD
+        return SENSOR_STATUS_GOOD
+
+    def finish_offset_step(self, match: str = READING_MATCH) -> None:
+        if self.live_offset_value_v is None:
+            messagebox.showinfo("Offset needed", "Wait for a live LabJack offset reading before continuing.")
+            return
+        offset_v = self.live_offset_value_v
+
+        if match == READING_MISMATCH:
+            self.stop_live_reading()
+
+            def save_mismatch(actual_value: float | None, sensor_status: str) -> None:
+                self.complete_offset_review(offset_v, READING_MISMATCH, sensor_status, actual_value)
+
+            self.open_reading_mismatch_dialog(
+                measurement="offset",
+                units=("v",),
+                on_save=save_mismatch,
+                on_cancel=self.start_live_reading_for_current_step,
+            )
+            return
+
+        self.complete_offset_review(offset_v, READING_MATCH, self.offset_labjack_status(offset_v), offset_v)
+
+    def complete_offset_review(
+        self,
+        offset_v: float,
+        reading_match: str,
+        sensor_status: str,
+        actual_value: float | None,
+    ) -> None:
+        self.stop_live_reading()
+        self.operator_offset_match_var.set(reading_match)
+        self.offset_sensor_status = sensor_status
+        self.operator_offset_sensor_status_var.set(sensor_status)
+        self.operator_offset_value_v = actual_value
+        self.scope_offset_var.set("" if actual_value is None else f"{actual_value:.6f}")
+        self.write_autosave(f"operator_offset_{reading_match.lower()}_sensor_{sensor_status.lower()}")
         self.last_result = None
         self.last_waveform_metrics = None
         self.signal_capture_started = False
-        self.start_offset_read(advance_to_next_step=True)
+        self.offset_read_started = True
+        self.advance_after_offset_capture = True
+        self.on_offset_complete(offset_v)
 
-    def finish_sensitivity_step(self) -> None:
+    def finish_sensitivity_step(self, match: str = READING_MATCH) -> None:
         if self.pending_offset_v is None:
             messagebox.showinfo("Offset needed", "Capture the offset before continuing.")
             return
-        try:
-            self.read_required_float(
-                self.scope_sensitivity_var.get(),
-                "Operator sensitivity",
-                allowed_units=("mv",),
+        if self.live_sensitivity_metrics is None or self.live_sensitivity_result is None:
+            messagebox.showinfo("Sensitivity needed", "Wait for a live LabJack sensitivity reading before continuing.")
+            return
+        metrics = self.live_sensitivity_metrics
+        final = self.live_sensitivity_result
+
+        if match == READING_MISMATCH:
+            self.stop_live_reading()
+
+            def save_mismatch(actual_value: float | None, sensor_status: str) -> None:
+                self.complete_sensitivity_review(metrics, final, READING_MISMATCH, sensor_status, actual_value)
+
+            self.open_reading_mismatch_dialog(
+                measurement="sensitivity",
+                units=("mv",),
+                on_save=save_mismatch,
+                on_cancel=self.start_live_reading_for_current_step,
             )
-        except ValueError as exc:
-            messagebox.showerror("Invalid sensitivity", str(exc))
             return
-        if self.operator_polarity_var.get() not in ("Good", "Bad"):
-            messagebox.showerror("Polarity needed", "Choose whether polarity is Good or Bad.")
-            return
-        self.write_autosave("operator_sensitivity_entered")
-        self.start_signal_capture(advance_to_next_step=True)
+
+        self.complete_sensitivity_review(
+            metrics,
+            final,
+            READING_MATCH,
+            self.sensitivity_labjack_status(metrics),
+            metrics.sensitivity_mv,
+        )
+
+    def complete_sensitivity_review(
+        self,
+        metrics: WaveformMetrics,
+        final: FinalResult,
+        reading_match: str,
+        sensor_status: str,
+        actual_value: float | None,
+    ) -> None:
+        self.stop_live_reading()
+        self.operator_sensitivity_match_var.set(reading_match)
+        self.sensitivity_sensor_status = sensor_status
+        self.operator_sensitivity_sensor_status_var.set(sensor_status)
+        self.operator_sensitivity_value_mv = actual_value
+        self.scope_sensitivity_var.set("" if actual_value is None else f"{actual_value:.6f}")
+        self.write_autosave(f"operator_sensitivity_{reading_match.lower()}_sensor_{sensor_status.lower()}")
+        self.signal_capture_started = True
+        self.advance_after_signal_capture = True
+        self.on_signal_capture_complete(metrics, final)
 
     def read_required_float(
         self,
@@ -2325,18 +3338,37 @@ class GuidedTesterApp(tk.Tk):
         gain = self.last_am502_gain if self.last_am502_gain > 0 else DEFAULT_AM502_GAIN
         return scope_sensitivity_mv / gain
 
+    def suggest_scope_choice_for_current_state(self, final_result: FinalResult | None) -> str:
+        if self.last_result is not None and self.sensor_passed_current():
+            return DEFAULT_SCOPE_VERIFICATION_CHOICE
+        if self.offset_sensor_status == SENSOR_STATUS_BAD:
+            if self.operator_offset_match_var.get() == READING_MATCH and final_result is not None and not final_result.passed:
+                return suggest_scope_verification_choice(final_result)
+            return "TO - Technician says offset bad"
+        if self.sensitivity_sensor_status == SENSOR_STATUS_BAD:
+            if self.operator_sensitivity_match_var.get() == READING_MATCH and final_result is not None and not final_result.passed:
+                return suggest_scope_verification_choice(final_result)
+            return "TS - Technician says sensitivity bad"
+        if self.operator_sensor_status == SENSOR_STATUS_BAD:
+            return "SB - Sensor bad"
+        return suggest_scope_verification_choice(final_result)
+
     def read_scope_verification(self) -> ScopeVerification:
         if self.last_result is None:
             raise ValueError("No completed tester result is available.")
+        self.ensure_operator_sensor_status_default()
+        if self.operator_sensor_status not in (SENSOR_STATUS_GOOD, SENSOR_STATUS_BAD):
+            raise ValueError("Choose Sensor Good or Sensor Bad before saving.")
 
-        scope_offset_v = self.read_required_float(self.scope_offset_var.get(), "Operator offset", allowed_units=("v",))
-        if self.is_offset_only_failure():
+        scope_offset_v = self.operator_offset_value_v
+        if scope_offset_v is None and self.operator_offset_match_var.get() != READING_MISMATCH:
+            scope_offset_v = self.last_result.offset_v
+        if self.sensitivity_was_skipped():
             scope_sensitivity_mv = None
-            operator_polarity = ""
         else:
-            scope_sensitivity_input_mv = self.read_scope_sensitivity_input_mv()
-            scope_sensitivity_mv = self.scope_sensitivity_to_sensor_mv(scope_sensitivity_input_mv)
-            operator_polarity = self.operator_polarity_var.get()
+            scope_sensitivity_mv = self.operator_sensitivity_value_mv
+            if scope_sensitivity_mv is None and self.operator_sensitivity_match_var.get() != READING_MISMATCH:
+                scope_sensitivity_mv = self.last_result.sensitivity_mv
         tag, reason = split_scope_verification_choice(self.scope_verification_var.get())
         if not tag:
             raise ValueError("Choose an operator failure reason.")
@@ -2345,7 +3377,7 @@ class GuidedTesterApp(tk.Tk):
 
         offset_delta_v: float | None = None
         sensitivity_delta_mv: float | None = None
-        if self.last_result.offset_v is not None:
+        if scope_offset_v is not None and self.last_result.offset_v is not None:
             offset_delta_v = scope_offset_v - self.last_result.offset_v
         if scope_sensitivity_mv is not None and self.last_result.sensitivity_mv is not None:
             sensitivity_delta_mv = scope_sensitivity_mv - self.last_result.sensitivity_mv
@@ -2353,22 +3385,22 @@ class GuidedTesterApp(tk.Tk):
         return ScopeVerification(
             tag=tag,
             reason=reason,
+            sensor_passed=self.sensor_passed_current(),
             offset_v=scope_offset_v,
             offset_delta_v=offset_delta_v,
             sensitivity_mv=scope_sensitivity_mv,
             sensitivity_delta_mv=sensitivity_delta_mv,
-            operator_polarity=operator_polarity,
+            operator_sensor_status=self.operator_sensor_status,
+            operator_polarity="",
+            offset_match=self.operator_offset_match_var.get(),
+            offset_sensor_status=self.offset_sensor_status,
+            sensitivity_match=self.operator_sensitivity_match_var.get(),
+            sensitivity_sensor_status=self.sensitivity_sensor_status,
+            comment=self.notes_var.get().strip(),
         )
 
     def current_sensor_failed(self) -> bool:
-        if self.last_result is None:
-            return True
-        if not self.last_result.passed:
-            return True
-        if self.operator_polarity_var.get() == "Bad":
-            return True
-        tag, _reason = split_scope_verification_choice(self.scope_verification_var.get())
-        return bool(tag and tag != SCOPE_GOOD_TAG)
+        return not self.sensor_passed_current()
 
     def result_message_text(self) -> str:
         lines: list[str] = []
@@ -2379,8 +3411,19 @@ class GuidedTesterApp(tk.Tk):
             lines.extend(f"- {reason}" for reason in self.last_result.fail_reasons)
         else:
             lines.append("Tester did not find a failure.")
-        if self.operator_polarity_var.get() == "Bad":
-            lines.append("- Operator marked polarity as Bad.")
+        if self.tester_sensor_disagrees():
+            lines.append("")
+            lines.append("Tester and technician sensor disposition disagree.")
+        if self.operator_offset_match_var.get() == READING_MISMATCH:
+            lines.append("- Operator marked offset LabJack reading as Wrong.")
+        if self.offset_sensor_status:
+            lines.append(f"- Operator marked sensor offset as {self.offset_sensor_status}.")
+        if self.operator_sensitivity_match_var.get() == READING_MISMATCH:
+            lines.append("- Operator marked sensitivity LabJack reading as Wrong.")
+        if self.sensitivity_sensor_status:
+            lines.append(f"- Operator marked sensor sensitivity as {self.sensitivity_sensor_status}.")
+        if self.operator_sensor_status:
+            lines.append(f"- Technician marked sensor as {self.operator_sensor_status}.")
         if self.last_result.warnings:
             lines.append("")
             lines.append("Warnings:")
@@ -2389,6 +3432,11 @@ class GuidedTesterApp(tk.Tk):
         if polarity_detail is not None:
             lines.append("")
             lines.append(f"Polarity detail: {polarity_detail}.")
+        if self.notes_var.get().strip():
+            lines.append("")
+            lines.append("Operator comment saved.")
+        if self.manual_waveform_snapshot_paths:
+            lines.append(f"Manual waveform snapshots: {len(self.manual_waveform_snapshot_paths)}")
         return "\n".join(lines)
 
     def save_and_continue(self) -> None:
@@ -2486,7 +3534,7 @@ class GuidedTesterApp(tk.Tk):
         try:
             with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
                 for row in csv.DictReader(csv_file):
-                    result = "FAIL" if row.get("pass_fail") == "FAIL" or row.get("scope_pass_fail") == "FAIL" else "PASS"
+                    result = row.get("sensor_pass_fail") or row.get("scope_pass_fail") or row.get("pass_fail") or ""
                     rows.append(
                         (
                             row.get("sensor_id", ""),
@@ -2535,7 +3583,7 @@ class GuidedTesterApp(tk.Tk):
             return False
 
         snapshot_path: Path | None = None
-        if self.current_sensor_failed():
+        if self.current_sensor_failed() or self.tester_sensor_disagrees():
             try:
                 snapshot_path = save_failed_waveform_snapshot(
                     self.lot_number,
@@ -2558,6 +3606,7 @@ class GuidedTesterApp(tk.Tk):
                 lot_number=self.lot_number,
                 sensor_number=self.current_sensor_number,
                 waveform_snapshot_path=snapshot_path,
+                manual_waveform_snapshot_paths=self.manual_waveform_snapshot_paths,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
@@ -2585,10 +3634,19 @@ class GuidedTesterApp(tk.Tk):
             "labjack_ain0_ain1_range": self.last_labjack_range_label,
             "tester_offset_v": self.pending_offset_v,
             "operator_offset_v": self.scope_offset_var.get(),
+            "operator_offset_match": self.operator_offset_match_var.get(),
+            "operator_offset_sensor_status": self.offset_sensor_status,
             "tester_sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
             "tester_polarity": None if self.last_result is None else self.last_result.polarity,
             "operator_sensitivity_mv": self.scope_sensitivity_var.get(),
+            "operator_sensitivity_match": self.operator_sensitivity_match_var.get(),
+            "operator_sensitivity_sensor_status": self.sensitivity_sensor_status,
+            "operator_sensor_status": self.operator_sensor_status,
             "operator_polarity": self.operator_polarity_var.get(),
+            "sensor_pass_fail": "" if self.last_result is None else "PASS" if self.sensor_passed_current() else "FAIL",
+            "tester_sensor_disagreement": "" if self.last_result is None else self.tester_sensor_disagrees(),
+            "operator_comment": self.notes_var.get(),
+            "manual_waveform_snapshot_paths": [str(path) for path in self.manual_waveform_snapshot_paths],
             "tester_fail_reasons": [] if self.last_result is None else self.last_result.fail_reasons,
         }
         try:
@@ -2666,15 +3724,15 @@ class GuidedTesterApp(tk.Tk):
         self.offset_v = offset_v
         self.pending_offset_v = offset_v
         offset_ok = OFFSET_MIN_V <= offset_v <= OFFSET_MAX_V
-        self.offset_display_var.set("Captured" + (" PASS" if offset_ok else " FAIL"))
+        self.offset_display_var.set(f"{offset_v:.3f} V" + (" PASS" if offset_ok else " FAIL"))
         self.status_var.set("Offset captured.")
-        if not offset_ok:
+        if not offset_ok or self.offset_sensor_status == SENSOR_STATUS_BAD:
             self.last_waveform_metrics = None
             self.last_result = self.make_offset_only_result(offset_v)
             self.sensitivity_display_var.set("Skipped")
             self.polarity_display_var.set("Skipped")
             self.frequency_display_var.set("Skipped")
-            self.scope_verification_var.set(suggest_scope_verification_choice(self.last_result))
+            self.scope_verification_var.set(self.suggest_scope_choice_for_current_state(self.last_result))
         if self.last_waveform_metrics is not None:
             self.last_waveform_metrics.offset_v = offset_v
             self.last_result = evaluate_result(offset_v, self.last_waveform_metrics, self.last_filter_setup)
@@ -2682,10 +3740,10 @@ class GuidedTesterApp(tk.Tk):
         self.write_autosave("tester_offset_captured")
         if self.advance_after_offset_capture:
             self.advance_after_offset_capture = False
-            if offset_ok:
+            if self.offset_sensor_status == SENSOR_STATUS_GOOD:
                 self.show_step(self.SENSITIVITY_STEP)
             else:
-                self.status_var.set("Offset failed. Choose the reject mode, then save this sensor or exit the batch.")
+                self.status_var.set("Sensor offset marked bad. Choose the reject mode, then save this sensor or exit the batch.")
                 self.show_step(self.RESULT_STEP)
         elif self.step == self.OFFSET_STEP:
             self.render_step()
@@ -2747,7 +3805,7 @@ class GuidedTesterApp(tk.Tk):
         self.last_waveform_metrics = metrics
         self.last_result = final
         self.update_result_display_from_metrics(metrics, final)
-        self.scope_verification_var.set(suggest_scope_verification_choice(final, self.operator_polarity_var.get()))
+        self.scope_verification_var.set(self.suggest_scope_choice_for_current_state(final))
         self.status_var.set("Sensitivity captured.")
         self.write_autosave("tester_sensitivity_captured")
         if self.advance_after_signal_capture:
@@ -2791,6 +3849,7 @@ class GuidedTesterApp(tk.Tk):
         messagebox.showerror("LabJack connection problem", text)
 
     def on_close(self) -> None:
+        self.stop_live_reading()
         if self.device is not None:
             self.device.close()
         self.destroy()

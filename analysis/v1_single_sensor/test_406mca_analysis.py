@@ -3,8 +3,10 @@ import sys
 
 import numpy as np
 
-PROJECT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(PROJECT_DIR))
+# The v1 tester app lives under tech_app/v1_single_sensor/ relative to the repo
+# root (this file is at analysis/v1_single_sensor/).
+TESTER_DIR = Path(__file__).resolve().parents[2] / "tech_app" / "v1_single_sensor"
+sys.path.insert(0, str(TESTER_DIR))
 
 from eltec_406mca_tester import (  # noqa: E402
     DEFAULT_AM502_GAIN,
