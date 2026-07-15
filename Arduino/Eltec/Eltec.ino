@@ -46,15 +46,19 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v1.5
+    IDN?             -> ELTEC-ESP32-ADS1256,v1.7
                         (v1.4 = gate confirmed on GPIO25/D25 - the perf board
                          is soldered to D25, earlier docs saying D26 were
                          wrong - plus GATE? pad readback and RTC-hold/DAC
                          release at boot. v1.5 = PIN,2 allowed: GPIO2 is the
                          onboard blue LED, so PIN,2 + GATE,ON is a meter-free
-                         check that the whole gate-drive path works. Bump
-                         this string on EVERY flash-relevant change so stale
-                         firmware is detectable over serial.)
+                         check that the whole gate-drive path works. v1.6 was
+                         an interim DRDY-edge fix. v1.7 also verifies the ADC
+                         configuration, respects command timing, and reports
+                         stream overruns. Older builds could leave the ADS1256
+                         at its 30 kSPS reset default while claiming 1 kSPS.
+                         Bump this string on EVERY
+                         flash-relevant change so stale firmware is detectable.)
     PIN,<n>          -> OK,PIN,<n>       (retarget gate pin at runtime;
                                           allowed: 2/12/13/14/25/26/27/32/33;
                                           2 = onboard LED, visual gate test)
@@ -79,7 +83,8 @@
                           D,<t_us>,<raw_code>,<volts>,<sync 0|1>
     STREAM,START,REF -> STREAM,BEGIN,1000,REF   (same format, but streams the
                                           reference sensor on AIN1 instead)
-    STREAM,STOP      -> STREAM,END,<samples_sent>
+    STREAM,STOP      -> STREAM,END,<samples_sent>,<adc_overruns>
+                        (adc_overruns must be zero for a valid measurement)
     ERR,<message>    on any bad command or hardware fault
 
   Wiring (30-pin ESP32 DevKit <-> blue ADS1256 module with
@@ -94,7 +99,9 @@
     DUT sensor buffer -> AIN0, reference sensor -> AIN1,
     battery divider tap -> AIN7;
     module GND pins common with ESP32 GND and the rig ground.
-    Full wiring guide: ESP32_ADS1256_Wiring.docx in this folder.
+    Current wiring guide: ESP32_ADS1256_Wiring_v1_7.md in this folder.
+    ESP32_ADS1256_Wiring.docx is historical (old 9 V/AIN1 fixture); do not use
+    it to wire this version.
 */
 
 #include <SPI.h>
@@ -145,10 +152,18 @@ static uint32_t pwmNextToggleUs = 0;
 static const uint32_t PWM_HALF_PERIOD_US =
     (uint32_t)(500000.0f / PWM_FREQUENCY_HZ);  // 50 ms at 10 Hz -> 50% duty
 
-static bool streaming = false;
+static volatile bool streaming = false;
 static uint32_t streamCount = 0;
 static uint8_t streamMux = MUX_SENSOR;   // which channel STREAM,START points at
 static uint8_t streamPga = PGA_SENSOR;
+// DRDY is an active-low level. A GPIO interrupt latches each real falling edge
+// so Serial.printf() cannot make loop() miss the short HIGH phase between ADC
+// conversions. If a second conversion arrives before the previous one was
+// consumed, record an overrun: the data register only retains the newest value,
+// so the host must reject that capture rather than silently use missing data.
+static volatile bool streamSampleReady = false;
+static volatile uint32_t streamSampleTimestampUs = 0;
+static volatile uint32_t streamDrdyOverruns = 0;
 static char lineBuf[48];
 static uint8_t lineLen = 0;
 
@@ -171,6 +186,10 @@ static void adsCommand(uint8_t cmd) {
   SPI.beginTransaction(ADS_SPI);
   digitalWrite(PIN_CS, LOW);
   SPI.transfer(cmd);
+  // The longest command-to-command t11 used here is 24 CLKIN periods after
+  // SYNC (~3.13 us at 7.68 MHz). Keep CS low for 4 us so a following command
+  // cannot arrive early.
+  delayMicroseconds(4);
   digitalWrite(PIN_CS, HIGH);
   SPI.endTransaction();
 }
@@ -181,8 +200,23 @@ static void adsWriteReg(uint8_t reg, uint8_t value) {
   SPI.transfer(CMD_WREG | reg);
   SPI.transfer(0x00);           // write a single register
   SPI.transfer(value);
+  // WREG t10: keep /CS low for at least 8 CLKIN periods (~1.04 us).
+  delayMicroseconds(2);
   digitalWrite(PIN_CS, HIGH);
   SPI.endTransaction();
+}
+
+static uint8_t adsReadReg(uint8_t reg) {
+  SPI.beginTransaction(ADS_SPI);
+  digitalWrite(PIN_CS, LOW);
+  SPI.transfer(CMD_RREG | reg);
+  SPI.transfer(0x00);           // read a single register
+  delayMicroseconds(7);         // RREG t6: 50 CLKIN periods (~6.51 us)
+  uint8_t value = SPI.transfer(0);
+  delayMicroseconds(2);         // RREG t10
+  digitalWrite(PIN_CS, HIGH);
+  SPI.endTransaction();
+  return value;
 }
 
 // Read one 24-bit conversion. Call only after DRDY has gone low.
@@ -194,6 +228,9 @@ static int32_t adsReadData() {
   int32_t raw = ((int32_t)SPI.transfer(0) << 16) |
                 ((int32_t)SPI.transfer(0) << 8) |
                  (int32_t)SPI.transfer(0);
+  // ADS1256 t10 requires /CS to remain low for at least 8 CLKIN periods after
+  // the final data SCLK. At 7.68 MHz that is ~1.04 us; use 2 us of margin.
+  delayMicroseconds(2);
   digitalWrite(PIN_CS, HIGH);
   SPI.endTransaction();
   if (raw & 0x00800000L) raw |= 0xFF000000L;  // sign-extend 24 -> 32 bits
@@ -207,26 +244,41 @@ static float countsToVolts(int32_t raw, uint8_t pgaCode) {
 }
 
 // Point the mux + PGA at a channel and let the digital filter settle.
-static void adsSelectChannel(uint8_t mux, uint8_t pgaCode) {
+static bool adsSelectChannel(uint8_t mux, uint8_t pgaCode) {
   adsWriteReg(REG_MUX, mux);
   adsWriteReg(REG_ADCON, pgaCode & 0x07);  // clock-out off, sensor detect off
+  // Auto-calibration is deliberately disabled in STATUS: issuing it explicitly
+  // here makes PGA changes deterministic and lets us wait for completion.
+  adsCommand(CMD_SELFCAL);
+  if (!waitDRDY(500)) return false;
   adsCommand(CMD_SYNC);
   adsCommand(CMD_WAKEUP);
-  waitDRDY();
+  if (!waitDRDY()) return false;
   adsReadData();                           // discard the first settling sample
+  return true;
 }
 
 static bool adsInit() {
   adsCommand(CMD_RESET);
   delay(5);
   if (!waitDRDY(500)) return false;
-  adsWriteReg(REG_STATUS, 0x06);           // MSB first, auto-cal on, buffer on
+  // MSB first, auto-cal OFF, input buffer on. The previous 0x06 enabled ACAL
+  // and then wrote more registers while calibration was still busy, so DRATE
+  // could remain at its 30 kSPS reset value even though STATUS? said 1000.
+  adsWriteReg(REG_STATUS, 0x02);
   adsWriteReg(REG_DRATE, DRATE_1000SPS);
   adsWriteReg(REG_ADCON, PGA_SENSOR);
   adsWriteReg(REG_MUX, MUX_SENSOR);
   adsCommand(CMD_SELFCAL);
   if (!waitDRDY(500)) return false;
-  return true;
+  // Never stream on assumed settings: read back every register that controls
+  // channel, PGA, buffering, or sample rate.
+  uint8_t status = adsReadReg(REG_STATUS);
+  uint8_t mux = adsReadReg(REG_MUX);
+  uint8_t adcon = adsReadReg(REG_ADCON);
+  uint8_t drate = adsReadReg(REG_DRATE);
+  return (status & 0x06) == 0x02 && mux == MUX_SENSOR &&
+         (adcon & 0x67) == PGA_SENSOR && drate == DRATE_1000SPS;
 }
 
 // Median-of-N single-channel read (offset + battery checks). Blocks; not used
@@ -234,7 +286,7 @@ static bool adsInit() {
 static float readMedianVolts(uint8_t mux, uint8_t pgaCode, int samples, int delayMs) {
   static float buf[32];
   if (samples > 32) samples = 32;
-  adsSelectChannel(mux, pgaCode);
+  if (!adsSelectChannel(mux, pgaCode)) return NAN;
   for (int i = 0; i < samples; i++) {
     if (!waitDRDY()) return NAN;
     buf[i] = countsToVolts(adsReadData(), pgaCode);
@@ -290,11 +342,21 @@ static void pwmSet(bool on) {
   if (on) pwmNextToggleUs = micros() + PWM_HALF_PERIOD_US;
 }
 
+// Latch conversion-ready events independently of the serial-output latency.
+// micros() is ISR-safe on ESP32 and timestamps the ADC edge rather than the
+// later moment when loop() gets around to formatting the record.
+static void IRAM_ATTR onAdsDrdyFalling() {
+  if (!streaming) return;
+  if (streamSampleReady) streamDrdyOverruns++;
+  streamSampleTimestampUs = micros();
+  streamSampleReady = true;
+}
+
 // ------------------------------------------------- commands ---------------
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v1.5");
+    Serial.println("ELTEC-ESP32-ADS1256,v1.7");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
     Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d\n",
@@ -377,15 +439,27 @@ static void handleCommand(char *cmd) {
     bool refChannel = (strcmp(cmd, "STREAM,START,REF") == 0);
     streamMux = refChannel ? MUX_REF : MUX_SENSOR;
     streamPga = PGA_SENSOR;                     // both sensors use gain 2
-    adsSelectChannel(streamMux, streamPga);
-    streaming = true;
+    if (!adsSelectChannel(streamMux, streamPga)) {
+      Serial.println("ERR,ADS1256 channel select/calibration timeout");
+      return;
+    }
     streamCount = 0;
+    noInterrupts();
+    streamSampleReady = false;
+    streamDrdyOverruns = 0;
+    streaming = true;
+    interrupts();
     Serial.printf("STREAM,BEGIN,%d,%s\n", (int)SAMPLE_RATE_HZ,
                   refChannel ? "REF" : "SENSOR");
 
   } else if (strcmp(cmd, "STREAM,STOP") == 0) {
+    noInterrupts();
     streaming = false;
-    Serial.printf("STREAM,END,%lu\n", (unsigned long)streamCount);
+    streamSampleReady = false;
+    uint32_t overruns = streamDrdyOverruns;
+    interrupts();
+    Serial.printf("STREAM,END,%lu,%lu\n", (unsigned long)streamCount,
+                  (unsigned long)overruns);
 
   } else if (cmd[0] != '\0') {
     Serial.printf("ERR,unknown command: %s\n", cmd);
@@ -414,16 +488,18 @@ void setup() {
   pinMode(PIN_CS, OUTPUT);
   digitalWrite(PIN_CS, HIGH);
   pinMode(PIN_DRDY, INPUT);
+  attachInterrupt(digitalPinToInterrupt(PIN_DRDY), onAdsDrdyFalling, FALLING);
 
   Serial.begin(500000);
   SPI.begin();
 
   adsOk = adsInit();
   if (adsOk) {
-    adsSelectChannel(MUX_SENSOR, PGA_SENSOR);
-    Serial.println("READY,ELTEC-ESP32-ADS1256");
+    adsOk = adsSelectChannel(MUX_SENSOR, PGA_SENSOR);
+    if (adsOk) Serial.println("READY,ELTEC-ESP32-ADS1256");
+    else Serial.println("ERR,ADS1256 channel select/calibration timeout");
   } else {
-    Serial.println("ERR,ADS1256 not responding (check wiring/DRDY)");
+    Serial.println("ERR,ADS1256 init/register verification failed");
   }
   nextHelloMs = millis() + 2000;
 }
@@ -438,15 +514,24 @@ void loop() {
     nextHelloMs = millis() + 2000;
   }
 
-  // Streaming: the ADS1256 clocks itself at exactly 1000 SPS; every DRDY low
-  // edge is one fresh conversion of the selected channel (AIN0 DUT or AIN1
-  // reference). Sync is our own PWM drive level.
-  if (streaming && digitalRead(PIN_DRDY) == LOW) {
-    int32_t raw = adsReadData();
-    float volts = countsToVolts(raw, streamPga);
-    Serial.printf("D,%lu,%ld,%.6f,%d\n",
-                  (unsigned long)micros(), (long)raw, volts,
-                  (pwmOn && pwmLevel) ? 1 : 0);
-    streamCount++;
+  // Streaming: consume each interrupt-latched ADS1256 falling edge once. The
+  // short critical section prevents an edge between testing and clearing the
+  // ready flag from being lost; SPI and serial work remain outside it.
+  if (streaming) {
+    bool sampleReady;
+    uint32_t sampleTimestampUs;
+    noInterrupts();
+    sampleReady = streamSampleReady;
+    sampleTimestampUs = streamSampleTimestampUs;
+    streamSampleReady = false;
+    interrupts();
+    if (sampleReady) {
+      int32_t raw = adsReadData();
+      float volts = countsToVolts(raw, streamPga);
+      Serial.printf("D,%lu,%ld,%.6f,%d\n",
+                    (unsigned long)sampleTimestampUs, (long)raw, volts,
+                    (pwmOn && pwmLevel) ? 1 : 0);
+      streamCount++;
+    }
   }
 }

@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import statistics
 import sys
 import time
@@ -57,6 +58,7 @@ except ImportError:
     sys.exit("pyserial is not installed. Run:  pip install pyserial")
 
 BAUD = 500000
+MIN_FIRMWARE_VERSION = (1, 7)
 
 # Mirror the tester app's rig constants (eltec_406mca_emitter_tester.py).
 SAMPLE_RATE_HZ = 1000.0
@@ -152,11 +154,18 @@ class Esp32Rig:
         self.ser.reset_input_buffer()
         idn = self._command("IDN?", "ELTEC")
         print(f"Connected: {idn}")
-        if not idn.strip().endswith("v1.5"):
-            print("WARNING: board firmware is stale - re-flash Eltec.ino! "
-                  "(the gate drive belongs on D25/GPIO25 - the perf board is "
-                  "soldered there; some older builds/docs said D26 - and old "
-                  "builds lack GATE?/PIN or read the battery on AIN1)")
+        version_match = re.search(r",v(\d+)\.(\d+)(?:\.\d+)?$", idn.strip())
+        version = (
+            (int(version_match.group(1)), int(version_match.group(2)))
+            if version_match else None
+        )
+        if version is None or version < MIN_FIRMWARE_VERSION:
+            self.close()
+            raise RuntimeError(
+                "Board firmware is stale; re-flash Eltec.ino v1.7 or newer. "
+                "Older builds may repeat conversions or leave the ADS1256 at "
+                "its reset sample rate, so their measurements are not safe to use."
+            )
 
     def close(self, disable_pwm: bool = True) -> None:
         # disable_pwm=False skips the explicit PWM,OFF on exit. NOTE (verified
@@ -248,10 +257,24 @@ class Esp32Rig:
         self._send("STREAM,STOP")
         # Drain buffered stream lines until the END marker (or brief timeout).
         drain_deadline = time.time() + 2.0
+        adc_overruns = 0
         while time.time() < drain_deadline:
             line = self._readline()
-            if line.startswith("STREAM,END") or not line:
+            if line.startswith("STREAM,END"):
+                fields = line.split(",")
+                if len(fields) >= 4:
+                    try:
+                        adc_overruns = int(fields[3])
+                    except ValueError:
+                        raise RuntimeError(f"Malformed stream end marker: {line}")
                 break
+            if not line:
+                break
+        if adc_overruns:
+            raise RuntimeError(
+                f"ADC stream overran {adc_overruns} time(s); discard this capture "
+                "and retry with the serial monitor closed."
+            )
         if progress:
             print(f"  captured {len(samples)} samples          ")
         if len(samples) < target * 0.9:
