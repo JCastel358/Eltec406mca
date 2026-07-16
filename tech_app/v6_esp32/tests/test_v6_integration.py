@@ -161,6 +161,9 @@ class IdentityAndCsvTests(unittest.TestCase):
         self.assertIn("reference_calibration_mv", app.CSV_FIELDS)
         self.assertIn("reference_check_mv", app.CSV_FIELDS)
         self.assertIn("reference_drift_pct", app.CSV_FIELDS)
+        self.assertIn("failure_mode_tag", app.CSV_FIELDS)
+        self.assertIn("failure_mode_reason", app.CSV_FIELDS)
+        self.assertIn(app.UNSTABLE_FAILURE_MODE, app.FAILURE_MODE_CHOICES)
         self.assertEqual(SETTINGS.peak_delta_threshold_mv, 0.100)
         self.assertEqual(SETTINGS.consecutive_deltas_required, 5)
 
@@ -260,8 +263,31 @@ class IdentityAndCsvTests(unittest.TestCase):
             self.assertEqual(row["sensitivity_mv"], "")
             self.assertEqual(row["polarity"], "")
             self.assertEqual(row["polarity_good_bad"], "")
+            self.assertEqual(row["pass_fail"], "FAIL")
+            self.assertEqual(row["failure_mode_tag"], "Unstable")
+            self.assertEqual(row["failure_mode_reason"], "Unstable")
+            self.assertTrue(row["fail_reasons"].startswith("Unstable:"))
             self.assertEqual(row["stability_timeout"], "YES")
             self.assertEqual(row["stability_threshold_mv"], "0.100000")
+
+    def test_failure_mode_is_required_and_unstable_timeout_is_suggested(self):
+        waveform, sync, rate, offset, analysis = prepared_capture("Never stabilizes")
+        _metrics, final = app.build_stability_timeout_result(
+            waveform,
+            sync,
+            rate,
+            analysis,
+            offset_v=offset,
+            input_range_v=app.WAVEFORM_INPUT_RANGE_V,
+        )
+
+        self.assertEqual(app.suggest_failure_mode(final), app.UNSTABLE_FAILURE_MODE)
+        self.assertEqual(
+            app.split_failure_mode(app.UNSTABLE_FAILURE_MODE),
+            ("Unstable", "Unstable"),
+        )
+        with self.assertRaisesRegex(ValueError, "Choose a failure mode"):
+            app.split_failure_mode("")
 
     def test_timeout_diagnostic_sidecars_retain_full_stream_and_cycle_deltas(self):
         waveform, sync, rate, offset, analysis = prepared_capture("Never stabilizes")
@@ -952,6 +978,14 @@ class SimulatorAndGuiTests(unittest.TestCase):
                 texts.extend(label_texts(child))
             return texts
 
+        def comboboxes(widget):
+            found = []
+            for child in widget.winfo_children():
+                if isinstance(child, ttk.Combobox):
+                    found.append(child)
+                found.extend(comboboxes(child))
+            return found
+
         with mock.patch.object(app, "load_reference_calibration", return_value=calibration), mock.patch.object(
             app.EmitterTesterApp, "startup_probe", lambda self: None
         ):
@@ -990,6 +1024,26 @@ class SimulatorAndGuiTests(unittest.TestCase):
                 self.assertIn("OFFSET", shown_labels)
                 self.assertIn("SENSITIVITY", shown_labels)
                 self.assertIn("POLARITY", shown_labels)
+
+                root.last_result = app.FinalResult(
+                    passed=False,
+                    offset_v=0.7,
+                    sensitivity_mv=None,
+                    polarity="",
+                    fail_reasons=["Unstable: waveform peak did not stabilize."],
+                    warnings=[],
+                    waveform_metrics=None,
+                )
+                root.failure_mode_var.set(app.suggest_failure_mode(root.last_result))
+                root.show_details_var.set(False)
+                root.render_step()
+                failed_labels = label_texts(root.step_frame)
+                failure_combos = comboboxes(root.step_frame)
+                self.assertIn("FAILURE MODE", failed_labels)
+                self.assertEqual(root.failure_mode_var.get(), app.UNSTABLE_FAILURE_MODE)
+                self.assertTrue(
+                    any(app.UNSTABLE_FAILURE_MODE in combo.cget("values") for combo in failure_combos)
+                )
             finally:
                 if root is not None:
                     root.destroy()

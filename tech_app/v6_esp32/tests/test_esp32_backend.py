@@ -20,6 +20,7 @@ class ScriptedSerial:
         self.closed = False
         self.flushed = False
         self.output_reset = False
+        self.read_calls = 0
         self.dtr = True
         self.rts = True
 
@@ -43,6 +44,25 @@ class ScriptedSerial:
             return self.lines.popleft()
         return b""
 
+    @property
+    def in_waiting(self):
+        return sum(len(chunk) for chunk in self.lines)
+
+    def read(self, size=1):
+        self.read_calls += 1
+        remaining = max(0, int(size))
+        result = bytearray()
+        while remaining and self.lines:
+            chunk = self.lines[0]
+            take = min(remaining, len(chunk))
+            result.extend(chunk[:take])
+            remaining -= take
+            if take == len(chunk):
+                self.lines.popleft()
+            else:
+                self.lines[0] = chunk[take:]
+        return bytes(result)
+
     def reset_output_buffer(self):
         self.output_reset = True
 
@@ -58,8 +78,10 @@ class SerialFactory:
     def __init__(self, builders):
         self.builders = builders
         self.created: list[ScriptedSerial] = []
+        self.created_options: list[dict] = []
 
     def __call__(self, **options):
+        self.created_options.append(dict(options))
         serial_port = self.builders[options["port"]](**options)
         self.created.append(serial_port)
         return serial_port
@@ -169,6 +191,7 @@ class ConnectionTests(unittest.TestCase):
         self.assertFalse(rig.ser.dtr)
         self.assertFalse(rig.ser.rts)
         self.assertTrue(rig.ser.output_reset)
+        self.assertTrue(factory.created_options[-1].get("exclusive"))
 
         selected_serial = rig.ser
         rig.close()
@@ -246,7 +269,7 @@ class ConnectionTests(unittest.TestCase):
                     first.write = disconnected
                     action = lambda: rig._send("STATUS?")
                 else:
-                    first.readline = disconnected
+                    first.read = disconnected
                     action = rig._readline
 
                 with self.assertRaises(backend.Esp32ConnectionError):
@@ -382,6 +405,27 @@ class StreamTests(unittest.TestCase):
         self.assertFalse(diagnostics.healthy)  # the detected torn line/gap matters
         self.assertIn("1 torn", diagnostics.summary())
         self.assertEqual(self.serial_port.writes[-1], "STREAM,STOP")
+
+    def test_bulk_reader_consumes_many_stream_lines_in_one_serial_read(self):
+        self.serial_port.scripts["STREAM,STOP"] = ["STREAM,END,1000,0"]
+        self.rig.start_stream()
+        self.serial_port.lines.extend(
+            ScriptedSerial._as_bytes(
+                f"D,{index * 1000},{index},0.500000,{index % 2}"
+            )
+            for index in range(1, 1001)
+        )
+        reads_before = self.serial_port.read_calls
+
+        samples = self.rig.read_stream(max_samples=1000, timeout_s=0.1)
+        diagnostics = self.rig.stop_stream(timeout_s=0.1)
+
+        self.assertEqual(len(samples), 1000)
+        self.assertTrue(diagnostics.healthy)
+        # One bulk read gets the sample burst and one gets STREAM,END. The
+        # assertion leaves a little room for implementation details while
+        # guarding against regression to one OS read per sample line.
+        self.assertLessEqual(self.serial_port.read_calls - reads_before, 3)
 
     def test_reference_stream_selects_ain1_firmware_channel(self):
         header = self.rig.start_stream("reference")

@@ -42,9 +42,10 @@ allowed window, fresh AIN1 reading, and percent drift used for that DUT.
 Simulator mode uses a clearly identified synthetic in-range reference and does
 not create or overwrite the hardware calibration.
 
-The completed sensor screen shows only the large green **PASS** or red **FAIL**
-verdict by default. Use **Show test details** to reveal offset, sensitivity,
-polarity, confidence, SNR, stability telemetry, and failure reasons. The
+The completed sensor screen emphasizes the large green **PASS** or red **FAIL**
+verdict. Every FAIL also shows a required standard failure-mode selector. Use
+**Show test details** to reveal offset, sensitivity, polarity, confidence, SNR,
+stability telemetry, and diagnostic failure reasons. The
 separate **Show waveform** control remains available independently.
 
 ## Adaptive DUT measurement
@@ -76,12 +77,14 @@ Official sensitivity remains the median of the 10 per-cycle raw `max - min`
 values. This post-stability measurement may finish after the 20-second
 stability deadline.
 
-If the deadline expires first, v6 records a stability-timeout FAIL, leaves
-official sensitivity and polarity unmeasured, and retains the captured waveform
-and peak/delta diagnostics. Saving a timeout automatically creates a PNG plus
-full-sample and per-cycle CSV sidecars under `waveform_snapshots/`; manually
-capturing a waveform creates the same troubleshooting bundle. PWM is turned
-off on success, timeout, cancellation, and errors.
+If the deadline expires first, v6 creates a stability-timeout FAIL,
+automatically selects **Unstable - Unstable**, leaves official sensitivity and
+polarity unmeasured, and autosaves that pending decision. **Save + Next Sensor** appends
+the official batch row with `failure_mode_tag=Unstable` and
+`failure_mode_reason=Unstable`, and creates a PNG plus full-sample and per-cycle
+CSV sidecars under `waveform_snapshots/`. Manually capturing a waveform creates
+the same troubleshooting bundle. PWM is turned off on success, timeout,
+cancellation, and errors.
 
 The `0.100 mV` threshold is provisional. Capture several representative
 known-good parts and review the resulting delta distribution before changing
@@ -95,6 +98,12 @@ firmware, bad sample rates, timestamp gaps, malformed records, count mismatches,
 and ADC overruns. Firmware supplies the digital GPIO25 PWM state with each
 AIN0 or AIN1 sample, so the former physical LabJack AIN2 loopback is not
 required.
+
+The serial backend reads streamed ASCII records in buffered blocks so a full
+20-second unstable capture cannot outrun Python's USB reader. On Xubuntu the
+port is also opened exclusively: a second tester, Arduino Serial Monitor, or
+other serial program is rejected up front instead of silently stealing sample
+records and causing timestamp gaps.
 
 Use `Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md` for the current fixture:
 

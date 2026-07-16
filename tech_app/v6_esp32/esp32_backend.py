@@ -16,6 +16,7 @@ normal, actionable exception is raised only when serial hardware is requested.
 from __future__ import annotations
 
 import math
+import os
 import re
 import statistics
 import time
@@ -35,6 +36,7 @@ else:
 
 BAUD_RATE = 500_000
 SAMPLE_RATE_HZ = 1_000.0
+STREAM_READ_BLOCK_BYTES = 1_024
 PWM_FREQUENCY_HZ = 10.0
 PWM_DUTY_CYCLE_PERCENT = 50.0
 PWM_GPIO = 25
@@ -379,6 +381,11 @@ class Esp32Rig:
         self._stream_diagnostics: StreamDiagnostics | None = None
         self._last_sample_timestamp_us: int | None = None
         self._drained_samples: list[StreamSample] = []
+        # pyserial.readline() commonly performs one OS read per byte. At 1,000
+        # ASCII sample lines/second that can consume the CP210x backlog more
+        # slowly than the ESP32 produces it during a full timeout capture.
+        # Keep a user-space buffer so one bulk read supplies many parsed lines.
+        self._read_buffer = bytearray()
 
     @property
     def connected(self) -> bool:
@@ -478,14 +485,21 @@ class Esp32Rig:
             assert _serial_module is not None
             factory = _serial_module.Serial
 
-        serial_port = factory(
+        serial_options = dict(
             port=port_name,
             baudrate=self.baud_rate,
             timeout=self.read_timeout_s,
             write_timeout=self.write_timeout_s,
         )
+        # Xubuntu is the production host. An exclusive tty lock prevents a
+        # Serial Monitor or a second tester process from silently consuming a
+        # subset of waveform records from the same USB receive queue.
+        if os.name == "posix":
+            serial_options["exclusive"] = True
+        serial_port = factory(**serial_options)
         self.ser = serial_port
         self.port_name = port_name
+        self._read_buffer.clear()
 
         # Release both modem-control lines after open.  The open itself supplies
         # the CP210x reset edge on the production DevKit; leaving either asserted
@@ -615,6 +629,7 @@ class Esp32Rig:
             self.identity = None
             self.pwm_enabled = False
             self._stream_active = False
+            self._read_buffer.clear()
 
     def _discard_serial(self) -> None:
         serial_port = self.ser
@@ -623,6 +638,7 @@ class Esp32Rig:
         self.identity = None
         self._stream_active = False
         self.pwm_enabled = False
+        self._read_buffer.clear()
         if serial_port is not None:
             try:
                 serial_port.close()
@@ -650,16 +666,39 @@ class Esp32Rig:
 
     def _readline(self) -> str:
         serial_port = self._require_connected()
-        try:
-            raw = serial_port.readline()
-        except Exception as exc:
-            self._discard_serial()
-            raise Esp32ConnectionError(f"Serial read failed: {exc}") from exc
-        if not raw:
-            return ""
-        if isinstance(raw, str):
-            return raw.strip()
-        return bytes(raw).decode("ascii", errors="replace").strip()
+        while True:
+            newline_index = self._read_buffer.find(b"\n")
+            if newline_index >= 0:
+                raw_line = bytes(self._read_buffer[:newline_index])
+                del self._read_buffer[: newline_index + 1]
+                return raw_line.decode("ascii", errors="replace").strip()
+
+            try:
+                read = getattr(serial_port, "read", None)
+                if callable(read):
+                    # Drain everything the driver already has in one syscall.
+                    # During streaming, wait for a modest block when the driver
+                    # is empty; scalar commands retain the low-latency one-byte
+                    # behavior. Pyserial's timeout bounds either operation.
+                    waiting = int(getattr(serial_port, "in_waiting", 0) or 0)
+                    read_size = waiting
+                    if read_size <= 0:
+                        read_size = (
+                            STREAM_READ_BLOCK_BYTES if self._stream_active else 1
+                        )
+                    raw = read(read_size)
+                else:
+                    # Compatibility for small test doubles and serial-like
+                    # adapters that only expose readline().
+                    raw = serial_port.readline()
+            except Exception as exc:
+                self._discard_serial()
+                raise Esp32ConnectionError(f"Serial read failed: {exc}") from exc
+            if not raw:
+                return ""
+            if isinstance(raw, str):
+                raw = raw.encode("ascii", errors="replace")
+            self._read_buffer.extend(bytes(raw))
 
     def _command(
         self,

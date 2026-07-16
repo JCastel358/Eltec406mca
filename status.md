@@ -1,6 +1,6 @@
 # Eltec 406MCA ESP32/Xubuntu status
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Executive summary
 
@@ -16,7 +16,7 @@ then averages five fresh cycles. An invalid reference blocks AIN0 entirely and
 invalidates the calibration until the emitter/reference unit is recalibrated.
 
 The latest real hardware calibration is complete and valid. The v6 automated
-suite passes all 77 tests. V5 remains available as historical context and has
+suite passes all 79 tests. V5 remains available as historical context and has
 not been overwritten.
 
 ## Current production sequence
@@ -81,14 +81,21 @@ Important safety behavior:
 - Further DUT testing stays locked until **Calibrate reference unit** succeeds.
 - PWM is disabled on success, timeout, cancellation, serial errors, calibration
   errors, and application shutdown.
+- The 1,000-line/second serial stream is consumed with buffered bulk reads, and
+  Xubuntu opens the ESP32 tty exclusively. This prevents a full 20-second DUT
+  timeout from losing records because of per-line read overhead or another
+  serial program sharing the port.
 
 ## Current user interface
 
 - The home/setup card intentionally says only **Reference unit calibrated**.
   It does not call the unit AIN1 or show its baseline/range on the home screen.
 - Calibration progress visibly reports the five adaptive reference runs.
-- The completed sensor screen shows only a large green **PASS** or red **FAIL**
-  verdict by default.
+- The completed sensor screen emphasizes a large green **PASS** or red **FAIL**
+  verdict.
+- Every FAIL shows the standard production failure-mode selector. A DUT
+  stability timeout preselects **Unstable - Unstable** and records `Unstable`
+  as both the failure-mode tag and reason when the sensor is saved.
 - **Show test details** reveals offset, sensitivity, polarity, polarity
   confidence, SNR, stability telemetry, reference drift, and failure reasons.
 - **Show waveform** remains an independent control and can be used without
@@ -119,9 +126,10 @@ PWM on -> uninterrupted AIN0/sync stream -> robust-peak stability
   values. Sensitivity, polarity, confidence, noise, and SNR all use those same
   10 post-stability cycles.
 - The signal-quality gate requires SNR >= `1.5` (about 3.5 dB).
-- A DUT stability timeout records a FAIL with sensitivity/polarity left
-  unmeasured and automatically preserves a PNG plus full-sample and per-cycle
-  CSV diagnostics.
+- A DUT stability timeout creates a recoverable pending FAIL with
+  sensitivity/polarity left unmeasured and **Unstable - Unstable** preselected.
+  Saving it records the official batch row and automatically preserves a PNG
+  plus full-sample and per-cycle CSV diagnostics.
 
 The `0.100 mV` stability threshold, inherited sensitivity limits, and SNR limit
 still require broader production qualification with representative known-good
@@ -217,7 +225,7 @@ Latest verification:
 python3 -m unittest discover -s tech_app/v6_esp32/tests -v
 ```
 
-Result: all **77 v6 tests pass**, including:
+Result: all **79 v6 tests pass**, including:
 
 - AIN1 firmware-channel selection;
 - reference adaptive stability and exactly five fresh averaged cycles;
@@ -225,7 +233,10 @@ Result: all **77 v6 tests pass**, including:
 - reference calibration persistence, schema, repeatability, and invalidation;
 - proof that failed/missing reference calibration prevents AIN0 access;
 - continuous AIN0 timing, timeouts, cancellation, and serial integrity;
-- verdict-only result UI and optional detail/waveform controls;
+- buffered high-throughput serial reads and exclusive-port ownership;
+- standardized failure-mode selection and automatic **Unstable - Unstable**
+  classification for DUT stability timeouts;
+- verdict-focused result UI and optional detail/waveform controls;
 - simplified **Reference unit calibrated** home wording;
 - GUI smoke coverage, CSV compatibility, and PWM cleanup.
 

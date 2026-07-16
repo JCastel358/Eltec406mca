@@ -117,6 +117,35 @@ RIG_GAIN = 1.0
 # 80% of the time, so it is the default selection.
 DEFAULT_FILTER_SETUP = "-284 filter + extra -6 + blackened tube"
 
+# Standard production failure taxonomy. This is the same set used by the
+# scope-verification workflow, minus its non-failure GOOD entry.
+FAILURE_MODE_CHOICES = (
+    "SB - Sensor bad",
+    "GO/D - Good offset/no signal",
+    "O - No sensitivity",
+    "LS - Low sensitivity",
+    "N - Noisy",
+    "FN - Fast noise",
+    "OSC - Oscillation",
+    "HO - High offset",
+    "LO - Low offset",
+    "D - No offset",
+    "TO - Technician says offset bad",
+    "TS - Technician says sensitivity bad",
+    "HRV - High ref volt",
+    "LRV - Low ref volt",
+    "RP - Reversed polarity",
+    "Unstable - Unstable",
+    "SI - Wrong pattern: sinewave",
+    "SW - Wrong pattern: sawtooth",
+    "SQ - Wrong pattern: square",
+    "RSQ - Wrong pattern: rounded square",
+    "T - Wrong pattern: triangle",
+    "HIG - High IGSS",
+    "Drop - Dropped",
+)
+UNSTABLE_FAILURE_MODE = "Unstable - Unstable"
+
 # Fixed ESP32 rig settings. Technicians never change these in production.
 EMITTER_PWM_CHANNEL = "GPIO25"
 EMITTER_PWM_FREQUENCY_HZ = DEFAULT_EMITTER_PWM_FREQUENCY_HZ
@@ -404,6 +433,8 @@ CSV_FIELDS = [
     "polarity_good_bad",
     "pass_fail",
     "fail_reasons",
+    "failure_mode_tag",
+    "failure_mode_reason",
     "operator_comments",
     "waveform_snapshot_paths",
     "battery_v",
@@ -739,6 +770,37 @@ def polarity_good_bad(polarity: str) -> str:
     return "GOOD" if polarity == POSITIVE_POLARITY else "BAD"
 
 
+def split_failure_mode(choice: str) -> tuple[str, str]:
+    """Validate and split a displayed production failure-mode choice."""
+    choice = str(choice).strip()
+    if choice not in FAILURE_MODE_CHOICES:
+        raise ValueError("Choose a failure mode before saving this failed sensor.")
+    tag, reason = choice.split(" - ", 1)
+    return tag, reason
+
+
+def suggest_failure_mode(final_result: FinalResult | None) -> str:
+    """Choose the closest standard mode; the technician can override it."""
+    if final_result is None or final_result.passed:
+        return ""
+    reason_text = " ".join(final_result.fail_reasons).lower()
+    if "unstable" in reason_text or "stabiliz" in reason_text:
+        return UNSTABLE_FAILURE_MODE
+    if "sensitivity too low" in reason_text:
+        return "LS - Low sensitivity"
+    if "offset out of range" in reason_text:
+        if final_result.offset_v is not None and final_result.offset_v > OFFSET_MAX_V:
+            return "HO - High offset"
+        if final_result.offset_v is not None and final_result.offset_v < OFFSET_MIN_V:
+            return "LO - Low offset"
+        return "D - No offset"
+    if "polarity" in reason_text:
+        return "RP - Reversed polarity"
+    if "signal-to-noise" in reason_text or "snr" in reason_text:
+        return "N - Noisy"
+    return "SB - Sensor bad"
+
+
 def _fmt_optional_float(value: float | None, decimals: int) -> str:
     """Format an optional metric for CSV, blank when missing or non-finite."""
     if value is None or not math.isfinite(value):
@@ -764,10 +826,17 @@ def append_result_csv(
     capture_report: "StabilityCaptureReport | None" = None,
     reference_calibration: "ReferenceCalibration | None" = None,
     reference_check_mv: float | None = None,
+    failure_mode: str = "",
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
     metrics = final_result.waveform_metrics
+    if final_result.passed:
+        failure_mode_tag, failure_mode_reason = "", ""
+    else:
+        failure_mode_tag, failure_mode_reason = split_failure_mode(
+            failure_mode or suggest_failure_mode(final_result)
+        )
     row = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "batch_number": batch_number,
@@ -785,6 +854,8 @@ def append_result_csv(
         "polarity_good_bad": polarity_good_bad(final_result.polarity),
         "pass_fail": "PASS" if final_result.passed else "FAIL",
         "fail_reasons": "; ".join(final_result.fail_reasons),
+        "failure_mode_tag": failure_mode_tag,
+        "failure_mode_reason": failure_mode_reason,
         "operator_comments": comment.strip(),
         "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
@@ -1683,7 +1754,7 @@ def build_stability_timeout_result(
         edge=PROCEDURE_SYNC_EDGE,
     )
     reason = (
-        f"Waveform peak did not stabilize within {analysis.report.stability_deadline_s:.1f} s: "
+        f"Unstable: waveform peak did not stabilize within {analysis.report.stability_deadline_s:.1f} s: "
         f"required {analysis.report.configured_confirmation_count} consecutive peak deltas "
         f"at or below {analysis.report.configured_threshold_mv:.3f} mV."
     )
@@ -2619,6 +2690,7 @@ class EmitterTesterApp(tk.Tk):
         self.show_live_var = tk.BooleanVar(value=False)
         self.show_details_var = tk.BooleanVar(value=False)
         self.notes_var = tk.StringVar(value="")
+        self.failure_mode_var = tk.StringVar(value="")
 
         self.status_var = tk.StringVar(value="Checking ESP32 rig...")
         self.measure_status_var = tk.StringVar(value="")
@@ -3272,6 +3344,45 @@ class EmitterTesterApp(tk.Tk):
         passed = result.passed
         self._build_result_banner(row=0, passed=passed)
         next_row = 1
+        if not passed:
+            failure_card = Card(
+                self.step_frame,
+                card_bg=FAIL_BG,
+                border=mix_color(FAIL_ACCENT, FAIL_BG, 0.45),
+                accent_stops=[FAIL_ACCENT, FAIL_ACCENT],
+                pad=(18, 14),
+            )
+            failure_card.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
+            failure_inner = failure_card.inner
+            failure_inner.columnconfigure(0, weight=1)
+            tk.Label(
+                failure_inner,
+                text="FAILURE MODE",
+                bg=FAIL_BG,
+                fg=FAIL_FG,
+                font=self.fm(10, "bold"),
+            ).grid(row=0, column=0, sticky="w", pady=(0, 5))
+            failure_combo = ttk.Combobox(
+                failure_inner,
+                textvariable=self.failure_mode_var,
+                values=FAILURE_MODE_CHOICES,
+                state="readonly",
+                font=self.fb(14),
+                height=10,
+            )
+            failure_combo.grid(row=1, column=0, sticky="ew")
+            failure_combo.bind(
+                "<<ComboboxSelected>>",
+                lambda _event: self.write_autosave("failure_mode_selected"),
+            )
+            tk.Label(
+                failure_inner,
+                text="Confirm or change the failure mode, then save the sensor.",
+                bg=FAIL_BG,
+                fg=FAIL_FG,
+                font=self.fb(10),
+            ).grid(row=2, column=0, sticky="w", pady=(6, 0))
+            next_row += 1
         if self.show_details_var.get():
             tiles = tk.Frame(self.step_frame, bg=PAGE_BG)
             tiles.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
@@ -3602,6 +3713,7 @@ class EmitterTesterApp(tk.Tk):
         self.snapshot_paths = []
         self.stability_diagnostics_saved = False
         self.notes_var.set("")
+        self.failure_mode_var.set("")
         self.comment_status_var.set("")
         self.snapshot_status_var.set("")
         self.measure_status_var.set("")
@@ -3627,6 +3739,14 @@ class EmitterTesterApp(tk.Tk):
             messagebox.showinfo("Nothing to save", "Run the measurement before saving.")
             return False
         pwm_hz, pwm_duty = EMITTER_PWM_FREQUENCY_HZ, EMITTER_PWM_DUTY_CYCLE
+        failure_mode = ""
+        if not self.last_result.passed:
+            try:
+                split_failure_mode(self.failure_mode_var.get())
+            except ValueError as exc:
+                messagebox.showerror("Failure mode needed", str(exc))
+                return False
+            failure_mode = self.failure_mode_var.get()
         try:
             if (
                 self.last_capture_report is not None
@@ -3677,6 +3797,7 @@ class EmitterTesterApp(tk.Tk):
                 capture_report=self.last_capture_report,
                 reference_calibration=self.reference_calibration,
                 reference_check_mv=self.last_reference_check_mv,
+                failure_mode=failure_mode,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
@@ -4351,10 +4472,17 @@ class EmitterTesterApp(tk.Tk):
         self.busy = False
         self.last_metrics = metrics
         self.last_result = final
+        self.failure_mode_var.set(suggest_failure_mode(final))
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
         verdict = "PASS" if final.passed else "FAIL"
-        self.status_var.set(f"{self.current_sensor_id}: {verdict}.")
+        if final.passed:
+            self.status_var.set(f"{self.current_sensor_id}: {verdict}.")
+        else:
+            self.status_var.set(
+                f"{self.current_sensor_id}: FAIL — confirm the failure mode, then save the sensor."
+            )
+        self.write_autosave("measurement_complete")
         self.render_step()
 
     def on_battery_block(self, token: int, battery_v: float) -> None:
@@ -4548,6 +4676,8 @@ class EmitterTesterApp(tk.Tk):
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
             "polarity": None if self.last_result is None else self.last_result.polarity,
             "pass_fail": None if self.last_result is None else ("PASS" if self.last_result.passed else "FAIL"),
+            "fail_reasons": [] if self.last_result is None else self.last_result.fail_reasons,
+            "failure_mode": self.failure_mode_var.get(),
             "battery_v": self.battery_v,
             "reference_calibration_mv": (
                 None if self.reference_calibration is None else self.reference_calibration.mean_mv
