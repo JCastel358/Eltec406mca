@@ -5,9 +5,10 @@ The tester apps use the LabJack T7-Pro through the `labjack.ljm` Python package
 and include a simulator mode, so the operator flow and analysis can be exercised
 without hardware connected.
 
-The repo holds **three versions of the same technician data-collection app** (one
-per physical test setup), the **engineer tools** used to bring up and validate new
-setups, and **per-version analysis** scripts.
+The repo holds **four versions of the same technician data-collection app** (one
+per physical test setup, plus the v4 visual refresh of the emitter rig app), the
+**engineer tools** used to bring up and validate new setups, and **per-version
+analysis** scripts.
 
 ## Repository layout
 
@@ -19,11 +20,16 @@ tech_app/                         Technician data-collection app, by version
 ├── v2_scope_verification/        Older scope-verification rig (guided lot flow)
 │   ├── eltec_406mca_scope_verification_tester.py
 │   └── Run 406MCA Scope Verification Tester.bat
-└── v3_emitter/   ← CURRENT       LabJack-driven emitter rig, no AM502 (unity-gain buffer)
-    ├── eltec_406mca_emitter_tester.py
+├── v3_emitter/                   LabJack-driven emitter rig, no AM502 (unity-gain buffer)
+│   ├── eltec_406mca_emitter_tester.py
+│   ├── Run 406MCA Emitter Tester.bat
+│   ├── Create Desktop Shortcut.ps1
+│   └── assets/README.txt
+└── v4_emitter/   ← CURRENT       Same emitter rig + measurement engine as v3, with the
+    ├── eltec_406mca_emitter_tester.py   Eltec-branded animated UI (eltecinstruments.com look)
     ├── Run 406MCA Emitter Tester.bat
     ├── Create Desktop Shortcut.ps1
-    └── assets/README.txt
+    └── assets/README.txt         (optional brand fonts go in assets\fonts\)
 
 engineer_tools/                   Engineer setup / bring-up tools (live signal monitor)
 ├── eltec_406mca_signal_monitor.py
@@ -34,13 +40,14 @@ analysis/                         Analysis, by app version
 ├── v1_single_sensor/            analyze_406mca_snr_results.py, test_406mca_analysis.py
 ├── v2_scope_verification/       dataAnalysis.py, disagreementAnalysis.py
 ├── v3_emitter/                  analyze_emitter_results.py + Run Emitter Analysis.bat
+├── v4_emitter/                  analyze_emitter_results.py + Run Emitter Analysis.bat (v4 data)
 └── reports/                     Reference / generated documents (buffer + SNR write-ups)
 
 assets/eltec_logo.png            Shared logo used by the apps
 ```
 
 `eltec_406mca_tester.py` (v1) doubles as the **single source of truth for the
-signal math and the LabJack device wrapper**; the v3 emitter tester and both
+signal math and the LabJack device wrapper**; the v3/v4 emitter testers and both
 engineer tools import from it, so it is kept alongside the other versions rather
 than deprecated.
 
@@ -55,7 +62,10 @@ C:\Users\<user>\Documents\Eltec_406MCA_Test_Results\
 ├── v2_scope_verification\
 │   ├── 406mca_scope_verification_lot_<lot>.csv
 │   ├── autosave\  waveform_snapshots\  analysis\
-└── v3_emitter\
+├── v3_emitter\
+│   ├── 406mca_emitter_lot_<batch>.csv
+│   ├── autosave\  waveform_snapshots\  analysis\
+└── v4_emitter\
     ├── 406mca_emitter_lot_<batch>.csv
     ├── autosave\  waveform_snapshots\  analysis\
 ```
@@ -64,7 +74,85 @@ Each app creates its subfolder automatically on first save.
 
 ---
 
-## v3 – Emitter Tester (current, technician-friendly)
+## v4 – Emitter Tester (current, visual refresh)
+
+`tech_app/v4_emitter/eltec_406mca_emitter_tester.py` is the **same rig, wiring,
+guided flow, measurement engine, and CSV schema as v3** with a complete visual
+overhaul styled after [eltecinstruments.com](https://eltecinstruments.com/):
+
+- Eltec-blue gradient app bar with the logo badge, an animated signal-trace
+  line, and a live battery gauge pill (click it to re-check the 9V supply).
+- Numbered step rail (`01 / 02 / 03`) with animated check-offs and connectors.
+- Rounded soft-shadow cards with the Eltec technical-gradient accent strip,
+  hover-animated rounded buttons, and an animated waveform toggle switch.
+- Animated PASS/FAIL banner, count-up result tiles, and a scanning progress
+  bar while a measurement runs.
+- Dark navy oscilloscope panel (grid + glow traces + sweep beam) for the live
+  AIN0/AIN2 view, with monospace technical readouts.
+
+Optional: drop `Poppins`/`Manrope`/`JetBrains Mono` `.ttf` files into
+`tech_app\v4_emitter\assets\fonts\` and the app loads them privately at startup
+for an even closer match to the website type; otherwise it falls back to
+Segoe UI / Consolas automatically (see `assets\README.txt`).
+
+### Capture modes (v4 speed-up)
+
+v3 needs 45-80 chopping cycles (4.5-8 s) per sensor because its stability rule
+compares two 20-cycle averages. v4 adds a margin-based early exit plus shorter
+DC reads (offset 24x3 ms instead of 80x10 ms; the battery check is reused when
+under 30 s old). The **Capture mode** selector under *Advanced options* picks:
+
+- **Fast (early exit)** — stops as soon as the waveform is stable over two
+  6-cycle windows AND every metric is decisively clear of its limit
+  (sensitivity ≥1.5x/≤0.5x the minimum, polarity confidence ≥1.5x threshold,
+  SNR ≥2x/≤0.5x the gate), confirmed on two consecutive cycles. Clear sensors
+  decide in ~1.5-2 s; marginal ones keep capturing up to a 30-cycle cap.
+- **Validation (default)** — runs the full v3-length capture AND logs what
+  Fast would have decided to the `fast_*` CSV columns plus a `fast_match`
+  YES/NO. Run production batches in this mode first; the batch summary shows
+  a "FAST PATH n/m MATCH" chip. Switch to Fast only after mismatch-free runs.
+- **Full (v3 timing)** — exact v3 behavior.
+
+The `FAST_*` constants at the top of the tester set the windows and decision
+margins; tune them from validation-mode data. New CSV columns: `capture_mode,
+capture_cycles, capture_seconds, fast_stop_cycle, fast_sensitivity_mv,
+fast_polarity, fast_pass_fail, fast_match, data_source` (older batch CSVs keep
+their original columns automatically).
+
+### "Is everything plugged in?" guards (v4)
+
+v3 silently switched to simulator mode when no T7 was found, so a technician
+could unknowingly record synthetic numbers (battery pinned at 8.8 V). v4:
+
+- **Simulator is explicit opt-in** (Advanced options), shows an amber
+  **SIMULATOR** badge in the header, marks the result detail line
+  "SIMULATED DATA", and tags CSV rows `data_source=simulator`.
+- **No T7 detected** — battery shows `--` and Measure explains to plug in the
+  LabJack instead of running.
+- **Battery/AIN1 wiring fault** — readings outside 3.0-10.5 V (floating input,
+  missing battery clip) show a red "CHECK WIRING" pill, a red banner, and
+  block the Measure button.
+- **Sensor pre-flight** — before capturing, the DC offset must be in the
+  0.05-2.5 V plausible band; otherwise the test aborts with "No sensor
+  detected - seat the sensor in the rig" and nothing is recorded.
+- **PWM sync pre-flight** — a ~0.3 s peek at AIN2 after the PWM starts must
+  see a square wave; otherwise the test aborts naming the DIO0/AIN2 wiring.
+
+Results are logged to `…\v4_emitter\406mca_emitter_lot_<batch>.csv` (v3
+columns + the capture telemetry above). Run it with
+`Run 406MCA Emitter Tester.bat` or:
+
+```powershell
+cd C:\Users\vma\Documents\Eltec406MCATester\tech_app\v4_emitter
+python eltec_406mca_emitter_tester.py
+```
+
+`Create Desktop Shortcut.ps1` works the same as v3's and names the shortcut
+"Eltec 406MCA Emitter Tester v4".
+
+---
+
+## v3 – Emitter Tester (previous, technician-friendly)
 
 `tech_app/v3_emitter/eltec_406mca_emitter_tester.py` is the step-by-step app for
 the rig where the **LabJack drives the emitter itself** and the sensor is read
@@ -193,7 +281,11 @@ Each analyzer defaults to its version's results subfolder and writes reports int
 an `analysis\` folder there (CSV exports + a self-contained HTML report).
 
 ```powershell
-# v3 emitter (current): per-lot yield, offset/sensitivity/SNR stats, failure reasons, outliers
+# v4 emitter (current): per-lot yield, offset/sensitivity/SNR stats, failure reasons, outliers
+cd C:\Users\vma\Documents\Eltec406MCATester\analysis\v4_emitter
+python analyze_emitter_results.py                 # or: Run Emitter Analysis.bat
+
+# v3 emitter: same analysis over the v3 results folder
 cd C:\Users\vma\Documents\Eltec406MCATester\analysis\v3_emitter
 python analyze_emitter_results.py                 # or: Run Emitter Analysis.bat
 
