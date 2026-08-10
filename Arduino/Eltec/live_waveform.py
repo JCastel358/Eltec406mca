@@ -13,11 +13,11 @@ they climb, the link is dropping data (same issue the capture scripts warn
 about).
 
 Usage:
-    python live_waveform.py                     # DUT sensor (AIN0), no drive change
-    python live_waveform.py --pwm               # also turn the ESP32 PWM drive on
-    python live_waveform.py --pwm --pin 26      # retarget the gate pin first
-    python live_waveform.py --channel ref       # reference sensor (AIN1)
-    python live_waveform.py -w 8                # 8 s rolling window (default 4)
+    python3 live_waveform.py                     # DUT sensor (AIN0), no drive change
+    python3 live_waveform.py --pwm               # also turn the ESP32 PWM drive on
+    python3 live_waveform.py --pwm --pin 26      # retarget the gate pin first
+    python3 live_waveform.py --channel ref       # reference sensor (AIN1)
+    python3 live_waveform.py -w 8                # 8 s rolling window (default 4)
     add --port COM3 (or /dev/ttyUSB0) to skip auto-detection
 
 Close the plot window (or Ctrl+C) to stop - the stream and PWM are shut down

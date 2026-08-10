@@ -18,9 +18,9 @@ from tkinter import ttk
 import numpy as np
 
 
-V6_DIR = Path(__file__).resolve().parents[1]
-if str(V6_DIR) not in sys.path:
-    sys.path.insert(0, str(V6_DIR))
+CALIBRATION_DIR = Path(__file__).resolve().parents[1]
+if str(CALIBRATION_DIR) not in sys.path:
+    sys.path.insert(0, str(CALIBRATION_DIR))
 
 import eltec_406mca_esp32_tester as app  # noqa: E402
 from stability_analysis import analyze_stability, load_stability_settings  # noqa: E402
@@ -64,13 +64,16 @@ def prepared_capture(case_name: str):
         app.DEFAULT_FILTER_SETUP,
         case_name,
     )
+    dut_settings = app.dut_stability_settings(SETTINGS)
     analysis = analyze_stability(
         waveform,
         sync,
         rate,
-        SETTINGS,
+        dut_settings,
         stability_deadline_s=app.STABILITY_TIMEOUT_S,
         measurement_cycles_required=app.SENSITIVITY_MEASUREMENT_CYCLES,
+        enforce_measurement_stability=True,
+        max_measurement_attempts=app.MAX_MEASUREMENT_ATTEMPTS,
         data_source="test",
     )
     if analysis.report.measurement_complete:
@@ -83,12 +86,31 @@ def prepared_capture(case_name: str):
         waveform,
         sync,
         rate,
-        SETTINGS,
+        dut_settings,
         stability_deadline_s=app.STABILITY_TIMEOUT_S,
         measurement_cycles_required=app.SENSITIVITY_MEASUREMENT_CYCLES,
+        enforce_measurement_stability=True,
+        max_measurement_attempts=app.MAX_MEASUREMENT_ATTEMPTS,
         data_source="test",
     )
     return waveform, sync, rate, offset, analysis
+
+
+def stream_samples_for_peaks(peaks_v: list[float], *, samples_per_cycle: int = 100):
+    """Build a 10 Hz stream whose robust upper peak follows ``peaks_v``."""
+
+    waveform = [peaks_v[0] - 0.020]
+    sync = [0.0]
+    half = samples_per_cycle // 2
+    for peak in peaks_v:
+        waveform.extend([peak] * half + [peak - 0.020] * half)
+        sync.extend([1.0] * half + [0.0] * half)
+    waveform.append(peaks_v[-1])
+    sync.append(1.0)
+    return [
+        SimpleNamespace(volts=float(volts), sync=int(sync_value))
+        for volts, sync_value in zip(waveform, sync)
+    ]
 
 
 class FakeLowLevelRig(app.EmitterEsp32Rig):
@@ -152,8 +174,11 @@ class FakeLowLevelRig(app.EmitterEsp32Rig):
 
 
 class IdentityAndCsvTests(unittest.TestCase):
-    def test_v6_identity_and_result_namespace_are_isolated(self):
-        self.assertEqual(app.results_root_dir().name, "v6_esp32")
+    def test_failure_calibration_identity_and_result_namespace_are_isolated(self):
+        self.assertEqual(
+            app.results_root_dir().name,
+            "v6_1_failure_calibration",
+        )
         self.assertNotIn("capture_mode", app.CSV_FIELDS)
         self.assertNotIn("fast_match", app.CSV_FIELDS)
         self.assertIn("stabilization_seconds", app.CSV_FIELDS)
@@ -163,15 +188,22 @@ class IdentityAndCsvTests(unittest.TestCase):
         self.assertIn("reference_drift_pct", app.CSV_FIELDS)
         self.assertIn("failure_mode_tag", app.CSV_FIELDS)
         self.assertIn("failure_mode_reason", app.CSV_FIELDS)
+        self.assertIn("measurement_attempt", app.CSV_FIELDS)
+        self.assertIn("measurement_failures", app.CSV_FIELDS)
+        self.assertIn("active_stability_required_deltas", app.CSV_FIELDS)
+        self.assertIn("active_measurement_cycles_required", app.CSV_FIELDS)
         self.assertIn(app.UNSTABLE_FAILURE_MODE, app.FAILURE_MODE_CHOICES)
+        self.assertEqual(app.MAX_MEASUREMENT_ATTEMPTS, 3)
+        self.assertEqual(app.DUT_STABILITY_CONFIRMATION_DELTAS, 10)
+        self.assertEqual(app.SENSITIVITY_MEASUREMENT_CYCLES, 20)
         self.assertEqual(SETTINGS.peak_delta_threshold_mv, 0.100)
         self.assertEqual(SETTINGS.consecutive_deltas_required, 5)
 
-    def test_launcher_installation_uses_only_v6_identities(self):
-        installer = V6_DIR / "install_xubuntu_launcher.sh"
-        run_script = V6_DIR / "run_eltec_406mca_esp32_tester.sh"
+    def test_launcher_installation_uses_only_failure_calibration_identities(self):
+        installer = CALIBRATION_DIR / "install_xubuntu_launcher.sh"
+        run_script = CALIBRATION_DIR / "run_eltec_406mca_esp32_tester.sh"
         self.assertIn(
-            "eltec-406mca-esp32-v6",
+            "eltec-406mca-failure-cal-v6-1",
             run_script.read_text(encoding="utf-8"),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -198,13 +230,17 @@ class IdentityAndCsvTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            v6_menu = applications / "com.eltec.406mca-esp32-tester-v6.desktop"
-            v6_desktop = desktop / "Eltec 406MCA ESP32 Tester v6.desktop"
-            self.assertTrue(v6_menu.exists())
-            self.assertTrue(v6_desktop.exists())
+            calibration_menu = (
+                applications / "com.eltec.406mca-failure-cal-v6-1.desktop"
+            )
+            calibration_desktop = (
+                desktop / "Eltec 406MCA Failure Calibration — v6.1 Base.desktop"
+            )
+            self.assertTrue(calibration_menu.exists())
+            self.assertTrue(calibration_desktop.exists())
             self.assertIn(
-                "Name=Eltec 406MCA ESP32 Tester v6",
-                v6_menu.read_text(encoding="utf-8"),
+                "Name=Eltec 406MCA Failure Calibration — v6.1 Base",
+                calibration_menu.read_text(encoding="utf-8"),
             )
             self.assertEqual(old_menu.read_text(encoding="utf-8"), "v5 menu sentinel\n")
             self.assertEqual(
@@ -219,8 +255,8 @@ class IdentityAndCsvTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertFalse(v6_menu.exists())
-            self.assertFalse(v6_desktop.exists())
+            self.assertFalse(calibration_menu.exists())
+            self.assertFalse(calibration_desktop.exists())
             self.assertTrue(old_menu.exists())
             self.assertTrue(old_desktop.exists())
 
@@ -392,11 +428,11 @@ class IdentityAndCsvTests(unittest.TestCase):
             self.assertTrue(path.read_bytes().startswith(original))
             self.assertEqual(app.next_sensor_number_for_batch(path), 3)
 
-    def test_official_signal_math_uses_only_ten_post_stability_cycles(self):
+    def test_official_signal_math_uses_only_twenty_post_stability_cycles(self):
         waveform = [0.69]
         sync = [0.0]
-        for cycle_number in range(1, 17):
-            low = 0.60 if cycle_number <= 6 else 0.69
+        for cycle_number in range(1, 32):
+            low = 0.60 if cycle_number <= 11 else 0.69
             waveform.extend([0.70] * 50 + [low] * 50)
             sync.extend([1.0] * 50 + [0.0] * 50)
         waveform.append(0.70)
@@ -407,8 +443,10 @@ class IdentityAndCsvTests(unittest.TestCase):
             waveform_np,
             sync_np,
             1000.0,
-            SETTINGS,
-            measurement_cycles_required=10,
+            app.dut_stability_settings(SETTINGS),
+            measurement_cycles_required=app.SENSITIVITY_MEASUREMENT_CYCLES,
+            enforce_measurement_stability=True,
+            max_measurement_attempts=app.MAX_MEASUREMENT_ATTEMPTS,
         )
         metrics = app.analyze_v6_stable_measurement(
             waveform_np,
@@ -418,16 +456,16 @@ class IdentityAndCsvTests(unittest.TestCase):
             offset_v=0.695,
             input_range_v=app.WAVEFORM_INPUT_RANGE_V,
         )
-        self.assertEqual(analysis.report.stabilization_cycle, 6)
-        self.assertEqual(metrics.cycles_used, 10)
-        self.assertEqual(len(metrics.cycle_pp_mv), 10)
-        self.assertEqual(metrics.noise_cycles_used, 10)
+        self.assertEqual(analysis.report.stabilization_cycle, 11)
+        self.assertEqual(metrics.cycles_used, 20)
+        self.assertEqual(len(metrics.cycle_pp_mv), 20)
+        self.assertEqual(metrics.noise_cycles_used, 20)
         self.assertEqual(metrics.polarity, "NEGATIVE")
         self.assertAlmostEqual(metrics.sensitivity_mv, 10.0, places=6)
 
 
 class ContinuousCaptureTests(unittest.TestCase):
-    def test_stable_stream_stops_after_ten_fresh_cycles_and_drives_preview(self):
+    def test_stable_stream_stops_after_twenty_fresh_cycles_and_drives_preview(self):
         rig = FakeLowLevelRig("Known good")
         progress = []
         previews = []
@@ -440,7 +478,7 @@ class ContinuousCaptureTests(unittest.TestCase):
         )
         self.assertTrue(analysis.report.measurement_complete)
         self.assertFalse(analysis.report.timed_out)
-        self.assertEqual(len(analysis.measurement_cycles), 10)
+        self.assertEqual(len(analysis.measurement_cycles), 20)
         self.assertGreater(analysis.report.stabilization_elapsed_s, 9.0)
         self.assertGreater(len(waveform), 10000)
         self.assertEqual(len(waveform), len(sync))
@@ -450,6 +488,44 @@ class ContinuousCaptureTests(unittest.TestCase):
         self.assertLessEqual(previews[-1][0], app.STREAM_PREVIEW_MAX_SAMPLES)
         self.assertEqual(rig.stop_calls, 1)
         self.assertFalse(rig.is_streaming)
+
+    def test_production_reader_retries_with_the_same_ten_twenty_windows(self):
+        rig = FakeLowLevelRig()
+        # Attempt 1 qualifies on cycle 11, then gets kicked by cycle 16.
+        # Attempt 2 requalifies over cycles 17-26 and measures cycles 27-46.
+        peaks = [0.7000] * 15 + [0.7002] + [0.7002] * 30
+        rig._samples = stream_samples_for_peaks(peaks)
+        progress = []
+
+        waveform, sync, rate, analysis = rig.read_waveform_until_stable(
+            waveform_range_v=app.WAVEFORM_INPUT_RANGE_V,
+            settings=SETTINGS,
+            pwm_started_monotonic=time.monotonic(),
+            progress=progress.append,
+        )
+        metrics = app.analyze_v6_stable_measurement(
+            waveform,
+            sync,
+            rate,
+            analysis,
+            offset_v=0.700,
+            input_range_v=app.WAVEFORM_INPUT_RANGE_V,
+        )
+
+        self.assertTrue(analysis.report.measurement_complete)
+        self.assertEqual(analysis.report.measurement_attempt, 2)
+        self.assertEqual(analysis.report.measurement_failures, 1)
+        self.assertEqual(analysis.report.active_confirmation_count, 10)
+        self.assertEqual(analysis.report.measurement_cycles_required, 20)
+        self.assertEqual(len(analysis.measurement_cycles), 20)
+        self.assertEqual(metrics.cycles_used, 20)
+        self.assertEqual(len(metrics.cycle_pp_mv), 20)
+        self.assertEqual(
+            analysis.report.data_source,
+            "esp32_v6_1_failure_calibration",
+        )
+        self.assertTrue(any(item.report.measurement_attempt == 2 for item in progress))
+        self.assertEqual(rig.stop_calls, 1)
 
     def test_reference_stream_uses_dedicated_delta_then_five_fresh_cycles(self):
         rig = FakeLowLevelRig("Known good")
@@ -518,14 +594,14 @@ class ContinuousCaptureTests(unittest.TestCase):
     def test_streaming_accepts_stability_closing_exactly_at_twenty_seconds(self):
         rig = FakeLowLevelRig()
         rig.STREAM_CHUNK_SAMPLES = 100
-        sample_count = 22_001
+        sample_count = 23_001
         rig._samples = []
         for index in range(sample_count):
             physical_cycle = index // 100
-            if physical_cycle < 195:
+            if physical_cycle < 189:
                 peak_v = 0.700 if physical_cycle % 2 == 0 else 0.701
             else:
-                peak_v = 0.700
+                peak_v = 0.701
             rig._samples.append(
                 SimpleNamespace(
                     volts=peak_v,
@@ -540,8 +616,8 @@ class ContinuousCaptureTests(unittest.TestCase):
         )
         self.assertTrue(analysis.report.measurement_complete)
         self.assertAlmostEqual(analysis.report.stabilization_elapsed_s, 20.0)
-        self.assertEqual(analysis.report.measurement_cycle_count, 10)
-        self.assertGreater(len(waveform), 21_000)
+        self.assertEqual(analysis.report.measurement_cycle_count, 20)
+        self.assertGreater(len(waveform), 21_900)
 
     def test_integrity_error_and_cancellation_both_stop_stream(self):
         rig = FakeLowLevelRig(gap_count=1)
@@ -565,15 +641,51 @@ class ContinuousCaptureTests(unittest.TestCase):
 
 
 class ReferenceCalibrationTests(unittest.TestCase):
-    def test_five_readings_create_average_and_ten_percent_window(self):
+    def test_five_readings_create_average_and_twenty_five_percent_window(self):
         calibration = app.build_reference_calibration([98.0, 99.0, 100.0, 101.0, 102.0])
 
         self.assertAlmostEqual(calibration.mean_mv, 100.0)
-        self.assertAlmostEqual(calibration.lower_mv, 90.0)
-        self.assertAlmostEqual(calibration.upper_mv, 110.0)
-        self.assertTrue(calibration.accepts(90.0))
-        self.assertTrue(calibration.accepts(110.0))
-        self.assertFalse(calibration.accepts(89.99))
+        self.assertAlmostEqual(calibration.lower_mv, 75.0)
+        self.assertAlmostEqual(calibration.upper_mv, 125.0)
+        self.assertTrue(calibration.accepts(75.0))
+        self.assertTrue(calibration.accepts(125.0))
+        self.assertFalse(calibration.accepts(74.99))
+
+        # This spread was rejected by the former +/-10% calibration rule.
+        wider_calibration = app.build_reference_calibration(
+            [80.0, 100.0, 100.0, 100.0, 100.0]
+        )
+        self.assertAlmostEqual(wider_calibration.mean_mv, 96.0)
+
+    def test_loading_old_calibration_upgrades_ten_percent_window(self):
+        payload = app.build_reference_calibration([100.0] * 5).to_dict()
+        payload["tolerance_percent"] = 10.0
+
+        calibration = app.ReferenceCalibration.from_dict(payload)
+
+        self.assertEqual(calibration.tolerance_percent, 25.0)
+        self.assertAlmostEqual(calibration.lower_mv, 75.0)
+        self.assertAlmostEqual(calibration.upper_mv, 125.0)
+
+    def test_old_ten_percent_failure_inside_new_window_is_reenabled(self):
+        payload = app.build_reference_calibration([100.0] * 5).to_dict()
+        payload.update(
+            tolerance_percent=10.0,
+            valid=False,
+            invalidated_at="2026-07-16T12:00:00",
+            invalidation_reason="Reference was outside +/-10%.",
+            failed_reading_mv=115.0,
+        )
+
+        calibration = app.ReferenceCalibration.from_dict(payload)
+
+        self.assertTrue(calibration.valid)
+        self.assertIsNone(calibration.invalidation_reason)
+        self.assertIsNone(calibration.failed_reading_mv)
+
+        payload["failed_reading_mv"] = 126.0
+        still_invalid = app.ReferenceCalibration.from_dict(payload)
+        self.assertFalse(still_invalid.valid)
 
     def test_unrepeatable_calibration_is_rejected(self):
         with self.assertRaisesRegex(app.ReferenceCalibrationError, "not repeatable"):
@@ -590,6 +702,31 @@ class ReferenceCalibrationTests(unittest.TestCase):
         self.assertFalse(loaded.valid)
         self.assertEqual(loaded.failed_reading_mv, 80.0)
         self.assertEqual(loaded.invalidation_reason, "emitter check failed")
+
+    def test_missing_local_calibration_reads_compatible_baseline_without_copying_it(self):
+        calibration = app.build_reference_calibration([100.0] * 5)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local = Path(temp_dir) / "v6_1" / "reference.json"
+            legacy = Path(temp_dir) / "v6" / "reference.json"
+            app.save_reference_calibration(calibration, legacy)
+            missing_v6_1 = Path(temp_dir) / "v6_1_missing" / "reference.json"
+            with mock.patch.object(
+                app,
+                "reference_calibration_path",
+                return_value=local,
+            ), mock.patch.object(
+                app,
+                "v6_1_reference_calibration_path",
+                return_value=missing_v6_1,
+            ), mock.patch.object(
+                app,
+                "v6_reference_calibration_path",
+                return_value=legacy,
+            ):
+                loaded = app.load_reference_calibration()
+
+            self.assertEqual(loaded.mean_mv, 100.0)
+            self.assertFalse(local.exists())
 
     def test_reference_response_averages_exactly_five_fresh_cycles(self):
         analysis = SimpleNamespace(
@@ -711,7 +848,13 @@ class MeasurementHarness:
 
 
 class HardwareWorkflowTests(unittest.TestCase):
-    def run_hardware(self, device, *, show_live=False):
+    def run_hardware(
+        self,
+        device,
+        *,
+        show_live=False,
+        offset_plausibility_override=False,
+    ):
         harness = MeasurementHarness(device)
         result = app.EmitterTesterApp._hardware_measurement(
             harness,
@@ -723,6 +866,7 @@ class HardwareWorkflowTests(unittest.TestCase):
             show_live,
             harness.measure_token,
             lambda callback: callback(),
+            offset_plausibility_override=offset_plausibility_override,
         )
         return harness, result
 
@@ -738,12 +882,15 @@ class HardwareWorkflowTests(unittest.TestCase):
                 "offset", "pwm_on", "capture", "pwm_off",
             ],
         )
-        self.assertEqual(metrics.cycles_used, 10)
+        self.assertEqual(metrics.cycles_used, 20)
         self.assertTrue(metrics.stabilized)
         self.assertTrue(final.passed)
         self.assertEqual(offset, 0.72)
         self.assertEqual(harness.preview_count, 1)
-        self.assertEqual(harness.last_capture_report.data_source, "esp32")
+        self.assertEqual(
+            harness.last_capture_report.data_source,
+            "esp32_v6_1_failure_calibration",
+        )
         self.assertEqual(harness.last_reference_check_mv, 100.0)
 
     def test_calibration_collects_five_ain1_readings_and_saves_average(self):
@@ -767,7 +914,7 @@ class HardwareWorkflowTests(unittest.TestCase):
         save.assert_called_once_with(calibration)
 
     def test_out_of_window_reference_invalidates_gate_before_ain0(self):
-        device = FakeMeasurementDevice(reference_mv=111.0)
+        device = FakeMeasurementDevice(reference_mv=126.0)
         with mock.patch.object(app, "save_reference_calibration") as save:
             with self.assertRaisesRegex(app.ReferenceCheckFailedError, "sensor under test was not read"):
                 self.run_hardware(device)
@@ -830,7 +977,10 @@ class HardwareWorkflowTests(unittest.TestCase):
         self.assertEqual(final.polarity, "")
         self.assertFalse(metrics.stabilized)
         self.assertTrue(harness.last_capture_report.timed_out)
-        self.assertIn("did not stabilize within 20.0 s", final.fail_reasons[-1])
+        self.assertIn(
+            "could not complete 10 consecutive stable deltas within 20.0 s",
+            final.fail_reasons[-1].lower(),
+        )
 
     def test_low_battery_and_implausible_offset_block_before_pwm(self):
         low = FakeMeasurementDevice(battery=5.7)
@@ -844,6 +994,33 @@ class HardwareWorkflowTests(unittest.TestCase):
         self.assertEqual(
             missing.calls,
             ["pwm_off", "battery", "pwm_on", "reference", "pwm_off", "offset"],
+        )
+
+    def test_implausible_offset_override_is_explicit_and_recorded(self):
+        blocked = FakeMeasurementDevice(offset=3.0)
+        with self.assertRaises(app.HardwareNotReadyError):
+            self.run_hardware(blocked)
+        self.assertNotIn("capture", blocked.calls)
+
+        overridden = FakeMeasurementDevice(offset=3.0)
+        harness, (metrics, final, offset) = self.run_hardware(
+            overridden,
+            offset_plausibility_override=True,
+        )
+
+        self.assertIn("capture", overridden.calls)
+        self.assertTrue(harness.offset_plausibility_override_applied)
+        self.assertEqual(offset, 3.0)
+        self.assertEqual(metrics.offset_v, 3.0)
+        self.assertFalse(final.passed)
+        self.assertTrue(
+            any("Offset out of range" in reason for reason in final.fail_reasons)
+        )
+        self.assertTrue(
+            any(
+                event[0] == "status" and "Diagnostic override recorded" in event[2]
+                for event in harness.callback_events
+            )
         )
 
     def test_capture_exception_still_turns_pwm_off(self):
@@ -869,6 +1046,7 @@ class HardwareWorkflowTests(unittest.TestCase):
 
     def test_app_close_waits_for_capture_lock_before_serial_shutdown(self):
         events = []
+        scheduled = []
         lock = threading.Lock()
 
         class ClosingDevice:
@@ -880,31 +1058,188 @@ class HardwareWorkflowTests(unittest.TestCase):
                 events.append("close")
 
         harness = SimpleNamespace(
+            closing=False,
             measure_token=4,
             animator=SimpleNamespace(cancel_all=lambda: events.append("cancel")),
+            status_var=SimpleNamespace(set=lambda value: events.append(("status", value))),
+            evidence_saving=True,
             hardware_lock=lock,
             device=ClosingDevice(),
+            last_result=None,
+            result_saved=True,
+            after=lambda delay, callback: scheduled.append((delay, callback)),
             destroy=lambda: events.append("destroy"),
         )
-        lock.acquire()
-        closing = threading.Thread(
-            target=app.EmitterTesterApp.on_close,
-            args=(harness,),
+        harness._finish_close_when_hardware_idle = lambda: (
+            app.EmitterTesterApp._finish_close_when_hardware_idle(harness)
         )
-        closing.start()
-        time.sleep(0.02)
-        self.assertTrue(closing.is_alive())
-        self.assertEqual(events, ["cancel"])
-        lock.release()
-        closing.join(timeout=1.0)
+        lock.acquire()
+        app.EmitterTesterApp.on_close(harness)
 
-        self.assertFalse(closing.is_alive())
-        self.assertTrue(harness.device.assert_locked)
-        self.assertEqual(events, ["cancel", "pwm_off", "close", "destroy"])
+        self.assertTrue(harness.closing)
         self.assertEqual(harness.measure_token, 5)
+        self.assertEqual(events[0], "cancel")
+        self.assertEqual(scheduled[0][0], 50)
+        self.assertNotIn("pwm_off", events)
+
+        harness.evidence_saving = False
+        scheduled.pop(0)[1]()
+        self.assertEqual(scheduled[0][0], 50)
+        self.assertNotIn("pwm_off", events)
+
+        lock.release()
+        scheduled.pop(0)[1]()
+
+        self.assertTrue(harness.device.assert_locked)
+        self.assertEqual(events[-3:], ["pwm_off", "close", "destroy"])
+        self.assertEqual(scheduled, [])
+
+    def test_close_refuses_to_lose_unsaved_review_or_incomplete_evidence(self):
+        events = []
+        initial = SimpleNamespace(
+            closing=False,
+            last_result=object(),
+            result_saved=False,
+            autosave_error="disk full",
+            write_autosave=lambda _stage: False,
+        )
+        with mock.patch.object(app.messagebox, "showerror") as showerror:
+            app.EmitterTesterApp.on_close(initial)
+        self.assertFalse(initial.closing)
+        showerror.assert_called_once()
+
+        scheduled = []
+        evidence = SimpleNamespace(
+            closing=True,
+            evidence_saving=False,
+            last_result=object(),
+            result_saved=False,
+            last_run_evidence_error="artifact write failed",
+            _ensure_current_run_evidence=lambda: False,
+            after=lambda delay, callback: scheduled.append((delay, callback)),
+            _drain_ui_queue=lambda: None,
+            hardware_lock=threading.Lock(),
+        )
+        with mock.patch.object(app.messagebox, "showerror") as showerror:
+            app.EmitterTesterApp._finish_close_when_hardware_idle(evidence)
+        self.assertFalse(evidence.closing)
+        self.assertEqual(scheduled[0][0], 20)
+        showerror.assert_called_once()
 
 
 class SimulatorAndGuiTests(unittest.TestCase):
+    def test_worker_callbacks_are_queued_until_the_ui_poller_runs(self):
+        import queue
+
+        events = []
+        scheduled = []
+        harness = SimpleNamespace(
+            closing=False,
+            ui_queue=queue.Queue(),
+            after=lambda delay, callback: scheduled.append((delay, callback)),
+        )
+        harness._drain_ui_queue = lambda: app.EmitterTesterApp._drain_ui_queue(
+            harness
+        )
+        callback = lambda: events.append("callback")
+
+        app.EmitterTesterApp._post(harness, callback)
+        self.assertEqual(events, [])
+        self.assertEqual(harness.ui_queue.qsize(), 1)
+
+        app.EmitterTesterApp._drain_ui_queue(harness)
+        self.assertEqual(events, ["callback"])
+        self.assertEqual(scheduled[0][0], 20)
+
+        harness.status_var = SimpleNamespace(set=lambda value: events.append(value))
+        harness.ui_queue.put(lambda: (_ for _ in ()).throw(ValueError("bad callback")))
+        harness.ui_queue.put(lambda: events.append("callback after error"))
+        app.EmitterTesterApp._drain_ui_queue(harness)
+        self.assertIn("Internal completion callback failed: bad callback", events)
+        self.assertIn("callback after error", events)
+        self.assertEqual(scheduled[-1][0], 20)
+
+        harness.closing = True
+        app.EmitterTesterApp._post(harness, lambda: events.append("late callback"))
+        app.EmitterTesterApp._drain_ui_queue(harness)
+        self.assertNotIn("late callback", events)
+        self.assertTrue(harness.ui_queue.empty())
+
+    def test_simulator_mode_is_frozen_for_an_active_batch(self):
+        harness = SimpleNamespace(
+            batch_active=False,
+            batch_is_synthetic=False,
+            simulator_var=SimpleNamespace(get=lambda: True),
+        )
+        self.assertTrue(app.EmitterTesterApp.simulator_mode(harness))
+
+        harness.batch_active = True
+        self.assertFalse(app.EmitterTesterApp.simulator_mode(harness))
+
+        harness.batch_is_synthetic = True
+        harness.simulator_var = SimpleNamespace(get=lambda: False)
+        self.assertTrue(app.EmitterTesterApp.simulator_mode(harness))
+
+    def test_stale_or_synthetic_battery_reading_cannot_authorize_hardware(self):
+        harness = SimpleNamespace(
+            batch_active=True,
+            batch_is_synthetic=False,
+            simulator_var=SimpleNamespace(get=lambda: False),
+            battery_request_generation=2,
+            battery_checking=True,
+            battery_v=None,
+            battery_state="unknown",
+            battery_read_time=None,
+            battery_read_is_synthetic=None,
+        )
+        harness.simulator_mode = lambda: app.EmitterTesterApp.simulator_mode(harness)
+        app.EmitterTesterApp.on_battery_update(
+            harness,
+            app.SIM_BATTERY_OK_V,
+            request_generation=1,
+            source_is_synthetic=True,
+        )
+        self.assertIsNone(harness.battery_v)
+
+        harness.battery_v = app.SIM_BATTERY_OK_V
+        harness.battery_state = "ok"
+        harness.battery_read_time = time.monotonic()
+        harness.battery_read_is_synthetic = True
+        self.assertIsNone(app.EmitterTesterApp._fresh_battery_reading(harness))
+
+    def test_run_measurement_blocks_replacing_an_unsaved_run(self):
+        prior_result = app.FinalResult(
+            passed=False,
+            offset_v=0.7,
+            sensitivity_mv=1.0,
+            polarity=app.POSITIVE_POLARITY,
+            fail_reasons=["Sensitivity too low."],
+            warnings=[],
+            waveform_metrics=None,
+        )
+        harness = SimpleNamespace(
+            busy=False,
+            measuring=False,
+            specimen_id_var=SimpleNamespace(get=lambda: "S-UNSAVED-1"),
+            last_result=prior_result,
+            result_saved=False,
+            active_run_id="RUN-UNSAVED-1",
+            measurement_run_number=7,
+        )
+
+        with mock.patch.object(app.messagebox, "showinfo") as showinfo, mock.patch.object(
+            app.threading,
+            "Thread",
+        ) as thread:
+            app.EmitterTesterApp.run_measurement(harness)
+
+        showinfo.assert_called_once()
+        self.assertEqual(showinfo.call_args.args[0], "Save this run before repeating")
+        thread.assert_not_called()
+        self.assertIs(harness.last_result, prior_result)
+        self.assertEqual(harness.active_run_id, "RUN-UNSAVED-1")
+        self.assertEqual(harness.measurement_run_number, 7)
+
     def test_live_toggle_rerenders_an_active_measurement(self):
         renders = []
         harness = SimpleNamespace(
@@ -944,7 +1279,7 @@ class SimulatorAndGuiTests(unittest.TestCase):
         self.assertTrue(metrics.stabilized)
         self.assertTrue(final.passed)
         self.assertGreater(harness.last_capture_report.stabilization_seconds, 9.0)
-        self.assertEqual(harness.last_capture_report.measurement_cycles, 10)
+        self.assertEqual(harness.last_capture_report.measurement_cycles, 20)
 
         timeout_harness = MeasurementHarness(FakeMeasurementDevice())
         _metrics, timeout, _offset = app.EmitterTesterApp._simulate_measurement(
@@ -978,7 +1313,7 @@ class SimulatorAndGuiTests(unittest.TestCase):
                 self.assertTrue(metrics.stabilized)
                 self.assertTrue(harness.last_capture_report.stabilized)
                 self.assertFalse(harness.last_capture_report.timed_out)
-                self.assertEqual(harness.last_capture_report.measurement_cycles, 10)
+                self.assertEqual(harness.last_capture_report.measurement_cycles, 20)
                 self.assertIsNotNone(final.sensitivity_mv)
                 self.assertTrue(final.polarity)
                 self.assertFalse(final.passed)
@@ -991,7 +1326,7 @@ class SimulatorAndGuiTests(unittest.TestCase):
                 root = app.EmitterTesterApp()
                 root.withdraw()
                 root.update_idletasks()
-                self.assertEqual(root.title(), "Eltec 406MCA ESP32 Emitter Tester v6")
+                self.assertEqual(root.title(), app.CALIBRATION_DISPLAY_NAME)
                 self.assertIsNone(root.stability_config_error)
                 self.assertIsNotNone(root.stability_settings)
                 self.assertFalse(root.show_details_var.get())

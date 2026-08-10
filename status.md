@@ -1,6 +1,6 @@
 # Eltec 406MCA ESP32/Xubuntu status
 
-Last updated: 2026-07-16
+Last updated: 2026-08-05
 
 ## Executive summary
 
@@ -15,9 +15,43 @@ soon as PWM turns on, uses the same robust-peak stability rule as the DUT, and
 then averages five fresh cycles. An invalid reference blocks AIN0 entirely and
 invalidates the calibration until the emitter/reference unit is recalibrated.
 
-The latest real hardware calibration is complete and valid. The v6 automated
-suite passes all 79 tests. V5 remains available as historical context and has
-not been overwritten.
+The active production build remains v6. The separate experimental v6.1 build
+described below is available for evaluating a stricter retry policy without
+changing v6 or mixing its results. In the latest headless run, the v6 suite
+discovered 80 tests (77 passed and 3 display-only tests skipped), while v6.1
+discovered 93 tests (90 passed and 3 display-only tests skipped). V5 remains
+available as historical context and has not been overwritten.
+
+The reference calibration values documented later in this file are historical.
+On the latest filesystem check, neither the v6 nor v6.1 reference calibration
+JSON existed, so the production workflow correctly requires calibration before
+it will record another DUT.
+
+## Experimental v6.1 stability policy
+
+The isolated evaluation build is in `tech_app/v6_1_esp32/`. Its DUT policy is:
+
+| Attempt | Qualification | Official measurement | Over-threshold delta during measurement |
+| --- | ---: | ---: | --- |
+| 1 | 10 consecutive deltas `<= 0.100 mV` | 20 stable cycles | Discard and start attempt 2 |
+| 2 | 10 consecutive deltas `<= 0.100 mV` | 20 stable cycles | Discard and start attempt 3 |
+| 3 | 10 consecutive deltas `<= 0.100 mV` | 20 stable cycles | Record `Unstable - Unstable` |
+
+Every official measurement cycle must keep its robust-peak delta within the
+threshold. A kick discards the entire partial measurement window. All three
+attempts use the same 10/20 lengths. The existing 20-second deadline
+governs each qualification/requalification decision; a measurement window that
+starts after timely qualification may finish after the deadline.
+
+V6.1 keeps reference-unit behavior unchanged. It uses its own results root,
+CSV telemetry, launcher identity, and state log. If its own reference
+calibration is absent, it can read the compatible v6 calibration as a read-only
+fallback; any later calibration or invalidation writes only to v6.1.
+
+The v6.1 result details and CSV report the final attempt, kicked-window count,
+active qualification length, and active measurement length. A third kick or a
+qualification deadline records a normal unstable sensor FAIL with the standard
+failure mode rather than a rig error.
 
 ## Current production sequence
 
@@ -131,11 +165,19 @@ PWM on -> uninterrupted AIN0/sync stream -> robust-peak stability
   Saving it records the official batch row and automatically preserves a PNG
   plus full-sample and per-cycle CSV diagnostics.
 
-The `0.100 mV` stability threshold, inherited sensitivity limits, and SNR limit
-still require broader production qualification with representative known-good
-and known-bad parts.
+The `0.100 mV` stability threshold and SNR limit still require broader
+production qualification with representative known-good and known-bad parts.
+V6.1 now preserves the raw new-fixture sensitivity and also reports a
+legacy-equivalent value using the provisional paired-fixture factor `1.582`.
+For the default `-284 filter + extra -6 + blackened tube` setup, raw sensitivity
+below `2.43 mV` fails, `2.43-2.63 mV` inclusive is recorded as
+`RETEST / QUARANTINE`, and above `2.63 mV` passes the sensitivity gate. The
+legacy filter-specific minimum remains the center of the same `+/-0.10 mV` raw
+guard-band policy for the other selectable setups. Offset is not scaled, and
+all other gates remain active and unchanged. The sensitivity policy remains
+provisional pending repeated known-low and borderline sensor evidence.
 
-## Latest real hardware results
+## Historical calibration and latest live hardware results
 
 Connected rig during the latest work:
 
@@ -154,7 +196,8 @@ Adaptive schema-v2 calibration readings:
 5: 5.3530 mV, stable at 0.689 s
 ```
 
-Saved calibration:
+Historically saved calibration (the JSON was not present on the latest disk
+check):
 
 - baseline average: `5.3432 mV`;
 - allowed lower limit: `4.8089 mV`;
@@ -166,6 +209,25 @@ An independent cold-start adaptive reference check then stabilized at
 `3.151 s`, averaged `5.3344 mV` across its five fresh cycles, drifted only
 `-0.165%` from baseline, and passed the gate. No AIN0 read was performed during
 that verification.
+
+Latest non-recording v6.1 check on 2026-07-16:
+
+- ESP32 port: `/dev/ttyUSB0`;
+- battery: `6.262 V`;
+- live AIN1 reference: `5.6704 mV`, inside the historical
+  `4.8089-5.8775 mV` range;
+- after the all-attempts 10/20 update, the DUT offset was `0.6439 V`;
+- the live reader explicitly reported qualification `10` and measurement `20`;
+- the DUT qualified and completed attempt 1 with 20/20 measurement cycles;
+- PWM-on capture time was `7.423 s`, and the final observed delta was
+  `0.0170 mV`;
+- no batch row or calibration file was created or changed, and PWM was forced
+  off after every capture.
+
+The loaded part did not reproduce a measurement-window kick during that run.
+Synthetic full-stream integration tests exercise attempt 2 with the same 10/20
+lengths, and deterministic state-machine tests cover attempt 3 and the
+third-kick unstable verdict.
 
 ## Results and diagnostics
 
@@ -225,7 +287,8 @@ Latest verification:
 python3 -m unittest discover -s tech_app/v6_esp32/tests -v
 ```
 
-Result: all **79 v6 tests pass**, including:
+Latest headless result: **80 v6 tests discovered; 77 passed and 3 display-only
+GUI tests skipped**, including:
 
 - AIN1 firmware-channel selection;
 - reference adaptive stability and exactly five fresh averaged cycles;
@@ -242,6 +305,19 @@ Result: all **79 v6 tests pass**, including:
 
 Python compilation also passes. The last known unchanged v5 suite contains 31
 passing tests, but v5 was not modified as part of the latest reference/UI work.
+
+V6.1 verification:
+
+```text
+python3 -m unittest discover -s tech_app/v6_1_esp32/tests -v
+```
+
+Latest headless result: **93 v6.1 tests discovered; 90 passed and 3 display-only
+GUI tests skipped**. The suite includes exact first-, second-, and third-attempt
+cycle selection; retry deadline behavior; immediate unstable classification on
+the third measurement kick; a direct streamed attempt-2 capture; calibrated
+sensitivity factor/boundary/CSV behavior; results/launcher isolation; and the
+unchanged v6 regression run described above.
 
 ## How to run v6
 
@@ -270,6 +346,26 @@ V6 launcher identities are isolated from v5:
 - desktop entry: `~/Desktop/Eltec 406MCA ESP32 Tester v6.desktop`;
 - launcher log: `~/.local/state/eltec-406mca-esp32-v6/launcher.log`.
 
+## How to run experimental v6.1
+
+From the repository root:
+
+```bash
+./tech_app/v6_1_esp32/run_eltec_406mca_esp32_tester.sh
+```
+
+Its optional launcher installer creates only the v6.1 identities:
+
+```bash
+./tech_app/v6_1_esp32/install_xubuntu_launcher.sh
+```
+
+- display name: `Eltec 406MCA ESP32 Tester v6.1`;
+- menu ID: `com.eltec.406mca-esp32-tester-v6-1.desktop`;
+- desktop entry: `~/Desktop/Eltec 406MCA ESP32 Tester v6.1.desktop`;
+- launcher log: `~/.local/state/eltec-406mca-esp32-v6-1/launcher.log`;
+- results: `~/Documents/Eltec_406MCA_Test_Results/v6_1_esp32/`.
+
 ## Important files
 
 - `tech_app/v6_esp32/eltec_406mca_esp32_tester.py` — production GUI,
@@ -286,6 +382,8 @@ V6 launcher identities are isolated from v5:
   operator instructions.
 - `tech_app/v6_esp32/tests/` — backend, stability, calibration, workflow, CSV,
   and GUI tests.
+- `tech_app/v6_1_esp32/` — isolated v6.1 evaluation build with the stricter
+  three-attempt DUT policy, documentation, launchers, and tests.
 - `Arduino/Eltec/Eltec.ino` — v1.7 firmware.
 - `Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md` — current fixture wiring.
 - `Arduino/Eltec/ESP32_memory.md` — detailed firmware/rig notes.
@@ -304,19 +402,16 @@ V6 launcher identities are isolated from v5:
 5. The reference check is deliberately strict: an out-of-window or unstable
    reference invalidates calibration and requires emitter inspection plus a
    fresh five-reading calibration.
+6. Evaluate v6.1 on representative intermittent parts before deciding whether
+   to promote its three identical 10/20 attempts into production v6.
 
 ## Working-tree state
 
-The work is local and uncommitted. Current expected status includes:
+The v6.1 work is local and uncommitted. Current expected status includes the
+new/untracked `tech_app/v6_1_esp32/` directory and this modified `status.md`.
+The pre-existing deletion of `prompt.txt` is unrelated user work and must be
+preserved. There is no tracked diff under `tech_app/v6_esp32/` from the v6.1
+change.
 
-- modified `Arduino/Eltec/Eltec.ino`;
-- modified `Arduino/Eltec/esp32_rig_readout.py`;
-- modified `Arduino/Eltec/ESP32_memory.md`;
-- new `Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md`;
-- new/untracked `tech_app/v5_esp32/`;
-- new/untracked `tech_app/v6_esp32/`;
-- new/untracked `status.md`.
-
-Preserve unrelated user changes. Do not replace or reset the historical v4/v5
-applications. In particular, `tech_app/v6_esp32/` is currently untracked by
-Git, so a fresh Codex session should not assume these files are committed.
+Preserve unrelated user changes. Do not replace or reset the historical v4,
+v5, or active v6 applications.

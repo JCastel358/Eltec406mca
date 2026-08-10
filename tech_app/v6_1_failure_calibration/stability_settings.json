@@ -1,0 +1,4 @@
+{
+  "peak_delta_threshold_mv": 0.100,
+  "consecutive_deltas_required": 5
+}

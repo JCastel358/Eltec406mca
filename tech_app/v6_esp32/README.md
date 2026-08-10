@@ -14,7 +14,7 @@ card simply shows whether the reference unit is calibrated. With a
 known-good/new emitter installed, press **Calibrate reference unit**. For each
 reading the app starts streaming immediately when PWM turns on; there is no
 fixed warm-up delay. It requires five consecutive cycle-to-cycle robust-peak
-deltas at or below `0.100 mV`, then averages the peak-to-peak response of the
+deltas at or below `0.250 mV`, then averages the peak-to-peak response of the
 next five complete cycles. Five of those stable reference readings are averaged
 and saved here:
 

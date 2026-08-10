@@ -16,19 +16,20 @@ Install (both platforms):
     pip install pyserial          # or on Ubuntu: sudo apt install python3-serial
 
 Usage:
-    python esp32_rig_readout.py ports                 # list serial ports
-    python esp32_rig_readout.py bat                   # battery voltage
-    python esp32_rig_readout.py offset                # sensor DC offset (PWM off)
-    python esp32_rig_readout.py pwm on|off            # emitter drive
-    python esp32_rig_readout.py stream -s 5 -o cap.csv  # raw capture to CSV
-    python esp32_rig_readout.py ref --set-baseline    # record the reference
+    python3 esp32_rig_readout.py ports                 # list serial ports
+    python3 esp32_rig_readout.py bat                   # battery voltage
+    python3 esp32_rig_readout.py offset                # sensor DC offset (PWM off)
+    python3 esp32_rig_readout.py pwm on|off            # emitter drive
+    python3 esp32_rig_readout.py stream -s 5 -o cap.csv  # raw capture to CSV
+    python3 esp32_rig_readout.py ref --set-baseline    # record the reference
                                                       # sensor's known-good level
-    python esp32_rig_readout.py ref                   # re-measure it and compare
+    python3 esp32_rig_readout.py ref                   # re-measure it and compare
                                                       # (emitter health check)
-    python esp32_rig_readout.py test                  # full guided sequence:
+    python3 esp32_rig_readout.py test --skip-ref       # guided sequence without
+                                                      # optional AIN1 reference:
                                                       # battery -> offset -> PWM on
-                                                      # -> warmup -> ref check
-                                                      # -> capture -> analyze
+                                                      # -> warmup -> AIN0 capture
+                                                      # -> sensitivity analysis
     add --port COM5 (or --port /dev/ttyUSB0) to skip auto-detection
 
 Reference sensor / emitter health:
@@ -60,6 +61,21 @@ except ImportError:
 BAUD = 500000
 MIN_FIRMWARE_VERSION = (1, 7)
 
+# Installed battery-divider measurements. The upper resistor runs from
+# battery+ to the AIN7 tap; the lower resistor runs from the tap to ground.
+# Firmware v1.8+ uses this ratio natively. For v1.7 boards, the host corrects
+# the old nominal x2 result by ACTUAL/NOMINAL so readings stay accurate before
+# and after a firmware update. The 100 nF capacitor across the lower resistor
+# filters noise but does not affect the DC ratio.
+BATTERY_DIVIDER_R_TOP_OHMS = 99_700.0
+BATTERY_DIVIDER_R_BOTTOM_OHMS = 99_600.0
+BATTERY_DIVIDER_FILTER_CAPACITANCE_F = 100e-9
+BATTERY_DIVIDER_RATIO = (
+    BATTERY_DIVIDER_R_TOP_OHMS + BATTERY_DIVIDER_R_BOTTOM_OHMS
+) / BATTERY_DIVIDER_R_BOTTOM_OHMS
+LEGACY_FIRMWARE_BATTERY_DIVIDER_RATIO = 2.0
+CALIBRATED_DIVIDER_FIRMWARE_VERSION = (1, 8)
+
 # Mirror the tester app's rig constants (eltec_406mca_emitter_tester.py).
 SAMPLE_RATE_HZ = 1000.0
 PWM_FREQUENCY_HZ = 10.0
@@ -71,7 +87,8 @@ DEFAULT_CAPTURE_S = 8.0
 #
 # HARDWARE CAVEAT: the firmware runs the ADS1256 with its input buffer ON,
 # which limits the linear input range to AVDD - 2 V = 3.0 V. Through the
-# 100k/100k divider a fully charged SLA (~6.4 V) puts ~3.2 V on AIN7 -
+# measured 99.7k/99.6k divider a fully charged SLA (~6.4 V) puts ~3.2 V
+# on AIN7 -
 # slightly over the limit - so readings at the very top of the range compress
 # toward ~6.0-6.2 V. Readings below ~6.0 V (pin < 3.0 V) are accurate. A ~4:1
 # divider (300k/100k, BATTERY_DIVIDER_RATIO = 4.0 in Eltec.ino) removes the
@@ -140,6 +157,7 @@ class Esp32Rig:
     def __init__(self, port: str):
         self.port_name = port
         self.ser: serial.Serial | None = None
+        self.firmware_version: tuple[int, int] | None = None
 
     # -- lifecycle -------------------------------------------------------- #
     def connect(self) -> None:
@@ -166,6 +184,7 @@ class Esp32Rig:
                 "Older builds may repeat conversions or leave the ADS1256 at "
                 "its reset sample rate, so their measurements are not safe to use."
             )
+        self.firmware_version = version
 
     def close(self, disable_pwm: bool = True) -> None:
         # disable_pwm=False skips the explicit PWM,OFF on exit. NOTE (verified
@@ -211,7 +230,18 @@ class Esp32Rig:
     # -- LabJack-equivalent operations -------------------------------------- #
     def read_battery_voltage(self) -> float:
         reply = self._command("BAT?", "BAT,")            # firmware does the
-        return float(reply.split(",")[1])                # median + divider math
+        volts = float(reply.split(",")[1])               # median + divider math
+        if (
+            self.firmware_version is not None
+            and self.firmware_version < CALIBRATED_DIVIDER_FIRMWARE_VERSION
+        ):
+            # v1.7 used a nominal 2.0 ratio. Correct its already-scaled result;
+            # v1.8+ uses the measured values in firmware, so do not scale twice.
+            volts *= (
+                BATTERY_DIVIDER_RATIO
+                / LEGACY_FIRMWARE_BATTERY_DIVIDER_RATIO
+            )
+        return volts
 
     def read_offset_voltage(self) -> float:
         reply = self._command("OFFSET?", "OFFSET,")
@@ -530,13 +560,17 @@ def cmd_test(rig: Esp32Rig, args) -> None:
     rig.enable_emitter_pwm()
     time.sleep(EMITTER_WARMUP_S)
 
-    print(f"4/6  Reference sensor check - emitter health ({REF_CAPTURE_S:g} s on AIN1)")
-    ref_r = analyze(rig.capture(REF_CAPTURE_S, channel="ref"))
-    if "error" in ref_r:
-        print(f"     {ref_r['error']}")
+    if args.skip_ref:
+        print("4/6  Reference sensor check - SKIPPED (AIN1 not connected)")
     else:
-        print(f"     reference = {ref_r['sensitivity_mv']:.2f} mV pk-pk")
-        report_ref_health(ref_r["sensitivity_mv"])
+        print(f"4/6  Reference sensor check - emitter health "
+              f"({REF_CAPTURE_S:g} s on AIN1)")
+        ref_r = analyze(rig.capture(REF_CAPTURE_S, channel="ref"))
+        if "error" in ref_r:
+            print(f"     {ref_r['error']}")
+        else:
+            print(f"     reference = {ref_r['sensitivity_mv']:.2f} mV pk-pk")
+            report_ref_health(ref_r["sensitivity_mv"])
 
     print(f"5/6  Capturing {args.seconds:g} s of DUT waveform (AIN0)")
     samples = rig.capture(args.seconds)
@@ -593,6 +627,8 @@ def main() -> None:
     p = sub.add_parser("test", help="full battery -> offset -> ref -> capture sequence")
     p.add_argument("-s", "--seconds", type=float, default=DEFAULT_CAPTURE_S)
     p.add_argument("-o", "--output", help="save samples to this CSV file")
+    p.add_argument("--skip-ref", "--no-ref", dest="skip_ref", action="store_true",
+                   help="skip the optional AIN1 reference-sensor check")
 
     args = ap.parse_args()
     if args.command == "ports":

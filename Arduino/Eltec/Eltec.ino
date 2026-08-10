@@ -12,10 +12,11 @@
     AIN0  buffered sensor, +/-1 V   ADS1256 AIN0 (single-ended vs AINCOM),
           (x10 range), 1000 Hz        PGA = 2 (+/-2.5 V full scale), streamed
           stream                      at 1000 SPS
-    AIN1  battery via 100k/100k     ADS1256 AIN7, PGA = 1 (+/-5 V full scale).
-          divider, +/-10 V range      Battery is a 6 V 4.5 Ah SLA powering the
+    AIN1  battery via measured       ADS1256 AIN7, PGA = 1 (+/-5 V full scale).
+          99.7k/99.6k divider,         Battery is a 6 V 4.5 Ah SLA powering the
+          +/-10 V range
                                       whole rig (sensors, buffer, emitter +
-                                      MOSFET module): Vbat/2 ~= 3.0-3.2 V.
+                                      MOSFET module): Vbat/2.001004 ~= 3.0-3.2 V.
                                       CAVEAT: that is right at the buffered-
                                       input linear limit (AVDD - 2 V = 3.0 V),
                                       so BAT? compresses slightly near full
@@ -46,8 +47,12 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v1.7
-                        (v1.4 = gate confirmed on GPIO25/D25 - the perf board
+    IDN?             -> ELTEC-ESP32-ADS1256,v1.8
+                        (v1.8 = battery scaling uses the measured divider:
+                         99.7 kOhm upper / 99.6 kOhm lower. The 100 nF filter
+                         capacitor across the lower resistor does not change
+                         the DC divider ratio. v1.4 = gate confirmed on
+                         GPIO25/D25 - the perf board
                          is soldered to D25, earlier docs saying D26 were
                          wrong - plus GATE? pad readback and RTC-hold/DAC
                          release at boot. v1.5 = PIN,2 allowed: GPIO2 is the
@@ -124,7 +129,14 @@ static const int OFFSET_READ_SAMPLES = 24;     // OFFSET_READ_SAMPLES
 static const int OFFSET_READ_DELAY_MS = 3;     // OFFSET_READ_DELAY_S
 static const int BATTERY_READ_SAMPLES = 12;    // BATTERY_READ_SAMPLES
 static const int BATTERY_READ_DELAY_MS = 5;    // BATTERY_READ_DELAY_S
-static const float BATTERY_DIVIDER_RATIO = 2.0f;  // 100k/100k divider
+// Measured installed divider values. R_TOP runs from battery+ to the AIN7 tap;
+// R_BOTTOM runs from the tap to ground. The 100 nF capacitor in parallel with
+// R_BOTTOM filters noise but has no effect on the steady-state voltage ratio.
+static const float BATTERY_DIVIDER_R_TOP_OHMS = 99700.0f;
+static const float BATTERY_DIVIDER_R_BOTTOM_OHMS = 99600.0f;
+static const float BATTERY_DIVIDER_RATIO =
+    (BATTERY_DIVIDER_R_TOP_OHMS + BATTERY_DIVIDER_R_BOTTOM_OHMS) /
+    BATTERY_DIVIDER_R_BOTTOM_OHMS;  // 2.001004016...
 
 // ------------------------------------------------- ADS1256 setup ----------
 static const float ADS_VREF = 2.5f;            // on-board reference of the module
@@ -356,7 +368,7 @@ static void IRAM_ATTR onAdsDrdyFalling() {
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v1.7");
+    Serial.println("ELTEC-ESP32-ADS1256,v1.8");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
     Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d\n",

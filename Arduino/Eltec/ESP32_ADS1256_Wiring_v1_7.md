@@ -26,7 +26,7 @@ Firmware target: `esp32:esp32:esp32doit-devkit-v1`.
 |---|---|---|
 | Buffered DUT 406MCA output | ADS1256 AIN0, ground beside AIN0 | Sensor offset and chopped waveform, PGA x2 (±2.5 V) |
 | Optional fixed reference 406MCA | ADS1256 AIN1, ground beside AIN1 | `REF?` and `STREAM,START,REF`, PGA x2 |
-| 6 V SLA divider midpoint (100k/100k) | ADS1256 AIN7, ground beside AIN7 | `BAT?`, PGA x1; firmware scales the divided reading by 2 |
+| 6 V SLA divider midpoint (99.7k upper/99.6k lower, measured) | ADS1256 AIN7, ground beside AIN7 | `BAT?`, PGA x1; v1.8 firmware scales by 2.001004 |
 | ESP32 D25 | Dual-MOSFET module PWM/TRIG | Fixed 10 Hz, 50% emitter drive |
 | 6 V SLA | MOSFET module DC+/DC- | Emitter power |
 | Emitter | MOSFET module OUT+/OUT- | Chopped IR source |
@@ -54,8 +54,10 @@ changes.
 - Never apply the 6 V battery directly to an ADS1256 input. It must pass through
   the divider.
 - Never drive an ADS1256 analog input above AVDD (+5 V) or below ground.
-- The current 100k/100k divider presents about 3.0–3.2 V on AIN7. That is near
-  the buffered-input linear limit, so a full battery may read slightly low. A
+- The current measured 99.7k/99.6k divider presents about 3.0–3.2 V on AIN7.
+  A 100 nF capacitor is installed in parallel with the 99.6k lower resistor;
+  it filters the divider tap and does not change the DC scale factor. AIN7 is
+  near the buffered-input linear limit, so a full battery may read slightly low. A
   future divider change requires updating `BATTERY_DIVIDER_RATIO` in
   `Eltec.ino`.
 - Disconnect power before changing fixture wiring.

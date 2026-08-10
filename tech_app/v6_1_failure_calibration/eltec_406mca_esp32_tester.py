@@ -1,5 +1,5 @@
 """
-Eltec 406MCA ESP32 emitter tester v6 - Xubuntu production application.
+Eltec 406MCA v6.1-base failure-calibration study application.
 
 The measurement engine and guided flow come from the proven v4 LabJack tester,
 but the hardware backend is the ESP32 + ADS1256 rig used on Xubuntu:
@@ -31,13 +31,18 @@ Guided flow:
     1. Calibrate AIN1 with a known-good emitter, then enter the batch details.
     2. Place the sensor in the rig and press Enter.
     3. The app checks the AIN1 reference against its calibration before it reads
-       AIN0. If the reference is outside +/-10%, testing remains locked until
+       AIN0. If the reference is outside +/-25%, testing remains locked until
        the emitter is replaced and the reference is calibrated again.
     4. The app reads the DUT DC offset (PWM off), then turns on the emitter and
        measures sensitivity and polarity, shows the numbers and a GOOD/BAD
        polarity verdict, and turns the screen green (PASS) or red (FAIL).
        Leave a comment, capture the waveform for troubleshooting, or watch the
        live waveform while it reads.
+    5. Freeze the app prediction, preserve complete evidence, and require a
+       technician ground-truth verdict/reason review before saving.
+
+This is an experimental evidence-collection fork, not a production acceptance
+application. The v6.1 acquisition and verdict rules are intentionally frozen.
 
 Run:
     python3 eltec_406mca_esp32_tester.py
@@ -46,15 +51,18 @@ Run:
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
+import queue
 import struct
 import threading
 import time
 import tkinter as tk
+import uuid
 import zlib
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from tkinter import font as tkfont
 from tkinter import messagebox, ttk
@@ -98,6 +106,7 @@ from esp32_backend import (
 )
 from stability_analysis import (
     CycleAnalysis,
+    DEFAULT_MAX_MEASUREMENT_ATTEMPTS,
     DEFAULT_SETTINGS_PATH,
     StabilityAnalysis,
     StabilitySettings,
@@ -146,6 +155,46 @@ FAILURE_MODE_CHOICES = (
 )
 UNSTABLE_FAILURE_MODE = "Unstable - Unstable"
 
+# This fork deliberately freezes the v6.1 verdict policy while collecting
+# labels and raw evidence.  Bump the calibration schema when the exported
+# record shape changes; bump the app version for any application change.
+CALIBRATION_SCHEMA_VERSION = 1
+CALIBRATION_APP_VERSION = "v6.1-failure-calibration.4"
+CALIBRATION_RULESET_ID = "v6.1-strict-retry-10x20-snr1.5"
+CALIBRATION_DISPLAY_NAME = "Eltec 406MCA Failure Calibration — v6.1 Base"
+FROZEN_RULE_SOURCE_SHA256 = {
+    "shared_v1_verdict_engine": "be8884c597e55d2f1cc7bd5c4ec2cb3f3382bd659fd324918d713239ba6068c1",
+    "stability_analysis": "38569481911d60613344648fad83c1f26b9b0dd7bbf198afa1bae17b8bf769ef",
+    "stability_settings": "67a1c758e207f0000f880b99444ee609241e135d0784fa4894650cf81f7bc635",
+}
+GOOD_GROUND_TRUTH_MODE = "GOOD - Sensor passes"
+OTHER_GROUND_TRUTH_MODE = "OTHER - Other / engineering review"
+UNKNOWN_GROUND_TRUTH_MODE = "UNKNOWN - Not independently confirmed"
+GROUND_TRUTH_VERDICT_CHOICES = ("PASS", "FAIL", "UNSURE")
+GROUND_TRUTH_FAILURE_MODE_CHOICES = (
+    GOOD_GROUND_TRUTH_MODE,
+    *FAILURE_MODE_CHOICES,
+    OTHER_GROUND_TRUTH_MODE,
+    UNKNOWN_GROUND_TRUTH_MODE,
+)
+FAILURE_REASON_ASSESSMENT_CHOICES = (
+    "CORRECT",
+    "PARTLY CORRECT",
+    "INCORRECT",
+    "NOT APPLICABLE",
+    "UNSURE",
+)
+GROUND_TRUTH_BASIS_CHOICES = (
+    "Independent bench / scope test",
+    "Known failure history",
+    "Known-good control",
+    "Visual / physical inspection",
+    "Engineering adjudication",
+    "Other documented evidence",
+    "Not independently confirmed",
+)
+REVIEW_CONFIDENCE_CHOICES = ("HIGH", "MEDIUM", "LOW", "UNSURE")
+
 # Fixed ESP32 rig settings. Technicians never change these in production.
 EMITTER_PWM_CHANNEL = "GPIO25"
 EMITTER_PWM_FREQUENCY_HZ = DEFAULT_EMITTER_PWM_FREQUENCY_HZ
@@ -182,10 +231,12 @@ SIM_BATTERY_LOW_V = 5.6
 # amplitude. Tune this up once real good-sensor SNRs are known (the SNR is now
 # logged to the batch CSV to help calibrate it).
 MIN_SIGNAL_TO_NOISE_RATIO = 1.5   # ~3.5 dB
-# V6 production capture policy. Stability itself is configured in the tracked
-# JSON file; these timing/measurement constants are fixed application behavior.
+# V6.1 production capture policy. The delta threshold comes from the tracked
+# JSON file; these timing/count constants are fixed application behavior.
 STABILITY_TIMEOUT_S = 20.0
-SENSITIVITY_MEASUREMENT_CYCLES = 10
+DUT_STABILITY_CONFIRMATION_DELTAS = 10
+SENSITIVITY_MEASUREMENT_CYCLES = 20
+MAX_MEASUREMENT_ATTEMPTS = DEFAULT_MAX_MEASUREMENT_ATTEMPTS
 SYNC_VALIDATION_CYCLES = 3
 STREAM_PREVIEW_MAX_SAMPLES = 2000
 SIM_CAPTURE_CYCLES = 220
@@ -194,11 +245,11 @@ SIM_CAPTURE_CYCLES = 220
 # PWM-on, uses a dedicated robust-peak delta limit, and averages the
 # next five complete cycle peak-to-peak values. Calibration averages five of
 # those adaptive readings. Every DUT test performs a fresh reference reading
-# first and requires it to remain inside the persisted +/-10 percent window.
+# first and requires it to remain inside the fixed +/-25 percent window.
 REFERENCE_CALIBRATION_READINGS = 5
 REFERENCE_MEASUREMENT_CYCLES = 5
 REFERENCE_PEAK_DELTA_THRESHOLD_MV = 0.250
-REFERENCE_TOLERANCE_PERCENT = 10.0
+REFERENCE_TOLERANCE_PERCENT = 25.0
 REFERENCE_CALIBRATION_SCHEMA_VERSION = 2
 if "Never stabilizes" not in SIM_CASES:
     SIM_CASES = [*SIM_CASES, "Never stabilizes"]
@@ -459,21 +510,76 @@ CSV_FIELDS = [
     "last_peak_delta_mv",
     "capture_cycles",
     "measurement_cycles",
+    "stability_phase",
+    "measurement_attempt",
+    "measurement_failures",
+    "active_stability_required_deltas",
+    "active_measurement_cycles_required",
     "pwm_on_seconds",
     "data_source",
+    # Failure-calibration study identity and immutable app prediction.
+    "calibration_schema_version",
+    "calibration_app_version",
+    "calibration_ruleset_id",
+    "session_id",
+    "run_id",
+    "measurement_run_number",
+    "specimen_id",
+    "specimen_repeat_number",
+    "is_synthetic",
+    "app_verdict",
+    "app_suggested_failure_mode_tag",
+    "app_suggested_failure_mode_reason",
+    # Technician ground truth and explicit agreement assessment.
+    "ground_truth_verdict",
+    "ground_truth_failure_mode_tag",
+    "ground_truth_failure_mode_reason",
+    "verdict_assessment",
+    "failure_reason_assessment",
+    "review_classification",
+    "ground_truth_basis",
+    "review_confidence",
+    "known_physical_root_cause",
+    "review_notes",
+    "reviewed_at_utc",
+    "reviewer",
+    # Snapshot the decision limits so results remain interpretable later.
+    "policy_offset_min_v",
+    "policy_offset_max_v",
+    "policy_sensitivity_min_mv",
+    "policy_min_snr_ratio",
+    "policy_stability_timeout_s",
+    "policy_max_measurement_attempts",
+    # Canonical evidence and annotation records.
+    "calibration_evidence_paths",
+    "run_manifest_path",
+    "run_manifest_sha256",
+    "review_record_path",
+    "review_record_sha256",
+    "related_run_ids",
+    "offset_plausibility_override",
 ]
 
 STABILITY_SAMPLE_DIAGNOSTIC_FIELDS = (
     "batch_number",
     "sensor_id",
+    "specimen_id",
+    "run_id",
+    "channel",
     "sample_index",
+    "device_timestamp_us",
+    "device_elapsed_s",
     "pwm_elapsed_s",
+    "raw_count",
     "voltage_v",
     "sync",
 )
 STABILITY_CYCLE_DIAGNOSTIC_FIELDS = (
     "batch_number",
     "sensor_id",
+    "specimen_id",
+    "run_id",
+    "channel",
     "cycle_number",
     "start_index",
     "end_index",
@@ -497,7 +603,18 @@ def results_root_dir() -> Path:
     # Each tester version keeps its data in its own subfolder so results can be
     # tracked and analyzed per version. Autosave and waveform-snapshot folders
     # derive from this path, so they follow automatically.
-    return Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v6_esp32"
+    return (
+        Path.home()
+        / "Documents"
+        / "Eltec_406MCA_Test_Results"
+        / "v6_1_failure_calibration"
+    )
+
+
+def study_results_dir(*, is_synthetic: bool = False) -> Path:
+    """Keep simulator/training rows outside the hardware study namespace."""
+    root = results_root_dir()
+    return root / "simulator" if is_synthetic else root
 
 
 def safe_filename_part(value: str) -> str:
@@ -505,17 +622,81 @@ def safe_filename_part(value: str) -> str:
     return cleaned.strip("_") or "UNLABELED"
 
 
-def batch_results_path(batch_number: str) -> Path:
-    return results_root_dir() / f"406mca_esp32_lot_{safe_filename_part(batch_number)}.csv"
+def batch_results_path(batch_number: str, *, is_synthetic: bool = False) -> Path:
+    return study_results_dir(is_synthetic=is_synthetic) / (
+        f"406mca_failure_calibration_lot_{safe_filename_part(batch_number)}.csv"
+    )
 
 
-def batch_autosave_path(batch_number: str) -> Path:
+def validate_calibration_csv_schema(
+    csv_path: Path,
+    *,
+    expected_batch_number: str = "",
+) -> None:
+    """Fail before measurement when a batch file has another schema."""
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
+        return
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+            reader = csv.DictReader(csv_file)
+            existing = list(reader.fieldnames or [])
+            if existing != CSV_FIELDS:
+                raise ValueError(
+                    "This batch ID belongs to an older or different CSV schema. Use a new "
+                    "batch ID; calibration and production rows must never be mixed."
+                )
+            for row in reader:
+                if (
+                    expected_batch_number
+                    and (row.get("batch_number") or "") != expected_batch_number
+                ):
+                    raise ValueError(
+                        "This batch ID maps to a results filename already used by a "
+                        "different raw batch number. Choose a distinct ID using letters, "
+                        "numbers, hyphens, or underscores."
+                    )
+                if (
+                    (row.get("calibration_app_version") or "")
+                    != CALIBRATION_APP_VERSION
+                    or (row.get("calibration_ruleset_id") or "")
+                    != CALIBRATION_RULESET_ID
+                ):
+                    raise ValueError(
+                        "This batch contains another calibration app/ruleset version. "
+                        "Use a new batch ID so study versions remain separable."
+                    )
+    except OSError as exc:
+        raise OSError(f"Could not validate calibration CSV {csv_path}: {exc}") from exc
+
+
+def batch_autosave_path(batch_number: str, *, is_synthetic: bool = False) -> Path:
     safe = safe_filename_part(batch_number)
-    return results_root_dir() / "autosave" / f"esp32_lot_{safe}_current_sensor.json"
+    return (
+        study_results_dir(is_synthetic=is_synthetic)
+        / "autosave"
+        / f"failure_calibration_lot_{safe}_current_sensor.json"
+    )
+
+
+def calibration_run_dir(
+    batch_number: str,
+    specimen_id: str,
+    run_id: str,
+    *,
+    is_synthetic: bool = False,
+) -> Path:
+    """Return the immutable evidence directory for one measurement run."""
+    return (
+        study_results_dir(is_synthetic=is_synthetic)
+        / "evidence"
+        / f"lot_{safe_filename_part(batch_number)}"
+        / safe_filename_part(specimen_id)
+        / safe_filename_part(run_id)
+    )
 
 
 def reference_calibration_path() -> Path:
-    """Persistent AIN1 emitter/reference baseline for this v6 installation."""
+    """Writable AIN1 baseline for this experimental build only."""
     return results_root_dir() / "reference_sensor_calibration.json"
 
 
@@ -525,6 +706,52 @@ def reference_stability_settings(settings: StabilitySettings) -> StabilitySettin
         peak_delta_threshold_mv=REFERENCE_PEAK_DELTA_THRESHOLD_MV,
         consecutive_deltas_required=settings.consecutive_deltas_required,
     )
+
+
+def dut_stability_settings(settings: StabilitySettings) -> StabilitySettings:
+    """Apply the fixed v6.1 qualification count to the tracked DUT delta."""
+    return StabilitySettings(
+        peak_delta_threshold_mv=settings.peak_delta_threshold_mv,
+        consecutive_deltas_required=DUT_STABILITY_CONFIRMATION_DELTAS,
+    )
+
+
+def v6_reference_calibration_path() -> Path:
+    """Return the production v6 read-only compatibility baseline."""
+    return (
+        Path.home()
+        / "Documents"
+        / "Eltec_406MCA_Test_Results"
+        / "v6_esp32"
+        / "reference_sensor_calibration.json"
+    )
+
+
+def v6_1_reference_calibration_path() -> Path:
+    """Return the ordinary v6.1 read-only compatibility baseline."""
+    return (
+        Path.home()
+        / "Documents"
+        / "Eltec_406MCA_Test_Results"
+        / "v6_1_esp32"
+        / "reference_sensor_calibration.json"
+    )
+
+
+def resolved_reference_calibration_path(path: Path | None = None) -> Path:
+    """Resolve local -> v6.1 -> v6 while never bypassing an existing local file."""
+    if path is not None:
+        return Path(path)
+    local = reference_calibration_path()
+    if local.exists():
+        return local
+    for candidate in (
+        v6_1_reference_calibration_path(),
+        v6_reference_calibration_path(),
+    ):
+        if candidate.exists():
+            return candidate
+    return local
 
 
 class ReferenceCalibrationError(RuntimeError):
@@ -632,11 +859,30 @@ class ReferenceCalibration:
             raise ReferenceCalibrationError(
                 "Reference calibration average does not match its readings; run calibration again."
             )
+        # A file invalidated only because its last reading missed the former
+        # narrower window may be used again when that recorded reading is
+        # inside the current policy. A fresh AIN1 check still runs before AIN0.
+        if (
+            not valid
+            and tolerance < REFERENCE_TOLERANCE_PERCENT
+            and failed_reading_mv is not None
+            and math.isfinite(failed_reading_mv)
+            and mean_mv * (1.0 - REFERENCE_TOLERANCE_PERCENT / 100.0)
+            <= failed_reading_mv
+            <= mean_mv * (1.0 + REFERENCE_TOLERANCE_PERCENT / 100.0)
+        ):
+            valid = True
+            invalidated_at = None
+            invalidation_reason = None
+            failed_reading_mv = None
         return cls(
             readings_mv=readings,
             mean_mv=mean_mv,
             recorded_at=recorded_at,
-            tolerance_percent=tolerance,
+            # The acceptance band is an application policy, not a per-file
+            # setting. This also upgrades calibration files saved when v6.1
+            # used the older +/-10% window.
+            tolerance_percent=REFERENCE_TOLERANCE_PERCENT,
             valid=valid,
             invalidated_at=None if invalidated_at is None else str(invalidated_at),
             invalidation_reason=None if invalidation_reason is None else str(invalidation_reason),
@@ -677,7 +923,7 @@ def build_reference_calibration(
 
 
 def load_reference_calibration(path: Path | None = None) -> ReferenceCalibration | None:
-    path = reference_calibration_path() if path is None else Path(path)
+    path = resolved_reference_calibration_path(path)
     if not path.exists():
         return None
     try:
@@ -773,6 +1019,22 @@ def next_sensor_number_for_batch(csv_path: Path) -> int:
     return next_number
 
 
+def next_specimen_repeat_number(csv_path: Path, specimen_id: str) -> int:
+    """Return a one-based saved-run index for a physical specimen."""
+    specimen_id = str(specimen_id).strip().casefold()
+    if not specimen_id or not csv_path.exists():
+        return 1
+    repeats = 0
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+            for row in csv.DictReader(csv_file):
+                if (row.get("specimen_id") or "").strip().casefold() == specimen_id:
+                    repeats += 1
+    except Exception:
+        return 1
+    return repeats + 1
+
+
 def polarity_good_bad(polarity: str) -> str:
     if not polarity or polarity in ("NOT MEASURED", "UNKNOWN"):
         return ""
@@ -786,6 +1048,206 @@ def split_failure_mode(choice: str) -> tuple[str, str]:
         raise ValueError("Choose a failure mode before saving this failed sensor.")
     tag, reason = choice.split(" - ", 1)
     return tag, reason
+
+
+def split_ground_truth_mode(choice: str) -> tuple[str, str]:
+    """Split a study ground-truth mode, including GOOD/OTHER/UNKNOWN."""
+    choice = str(choice).strip()
+    if choice not in GROUND_TRUTH_FAILURE_MODE_CHOICES:
+        raise ValueError("Choose the independently confirmed primary condition.")
+    tag, reason = choice.split(" - ", 1)
+    return tag, reason
+
+
+@dataclass(frozen=True)
+class CalibrationReview:
+    """One technician annotation kept separate from the app prediction."""
+
+    specimen_id: str
+    app_verdict: str
+    app_suggested_failure_mode: str
+    ground_truth_verdict: str
+    ground_truth_failure_mode: str
+    failure_reason_assessment: str
+    ground_truth_basis: str
+    confidence: str
+    known_physical_root_cause: str
+    notes: str
+    reviewer: str
+    reviewed_at_utc: str
+
+    @property
+    def verdict_assessment(self) -> str:
+        if self.ground_truth_verdict == "UNSURE":
+            return "UNSURE"
+        return "CORRECT" if self.app_verdict == self.ground_truth_verdict else "INCORRECT"
+
+    @property
+    def review_classification(self) -> str:
+        if self.verdict_assessment == "UNSURE":
+            return "INCONCLUSIVE"
+        if self.verdict_assessment == "INCORRECT":
+            return "VERDICT_MISMATCH"
+        if self.ground_truth_verdict == "PASS":
+            return "EXACT_MATCH"
+        if self.failure_reason_assessment == "CORRECT":
+            return "EXACT_MATCH"
+        if self.failure_reason_assessment == "PARTLY CORRECT":
+            return "PARTIAL_REASON_MATCH"
+        if self.failure_reason_assessment == "INCORRECT":
+            return "FAILURE_REASON_MISMATCH"
+        return "INCONCLUSIVE_REASON"
+
+    def to_dict(self) -> dict:
+        ground_tag, ground_reason = split_ground_truth_mode(
+            self.ground_truth_failure_mode
+        )
+        if self.app_suggested_failure_mode:
+            app_tag, app_reason = split_failure_mode(self.app_suggested_failure_mode)
+        else:
+            app_tag, app_reason = "", ""
+        return {
+            "specimen_id": self.specimen_id,
+            "app_verdict": self.app_verdict,
+            "app_suggested_failure_mode": self.app_suggested_failure_mode,
+            "app_suggested_failure_mode_tag": app_tag,
+            "app_suggested_failure_mode_reason": app_reason,
+            "ground_truth_verdict": self.ground_truth_verdict,
+            "ground_truth_failure_mode": self.ground_truth_failure_mode,
+            "ground_truth_failure_mode_tag": ground_tag,
+            "ground_truth_failure_mode_reason": ground_reason,
+            "verdict_assessment": self.verdict_assessment,
+            "failure_reason_assessment": self.failure_reason_assessment,
+            "review_classification": self.review_classification,
+            "ground_truth_basis": self.ground_truth_basis,
+            "review_confidence": self.confidence,
+            "known_physical_root_cause": self.known_physical_root_cause,
+            "review_notes": self.notes,
+            "reviewed_at_utc": self.reviewed_at_utc,
+            "reviewer": self.reviewer,
+        }
+
+
+def build_calibration_review(
+    *,
+    final_result: FinalResult,
+    app_suggested_failure_mode: str,
+    specimen_id: str,
+    ground_truth_verdict: str,
+    ground_truth_failure_mode: str,
+    failure_reason_assessment: str,
+    ground_truth_basis: str,
+    confidence: str,
+    known_physical_root_cause: str,
+    notes: str,
+    reviewer: str,
+    reviewed_at_utc: str | None = None,
+) -> CalibrationReview:
+    """Validate and normalize a required calibration annotation."""
+    app_verdict = "PASS" if final_result.passed else "FAIL"
+    specimen_id = str(specimen_id).strip()
+    ground_truth_verdict = str(ground_truth_verdict).strip().upper()
+    ground_truth_failure_mode = str(ground_truth_failure_mode).strip()
+    failure_reason_assessment = str(failure_reason_assessment).strip().upper()
+    ground_truth_basis = str(ground_truth_basis).strip()
+    confidence = str(confidence).strip().upper()
+    known_physical_root_cause = str(known_physical_root_cause).strip()
+    notes = str(notes).strip()
+    reviewer = str(reviewer).strip()
+
+    if not specimen_id:
+        raise ValueError("Enter the physical specimen ID used on the sensor label.")
+    if ground_truth_verdict not in GROUND_TRUTH_VERDICT_CHOICES:
+        raise ValueError("Choose the technician ground-truth verdict: PASS, FAIL, or UNSURE.")
+    if failure_reason_assessment not in FAILURE_REASON_ASSESSMENT_CHOICES:
+        raise ValueError("Assess whether the application's failure reason was correct.")
+    if ground_truth_basis not in GROUND_TRUTH_BASIS_CHOICES:
+        raise ValueError("Choose how the ground truth was established.")
+    if confidence not in REVIEW_CONFIDENCE_CHOICES:
+        raise ValueError("Choose a ground-truth confidence level.")
+    if not reviewer:
+        raise ValueError("A reviewer/tester name is required.")
+    if not notes:
+        raise ValueError(
+            "Add a brief explanation of the known condition and evidence. "
+            "This is required even when the app was correct."
+        )
+
+    if ground_truth_basis == "Not independently confirmed" and ground_truth_verdict != "UNSURE":
+        raise ValueError(
+            "A PASS or FAIL ground truth needs independent evidence. Use UNSURE when it "
+            "has not been independently confirmed."
+        )
+    if ground_truth_verdict == "PASS":
+        if ground_truth_failure_mode != GOOD_GROUND_TRUTH_MODE:
+            raise ValueError("A ground-truth PASS must use 'GOOD - Sensor passes'.")
+        expected_assessment = (
+            "NOT APPLICABLE" if app_verdict == "PASS" else "INCORRECT"
+        )
+        if failure_reason_assessment != expected_assessment:
+            raise ValueError(
+                f"For this PASS comparison, failure-reason assessment must be {expected_assessment}."
+            )
+    elif ground_truth_verdict == "FAIL":
+        if ground_truth_failure_mode not in (
+            *FAILURE_MODE_CHOICES,
+            OTHER_GROUND_TRUTH_MODE,
+        ):
+            raise ValueError("Choose the actual primary failure mode for this failed sensor.")
+        if app_verdict == "PASS" and failure_reason_assessment != "INCORRECT":
+            raise ValueError(
+                "A false PASS supplied no valid failure reason; mark the reason INCORRECT."
+            )
+        if app_verdict == "FAIL":
+            if failure_reason_assessment == "NOT APPLICABLE":
+                raise ValueError("A failed result has a reason to assess.")
+            if (
+                failure_reason_assessment == "CORRECT"
+                and app_suggested_failure_mode != ground_truth_failure_mode
+            ):
+                raise ValueError(
+                    "The selected actual mode differs from the app suggestion. "
+                    "Use PARTLY CORRECT or INCORRECT, or select the matching mode."
+                )
+            if (
+                failure_reason_assessment == "INCORRECT"
+                and app_suggested_failure_mode == ground_truth_failure_mode
+            ):
+                raise ValueError(
+                    "The selected actual mode matches the app suggestion. Use CORRECT or "
+                    "PARTLY CORRECT, or select the independently confirmed different mode."
+                )
+    else:
+        if ground_truth_failure_mode != UNKNOWN_GROUND_TRUTH_MODE:
+            raise ValueError(
+                "An UNSURE verdict must use 'UNKNOWN - Not independently confirmed'."
+            )
+        if failure_reason_assessment != "UNSURE":
+            raise ValueError("An UNSURE verdict requires an UNSURE reason assessment.")
+
+    if ground_truth_verdict == "UNSURE" and confidence == "HIGH":
+        raise ValueError("An UNSURE ground truth cannot be recorded with HIGH confidence.")
+
+    if app_verdict == "FAIL":
+        split_failure_mode(app_suggested_failure_mode)
+    elif app_suggested_failure_mode:
+        raise ValueError("A PASS must not carry an app-suggested failure mode.")
+
+    return CalibrationReview(
+        specimen_id=specimen_id,
+        app_verdict=app_verdict,
+        app_suggested_failure_mode=app_suggested_failure_mode,
+        ground_truth_verdict=ground_truth_verdict,
+        ground_truth_failure_mode=ground_truth_failure_mode,
+        failure_reason_assessment=failure_reason_assessment,
+        ground_truth_basis=ground_truth_basis,
+        confidence=confidence,
+        known_physical_root_cause=known_physical_root_cause,
+        notes=notes,
+        reviewer=reviewer,
+        reviewed_at_utc=reviewed_at_utc
+        or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
 
 
 def suggest_failure_mode(final_result: FinalResult | None) -> str:
@@ -855,6 +1317,18 @@ def append_result_csv(
     reference_calibration: "ReferenceCalibration | None" = None,
     reference_check_mv: float | None = None,
     failure_mode: str = "",
+    calibration_review: "CalibrationReview | None" = None,
+    app_suggested_failure_mode: str = "",
+    session_id: str = "",
+    run_id: str = "",
+    measurement_run_number: int = 1,
+    specimen_repeat_number: int = 1,
+    is_synthetic: bool = False,
+    calibration_evidence_paths: list[Path] | None = None,
+    run_manifest_path: Path | None = None,
+    review_record_path: Path | None = None,
+    related_run_ids: list[str] | None = None,
+    offset_plausibility_override: bool = False,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
@@ -865,6 +1339,28 @@ def append_result_csv(
         failure_mode_tag, failure_mode_reason = split_failure_mode(
             failure_mode or suggest_failure_mode(final_result)
         )
+    if not app_suggested_failure_mode and not final_result.passed:
+        app_suggested_failure_mode = suggest_failure_mode(final_result)
+    if app_suggested_failure_mode:
+        app_mode_tag, app_mode_reason = split_failure_mode(
+            app_suggested_failure_mode
+        )
+    else:
+        app_mode_tag, app_mode_reason = "", ""
+    review_fields = calibration_review.to_dict() if calibration_review else {}
+    specimen_id = review_fields.get("specimen_id", "")
+    evidence_paths = calibration_evidence_paths or []
+    related_ids = related_run_ids or ([run_id] if run_id else [])
+    sensitivity_min_mv = FILTER_SPECS_MV.get(filter_setup)
+    portable_root = study_results_dir(is_synthetic=is_synthetic)
+
+    def portable_path(path: Path | None) -> str:
+        if path is None:
+            return ""
+        try:
+            return str(Path(path).relative_to(portable_root))
+        except ValueError:
+            return str(path)
     row = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "batch_number": batch_number,
@@ -885,7 +1381,9 @@ def append_result_csv(
         "failure_mode_tag": failure_mode_tag,
         "failure_mode_reason": failure_mode_reason,
         "operator_comments": comment.strip(),
-        "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
+        "waveform_snapshot_paths": "; ".join(
+            portable_path(path) for path in snapshot_paths
+        ),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
         "noise_rms_mv": _fmt_optional_float(metrics.noise_rms_mv if metrics else None, 4),
         "snr_db": _fmt_optional_float(metrics.signal_to_noise_db if metrics else None, 2),
@@ -908,21 +1406,81 @@ def append_result_csv(
             else None,
             3,
         ),
+        "calibration_schema_version": str(CALIBRATION_SCHEMA_VERSION),
+        "calibration_app_version": CALIBRATION_APP_VERSION,
+        "calibration_ruleset_id": CALIBRATION_RULESET_ID,
+        "session_id": session_id,
+        "run_id": run_id,
+        "measurement_run_number": str(measurement_run_number),
+        "specimen_id": specimen_id,
+        "specimen_repeat_number": str(specimen_repeat_number),
+        "is_synthetic": "YES" if is_synthetic else "NO",
+        "app_verdict": "PASS" if final_result.passed else "FAIL",
+        "app_suggested_failure_mode_tag": app_mode_tag,
+        "app_suggested_failure_mode_reason": app_mode_reason,
+        "ground_truth_verdict": review_fields.get("ground_truth_verdict", ""),
+        "ground_truth_failure_mode_tag": review_fields.get(
+            "ground_truth_failure_mode_tag", ""
+        ),
+        "ground_truth_failure_mode_reason": review_fields.get(
+            "ground_truth_failure_mode_reason", ""
+        ),
+        "verdict_assessment": review_fields.get("verdict_assessment", ""),
+        "failure_reason_assessment": review_fields.get(
+            "failure_reason_assessment", ""
+        ),
+        "review_classification": review_fields.get("review_classification", ""),
+        "ground_truth_basis": review_fields.get("ground_truth_basis", ""),
+        "review_confidence": review_fields.get("review_confidence", ""),
+        "known_physical_root_cause": review_fields.get(
+            "known_physical_root_cause", ""
+        ),
+        "review_notes": review_fields.get("review_notes", ""),
+        "reviewed_at_utc": review_fields.get("reviewed_at_utc", ""),
+        "reviewer": review_fields.get("reviewer", ""),
+        "policy_offset_min_v": f"{OFFSET_MIN_V:.6f}",
+        "policy_offset_max_v": f"{OFFSET_MAX_V:.6f}",
+        "policy_sensitivity_min_mv": _fmt_optional_float(sensitivity_min_mv, 6),
+        "policy_min_snr_ratio": f"{MIN_SIGNAL_TO_NOISE_RATIO:.6f}",
+        "policy_stability_timeout_s": f"{STABILITY_TIMEOUT_S:.3f}",
+        "policy_max_measurement_attempts": str(MAX_MEASUREMENT_ATTEMPTS),
+        "calibration_evidence_paths": "; ".join(
+            portable_path(path) for path in evidence_paths
+        ),
+        "run_manifest_path": portable_path(run_manifest_path),
+        "run_manifest_sha256": (
+            sha256_file(run_manifest_path)
+            if run_manifest_path is not None and run_manifest_path.is_file()
+            else ""
+        ),
+        "review_record_path": portable_path(review_record_path),
+        "review_record_sha256": (
+            sha256_file(review_record_path)
+            if review_record_path is not None and review_record_path.is_file()
+            else ""
+        ),
+        "related_run_ids": "; ".join(related_ids),
+        "offset_plausibility_override": (
+            "YES" if offset_plausibility_override else "NO"
+        ),
     }
     if capture_report is not None:
         row.update(capture_report.csv_fields())
-    # Batch CSVs created before a column was added keep their original header;
-    # write only the columns that file already has so rows stay aligned.
-    fieldnames = CSV_FIELDS
+    # Calibration data must never silently lose new fields. A stale/mixed CSV
+    # is rejected so the technician can choose a new batch ID and preserve both
+    # schemas intact.
     if not write_header:
         try:
-            with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
-                existing = next(csv.reader(csv_file), None)
-            if existing:
-                fieldnames = existing
-        except Exception:
-            pass
-    row = {name: row.get(name, "") for name in fieldnames}
+            validate_calibration_csv_schema(
+                csv_path,
+                expected_batch_number=batch_number,
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "Calibration CSV schema/version mismatch. " + str(exc)
+            ) from exc
+    fieldnames = CSV_FIELDS
+    row = {name: row.get(name, "") for name in CSV_FIELDS}
     with csv_path.open("a", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         if write_header:
@@ -1060,10 +1618,23 @@ def unused_snapshot_path(snapshot_dir: Path, sensor_id: str, filename_suffix: st
     return candidate
 
 
-def save_waveform_snapshot_image(batch_number: str, sensor_id: str, metrics: WaveformMetrics | None, title: str, detail_lines: list[str], filename_suffix: str) -> Path | None:
+def save_waveform_snapshot_image(
+    batch_number: str,
+    sensor_id: str,
+    metrics: WaveformMetrics | None,
+    title: str,
+    detail_lines: list[str],
+    filename_suffix: str,
+    *,
+    output_dir: Path | None = None,
+) -> Path | None:
     if metrics is None or metrics.waveform_v.size == 0:
         return None
-    snapshot_dir = results_root_dir() / "waveform_snapshots" / f"lot_{safe_filename_part(batch_number)}"
+    snapshot_dir = output_dir or (
+        results_root_dir()
+        / "waveform_snapshots"
+        / f"lot_{safe_filename_part(batch_number)}"
+    )
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     snapshot_path = unused_snapshot_path(snapshot_dir, sensor_id, filename_suffix)
     try:
@@ -1102,6 +1673,100 @@ def save_waveform_snapshot_image(batch_number: str, sensor_id: str, metrics: Wav
     return snapshot_path
 
 
+def _device_elapsed_values(raw_samples: tuple | list) -> list[float | None]:
+    """Convert validated uint32 device timestamps to elapsed seconds."""
+    if not raw_samples:
+        return []
+    elapsed: list[float | None] = []
+    previous: int | None = None
+    elapsed_us = 0
+    for sample in raw_samples:
+        timestamp = getattr(sample, "timestamp_us", None)
+        if not isinstance(timestamp, int):
+            elapsed.append(None)
+            continue
+        if previous is not None:
+            elapsed_us += (timestamp - previous) & 0xFFFFFFFF
+        previous = timestamp
+        elapsed.append(elapsed_us / 1_000_000.0)
+    return elapsed
+
+
+def write_stream_sample_csv(
+    path: Path,
+    *,
+    batch_number: str,
+    sensor_id: str,
+    specimen_id: str,
+    run_id: str,
+    channel: str,
+    waveform: np.ndarray,
+    sync: np.ndarray,
+    sample_rate_hz: float,
+    pwm_elapsed_offset_s: float,
+    raw_samples: tuple | list = (),
+) -> Path:
+    """Persist replayable voltage/sync plus raw ADC/timestamps when available."""
+    waveform = np.asarray(waveform, dtype=float)
+    sync = np.asarray(sync, dtype=float)
+    raw_samples = tuple(raw_samples)
+    device_elapsed = _device_elapsed_values(raw_samples)
+    with path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=STABILITY_SAMPLE_DIAGNOSTIC_FIELDS)
+        writer.writeheader()
+        for index, voltage_v in enumerate(waveform):
+            raw_sample = raw_samples[index] if index < len(raw_samples) else None
+            timestamp_us = getattr(raw_sample, "timestamp_us", None)
+            raw_count = getattr(raw_sample, "raw", None)
+            elapsed_s = device_elapsed[index] if index < len(device_elapsed) else None
+            writer.writerow(
+                {
+                    "batch_number": batch_number,
+                    "sensor_id": sensor_id,
+                    "specimen_id": specimen_id,
+                    "run_id": run_id,
+                    "channel": channel,
+                    "sample_index": index,
+                    "device_timestamp_us": "" if timestamp_us is None else str(timestamp_us),
+                    "device_elapsed_s": "" if elapsed_s is None else f"{elapsed_s:.9f}",
+                    "pwm_elapsed_s": (
+                        f"{pwm_elapsed_offset_s + index / max(sample_rate_hz, 1.0):.9f}"
+                    ),
+                    "raw_count": "" if raw_count is None else str(raw_count),
+                    "voltage_v": f"{float(voltage_v):.12g}",
+                    "sync": "" if index >= len(sync) else f"{float(sync[index]):g}",
+                }
+            )
+    return path
+
+
+def write_cycle_diagnostic_csv(
+    path: Path,
+    *,
+    batch_number: str,
+    sensor_id: str,
+    specimen_id: str,
+    run_id: str,
+    channel: str,
+    cycles: tuple[CycleAnalysis, ...] | list[CycleAnalysis],
+) -> Path:
+    with path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=STABILITY_CYCLE_DIAGNOSTIC_FIELDS)
+        writer.writeheader()
+        for cycle in cycles:
+            writer.writerow(
+                {
+                    "batch_number": batch_number,
+                    "sensor_id": sensor_id,
+                    "specimen_id": specimen_id,
+                    "run_id": run_id,
+                    "channel": channel,
+                    **cycle.as_dict(),
+                }
+            )
+    return path
+
+
 def save_stability_diagnostic_csvs(
     snapshot_path: Path,
     *,
@@ -1109,6 +1774,10 @@ def save_stability_diagnostic_csvs(
     sensor_id: str,
     metrics: WaveformMetrics,
     report: "StabilityCaptureReport",
+    specimen_id: str = "",
+    run_id: str = "",
+    channel: str = "AIN0",
+    raw_samples: tuple | list = (),
 ) -> list[Path]:
     """Persist the full production stream and every robust-peak decision.
 
@@ -1122,40 +1791,28 @@ def save_stability_diagnostic_csvs(
     sample_rate_hz = max(float(metrics.sample_rate_hz), 1.0)
     waveform = np.asarray(metrics.waveform_v, dtype=float)
     sync = np.asarray(metrics.sync_v, dtype=float)
-    with samples_path.open("w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.DictWriter(
-            csv_file,
-            fieldnames=STABILITY_SAMPLE_DIAGNOSTIC_FIELDS,
-        )
-        writer.writeheader()
-        for index, voltage_v in enumerate(waveform):
-            writer.writerow(
-                {
-                    "batch_number": batch_number,
-                    "sensor_id": sensor_id,
-                    "sample_index": index,
-                    "pwm_elapsed_s": (
-                        f"{report.pwm_elapsed_offset_s + index / sample_rate_hz:.9f}"
-                    ),
-                    "voltage_v": f"{float(voltage_v):.12g}",
-                    "sync": "" if index >= len(sync) else f"{float(sync[index]):g}",
-                }
-            )
-
-    with cycles_path.open("w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.DictWriter(
-            csv_file,
-            fieldnames=STABILITY_CYCLE_DIAGNOSTIC_FIELDS,
-        )
-        writer.writeheader()
-        for cycle in report.cycle_diagnostics:
-            writer.writerow(
-                {
-                    "batch_number": batch_number,
-                    "sensor_id": sensor_id,
-                    **cycle.as_dict(),
-                }
-            )
+    write_stream_sample_csv(
+        samples_path,
+        batch_number=batch_number,
+        sensor_id=sensor_id,
+        specimen_id=specimen_id,
+        run_id=run_id,
+        channel=channel,
+        waveform=waveform,
+        sync=sync,
+        sample_rate_hz=sample_rate_hz,
+        pwm_elapsed_offset_s=report.pwm_elapsed_offset_s,
+        raw_samples=raw_samples,
+    )
+    write_cycle_diagnostic_csv(
+        cycles_path,
+        batch_number=batch_number,
+        sensor_id=sensor_id,
+        specimen_id=specimen_id,
+        run_id=run_id,
+        channel=channel,
+        cycles=report.cycle_diagnostics,
+    )
     return [samples_path, cycles_path]
 
 
@@ -1168,6 +1825,10 @@ def save_waveform_diagnostic_bundle(
     title: str,
     detail_lines: list[str],
     filename_suffix: str,
+    output_dir: Path | None = None,
+    specimen_id: str = "",
+    run_id: str = "",
+    raw_samples: tuple | list = (),
 ) -> list[Path]:
     snapshot_path = save_waveform_snapshot_image(
         batch_number,
@@ -1176,6 +1837,7 @@ def save_waveform_diagnostic_bundle(
         title,
         detail_lines,
         filename_suffix,
+        output_dir=output_dir,
     )
     if snapshot_path is None:
         return []
@@ -1188,9 +1850,670 @@ def save_waveform_diagnostic_bundle(
                 sensor_id=sensor_id,
                 metrics=metrics,
                 report=report,
+                specimen_id=specimen_id,
+                run_id=run_id,
+                raw_samples=raw_samples,
             )
         )
     return paths
+
+
+@dataclass
+class ReferenceEvidenceCapture:
+    waveform_v: np.ndarray
+    sync_v: np.ndarray
+    sample_rate_hz: float
+    analysis: StabilityAnalysis
+    raw_samples: tuple = ()
+    stream_diagnostics: object | None = None
+
+
+def _json_number(value):
+    if value is None:
+        return None
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        return float(value) if math.isfinite(float(value)) else str(value)
+    return value
+
+
+def atomic_write_json(path: Path, payload: dict) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+    return path
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def software_fingerprints() -> dict[str, dict[str, str]]:
+    """Hash every source/config file that materially affects a verdict."""
+    files = {
+        "calibration_application": Path(__file__).resolve(),
+        "shared_v1_verdict_engine": _V1_TESTER_DIR / "eltec_406mca_tester.py",
+        "stability_analysis": Path(__file__).with_name("stability_analysis.py"),
+        "stability_settings": Path(DEFAULT_SETTINGS_PATH),
+        "esp32_backend": Path(__file__).with_name("esp32_backend.py"),
+    }
+    fingerprints: dict[str, dict[str, str]] = {}
+    for name, path in files.items():
+        if path.exists():
+            fingerprints[name] = {
+                "path": str(path),
+                "sha256": sha256_file(path),
+            }
+    return fingerprints
+
+
+def frozen_rule_source_error() -> str | None:
+    """Refuse mixed-rule study rows when a shared decision source changes."""
+    paths = {
+        "shared_v1_verdict_engine": _V1_TESTER_DIR / "eltec_406mca_tester.py",
+        "stability_analysis": Path(__file__).with_name("stability_analysis.py"),
+        "stability_settings": Path(DEFAULT_SETTINGS_PATH),
+    }
+    changed = []
+    for name, expected in FROZEN_RULE_SOURCE_SHA256.items():
+        path = paths[name]
+        if not path.is_file() or sha256_file(path) != expected:
+            changed.append(name)
+    if not changed:
+        return None
+    return (
+        "Frozen calibration rules changed (" + ", ".join(changed) + "). "
+        "Create a new calibration app/ruleset version before collecting more rows."
+    )
+
+
+def stream_diagnostics_dict(diagnostics) -> dict | None:
+    if diagnostics is None:
+        return None
+    fields = (
+        "expected_rate_hz",
+        "channel",
+        "received_samples",
+        "drained_samples",
+        "torn_lines",
+        "ignored_lines",
+        "timestamp_gap_count",
+        "estimated_missing_samples",
+        "duplicate_timestamps",
+        "reordered_timestamps",
+        "first_timestamp_us",
+        "last_timestamp_us",
+        "firmware_samples_sent",
+        "firmware_adc_overruns",
+        "stop_marker_seen",
+        "device_span_seconds",
+        "received_rate_hz",
+        "measured_rate_hz",
+        "rate_error_percent",
+        "count_difference",
+        "count_matches_firmware",
+        "healthy",
+    )
+    return {
+        field: _json_number(getattr(diagnostics, field, None))
+        for field in fields
+    }
+
+
+def waveform_metrics_dict(metrics: WaveformMetrics | None) -> dict | None:
+    if metrics is None:
+        return None
+    return {
+        "offset_v": _json_number(metrics.offset_v),
+        "sensitivity_mv": _json_number(metrics.sensitivity_mv),
+        "polarity": metrics.polarity,
+        "polarity_confidence": _json_number(metrics.polarity_confidence),
+        "polarity_delta_mv": _json_number(metrics.polarity_delta_mv),
+        "polarity_response_start_fraction": _json_number(
+            metrics.polarity_response_start_fraction
+        ),
+        "polarity_response_end_fraction": _json_number(
+            metrics.polarity_response_end_fraction
+        ),
+        "noise_rms_mv": _json_number(metrics.noise_rms_mv),
+        "signal_rms_mv": _json_number(metrics.signal_rms_mv),
+        "signal_to_noise_ratio": _json_number(metrics.signal_to_noise_ratio),
+        "signal_to_noise_db": _json_number(metrics.signal_to_noise_db),
+        "measured_frequency_hz": _json_number(metrics.measured_frequency_hz),
+        "sample_rate_hz": _json_number(metrics.sample_rate_hz),
+        "cycles_used": metrics.cycles_used,
+        "cycle_pp_mv": [_json_number(value) for value in metrics.cycle_pp_mv],
+        "all_cycle_pp_mv": [
+            _json_number(value) for value in metrics.all_cycle_pp_mv
+        ],
+        "stabilized": metrics.stabilized,
+        "stabilization_cycle": metrics.stabilization_cycle,
+        "ignored_initial_cycles": metrics.ignored_initial_cycles,
+        "warnings": list(metrics.warnings),
+        "sample_count": int(np.asarray(metrics.waveform_v).size),
+    }
+
+
+def capture_report_dict(report: "StabilityCaptureReport | None") -> dict | None:
+    if report is None:
+        return None
+    payload = {
+        "threshold_mv": report.threshold_mv,
+        "required_deltas": report.required_deltas,
+        "stabilized": report.stabilized,
+        "timed_out": report.timed_out,
+        "unstable": report.unstable,
+        "unstable_reason": report.unstable_reason,
+        "phase": report.phase,
+        "measurement_attempt": report.measurement_attempt,
+        "measurement_failures": report.measurement_failures,
+        "active_required_deltas": report.active_required_deltas,
+        "measurement_cycles_required": report.measurement_cycles_required,
+        "stabilization_cycle": report.stabilization_cycle,
+        "stabilization_seconds": report.stabilization_seconds,
+        "confirming_max_delta_mv": report.confirming_max_delta_mv,
+        "last_peak_delta_mv": report.last_peak_delta_mv,
+        "capture_cycles": report.capture_cycles,
+        "measurement_cycles": report.measurement_cycles,
+        "pwm_on_seconds": report.pwm_on_seconds,
+        "pwm_elapsed_offset_s": report.pwm_elapsed_offset_s,
+        "data_source": report.data_source,
+    }
+    return {key: _json_number(value) for key, value in payload.items()}
+
+
+def validate_calibration_run_manifest(
+    manifest_path: Path,
+    *,
+    expected_run_id: str = "",
+    expected_specimen_id: str = "",
+    expected_app_verdict: str = "",
+) -> dict:
+    """Validate a run manifest and every immutable evidence artifact."""
+    manifest_path = Path(manifest_path)
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Could not read run manifest {manifest_path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("Run manifest root is not a JSON object.")
+    try:
+        manifest_schema = int(payload.get("calibration_schema_version"))
+    except (TypeError, ValueError):
+        manifest_schema = -1
+    if manifest_schema != CALIBRATION_SCHEMA_VERSION:
+        raise ValueError("Run manifest uses a different calibration schema.")
+    if (
+        payload.get("calibration_app_version") != CALIBRATION_APP_VERSION
+        or payload.get("ruleset_id") != CALIBRATION_RULESET_ID
+    ):
+        raise ValueError(
+            "Run manifest belongs to a different calibration app/ruleset version."
+        )
+    if expected_run_id and payload.get("run_id") != expected_run_id:
+        raise ValueError("Run manifest ID does not match the pending result.")
+    if expected_specimen_id and payload.get("specimen_id") != expected_specimen_id:
+        raise ValueError("Run manifest specimen does not match the pending result.")
+    prediction = payload.get("app_prediction")
+    if not isinstance(prediction, dict):
+        raise ValueError("Run manifest has no immutable app prediction.")
+    if expected_app_verdict and prediction.get("verdict") != expected_app_verdict:
+        raise ValueError("Run manifest verdict does not match the pending result.")
+    artifacts = payload.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        raise ValueError("Run manifest has no evidence artifacts.")
+    run_dir = manifest_path.parent.resolve()
+    for index, artifact in enumerate(artifacts):
+        if not isinstance(artifact, dict):
+            raise ValueError(f"Run manifest artifact {index} is malformed.")
+        relative_text = str(artifact.get("relative_path") or "").strip()
+        if not relative_text:
+            listed = Path(str(artifact.get("path") or ""))
+            relative_text = listed.name
+        relative = Path(relative_text)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"Run manifest artifact {index} has an unsafe path.")
+        artifact_path = (manifest_path.parent / relative).resolve()
+        if not artifact_path.is_relative_to(run_dir):
+            raise ValueError(f"Run manifest artifact {index} escapes its run directory.")
+        if not artifact_path.is_file():
+            raise ValueError(f"Run evidence is missing: {artifact_path}")
+        try:
+            expected_bytes = int(artifact["bytes"])
+            expected_sha = str(artifact["sha256"]).strip().casefold()
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"Run manifest artifact {index} lacks integrity metadata.") from exc
+        if artifact_path.stat().st_size != expected_bytes:
+            raise ValueError(f"Run evidence size changed: {artifact_path}")
+        if sha256_file(artifact_path).casefold() != expected_sha:
+            raise ValueError(f"Run evidence hash changed: {artifact_path}")
+    return payload
+
+
+def _finite_float(value, default=None):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if math.isfinite(number) else default
+
+
+def _manifest_artifact_path(manifest_path: Path, artifact: dict) -> Path:
+    relative_text = str(artifact.get("relative_path") or "").strip()
+    if relative_text:
+        return manifest_path.parent / relative_text
+    return manifest_path.parent / Path(str(artifact.get("path") or "")).name
+
+
+def recover_calibration_run_from_manifest(
+    manifest_path: Path,
+) -> tuple[dict, WaveformMetrics, FinalResult, "StabilityCaptureReport | None", "ReferenceCalibration | None"]:
+    """Rebuild the pending result view from immutable run evidence."""
+    manifest_path = Path(manifest_path)
+    payload = validate_calibration_run_manifest(manifest_path)
+    metrics_payload = payload.get("metrics")
+    prediction = payload.get("app_prediction")
+    if not isinstance(metrics_payload, dict) or not isinstance(prediction, dict):
+        raise ValueError("Run manifest does not contain recoverable result metrics.")
+
+    waveform_values: list[float] = []
+    sync_values: list[float] = []
+    for artifact in payload.get("artifacts", []):
+        if not isinstance(artifact, dict):
+            continue
+        artifact_path = _manifest_artifact_path(manifest_path, artifact)
+        name = artifact_path.name.casefold()
+        if not name.endswith("_samples.csv") or "reference" in name:
+            continue
+        try:
+            with artifact_path.open("r", newline="", encoding="utf-8") as csv_file:
+                for row in csv.DictReader(csv_file):
+                    voltage = _finite_float(row.get("voltage_v"))
+                    sync = _finite_float(row.get("sync"), 0.0)
+                    if voltage is not None:
+                        waveform_values.append(voltage)
+                        sync_values.append(0.0 if sync is None else sync)
+        except (OSError, csv.Error) as exc:
+            raise ValueError(f"Could not rebuild the saved DUT waveform: {exc}") from exc
+        break
+
+    sensitivity = _finite_float(metrics_payload.get("sensitivity_mv"))
+    noise_rms = _finite_float(metrics_payload.get("noise_rms_mv"))
+    cycles_used = int(metrics_payload.get("cycles_used") or 0)
+    cycle_pp = [
+        value
+        for item in metrics_payload.get("cycle_pp_mv", [])
+        if (value := _finite_float(item)) is not None
+    ]
+    all_cycle_pp = [
+        value
+        for item in metrics_payload.get("all_cycle_pp_mv", [])
+        if (value := _finite_float(item)) is not None
+    ]
+    recovered_polarity = (
+        ""
+        if metrics_payload.get("polarity") is None
+        else str(metrics_payload.get("polarity"))
+    )
+    metrics = WaveformMetrics(
+        sensitivity_mv=sensitivity,
+        sensitivity_amplified_mv=sensitivity,
+        polarity=recovered_polarity,
+        measured_frequency_hz=_finite_float(
+            metrics_payload.get("measured_frequency_hz")
+        ),
+        cycles_used=cycles_used,
+        offset_v=_finite_float(metrics_payload.get("offset_v")),
+        noise_rms_mv=noise_rms,
+        noise_rms_amplified_mv=noise_rms,
+        signal_rms_mv=_finite_float(metrics_payload.get("signal_rms_mv")),
+        signal_to_noise_ratio=_finite_float(
+            metrics_payload.get("signal_to_noise_ratio")
+        ),
+        signal_to_noise_db=_finite_float(metrics_payload.get("signal_to_noise_db")),
+        noise_cycles_used=cycles_used,
+        cycle_pp_mv=cycle_pp,
+        all_cycle_pp_mv=all_cycle_pp,
+        stabilized=bool(metrics_payload.get("stabilized")),
+        stabilization_cycle=metrics_payload.get("stabilization_cycle"),
+        warnings=[str(item) for item in metrics_payload.get("warnings", [])],
+        waveform_v=np.asarray(waveform_values, dtype=float),
+        sync_v=np.asarray(sync_values, dtype=float),
+        sample_rate_hz=_finite_float(
+            metrics_payload.get("sample_rate_hz"), DEFAULT_SAMPLE_RATE_HZ
+        ),
+        ignored_initial_cycles=int(
+            metrics_payload.get("ignored_initial_cycles") or 0
+        ),
+        input_range_v=WAVEFORM_INPUT_RANGE_V,
+        polarity_confidence=_finite_float(
+            metrics_payload.get("polarity_confidence")
+        ),
+        polarity_response_start_fraction=_finite_float(
+            metrics_payload.get("polarity_response_start_fraction")
+        ),
+        polarity_response_end_fraction=_finite_float(
+            metrics_payload.get("polarity_response_end_fraction")
+        ),
+        polarity_delta_mv=_finite_float(metrics_payload.get("polarity_delta_mv")),
+    )
+    report_payload = payload.get("stability_report")
+    recovered_unstable = bool(
+        isinstance(report_payload, dict) and report_payload.get("unstable")
+    )
+    official_sensitivity = (
+        _finite_float(prediction.get("sensitivity_mv"))
+        if "sensitivity_mv" in prediction
+        else (None if recovered_unstable else sensitivity)
+    )
+    if "polarity" in prediction:
+        official_polarity = (
+            ""
+            if prediction.get("polarity") is None
+            else str(prediction.get("polarity"))
+        )
+    else:
+        official_polarity = "" if recovered_unstable else metrics.polarity
+    official_offset = (
+        _finite_float(prediction.get("offset_v"))
+        if "offset_v" in prediction
+        else metrics.offset_v
+    )
+    final = FinalResult(
+        passed=str(prediction.get("verdict") or "").upper() == "PASS",
+        offset_v=official_offset,
+        sensitivity_mv=official_sensitivity,
+        polarity=official_polarity,
+        fail_reasons=[str(item) for item in prediction.get("fail_reasons", [])],
+        warnings=[str(item) for item in prediction.get("warnings", [])],
+        waveform_metrics=metrics,
+    )
+
+    report = None
+    if isinstance(report_payload, dict):
+        report = StabilityCaptureReport(
+            threshold_mv=float(report_payload.get("threshold_mv") or 0.0),
+            required_deltas=int(report_payload.get("required_deltas") or 0),
+            stabilized=bool(report_payload.get("stabilized")),
+            timed_out=bool(report_payload.get("timed_out")),
+            unstable=bool(report_payload.get("unstable")),
+            unstable_reason=report_payload.get("unstable_reason"),
+            phase=str(report_payload.get("phase") or ""),
+            measurement_attempt=int(report_payload.get("measurement_attempt") or 1),
+            measurement_failures=int(report_payload.get("measurement_failures") or 0),
+            active_required_deltas=int(
+                report_payload.get("active_required_deltas") or 0
+            ),
+            measurement_cycles_required=int(
+                report_payload.get("measurement_cycles_required") or 0
+            ),
+            stabilization_cycle=report_payload.get("stabilization_cycle"),
+            stabilization_seconds=_finite_float(
+                report_payload.get("stabilization_seconds")
+            ),
+            confirming_max_delta_mv=_finite_float(
+                report_payload.get("confirming_max_delta_mv")
+            ),
+            last_peak_delta_mv=_finite_float(
+                report_payload.get("last_peak_delta_mv")
+            ),
+            capture_cycles=int(report_payload.get("capture_cycles") or 0),
+            measurement_cycles=int(report_payload.get("measurement_cycles") or 0),
+            pwm_on_seconds=_finite_float(report_payload.get("pwm_on_seconds"), 0.0),
+            pwm_elapsed_offset_s=_finite_float(
+                report_payload.get("pwm_elapsed_offset_s"), 0.0
+            ),
+            data_source=str(report_payload.get("data_source") or ""),
+        )
+
+    reference_payload = payload.get("reference")
+    reference = None
+    if isinstance(reference_payload, dict):
+        baseline = _finite_float(reference_payload.get("baseline_mv"))
+        lower = _finite_float(reference_payload.get("lower_mv"))
+        if baseline is not None and baseline > 0:
+            tolerance = (
+                REFERENCE_TOLERANCE_PERCENT
+                if lower is None
+                else max(0.001, (baseline - lower) / baseline * 100.0)
+            )
+            reference = ReferenceCalibration(
+                readings_mv=(baseline, baseline),
+                mean_mv=baseline,
+                recorded_at=str(reference_payload.get("calibrated_at") or "unknown"),
+                tolerance_percent=tolerance,
+            )
+    return payload, metrics, final, report, reference
+
+
+def save_calibration_run_evidence(
+    *,
+    batch_number: str,
+    sensor_id: str,
+    specimen_id: str,
+    tester_name: str,
+    filter_setup: str,
+    session_id: str,
+    run_id: str,
+    measurement_run_number: int,
+    is_synthetic: bool,
+    metrics: WaveformMetrics,
+    final_result: FinalResult,
+    report: "StabilityCaptureReport | None",
+    battery_v: float | None,
+    reference_calibration: "ReferenceCalibration | None",
+    reference_check_mv: float | None,
+    dut_raw_samples: tuple | list = (),
+    dut_stream_diagnostics=None,
+    reference_capture: ReferenceEvidenceCapture | None = None,
+    offset_plausibility_override: bool = False,
+    rig_metadata: dict | None = None,
+) -> tuple[list[Path], Path]:
+    """Persist one run before annotation so re-measure never destroys it."""
+    output_dir = calibration_run_dir(
+        batch_number,
+        specimen_id,
+        run_id,
+        is_synthetic=is_synthetic,
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    app_mode = suggest_failure_mode(final_result)
+    detail_lines = snapshot_detail_lines(
+        batch_number,
+        sensor_id,
+        metrics,
+        report=report,
+    )
+    detail_lines.extend(
+        [
+            f"Specimen: {specimen_id}",
+            f"Run ID: {run_id}",
+            f"App verdict: {'PASS' if final_result.passed else 'FAIL'}",
+            f"App suggested mode: {app_mode or 'none'}",
+        ]
+    )
+    paths = save_waveform_diagnostic_bundle(
+        batch_number,
+        sensor_id,
+        metrics,
+        report,
+        title=f"{MODEL_NAME} {specimen_id} calibration run {measurement_run_number}",
+        detail_lines=detail_lines,
+        filename_suffix="dut",
+        output_dir=output_dir,
+        specimen_id=specimen_id,
+        run_id=run_id,
+        raw_samples=dut_raw_samples,
+    )
+    if not paths:
+        raise RuntimeError("The DUT evidence bundle did not contain waveform samples.")
+
+    if reference_capture is not None:
+        reference_samples_path = output_dir / "reference_samples.csv"
+        reference_cycles_path = output_dir / "reference_cycles.csv"
+        reference_report = reference_capture.analysis.report
+        write_stream_sample_csv(
+            reference_samples_path,
+            batch_number=batch_number,
+            sensor_id=sensor_id,
+            specimen_id=specimen_id,
+            run_id=run_id,
+            channel="AIN1",
+            waveform=reference_capture.waveform_v,
+            sync=reference_capture.sync_v,
+            sample_rate_hz=reference_capture.sample_rate_hz,
+            pwm_elapsed_offset_s=reference_report.pwm_elapsed_offset_s,
+            raw_samples=reference_capture.raw_samples,
+        )
+        write_cycle_diagnostic_csv(
+            reference_cycles_path,
+            batch_number=batch_number,
+            sensor_id=sensor_id,
+            specimen_id=specimen_id,
+            run_id=run_id,
+            channel="AIN1",
+            cycles=reference_capture.analysis.cycles,
+        )
+        paths.extend([reference_samples_path, reference_cycles_path])
+
+    artifacts = [
+        {
+            "path": str(path),
+            "relative_path": str(path.relative_to(output_dir)),
+            "bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
+        }
+        for path in paths
+    ]
+    manifest_path = output_dir / "run_manifest.json"
+    reference_payload = None
+    if reference_calibration is not None:
+        reference_payload = {
+            "source_path": str(resolved_reference_calibration_path()),
+            "calibrated_at": reference_calibration.recorded_at,
+            "baseline_mv": reference_calibration.mean_mv,
+            "lower_mv": reference_calibration.lower_mv,
+            "upper_mv": reference_calibration.upper_mv,
+            "check_mv": reference_check_mv,
+            "drift_percent": (
+                None
+                if reference_check_mv is None
+                else reference_calibration.drift_percent(reference_check_mv)
+            ),
+        }
+    manifest = {
+        "calibration_schema_version": CALIBRATION_SCHEMA_VERSION,
+        "calibration_app_version": CALIBRATION_APP_VERSION,
+        "ruleset_id": CALIBRATION_RULESET_ID,
+        "software_fingerprints": software_fingerprints(),
+        "created_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "session_id": session_id,
+        "run_id": run_id,
+        "measurement_run_number": measurement_run_number,
+        "batch_number": batch_number,
+        "sensor_id": sensor_id,
+        "specimen_id": specimen_id,
+        "tester_name": tester_name,
+        "is_synthetic": is_synthetic,
+        "rig": rig_metadata or {},
+        "filter_setup": filter_setup,
+        "app_prediction": {
+            "verdict": "PASS" if final_result.passed else "FAIL",
+            "offset_v": _json_number(final_result.offset_v),
+            "sensitivity_mv": _json_number(final_result.sensitivity_mv),
+            "polarity": final_result.polarity,
+            "fail_reasons": list(final_result.fail_reasons),
+            "suggested_failure_mode": app_mode,
+            "warnings": list(final_result.warnings),
+        },
+        "policy": {
+            "offset_min_v": OFFSET_MIN_V,
+            "offset_max_v": OFFSET_MAX_V,
+            "sensitivity_min_mv": FILTER_SPECS_MV[filter_setup],
+            "min_signal_to_noise_ratio": MIN_SIGNAL_TO_NOISE_RATIO,
+            "peak_delta_threshold_mv": (
+                None if report is None else report.threshold_mv
+            ),
+            "qualification_deltas": DUT_STABILITY_CONFIRMATION_DELTAS,
+            "measurement_cycles": SENSITIVITY_MEASUREMENT_CYCLES,
+            "max_measurement_attempts": MAX_MEASUREMENT_ATTEMPTS,
+            "stability_timeout_s": STABILITY_TIMEOUT_S,
+            "pwm_hz": EMITTER_PWM_FREQUENCY_HZ,
+            "pwm_duty_percent": EMITTER_PWM_DUTY_CYCLE,
+        },
+        "battery_v": battery_v,
+        "offset_plausibility_override": offset_plausibility_override,
+        "metrics": waveform_metrics_dict(metrics),
+        "stability_report": capture_report_dict(report),
+        "dut_stream_diagnostics": stream_diagnostics_dict(dut_stream_diagnostics),
+        "reference": reference_payload,
+        "reference_stream_diagnostics": stream_diagnostics_dict(
+            None if reference_capture is None else reference_capture.stream_diagnostics
+        ),
+        "reference_stability_report": (
+            None
+            if reference_capture is None
+            else capture_report_dict(
+                StabilityCaptureReport.from_analysis(
+                    reference_capture.analysis,
+                    data_source="esp32_reference",
+                )
+            )
+        ),
+        "artifacts": artifacts,
+    }
+    atomic_write_json(manifest_path, manifest)
+    return [*paths, manifest_path], manifest_path
+
+
+def save_calibration_review_record(
+    *,
+    batch_number: str,
+    sensor_id: str,
+    run_id: str,
+    review: CalibrationReview,
+    is_synthetic: bool,
+    production_failure_mode: str,
+    operator_comment: str,
+    related_run_ids: list[str],
+    evidence_paths: list[Path],
+) -> Path:
+    output_dir = calibration_run_dir(
+        batch_number,
+        review.specimen_id,
+        run_id,
+        is_synthetic=is_synthetic,
+    )
+    review_path = output_dir / "review.json"
+    payload = {
+        "calibration_schema_version": CALIBRATION_SCHEMA_VERSION,
+        "calibration_app_version": CALIBRATION_APP_VERSION,
+        "ruleset_id": CALIBRATION_RULESET_ID,
+        "batch_number": batch_number,
+        "sensor_id": sensor_id,
+        "selected_run_id": run_id,
+        "related_run_ids": list(related_run_ids),
+        "review": review.to_dict(),
+        "production_failure_mode": production_failure_mode,
+        "operator_comment": operator_comment.strip(),
+        "evidence_paths": [str(path) for path in evidence_paths],
+    }
+    return atomic_write_json(review_path, payload)
 
 
 def snapshot_detail_lines(
@@ -1203,7 +2526,7 @@ def snapshot_detail_lines(
     sensitivity_text = (
         f"{metrics.sensitivity_mv:.2f} mV"
         if metrics.stabilized
-        else "Not measured (stability timeout)"
+        else "Not measured (unstable)"
     )
     polarity_text = (
         f"{metrics.polarity} ({polarity_good_bad(metrics.polarity)})"
@@ -1221,9 +2544,10 @@ def snapshot_detail_lines(
     if metrics.measured_frequency_hz is not None:
         lines.append(f"PWM sync: {metrics.measured_frequency_hz:.3f} Hz")
     if report is not None:
-        state = "stabilized" if report.stabilized else "stability timeout"
+        state = "stabilized" if report.stabilized else "unstable"
         lines.append(
-            f"Stability: {state}; {report.required_deltas} deltas <= "
+            f"Stability: {state}; attempt {report.measurement_attempt}; "
+            f"{report.active_required_deltas} deltas <= "
             f"{report.threshold_mv:.3f} mV"
         )
         if report.stabilization_seconds is not None:
@@ -1304,6 +2628,9 @@ class EmitterEsp32Rig(Esp32EmitterRig):
     ) -> tuple[np.ndarray, np.ndarray, float]:
         del waveform_range_v
         self.connect()
+        self.last_stream_samples = ()
+        self.last_stream_diagnostics = None
+        self.last_stream_channel = str(channel)
         target_scans = int(
             math.ceil((cycles / expected_frequency_hz) * sample_rate_hz)
         )
@@ -1338,6 +2665,8 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         if diagnostics is None:
             raise Esp32BackendError("ESP32 stream diagnostics were unavailable.")
         self._validate_stream_diagnostics(diagnostics, minimum_samples=target_scans)
+        self.last_stream_samples = tuple(samples[:target_scans])
+        self.last_stream_diagnostics = diagnostics
         waveform, sync = self._sample_arrays(samples[:target_scans])
         actual_scan_rate = diagnostics.measured_rate_hz or header.sample_rate_hz
         return waveform, sync, float(actual_scan_rate)
@@ -1386,10 +2715,13 @@ class EmitterEsp32Rig(Esp32EmitterRig):
 
         The same samples drive sync validation, peak-delta progress, optional
         live preview, and the final result. The stability deadline is measured
-        from PWM activation; ten fresh measurement cycles may finish afterward.
+        from PWM activation; a started measurement window may finish afterward.
         """
         del waveform_range_v
         self.connect()
+        self.last_stream_samples = ()
+        self.last_stream_diagnostics = None
+        self.last_stream_channel = str(channel)
         samples = []
         header = self.start_stream(channel)
         if not math.isclose(header.sample_rate_hz, sample_rate_hz, rel_tol=0.01):
@@ -1402,22 +2734,34 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 )
         actual_scan_rate = float(header.sample_rate_hz)
         pwm_elapsed_offset_s = max(0.0, time.monotonic() - pwm_started_monotonic)
-        # Enough room for a decision on the deadline plus all ten fresh cycles
-        # and two edge-closing cycles. This is a safety ceiling, not the normal
-        # stop condition.
+        is_reference = str(channel).lower() in {"ref", "reference", "ain1"}
+        enforce_retry_policy = not is_reference
+        analysis_settings = (
+            dut_stability_settings(settings) if enforce_retry_policy else settings
+        )
+        maximum_measurement_cycles = measurement_cycles
+        # Enough room for a final measurement window that begins at the
+        # stability deadline, plus two edge-closing cycles. This is only a
+        # safety ceiling; the state machine normally stops earlier.
         max_stream_s = max(0.0, stability_timeout_s - pwm_elapsed_offset_s) + (
-            measurement_cycles + 2
+            maximum_measurement_cycles + 2
         ) / expected_frequency_hz
         # N samples span N-1 intervals, so include the sample at the safety
         # ceiling rather than stopping one conversion before it.
         target_scans = int(math.ceil(max_stream_s * actual_scan_rate)) + 1
         diagnostics = None
-        stream_data_source = "esp32_reference" if str(channel).lower() in {"ref", "reference", "ain1"} else "esp32"
+        stream_data_source = (
+            "esp32_reference"
+            if is_reference
+            else "esp32_v6_1_failure_calibration"
+        )
         analysis = analyze_stability(
-            [], [], actual_scan_rate, settings,
+            [], [], actual_scan_rate, analysis_settings,
             pwm_elapsed_offset_s=pwm_elapsed_offset_s,
             stability_deadline_s=stability_timeout_s,
             measurement_cycles_required=measurement_cycles,
+            enforce_measurement_stability=enforce_retry_policy,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source=stream_data_source,
         )
         sync_validated = False
@@ -1461,10 +2805,12 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     waveform_np,
                     sync_np,
                     actual_scan_rate,
-                    settings,
+                    analysis_settings,
                     pwm_elapsed_offset_s=pwm_elapsed_offset_s,
                     stability_deadline_s=stability_timeout_s,
                     measurement_cycles_required=measurement_cycles,
+                    enforce_measurement_stability=enforce_retry_policy,
+                    max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
                     data_source=stream_data_source,
                 )
                 captured_s = (
@@ -1499,7 +2845,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                         waveform_np[-STREAM_PREVIEW_MAX_SAMPLES:].copy(),
                         sync_np[-STREAM_PREVIEW_MAX_SAMPLES:].copy(),
                     )
-                if analysis.report.measurement_complete or analysis.report.timed_out:
+                if analysis.report.measurement_complete or analysis.report.unstable:
                     break
         finally:
             if self.is_streaming:
@@ -1521,20 +2867,24 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             waveform_np,
             sync_np,
             actual_scan_rate,
-            settings,
+            analysis_settings,
             pwm_elapsed_offset_s=pwm_elapsed_offset_s,
             stability_deadline_s=stability_timeout_s,
             measurement_cycles_required=measurement_cycles,
+            enforce_measurement_stability=enforce_retry_policy,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source=stream_data_source,
         )
         if not sync_validated:
             raise HardwareNotReadyError(
                 "ESP32 PWM sync could not be validated before the capture ended."
             )
-        if not (analysis.report.measurement_complete or analysis.report.timed_out):
+        if not (analysis.report.measurement_complete or analysis.report.unstable):
             raise Esp32BackendError(
                 "Adaptive capture reached its safety limit before producing a complete decision."
             )
+        self.last_stream_samples = tuple(samples)
+        self.last_stream_diagnostics = diagnostics
         return waveform_np, sync_np, actual_scan_rate, analysis
 
 
@@ -1631,7 +2981,7 @@ def apply_signal_quality_gate(final: FinalResult, metrics: WaveformMetrics | Non
 
 
 # --------------------------------------------------------------------------- #
-# V6 adaptive-stability capture telemetry
+# V6.1 adaptive-stability capture telemetry
 # --------------------------------------------------------------------------- #
 @dataclass
 class StabilityCaptureReport:
@@ -1639,6 +2989,13 @@ class StabilityCaptureReport:
     required_deltas: int
     stabilized: bool = False
     timed_out: bool = False
+    unstable: bool = False
+    unstable_reason: str | None = None
+    phase: str = "stabilizing"
+    measurement_attempt: int = 1
+    measurement_failures: int = 0
+    active_required_deltas: int = 5
+    measurement_cycles_required: int = 10
     stabilization_cycle: int | None = None
     stabilization_seconds: float | None = None
     confirming_max_delta_mv: float | None = None
@@ -1664,6 +3021,13 @@ class StabilityCaptureReport:
             required_deltas=source.configured_confirmation_count,
             stabilized=source.stabilized,
             timed_out=source.timed_out,
+            unstable=source.unstable,
+            unstable_reason=source.unstable_reason,
+            phase=source.phase,
+            measurement_attempt=source.measurement_attempt,
+            measurement_failures=source.measurement_failures,
+            active_required_deltas=source.active_confirmation_count,
+            measurement_cycles_required=source.measurement_cycles_required,
             stabilization_cycle=source.stabilization_cycle,
             stabilization_seconds=source.stabilization_elapsed_s,
             confirming_max_delta_mv=source.confirming_window_max_delta_mv,
@@ -1692,6 +3056,11 @@ class StabilityCaptureReport:
             "last_peak_delta_mv": _fmt_optional_float(self.last_peak_delta_mv, 6),
             "capture_cycles": str(self.capture_cycles),
             "measurement_cycles": str(self.measurement_cycles),
+            "stability_phase": self.phase,
+            "measurement_attempt": str(self.measurement_attempt),
+            "measurement_failures": str(self.measurement_failures),
+            "active_stability_required_deltas": str(self.active_required_deltas),
+            "active_measurement_cycles_required": str(self.measurement_cycles_required),
             "pwm_on_seconds": f"{self.pwm_on_seconds:.3f}",
             "data_source": self.data_source,
         }
@@ -1706,17 +3075,18 @@ def analyze_v6_stable_measurement(
     offset_v: float,
     input_range_v: float,
 ) -> WaveformMetrics:
-    """Apply the proven signal math to exactly ten fresh stable cycles."""
+    """Apply production signal math to the successful 20-cycle window."""
     segments = analysis.measurement_segments
-    if len(segments) != SENSITIVITY_MEASUREMENT_CYCLES:
+    expected_cycles = analysis.report.measurement_cycles_required
+    if len(segments) != expected_cycles:
         raise ValueError(
-            f"Stable measurement requires {SENSITIVITY_MEASUREMENT_CYCLES} complete cycles; "
+            f"Stable measurement requires {expected_cycles} complete cycles; "
             f"received {len(segments)}."
         )
     first_start = segments[0][0]
     last_end = segments[-1][1]
     # Include the low sample before the first rising edge and the closing edge
-    # after the tenth cycle so the shared edge detector sees all ten cycles.
+    # after the last selected cycle so the shared edge detector sees them all.
     slice_start = max(0, first_start - 1)
     slice_end = min(len(waveform_v), last_end + 1)
     measured_waveform = waveform_v[slice_start:slice_end]
@@ -1727,14 +3097,14 @@ def analyze_v6_stable_measurement(
         sample_rate_hz=sample_rate_hz,
         am502_gain=RIG_GAIN,
         sync_edge=PROCEDURE_SYNC_EDGE,
-        stability_window_cycles=SENSITIVITY_MEASUREMENT_CYCLES,
+        stability_window_cycles=expected_cycles,
         settle_cycles=0,
         input_range_v=input_range_v,
     )
-    if metrics.cycles_used != SENSITIVITY_MEASUREMENT_CYCLES:
+    if metrics.cycles_used != expected_cycles:
         raise Esp32BackendError(
             f"Selected stability window contained {metrics.cycles_used} analyzable cycles; "
-            f"expected {SENSITIVITY_MEASUREMENT_CYCLES}. Nothing was recorded."
+            f"expected {expected_cycles}. Nothing was recorded."
         )
     metrics.warnings = [
         warning for warning in metrics.warnings
@@ -1781,11 +3151,14 @@ def build_stability_timeout_result(
         expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
         edge=PROCEDURE_SYNC_EDGE,
     )
-    reason = (
-        f"Unstable: waveform peak did not stabilize within {analysis.report.stability_deadline_s:.1f} s: "
-        f"required {analysis.report.configured_confirmation_count} consecutive peak deltas "
-        f"at or below {analysis.report.configured_threshold_mv:.3f} mV."
-    )
+    detail = analysis.report.unstable_reason
+    if not detail:
+        detail = (
+            f"Waveform peak did not stabilize within {analysis.report.stability_deadline_s:.1f} s: "
+            f"required {analysis.report.active_confirmation_count} consecutive peak deltas "
+            f"at or below {analysis.report.configured_threshold_mv:.3f} mV."
+        )
+    reason = "Unstable: " + detail
     warnings = [
         warning.replace("blade sync", "ESP32 PWM sync").replace("Blade sync", "ESP32 PWM sync")
         for warning in sync_warnings
@@ -2568,7 +3941,7 @@ class ScopeView(tk.Canvas):
 
 
 # --------------------------------------------------------------------------- #
-# Guided ESP32 emitter tester UI (v6)
+# Guided ESP32 emitter tester UI (v6.1)
 # --------------------------------------------------------------------------- #
 class EmitterTesterApp(tk.Tk):
     SETUP_STEP = "setup"
@@ -2591,7 +3964,7 @@ class EmitterTesterApp(tk.Tk):
             self.tk.call("tk", "scaling", UI_SCALE * 96.0 / 72.0)
         except tk.TclError:
             pass
-        self.title("Eltec 406MCA ESP32 Emitter Tester v6")
+        self.title(CALIBRATION_DISPLAY_NAME)
         self.minsize(S(1100), S(740))
 
         self.animator = Animator(self)
@@ -2612,6 +3985,8 @@ class EmitterTesterApp(tk.Tk):
 
         self.device: EmitterEsp32Rig | None = None
         self.hardware_lock = threading.Lock()
+        self.ui_queue: queue.Queue = queue.Queue()
+        self.closing = False
         self.busy = False
         self.measuring = False
         self.step = self.SETUP_STEP
@@ -2622,18 +3997,25 @@ class EmitterTesterApp(tk.Tk):
             self.stability_settings = load_stability_settings(DEFAULT_SETTINGS_PATH)
         except StabilitySettingsError as exc:
             self.stability_config_error = str(exc)
+        frozen_error = frozen_rule_source_error()
+        if frozen_error is not None:
+            self.stability_settings = None
+            self.stability_config_error = frozen_error
 
         # 6 V SLA battery watcher state.
         self.battery_v: float | None = None
         self.battery_state = "unknown"  # "ok" | "warn" | "low" | "unknown"
         self.battery_checking = False
         self.battery_read_time: float | None = None  # time.monotonic() of last good read
+        self.battery_read_is_synthetic: bool | None = None
+        self.battery_request_generation = 0
 
         # Permanently-mounted AIN1 sensor calibration / emitter-health gate.
         self.reference_calibration: ReferenceCalibration | None = None
         self.reference_calibration_error: str | None = None
         self.reference_calibrating = False
         self.last_reference_check_mv: float | None = None
+        self.last_reference_calibration: ReferenceCalibration | None = None
         try:
             self.reference_calibration = load_reference_calibration()
         except ReferenceCalibrationError as exc:
@@ -2646,6 +4028,9 @@ class EmitterTesterApp(tk.Tk):
         self.current_sensor_number = 0
         self.current_sensor_id = ""
         self.result_saved = True
+        self.batch_is_synthetic = False
+        self.batch_active = False
+        self.session_id = str(uuid.uuid4())
 
         # Current-sensor measurement state.
         self.last_metrics: WaveformMetrics | None = None
@@ -2655,6 +4040,21 @@ class EmitterTesterApp(tk.Tk):
         self.preview_sync: np.ndarray = np.array([], dtype=float)
         self.snapshot_paths: list[Path] = []
         self.stability_diagnostics_saved = False
+        self.active_run_id = ""
+        self.measured_specimen_id = ""
+        self.measurement_run_number = 0
+        self.run_history: list[dict] = []
+        self.last_run_evidence_paths: list[Path] = []
+        self.last_run_manifest_path: Path | None = None
+        self.last_run_evidence_error: str | None = None
+        self.evidence_saving = False
+        self.autosave_error: str | None = None
+        self.auto_suggested_failure_mode = ""
+        self.last_dut_raw_samples: tuple = ()
+        self.last_dut_stream_diagnostics = None
+        self.last_rig_metadata: dict = {}
+        self.last_reference_capture: ReferenceEvidenceCapture | None = None
+        self.offset_plausibility_override_applied = False
 
         self.logo_image: tk.PhotoImage | None = None
         self.wave_canvas: ScopeView | None = None
@@ -2665,7 +4065,7 @@ class EmitterTesterApp(tk.Tk):
         self._build_variables()
         if self.stability_config_error is not None:
             self.status_var.set(
-                "V6 stability configuration error — measurement is disabled. "
+                "V6.1 stability configuration error — measurement is disabled. "
                 + self.stability_config_error
             )
         self._build_style()
@@ -2678,6 +4078,10 @@ class EmitterTesterApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.render_step()
+        # Worker threads communicate through a plain Python queue. Tk itself is
+        # touched only from this main-thread poller, avoiding shutdown deadlocks
+        # when a capture owns the hardware lock.
+        self.after(20, self._drain_ui_queue)
         # Technicians run this full screen; start maximized so every control
         # (especially the footer buttons) is visible from the first launch.
         try:
@@ -2719,12 +4123,24 @@ class EmitterTesterApp(tk.Tk):
         self.show_details_var = tk.BooleanVar(value=False)
         self.notes_var = tk.StringVar(value="")
         self.failure_mode_var = tk.StringVar(value="")
+        self.specimen_id_var = tk.StringVar(value="")
+        self.ground_truth_verdict_var = tk.StringVar(value="")
+        self.ground_truth_failure_mode_var = tk.StringVar(value="")
+        self.failure_reason_assessment_var = tk.StringVar(value="")
+        self.ground_truth_basis_var = tk.StringVar(value="")
+        self.review_confidence_var = tk.StringVar(value="")
+        self.reviewer_var = tk.StringVar(value="")
+        self.known_root_cause_var = tk.StringVar(value="")
+        self.review_notes_var = tk.StringVar(value="")
+        self.sensor_seated_override_var = tk.BooleanVar(value=False)
 
         self.status_var = tk.StringVar(value="Checking ESP32 rig...")
         self.measure_status_var = tk.StringVar(value="")
         self.comment_status_var = tk.StringVar(value="")
         self.snapshot_status_var = tk.StringVar(value="")
         self.reference_progress_var = tk.StringVar(value="")
+        self.review_status_var = tk.StringVar(value="Ground-truth review required")
+        self.review_notes_status_var = tk.StringVar(value="Explanation required")
 
         # One-line summary shown next to the "Advanced options" link.
         self.adv_summary_var = tk.StringVar()
@@ -2733,7 +4149,7 @@ class EmitterTesterApp(tk.Tk):
 
     def _update_adv_summary(self) -> None:
         bits = ["capture: adaptive peak stability"]
-        if self.simulator_var.get():
+        if self.simulator_mode():
             bits.append("SIMULATOR ON")
         self.adv_summary_var.set("   ·   ".join(bits))
 
@@ -2918,20 +4334,27 @@ class EmitterTesterApp(tk.Tk):
             self.header.create_text(badge_cx, badge_cy, text="ELTEC", fill=ELTEC_RED, font=(self.FONT_DISPLAY, 22, "bold italic"), tags="static")
 
         title_x = badge_x1 + S(26)
-        self.header.create_text(title_x, S(26), anchor="w", text="406MCA EMITTER TESTER", fill=HEADER_FG, font=self.fd(21), tags="static")
-        title_width = tkfont.Font(font=self.fd(21)).measure("406MCA EMITTER TESTER")
+        header_title = "406MCA FAILURE CALIBRATION"
+        self.header.create_text(title_x, S(26), anchor="w", text=header_title, fill=HEADER_FG, font=self.fd(20), tags="static")
+        title_width = tkfont.Font(font=self.fd(20)).measure(header_title)
         chip_x = title_x + title_width + S(14)
-        draw_round_rect(self.header, chip_x, S(15), chip_x + S(40), S(37), Sf(8), fill=ELTEC_RED, outline="", tags="static")
-        self.header.create_text(chip_x + S(20), S(26), text="V6", fill="#ffffff", font=self.fm(11, "bold"), tags="static")
-        if self.simulator_var.get():
+        draw_round_rect(self.header, chip_x, S(15), chip_x + S(64), S(37), Sf(8), fill=ELTEC_RED, outline="", tags="static")
+        self.header.create_text(chip_x + S(32), S(26), text="V6.1 BASE", fill="#ffffff", font=self.fm(9, "bold"), tags="static")
+        warning_text = "NOT PRODUCTION"
+        warning_font = self.fm(10, "bold")
+        warning_w = tkfont.Font(font=warning_font).measure(warning_text) + S(20)
+        warning_x = chip_x + S(64) + S(9)
+        draw_round_rect(self.header, warning_x, S(15), warning_x + warning_w, S(37), Sf(8), fill=WARN_ACCENT, outline="", tags="static")
+        self.header.create_text(warning_x + warning_w / 2, S(26), text=warning_text, fill="#3d2c00", font=warning_font, tags="static")
+        if self.simulator_mode():
             # Loud amber badge: everything on screen is synthetic.
             sim_text = "SIMULATOR"
             sim_font = self.fm(11, "bold")
             sim_w = tkfont.Font(font=sim_font).measure(sim_text) + S(22)
-            sim_x = chip_x + S(40) + S(10)
+            sim_x = warning_x + warning_w + S(9)
             draw_round_rect(self.header, sim_x, S(15), sim_x + sim_w, S(37), Sf(8), fill=WARN_ACCENT, outline="", tags="static")
             self.header.create_text(sim_x + sim_w / 2, S(26), text=sim_text, fill="#3d2c00", font=sim_font, tags="static")
-        self.header.create_text(title_x, S(47), anchor="w", text="PYROELECTRIC SENSOR QC  ·  EMITTER RIG", fill=mix_color(HEADER_SUB_FG, ELTEC_BLUE, 0.25), font=self.fm(9, "bold"), tags="static")
+        self.header.create_text(title_x, S(47), anchor="w", text="GROUND-TRUTH STUDY  ·  V6.1 VERDICT RULES FROZEN", fill=mix_color(HEADER_SUB_FG, ELTEC_BLUE, 0.25), font=self.fm(9, "bold"), tags="static")
 
         if self._header_status_item is not None:
             self.header.delete(self._header_status_item)
@@ -3059,7 +4482,12 @@ class EmitterTesterApp(tk.Tk):
         tk.Label(parent, text=text.upper(), bg=bg, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=row, column=0, sticky="w", pady=pady)
 
     def render_setup_step(self) -> None:
-        self._step_heading(0, "01", "Batch information", "Enter the batch number and your name, choose the filter, then press Enter.")
+        self._step_heading(
+            0,
+            "01",
+            "Failure-calibration study",
+            "Experimental evidence collection only — enter the study batch, reviewer, and normal filter setup.",
+        )
 
         card = Card(self.step_frame, accent_stops=TECH_GRADIENT)
         card.grid(row=1, column=0, sticky="new", pady=(20, 0))
@@ -3100,14 +4528,16 @@ class EmitterTesterApp(tk.Tk):
         panel.columnconfigure(1, weight=1)
         settings = self.stability_settings
         if settings is None:
-            stability_rule_text = "The tracked v6 stability settings are invalid; measurement is disabled."
+            stability_rule_text = "The tracked v6.1 stability settings are invalid; measurement is disabled."
         else:
             stability_rule_text = (
-                f"V6 continuously watches the robust AIN0 peak from PWM-on. It requires "
-                f"{settings.consecutive_deltas_required} consecutive cycle-to-cycle peak deltas "
-                f"at or below {settings.peak_delta_threshold_mv:.3f} mV, then measures sensitivity "
-                f"over {SENSITIVITY_MEASUREMENT_CYCLES} fresh cycles. A part that has not stabilized "
-                f"within {STABILITY_TIMEOUT_S:g} seconds fails as unstable."
+                f"V6.1 DUT attempts 1, 2, and 3 each require "
+                f"{DUT_STABILITY_CONFIRMATION_DELTAS} consecutive "
+                f"cycle-to-cycle peak deltas at or below {settings.peak_delta_threshold_mv:.3f} mV, "
+                f"then {SENSITIVITY_MEASUREMENT_CYCLES} measurement cycles that must stay within "
+                f"the same limit. A kick discards that window and restarts the same 10/20 check. "
+                f"A third measurement kick fails as unstable. Requalification must finish within "
+                f"{STABILITY_TIMEOUT_S:g} seconds of PWM-on."
             )
         ttk.Checkbutton(panel, text="Simulator mode (training only - synthetic data, clearly badged)",
                         variable=self.simulator_var,
@@ -3179,14 +4609,20 @@ class EmitterTesterApp(tk.Tk):
         self.filter_hint_var.set("" if min_mv is None else f"MINIMUM SENSITIVITY TO PASS: {min_mv:.1f} mV")
 
     def reference_gate_ready(self) -> bool:
-        if self.simulator_var.get():
+        if self.simulator_mode():
             return True
         calibration = self.reference_calibration
         return calibration is not None and calibration.valid
 
+    def simulator_mode(self) -> bool:
+        """Return the mode frozen at batch start, or the setup selection."""
+        if self.batch_active:
+            return bool(self.batch_is_synthetic)
+        return bool(self.simulator_var.get())
+
     def _build_reference_calibration_card(self, row: int) -> None:
         calibration = self.reference_calibration
-        simulator = self.simulator_var.get()
+        simulator = self.simulator_mode()
         ready = simulator or (calibration is not None and calibration.valid)
         if simulator:
             title = "Reference unit simulated"
@@ -3279,6 +4715,45 @@ class EmitterTesterApp(tk.Tk):
         for chip_text in (f"SENSOR {self.current_sensor_id}", f"{EMITTER_PWM_FREQUENCY_HZ:g} Hz · 50% DUTY", "GAIN ×1 BUFFER"):
             chip = tk.Label(chips, text=chip_text, bg=ELTEC_BLUE_LIGHT, fg=ELTEC_BLUE_DARK, font=self.fm(9, "bold"), padx=10, pady=4)
             chip.pack(side="left", padx=(0, 8))
+        specimen = tk.Frame(text_col, bg=CARD_BG)
+        specimen.pack(anchor="w", fill="x", pady=(S(14), 0))
+        tk.Label(
+            specimen,
+            text="PHYSICAL SPECIMEN ID (REQUIRED)",
+            bg=CARD_BG,
+            fg=MUTED_FG,
+            font=self.fm(9, "bold"),
+        ).pack(anchor="w")
+        specimen_entry = ttk.Entry(
+            specimen,
+            textvariable=self.specimen_id_var,
+            font=self.fb(15),
+            style="Card.TEntry",
+            width=28,
+        )
+        specimen_entry.pack(anchor="w", fill="x", pady=(S(4), 0))
+        self.default_focus_widget = specimen_entry
+        ttk.Checkbutton(
+            text_col,
+            text=(
+                "Diagnostic override: I physically confirmed this sensor is seated; "
+                "allow capture if its DC offset looks disconnected"
+            ),
+            variable=self.sensor_seated_override_var,
+            command=lambda: self.write_autosave("offset_override_changed"),
+        ).pack(anchor="w", pady=(S(10), 0))
+        tk.Label(
+            text_col,
+            text=(
+                "Use the override only for suspected no-offset/extreme-offset failures. "
+                "It is recorded in every artifact and never changes the ordinary v6.1 app."
+            ),
+            bg=CARD_BG,
+            fg=WARN_FG,
+            font=self.fb(9),
+            wraplength=S(650),
+            justify="left",
+        ).pack(anchor="w", pady=(S(3), 0))
         self._build_battery_banner()
 
     def _draw_rig_illustration(self, rig: tk.Canvas) -> None:
@@ -3367,6 +4842,327 @@ class EmitterTesterApp(tk.Tk):
 
         self.animator.animate("step:scan", 1400, frame, easing=None, loop=True)
 
+    def _current_calibration_review(self) -> CalibrationReview:
+        if self.last_result is None:
+            raise ValueError("Run the measurement before completing the review.")
+        return build_calibration_review(
+            final_result=self.last_result,
+            app_suggested_failure_mode=self.auto_suggested_failure_mode,
+            specimen_id=self.measured_specimen_id or self.specimen_id_var.get(),
+            ground_truth_verdict=self.ground_truth_verdict_var.get(),
+            ground_truth_failure_mode=self.ground_truth_failure_mode_var.get(),
+            failure_reason_assessment=self.failure_reason_assessment_var.get(),
+            ground_truth_basis=self.ground_truth_basis_var.get(),
+            confidence=self.review_confidence_var.get(),
+            known_physical_root_cause=self.known_root_cause_var.get(),
+            notes=self.review_notes_var.get(),
+            reviewer=self.reviewer_var.get(),
+        )
+
+    def _update_review_status(self) -> None:
+        notes = self.review_notes_var.get().strip()
+        self.review_notes_status_var.set(
+            f"Explanation saved ({len(notes)} chars)" if notes else "Explanation required"
+        )
+        try:
+            review = self._current_calibration_review()
+        except ValueError as exc:
+            self.review_status_var.set("Incomplete: " + str(exc))
+        else:
+            label = review.review_classification.replace("_", " ").title()
+            self.review_status_var.set(
+                f"Ready to save · {label} · app verdict {review.verdict_assessment.lower()}"
+            )
+
+    def on_ground_truth_changed(self, _event=None) -> None:
+        verdict = self.ground_truth_verdict_var.get().strip().upper()
+        app_verdict = (
+            "PASS" if self.last_result is not None and self.last_result.passed else "FAIL"
+        )
+        if verdict == "PASS":
+            self.ground_truth_failure_mode_var.set(GOOD_GROUND_TRUTH_MODE)
+            self.failure_reason_assessment_var.set(
+                "NOT APPLICABLE" if app_verdict == "PASS" else "INCORRECT"
+            )
+        elif verdict == "UNSURE":
+            self.ground_truth_failure_mode_var.set(UNKNOWN_GROUND_TRUTH_MODE)
+            self.failure_reason_assessment_var.set("UNSURE")
+        elif verdict == "FAIL":
+            current = self.ground_truth_failure_mode_var.get()
+            if current not in (*FAILURE_MODE_CHOICES, OTHER_GROUND_TRUTH_MODE):
+                self.ground_truth_failure_mode_var.set("")
+            self.failure_reason_assessment_var.set(
+                "INCORRECT" if app_verdict == "PASS" else ""
+            )
+        self._update_review_status()
+        self.write_autosave("ground_truth_verdict_changed")
+
+    def on_review_field_changed(self, _event=None) -> None:
+        self._update_review_status()
+        self.write_autosave("calibration_review_changed")
+
+    def open_review_notes_window(self) -> None:
+        dialog = tk.Toplevel(self)
+        dialog.title(f"Ground-truth explanation — {self.specimen_id_var.get() or self.current_sensor_id}")
+        dialog.minsize(S(700), S(460))
+        dialog.configure(bg=PAGE_BG)
+        dialog.transient(self)
+        frame = tk.Frame(dialog, bg=PAGE_BG)
+        frame.grid(row=0, column=0, sticky="nsew", padx=S(18), pady=S(16))
+        dialog.rowconfigure(0, weight=1)
+        dialog.columnconfigure(0, weight=1)
+        frame.rowconfigure(3, weight=1)
+        frame.columnconfigure(0, weight=1)
+        tk.Label(
+            frame,
+            text="CALIBRATION EVIDENCE — REQUIRED",
+            bg=PAGE_BG,
+            fg=ELTEC_RED,
+            font=self.fm(11, "bold"),
+        ).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            frame,
+            text="Explain the known condition and why this ground truth is trusted",
+            bg=PAGE_BG,
+            fg=TEXT_DARK,
+            font=self.fd(18),
+        ).grid(row=1, column=0, sticky="w", pady=(S(3), 0))
+        tk.Label(
+            frame,
+            text=(
+                "Include independent scope/bench evidence, observed symptom, prior failure history, "
+                "or why the sensor remains uncertain. Do not merely repeat the app verdict."
+            ),
+            bg=PAGE_BG,
+            fg=MUTED_FG,
+            font=self.fb(11),
+            wraplength=S(650),
+            justify="left",
+        ).grid(row=2, column=0, sticky="w", pady=(S(6), S(10)))
+        text_widget = tk.Text(
+            frame,
+            wrap="word",
+            font=self.fb(13),
+            undo=True,
+            relief="flat",
+            bd=0,
+            bg=CARD_BG,
+            fg=TEXT_DARK,
+            padx=12,
+            pady=10,
+            insertbackground=ELTEC_BLUE,
+            highlightbackground=CARD_BORDER,
+            highlightcolor=ELTEC_BLUE,
+            highlightthickness=1,
+        )
+        text_widget.grid(row=3, column=0, sticky="nsew")
+        text_widget.insert("1.0", self.review_notes_var.get())
+        buttons = tk.Frame(frame, bg=PAGE_BG)
+        buttons.grid(row=4, column=0, sticky="e", pady=(S(14), 0))
+
+        def save_notes(_event=None) -> str:
+            self.review_notes_var.set(text_widget.get("1.0", "end-1c").strip())
+            self._update_review_status()
+            self.write_autosave("calibration_review_notes_changed")
+            dialog.destroy()
+            return "break"
+
+        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="sm").grid(row=0, column=0, padx=(0, S(10)))
+        self.btn(buttons, "Save Explanation", save_notes, kind="primary", size="sm").grid(row=0, column=1)
+        dialog.bind("<Control-Return>", save_notes)
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        text_widget.focus_set()
+
+    def _build_calibration_review_card(self, row: int) -> None:
+        result = self.last_result
+        if result is None:
+            return
+        review_bg = "#fff8e1"
+        card = Card(
+            self.step_frame,
+            card_bg=review_bg,
+            border=mix_color(WARN_ACCENT, review_bg, 0.40),
+            accent_stops=[WARN_ACCENT, ELTEC_RED],
+            pad=(18, 16),
+        )
+        card.grid(row=row, column=0, sticky="ew", pady=(S(14), 0))
+        inner = card.inner
+        inner.columnconfigure(0, weight=1, uniform="review")
+        inner.columnconfigure(1, weight=1, uniform="review")
+        tk.Label(
+            inner,
+            text="GROUND-TRUTH REVIEW · REQUIRED BEFORE SAVE",
+            bg=review_bg,
+            fg=WARN_FG,
+            font=self.fm(10, "bold"),
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        app_verdict = "PASS" if result.passed else "FAIL"
+        automatic_reason = "; ".join(result.fail_reasons) or "No automatic failure reason"
+        tk.Label(
+            inner,
+            text=(
+                f"Frozen app prediction: {app_verdict}"
+                + (
+                    f" · {self.auto_suggested_failure_mode}"
+                    if self.auto_suggested_failure_mode
+                    else ""
+                )
+                + f"\nAutomatic reasons: {automatic_reason}"
+            ),
+            bg=review_bg,
+            fg=TEXT_DARK,
+            font=self.fb(11, "bold"),
+            wraplength=S(820),
+            justify="left",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(S(6), S(12)))
+
+        def field_label(text: str, grid_row: int, column: int) -> None:
+            tk.Label(
+                inner,
+                text=text,
+                bg=review_bg,
+                fg=MUTED_FG,
+                font=self.fm(9, "bold"),
+            ).grid(row=grid_row, column=column, sticky="w", padx=(0 if column == 0 else S(10), 0))
+
+        field_label("PHYSICAL SPECIMEN ID", 2, 0)
+        field_label("GROUND-TRUTH VERDICT", 2, 1)
+        specimen_entry = ttk.Entry(
+            inner,
+            textvariable=self.specimen_id_var,
+            font=self.fb(13),
+            style="Card.TEntry",
+            state="readonly",
+        )
+        specimen_entry.grid(row=3, column=0, sticky="ew", padx=(0, S(10)), pady=(S(3), S(10)))
+        truth_combo = ttk.Combobox(
+            inner,
+            textvariable=self.ground_truth_verdict_var,
+            values=GROUND_TRUTH_VERDICT_CHOICES,
+            state="readonly",
+            font=self.fb(12),
+        )
+        truth_combo.grid(row=3, column=1, sticky="ew", padx=(S(10), 0), pady=(S(3), S(10)))
+        truth_combo.bind("<<ComboboxSelected>>", self.on_ground_truth_changed)
+
+        field_label("ACTUAL PRIMARY CONDITION", 4, 0)
+        field_label("WAS THE APP FAILURE REASON CORRECT?", 4, 1)
+        mode_combo = ttk.Combobox(
+            inner,
+            textvariable=self.ground_truth_failure_mode_var,
+            values=GROUND_TRUTH_FAILURE_MODE_CHOICES,
+            state="readonly",
+            font=self.fb(11),
+            height=12,
+        )
+        mode_combo.grid(row=5, column=0, sticky="ew", padx=(0, S(10)), pady=(S(3), S(10)))
+        mode_combo.bind("<<ComboboxSelected>>", self.on_review_field_changed)
+        reason_combo = ttk.Combobox(
+            inner,
+            textvariable=self.failure_reason_assessment_var,
+            values=FAILURE_REASON_ASSESSMENT_CHOICES,
+            state="readonly",
+            font=self.fb(11),
+        )
+        reason_combo.grid(row=5, column=1, sticky="ew", padx=(S(10), 0), pady=(S(3), S(10)))
+        reason_combo.bind("<<ComboboxSelected>>", self.on_review_field_changed)
+
+        field_label("GROUND-TRUTH BASIS", 6, 0)
+        field_label("CONFIDENCE", 6, 1)
+        basis_combo = ttk.Combobox(
+            inner,
+            textvariable=self.ground_truth_basis_var,
+            values=GROUND_TRUTH_BASIS_CHOICES,
+            state="readonly",
+            font=self.fb(11),
+        )
+        basis_combo.grid(row=7, column=0, sticky="ew", padx=(0, S(10)), pady=(S(3), S(10)))
+        basis_combo.bind("<<ComboboxSelected>>", self.on_review_field_changed)
+        confidence_combo = ttk.Combobox(
+            inner,
+            textvariable=self.review_confidence_var,
+            values=REVIEW_CONFIDENCE_CHOICES,
+            state="readonly",
+            font=self.fb(11),
+        )
+        confidence_combo.grid(row=7, column=1, sticky="ew", padx=(S(10), 0), pady=(S(3), S(10)))
+        confidence_combo.bind("<<ComboboxSelected>>", self.on_review_field_changed)
+
+        field_label("GROUND-TRUTH REVIEWER", 8, 0)
+        field_label("KNOWN PHYSICAL ROOT CAUSE (OPTIONAL)", 8, 1)
+        reviewer_entry = ttk.Entry(
+            inner,
+            textvariable=self.reviewer_var,
+            font=self.fb(12),
+            style="Card.TEntry",
+        )
+        reviewer_entry.grid(
+            row=9,
+            column=0,
+            sticky="ew",
+            padx=(0, S(10)),
+            pady=(S(3), S(10)),
+        )
+        reviewer_entry.bind("<FocusOut>", self.on_review_field_changed)
+        root_cause_entry = ttk.Entry(
+            inner,
+            textvariable=self.known_root_cause_var,
+            font=self.fb(12),
+            style="Card.TEntry",
+        )
+        root_cause_entry.grid(
+            row=9,
+            column=1,
+            sticky="ew",
+            padx=(S(10), 0),
+            pady=(S(3), S(10)),
+        )
+        root_cause_entry.bind("<FocusOut>", self.on_review_field_changed)
+
+        notes_row = tk.Frame(inner, bg=review_bg)
+        notes_row.grid(row=10, column=0, columnspan=2, sticky="ew")
+        self.btn(
+            notes_row,
+            "Add / Edit Required Explanation",
+            self.open_review_notes_window,
+            kind="outline",
+            size="sm",
+            parent_bg=review_bg,
+        ).pack(side="left")
+        tk.Label(
+            notes_row,
+            textvariable=self.review_notes_status_var,
+            bg=review_bg,
+            fg=MUTED_FG,
+            font=self.fb(10),
+        ).pack(side="left", padx=(S(10), 0))
+        self._update_review_status()
+        tk.Label(
+            inner,
+            textvariable=self.review_status_var,
+            bg=review_bg,
+            fg=WARN_FG,
+            font=self.fb(10, "bold"),
+            wraplength=S(820),
+            justify="left",
+        ).grid(row=11, column=0, columnspan=2, sticky="w", pady=(S(9), 0))
+        evidence_text = (
+            f"Run evidence saved: {self.last_run_manifest_path}"
+            if self.last_run_manifest_path is not None
+            else "Run evidence is not yet saved. Saving the reviewed result will retry."
+        )
+        if self.last_run_evidence_error:
+            evidence_text += f" Error: {self.last_run_evidence_error}"
+        tk.Label(
+            inner,
+            text=evidence_text,
+            bg=review_bg,
+            fg=MUTED_FG,
+            font=self.fm(8),
+            wraplength=S(820),
+            justify="left",
+        ).grid(row=12, column=0, columnspan=2, sticky="w", pady=(S(5), 0))
+
     def render_result_view(self) -> None:
         result = self.last_result
         passed = result.passed
@@ -3385,7 +5181,7 @@ class EmitterTesterApp(tk.Tk):
             failure_inner.columnconfigure(0, weight=1)
             tk.Label(
                 failure_inner,
-                text="FAILURE MODE",
+                text="PRODUCTION FAILURE MODE (EDITABLE RECORD)",
                 bg=FAIL_BG,
                 fg=FAIL_FG,
                 font=self.fm(10, "bold"),
@@ -3405,12 +5201,17 @@ class EmitterTesterApp(tk.Tk):
             )
             tk.Label(
                 failure_inner,
-                text="Confirm or change the failure mode, then save the sensor.",
+                text=(
+                    "This starts with the app suggestion. Editing it does not alter the frozen "
+                    "prediction shown in the ground-truth card below."
+                ),
                 bg=FAIL_BG,
                 fg=FAIL_FG,
                 font=self.fb(10),
             ).grid(row=2, column=0, sticky="w", pady=(6, 0))
             next_row += 1
+        self._build_calibration_review_card(next_row)
+        next_row += 1
         if self.show_details_var.get():
             tiles = tk.Frame(self.step_frame, bg=PAGE_BG)
             tiles.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
@@ -3454,9 +5255,14 @@ class EmitterTesterApp(tk.Tk):
                 detail_bits.append(
                     f"stable at {report.stabilization_seconds:.1f} s / cycle {report.stabilization_cycle}"
                 )
-                detail_bits.append(f"sensitivity window {report.measurement_cycles} cycles")
-            elif report is not None and report.timed_out:
-                detail_bits.append("stability timeout")
+                detail_bits.append(
+                    f"attempt {report.measurement_attempt} / sensitivity window "
+                    f"{report.measurement_cycles} cycles"
+                )
+            elif report is not None and report.unstable:
+                detail_bits.append(
+                    f"unstable on attempt {report.measurement_attempt}"
+                )
             tk.Label(
                 self.step_frame,
                 text="   ·   ".join(detail_bits),
@@ -3494,7 +5300,13 @@ class EmitterTesterApp(tk.Tk):
         tools.grid(row=next_row, column=0, sticky="w", pady=(16, 0))
         self.btn(tools, "Comment", self.open_comment_window, kind="ghost", size="sm").grid(row=0, column=0, padx=(0, 10))
         self.btn(tools, "Capture waveform", self.capture_waveform_snapshot, kind="ghost", size="sm").grid(row=0, column=1, padx=(0, 10))
-        self.btn(tools, "Re-measure", self.run_measurement, kind="ghost", size="sm").grid(row=0, column=2, padx=(0, 14))
+        tk.Label(
+            tools,
+            text="To repeat: complete this review, then use Save + Repeat Same Specimen.",
+            bg=PAGE_BG,
+            fg=MUTED_FG,
+            font=self.fb(10, "bold"),
+        ).grid(row=0, column=2, padx=(S(8), S(14)))
         ToggleSwitch(
             tools,
             "Show test details",
@@ -3610,13 +5422,22 @@ class EmitterTesterApp(tk.Tk):
             child.destroy()
         self.back_button = self.btn(self.footer_bar, "Back", self.go_back, kind="ghost", size="lg")
         self.back_button.grid(row=0, column=0, sticky="w")
+        self.repeat_button = self.btn(
+            self.footer_bar,
+            "Save + Repeat Specimen",
+            self.save_and_repeat_specimen,
+            kind="outline",
+            size="lg",
+        )
+        self.repeat_button.grid(row=0, column=1, sticky="e", padx=(0, S(10)))
         self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="lg")
-        self.secondary_button.grid(row=0, column=1, sticky="e", padx=(0, S(10)))
+        self.secondary_button.grid(row=0, column=2, sticky="e", padx=(0, S(10)))
         self.primary_button = self.btn(self.footer_bar, "Next", self.go_next, kind="primary", size="lg")
-        self.primary_button.grid(row=0, column=2, sticky="e")
+        self.primary_button.grid(row=0, column=3, sticky="e")
 
     def update_navigation_state(self) -> None:
         self.secondary_button.grid_remove()
+        self.repeat_button.grid_remove()
         if self.step == self.SETUP_STEP:
             self.back_button.configure(state="disabled")
             self.primary_button.configure(text="Start (Enter)", state="disabled" if self.busy else "normal")
@@ -3642,10 +5463,12 @@ class EmitterTesterApp(tk.Tk):
             self.primary_button.configure(text=measure_text, state="disabled" if blocked else "normal")
         else:
             self.secondary_button.grid()
+            self.repeat_button.grid()
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
             ready = not self.busy and not self.measuring and self.last_result is not None and not self.result_saved
             self.primary_button.configure(text="Save + Next Sensor (Enter)", state="normal" if ready else "disabled")
             self.secondary_button.configure(text="Save + Exit Batch (Esc)", state="normal" if ready else "disabled")
+            self.repeat_button.configure(text="Save + Repeat Same Specimen", state="normal" if ready else "disabled")
 
     def go_next(self) -> None:
         if self.busy:
@@ -3665,9 +5488,16 @@ class EmitterTesterApp(tk.Tk):
         if self.busy or self.measuring:
             return
         if self.step == self.LOAD_STEP:
+            # Returning to setup explicitly ends the in-memory batch session;
+            # already-saved CSV rows remain available if the same batch resumes.
+            self.batch_active = False
             self.show_step(self.SETUP_STEP)
         elif self.step == self.RESULT_STEP and not self.result_saved:
-            self.show_step(self.LOAD_STEP)
+            messagebox.showinfo(
+                "Review this run before leaving",
+                "Every acquisition must receive a ground-truth review. Save it, or use "
+                "Save + Repeat Same Specimen to collect another independent run.",
+            )
 
     def show_step(self, step: str) -> None:
         self.step = step
@@ -3708,6 +5538,15 @@ class EmitterTesterApp(tk.Tk):
 
     # ----- batch lifecycle ----- #
     def start_batch(self) -> None:
+        if self.last_result is not None and not self.result_saved:
+            messagebox.showerror(
+                "Unsaved calibration run",
+                "Return to the verdict page and save the required ground-truth review "
+                "before starting or resuming another batch.",
+            )
+            self.step = self.RESULT_STEP
+            self.render_step()
+            return
         batch_number = self.batch_var.get().strip()
         if not batch_number:
             messagebox.showerror("Batch number needed", "Please enter a batch number.")
@@ -3717,10 +5556,29 @@ class EmitterTesterApp(tk.Tk):
             messagebox.showerror("Tester name needed", "Please enter the tester name.")
             return
 
+        selected_synthetic = bool(self.simulator_var.get())
+        csv_path = batch_results_path(
+            batch_number,
+            is_synthetic=selected_synthetic,
+        )
+        try:
+            validate_calibration_csv_schema(
+                csv_path,
+                expected_batch_number=batch_number,
+            )
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Choose a new calibration batch ID", str(exc))
+            return
         self.batch_number = batch_number
         self.tester_name = tester_name
+        self.reviewer_var.set(tester_name)
         self.filter_setup = self.filter_var.get()
-        csv_path = batch_results_path(batch_number)
+        self.batch_is_synthetic = selected_synthetic
+        self.batch_active = True
+        if self._advanced_dialog is not None and self._advanced_dialog.winfo_exists():
+            self._advanced_dialog.destroy()
+        if self.recover_pending_autosave(csv_path):
+            return
         self.current_sensor_number = next_sensor_number_for_batch(csv_path)
         existing = count_existing_batch_rows(csv_path)
         position = "next" if existing else "first"
@@ -3728,35 +5586,81 @@ class EmitterTesterApp(tk.Tk):
         self.prepare_current_sensor()
         self.show_step(self.LOAD_STEP)
 
-    def prepare_current_sensor(self) -> None:
+    def prepare_current_sensor(self, *, preserve_specimen_id: bool = False) -> None:
+        specimen_id = self.specimen_id_var.get().strip() if preserve_specimen_id else ""
         self.current_sensor_id = f"{self.batch_number}-{self.current_sensor_number}"
         self.result_saved = False
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
         self.last_reference_check_mv = None
+        self.last_reference_calibration = None
         self.show_details_var.set(False)
         self.preview_waveform = np.array([], dtype=float)
         self.preview_sync = np.array([], dtype=float)
         self.snapshot_paths = []
         self.stability_diagnostics_saved = False
+        self.active_run_id = ""
+        self.measured_specimen_id = ""
+        self.measurement_run_number = 0
+        self.run_history = []
+        self.last_run_evidence_paths = []
+        self.last_run_manifest_path = None
+        self.last_run_evidence_error = None
+        self.evidence_saving = False
+        self.autosave_error = None
+        self.auto_suggested_failure_mode = ""
+        self.last_dut_raw_samples = ()
+        self.last_dut_stream_diagnostics = None
+        self.last_rig_metadata = {}
+        self.last_reference_capture = None
+        self.offset_plausibility_override_applied = False
         self.notes_var.set("")
         self.failure_mode_var.set("")
+        self.specimen_id_var.set(specimen_id)
+        self.ground_truth_verdict_var.set("")
+        self.ground_truth_failure_mode_var.set("")
+        self.failure_reason_assessment_var.set("")
+        self.ground_truth_basis_var.set("")
+        self.review_confidence_var.set("")
+        self.reviewer_var.set(self.tester_name)
+        self.known_root_cause_var.set("")
+        self.review_notes_var.set("")
+        self.sensor_seated_override_var.set(False)
         self.comment_status_var.set("")
         self.snapshot_status_var.set("")
         self.measure_status_var.set("")
+        self.review_status_var.set("Ground-truth review required")
+        self.review_notes_status_var.set("Explanation required")
 
     def save_and_continue(self) -> None:
         if self.save_current_sensor():
+            self.tester_name = self.tester_var.get().strip() or self.tester_name
             self.current_sensor_number += 1
             self.prepare_current_sensor()
+            self.show_step(self.LOAD_STEP)
+
+    def save_and_repeat_specimen(self) -> None:
+        specimen_id = self.specimen_id_var.get().strip()
+        if self.save_current_sensor():
+            self.tester_name = self.tester_var.get().strip() or self.tester_name
+            self.current_sensor_number += 1
+            self.specimen_id_var.set(specimen_id)
+            self.prepare_current_sensor(preserve_specimen_id=True)
+            self.status_var.set(
+                f"Saved. Reseat specimen {specimen_id} for an independent repeat."
+            )
             self.show_step(self.LOAD_STEP)
 
     def save_and_end_batch(self) -> None:
         if self.save_current_sensor():
             saved_batch = self.batch_number
-            saved_csv = batch_results_path(saved_batch)
+            saved_csv = batch_results_path(
+                saved_batch,
+                is_synthetic=self.batch_is_synthetic,
+            )
             self.status_var.set(f"Batch {saved_batch} ended.")
+            self.batch_active = False
             self.step = self.SETUP_STEP
             self.result_saved = True
             self.show_batch_summary_window(saved_batch, saved_csv)
@@ -3765,6 +5669,12 @@ class EmitterTesterApp(tk.Tk):
     def save_current_sensor(self) -> bool:
         if self.last_result is None:
             messagebox.showinfo("Nothing to save", "Run the measurement before saving.")
+            return False
+        try:
+            calibration_review = self._current_calibration_review()
+        except ValueError as exc:
+            messagebox.showerror("Ground-truth review incomplete", str(exc))
+            self._update_review_status()
             return False
         pwm_hz, pwm_duty = EMITTER_PWM_FREQUENCY_HZ, EMITTER_PWM_DUTY_CYCLE
         failure_mode = ""
@@ -3775,15 +5685,22 @@ class EmitterTesterApp(tk.Tk):
                 messagebox.showerror("Failure mode needed", str(exc))
                 return False
             failure_mode = self.failure_mode_var.get()
+        if not self._ensure_current_run_evidence():
+            messagebox.showerror(
+                "Could not preserve calibration evidence",
+                self.last_run_evidence_error
+                or "The full waveform/cycle evidence bundle could not be created.",
+            )
+            return False
         try:
             if (
                 self.last_capture_report is not None
-                and self.last_capture_report.timed_out
+                and self.last_capture_report.unstable
                 and not self.stability_diagnostics_saved
             ):
                 if self.last_metrics is None:
                     raise RuntimeError(
-                        "The timeout waveform is unavailable; the result was not saved."
+                        "The unstable waveform is unavailable; the result was not saved."
                     )
                 diagnostic_paths = save_waveform_diagnostic_bundle(
                     self.batch_number,
@@ -3791,7 +5708,7 @@ class EmitterTesterApp(tk.Tk):
                     self.last_metrics,
                     self.last_capture_report,
                     title=(
-                        f"{MODEL_NAME} {self.current_sensor_id} stability timeout"
+                        f"{MODEL_NAME} {self.current_sensor_id} unstable"
                     ),
                     detail_lines=snapshot_detail_lines(
                         self.batch_number,
@@ -3800,16 +5717,53 @@ class EmitterTesterApp(tk.Tk):
                         self.notes_var.get(),
                         self.last_capture_report,
                     ),
-                    filename_suffix="stability_timeout",
+                    filename_suffix="unstable",
+                    output_dir=(
+                        study_results_dir(is_synthetic=self.batch_is_synthetic)
+                        / "waveform_snapshots"
+                        / f"lot_{safe_filename_part(self.batch_number)}"
+                    ),
+                    specimen_id=self.measured_specimen_id,
+                    run_id=self.active_run_id,
+                    raw_samples=self.last_dut_raw_samples,
                 )
                 if not diagnostic_paths:
                     raise RuntimeError(
-                        "The timeout diagnostic bundle could not be created."
+                        "The unstable diagnostic bundle could not be created."
                     )
                 self.snapshot_paths.extend(diagnostic_paths)
                 self.stability_diagnostics_saved = True
+            related_run_ids = [item["run_id"] for item in self.run_history]
+            if self.active_run_id not in related_run_ids:
+                related_run_ids.append(self.active_run_id)
+            all_evidence_paths: list[Path] = []
+            for item in self.run_history:
+                all_evidence_paths.extend(
+                    Path(path) for path in item.get("evidence_paths", [])
+                )
+            if not all_evidence_paths:
+                all_evidence_paths = list(self.last_run_evidence_paths)
+            review_record_path = save_calibration_review_record(
+                batch_number=self.batch_number,
+                sensor_id=self.current_sensor_id,
+                run_id=self.active_run_id,
+                review=calibration_review,
+                is_synthetic=self.batch_is_synthetic,
+                production_failure_mode=failure_mode,
+                operator_comment=self.notes_var.get(),
+                related_run_ids=related_run_ids,
+                evidence_paths=all_evidence_paths,
+            )
+            csv_path = batch_results_path(
+                self.batch_number,
+                is_synthetic=self.batch_is_synthetic,
+            )
+            repeat_number = next_specimen_repeat_number(
+                csv_path,
+                calibration_review.specimen_id,
+            )
             append_result_csv(
-                batch_results_path(self.batch_number),
+                csv_path,
                 batch_number=self.batch_number,
                 sensor_number=self.current_sensor_number,
                 sensor_id=self.current_sensor_id,
@@ -3823,25 +5777,68 @@ class EmitterTesterApp(tk.Tk):
                 snapshot_paths=self.snapshot_paths,
                 battery_v=self.battery_v,
                 capture_report=self.last_capture_report,
-                reference_calibration=self.reference_calibration,
-                reference_check_mv=self.last_reference_check_mv,
+                reference_calibration=(
+                    None if self.batch_is_synthetic else self.last_reference_calibration
+                ),
+                reference_check_mv=(
+                    None if self.batch_is_synthetic else self.last_reference_check_mv
+                ),
                 failure_mode=failure_mode,
+                calibration_review=calibration_review,
+                app_suggested_failure_mode=self.auto_suggested_failure_mode,
+                session_id=self.session_id,
+                run_id=self.active_run_id,
+                measurement_run_number=max(1, self.measurement_run_number),
+                specimen_repeat_number=repeat_number,
+                is_synthetic=self.batch_is_synthetic,
+                calibration_evidence_paths=all_evidence_paths,
+                run_manifest_path=self.last_run_manifest_path,
+                review_record_path=review_record_path,
+                related_run_ids=related_run_ids,
+                offset_plausibility_override=self.offset_plausibility_override_applied,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
             return False
         self.result_saved = True
         self.delete_autosave()
-        self.status_var.set(f"Saved {self.current_sensor_id}.")
+        self.status_var.set(
+            f"Saved {self.current_sensor_id} · {calibration_review.review_classification.replace('_', ' ').lower()}."
+        )
         self.update_navigation_state()
         return True
 
     def _post(self, callback) -> None:
-        """Schedule a callback on the UI thread, ignoring app-shutdown races."""
+        """Queue a worker result without calling Tk from a worker thread."""
+        if not self.closing:
+            self.ui_queue.put(callback)
+
+    def _drain_ui_queue(self) -> None:
+        """Run queued worker callbacks on Tk's main thread."""
+        if self.closing:
+            return
         try:
-            self.after(0, callback)
-        except (RuntimeError, tk.TclError):
-            pass
+            for _ in range(200):
+                try:
+                    callback = self.ui_queue.get_nowait()
+                except queue.Empty:
+                    break
+                try:
+                    callback()
+                except Exception as exc:  # keep later hardware completions flowing
+                    if not self.closing:
+                        try:
+                            self.status_var.set(
+                                "Internal completion callback failed: " + str(exc)
+                            )
+                        except (RuntimeError, tk.TclError):
+                            pass
+        finally:
+            if not self.closing:
+                try:
+                    self.after(20, self._drain_ui_queue)
+                except (RuntimeError, tk.TclError):
+                    pass
 
     # ----- battery watcher ----- #
     def _refresh_battery_pill(self) -> None:
@@ -3862,8 +5859,10 @@ class EmitterTesterApp(tk.Tk):
         if self.battery_checking or self.busy or self.measuring:
             return
         self.battery_checking = True
+        self.battery_request_generation += 1
+        request_generation = self.battery_request_generation
         self._refresh_battery_pill()
-        simulator = self.simulator_var.get()
+        simulator = self.simulator_mode()
         sim_low = self.sim_low_battery_var.get()
 
         def worker() -> None:
@@ -3879,16 +5878,42 @@ class EmitterTesterApp(tk.Tk):
                         battery_v = self.device.read_battery_voltage()
             except Exception as exc:  # noqa: BLE001 - surfaced to the UI, not fatal
                 error = exc
-            self._post(lambda: self.on_battery_update(battery_v, error))
+            self._post(
+                lambda v=battery_v, e=error, g=request_generation, s=simulator: (
+                    self.on_battery_update(
+                        v,
+                        e,
+                        request_generation=g,
+                        source_is_synthetic=s,
+                    )
+                )
+            )
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def on_battery_update(self, battery_v: float | None, error: Exception | None = None) -> None:
+    def on_battery_update(
+        self,
+        battery_v: float | None,
+        error: Exception | None = None,
+        *,
+        request_generation: int | None = None,
+        source_is_synthetic: bool | None = None,
+    ) -> None:
+        if request_generation is not None and (
+            request_generation != self.battery_request_generation
+            or bool(source_is_synthetic) != self.simulator_mode()
+        ):
+            return
         self.battery_checking = False
         if error is None and battery_v is not None:
             self.battery_v = battery_v
             self.battery_state = battery_state_for(battery_v)
             self.battery_read_time = time.monotonic()
+            self.battery_read_is_synthetic = (
+                self.simulator_mode()
+                if source_is_synthetic is None
+                else bool(source_is_synthetic)
+            )
         elif self.battery_v is None:
             # Never got a reading (device missing/claimed): leave the pill
             # neutral and tell the technician what is wrong in the status bar.
@@ -3917,7 +5942,7 @@ class EmitterTesterApp(tk.Tk):
     ) -> float:
         dut_settings = self.stability_settings
         if dut_settings is None:
-            raise StabilitySettingsError("V6 stability settings are unavailable.")
+            raise StabilitySettingsError("V6.1 stability settings are unavailable.")
         settings = reference_stability_settings(dut_settings)
 
         def progress(current: StabilityAnalysis) -> None:
@@ -3943,7 +5968,7 @@ class EmitterTesterApp(tk.Tk):
             if calibration_ui:
                 push(lambda value=text: self.reference_progress_var.set(value))
 
-        _waveform, _sync, _sample_rate_hz, analysis = device.read_reference_until_stable(
+        waveform, sync, sample_rate_hz, analysis = device.read_reference_until_stable(
             waveform_range_v=WAVEFORM_INPUT_RANGE_V,
             settings=settings,
             pwm_started_monotonic=pwm_started_monotonic,
@@ -3952,11 +5977,22 @@ class EmitterTesterApp(tk.Tk):
             progress=progress,
             cancelled=lambda: token != self.measure_token,
         )
+        if not calibration_ui:
+            self.last_reference_capture = ReferenceEvidenceCapture(
+                waveform_v=np.asarray(waveform, dtype=float).copy(),
+                sync_v=np.asarray(sync, dtype=float).copy(),
+                sample_rate_hz=float(sample_rate_hz),
+                analysis=analysis,
+                raw_samples=tuple(getattr(device, "last_stream_samples", ())),
+                stream_diagnostics=getattr(
+                    device, "last_stream_diagnostics", None
+                ),
+            )
         return analyze_reference_stable_response_mv(analysis)
 
     def run_reference_calibration(self) -> None:
         """Collect and persist five adaptive readings with a known-good emitter."""
-        if self.busy or self.measuring or self.reference_calibrating or self.simulator_var.get():
+        if self.busy or self.measuring or self.reference_calibrating or self.simulator_mode():
             return
 
         # Starting a recalibration means the old emitter baseline must no longer
@@ -4091,10 +6127,28 @@ class EmitterTesterApp(tk.Tk):
     def run_measurement(self, _event: tk.Event | None = None) -> None:
         if self.busy or self.measuring:
             return
-        simulator = self.simulator_var.get()
+        specimen_id = self.specimen_id_var.get().strip()
+        if not specimen_id:
+            self.step = self.LOAD_STEP
+            self.render_step()
+            messagebox.showerror(
+                "Physical specimen ID needed",
+                "Enter the permanent ID written on this physical sensor before measuring. "
+                "The ID is required to join repeat runs without mixing sensors.",
+            )
+            return
+        if self.last_result is not None and not self.result_saved:
+            messagebox.showinfo(
+                "Save this run before repeating",
+                "Calibration statistics count every acquisition. Complete this run's "
+                "ground-truth review, then choose Save + Repeat Same Specimen so an "
+                "earlier wrong verdict cannot be hidden by a later measurement.",
+            )
+            return
+        simulator = self.simulator_mode()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
-                "Measurement is disabled because the tracked v6 stability settings could not be loaded.\n\n"
+                "Measurement is disabled because the tracked v6.1 stability settings could not be loaded.\n\n"
                 + (self.stability_config_error or "Unknown stability configuration error.")
             )
             self.status_var.set(text.replace("\n", " "))
@@ -4133,13 +6187,27 @@ class EmitterTesterApp(tk.Tk):
         sim_low_battery = self.sim_low_battery_var.get()
         filter_setup = self.filter_setup
         show_live = self.show_live_var.get()
+        offset_override = bool(self.sensor_seated_override_var.get())
 
         self.measuring = True
         self.busy = True
+        self.measurement_run_number += 1
+        self.active_run_id = str(uuid.uuid4())
+        self.measured_specimen_id = specimen_id
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
         self.last_reference_check_mv = None
+        self.last_reference_calibration = None
+        self.last_reference_capture = None
+        self.last_dut_raw_samples = ()
+        self.last_dut_stream_diagnostics = None
+        self.last_rig_metadata = {}
+        self.last_run_evidence_paths = []
+        self.last_run_manifest_path = None
+        self.last_run_evidence_error = None
+        self.auto_suggested_failure_mode = ""
+        self.offset_plausibility_override_applied = False
         self.show_details_var.set(False)
         self.stability_diagnostics_saved = False
         self.measure_status_var.set("Checking reference unit before reading the sensor…")
@@ -4156,7 +6224,15 @@ class EmitterTesterApp(tk.Tk):
                     metrics, final, offset_v = self._simulate_measurement(filter_setup, sim_case, sim_low_battery, waveform_range_v, show_live, token, push)
                 else:
                     metrics, final, offset_v = self._hardware_measurement(
-                        filter_setup, waveform_range_v, pwm_channel, pwm_hz, pwm_duty, show_live, token, push
+                        filter_setup,
+                        waveform_range_v,
+                        pwm_channel,
+                        pwm_hz,
+                        pwm_duty,
+                        show_live,
+                        token,
+                        push,
+                        offset_override,
                     )
             except BatteryTooLowError as exc:
                 push(lambda exc=exc: self.on_battery_block(token, exc.battery_v))
@@ -4178,28 +6254,50 @@ class EmitterTesterApp(tk.Tk):
         if (
             self.battery_v is not None
             and self.battery_state == "ok"
+            and not self.battery_read_is_synthetic
             and self.battery_read_time is not None
             and (time.monotonic() - self.battery_read_time) <= BATTERY_REUSE_WINDOW_S
         ):
             return self.battery_v
         return None
 
-    def _hardware_measurement(self, filter_setup, waveform_range_v, pwm_channel, pwm_hz, pwm_duty, show_live, token, push):
+    def _hardware_measurement(
+        self,
+        filter_setup,
+        waveform_range_v,
+        pwm_channel,
+        pwm_hz,
+        pwm_duty,
+        show_live,
+        token,
+        push,
+        offset_plausibility_override=False,
+    ):
         # Preview samples always flow from the production stream; this initial
         # UI state must never select a different acquisition path.
         del show_live
         settings = self.stability_settings
         if settings is None:
-            raise StabilitySettingsError("V6 stability settings are unavailable.")
+            raise StabilitySettingsError("V6.1 stability settings are unavailable.")
         calibration = self.reference_calibration
         if calibration is None or not calibration.valid:
             raise ReferenceGateError(
                 "The reference unit has no valid calibration. The sensor was not read. "
                 "Replace/check the emitter and recalibrate the reference unit before testing."
             )
+        self.last_reference_calibration = calibration
         with self.hardware_lock:
             self.ensure_connected()
             device = self.device
+            identity = getattr(device, "identity", None)
+            self.last_rig_metadata = {
+                "port": getattr(device, "port_name", None),
+                "firmware_identity": getattr(identity, "text", None),
+                "firmware_version": getattr(identity, "version_text", None),
+                "firmware_ready_banner_seen": getattr(
+                    identity, "ready_banner_seen", None
+                ),
+            }
             device.disable_emitter_pwm(pwm_channel)
             # Check the 6 V SLA before doing anything else: if it is too low,
             # bail out before measuring so no unreliable reading is recorded.
@@ -4281,12 +6379,28 @@ class EmitterTesterApp(tk.Tk):
             # Pre-flight: a connected 406MCA presents its ~0.3-1.2 V DC offset
             # through the buffer. A floating/railed AIN0 means no sensor (or no
             # buffer) - abort before capturing anything.
-            if not (SENSOR_OFFSET_MIN_PLAUSIBLE_V <= offset_v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V):
+            if not math.isfinite(offset_v):
                 raise HardwareNotReadyError(
-                    f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 406MCA "
-                    "sits near 0.3-1.2 V. Seat the sensor in the rig and check the buffer wiring, "
-                    "then press Measure again."
+                    "AIN0 returned a non-finite offset. Check the buffer and ADC wiring; "
+                    "the calibration override cannot accept an invalid numeric reading."
                 )
+            if not (
+                SENSOR_OFFSET_MIN_PLAUSIBLE_V
+                <= offset_v
+                <= SENSOR_OFFSET_MAX_PLAUSIBLE_V
+            ):
+                if not offset_plausibility_override:
+                    raise HardwareNotReadyError(
+                        f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 406MCA "
+                        "sits near 0.3-1.2 V. Seat the sensor in the rig and check the buffer wiring, "
+                        "then press Measure again. For a known no-offset failure in this calibration "
+                        "build, physically confirm it is seated and enable the diagnostic override."
+                    )
+                self.offset_plausibility_override_applied = True
+                push(lambda v=offset_v: self.set_measure_status(
+                    token,
+                    f"Diagnostic override recorded for implausible offset {v:.3f} V. Capturing DUT…",
+                ))
             push(lambda v=offset_v: self.on_offset_update(token, v))
 
             emitter_on_time: float | None = None
@@ -4307,14 +6421,16 @@ class EmitterTesterApp(tk.Tk):
                 )
                 push(lambda: self.set_measure_status(
                     token,
-                    f"Emitter PWM on. Stabilizing peak (0/{settings.consecutive_deltas_required})...",
+                    f"Emitter PWM on. Attempt 1/{MAX_MEASUREMENT_ATTEMPTS}: "
+                    f"stabilizing peak (0/{DUT_STABILITY_CONFIRMATION_DELTAS})...",
                 ))
 
                 def progress(current: StabilityAnalysis) -> None:
                     current_report = current.report
                     if current_report.stabilized:
                         text = (
-                            f"Stable at {current_report.stabilization_elapsed_s:.1f} s. "
+                            f"Attempt {current_report.measurement_attempt}/{MAX_MEASUREMENT_ATTEMPTS}: "
+                            f"stable at {current_report.stabilization_elapsed_s:.1f} s. "
                             f"Measuring sensitivity cycle {current_report.measurement_cycle_count}/"
                             f"{current_report.measurement_cycles_required}..."
                         )
@@ -4325,11 +6441,13 @@ class EmitterTesterApp(tk.Tk):
                             if latest is None or latest.absolute_peak_delta_mv is None
                             else f"peak Δ {latest.absolute_peak_delta_mv:.3f} mV"
                         )
-                        confirmation = 0 if latest is None else latest.confirmation_run_length
+                        confirmation = current_report.active_confirmation_run_length
                         text = (
-                            f"Stabilizing... {min(current_report.total_pwm_on_seconds, STABILITY_TIMEOUT_S):.1f}/"
+                            f"Attempt {current_report.measurement_attempt}/{MAX_MEASUREMENT_ATTEMPTS}: "
+                            f"stabilizing... {min(current_report.total_pwm_on_seconds, STABILITY_TIMEOUT_S):.1f}/"
                             f"{STABILITY_TIMEOUT_S:.1f} s · {delta_text} · "
-                            f"{confirmation}/{settings.consecutive_deltas_required} stable"
+                            f"{min(confirmation, current_report.active_confirmation_count)}/"
+                            f"{current_report.active_confirmation_count} stable"
                         )
                     push(lambda value=text: self.set_measure_status(token, value))
 
@@ -4347,6 +6465,12 @@ class EmitterTesterApp(tk.Tk):
                     progress=progress,
                     preview=preview,
                     cancelled=lambda: token != self.measure_token,
+                )
+                self.last_dut_raw_samples = tuple(
+                    getattr(device, "last_stream_samples", ())
+                )
+                self.last_dut_stream_diagnostics = getattr(
+                    device, "last_stream_diagnostics", None
                 )
             finally:
                 deactivation_time = device.disable_emitter_pwm(pwm_channel)
@@ -4367,7 +6491,7 @@ class EmitterTesterApp(tk.Tk):
             )
             final = evaluate_result(offset_v, metrics, filter_setup)
             final = apply_signal_quality_gate(final, metrics)
-        elif stability_analysis.report.timed_out:
+        elif stability_analysis.report.unstable:
             metrics, final = build_stability_timeout_result(
                 waveform,
                 sync,
@@ -4383,7 +6507,7 @@ class EmitterTesterApp(tk.Tk):
             host_pwm_on_seconds = emitter_off_time - emitter_on_time
         report = StabilityCaptureReport.from_analysis(
             stability_analysis,
-            data_source="esp32",
+            data_source="esp32_v6_1_failure_calibration",
             pwm_on_seconds=host_pwm_on_seconds,
         )
         self.last_capture_report = report
@@ -4391,14 +6515,22 @@ class EmitterTesterApp(tk.Tk):
 
     def _simulate_measurement(self, filter_setup, sim_case, sim_low_battery, waveform_range_v, show_live, token, push):
         # Mirror the hardware battery gate so the lockout is testable without the ESP32.
+        self.last_rig_metadata = {
+            "port": None,
+            "firmware_identity": None,
+            "simulator_case": sim_case,
+        }
         battery_v = SIM_BATTERY_LOW_V if sim_low_battery else SIM_BATTERY_OK_V
         push(lambda v=battery_v: self.on_battery_update(v))
         if battery_v <= BATTERY_MIN_V:
             raise BatteryTooLowError(battery_v)
         settings = self.stability_settings
         if settings is None:
-            raise StabilitySettingsError("V6 stability settings are unavailable.")
-        self.last_reference_check_mv = 100.0
+            raise StabilitySettingsError("V6.1 stability settings are unavailable.")
+        # Synthetic runs must never cite or appear to validate the real AIN1
+        # baseline. Simulator status and rig metadata identify this fake gate.
+        self.last_reference_check_mv = None
+        self.last_reference_calibration = None
         push(lambda: self.set_measure_status(
             token,
             "Reference unit passed (simulated). Reading sensor offset…",
@@ -4412,13 +6544,16 @@ class EmitterTesterApp(tk.Tk):
             token,
             "Emitter PWM on (simulated). Evaluating startup peak drift...",
         ))
+        dut_settings = dut_stability_settings(settings)
         full_analysis = analyze_stability(
             waveform,
             sync,
             actual_rate,
-            settings,
+            dut_settings,
             stability_deadline_s=STABILITY_TIMEOUT_S,
             measurement_cycles_required=SENSITIVITY_MEASUREMENT_CYCLES,
+            enforce_measurement_stability=True,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source="simulator",
         )
         if full_analysis.report.measurement_complete:
@@ -4437,9 +6572,11 @@ class EmitterTesterApp(tk.Tk):
             waveform,
             sync,
             actual_rate,
-            settings,
+            dut_settings,
             stability_deadline_s=STABILITY_TIMEOUT_S,
             measurement_cycles_required=SENSITIVITY_MEASUREMENT_CYCLES,
+            enforce_measurement_stability=True,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source="simulator",
         )
         if show_live:
@@ -4450,7 +6587,8 @@ class EmitterTesterApp(tk.Tk):
             push(lambda: self.set_measure_status(
                 token,
                 f"Stable at {stability_analysis.report.stabilization_elapsed_s:.1f} s. "
-                f"Measured {SENSITIVITY_MEASUREMENT_CYCLES} sensitivity cycles.",
+                f"Measured {stability_analysis.report.measurement_cycles_required} "
+                f"sensitivity cycles on attempt {stability_analysis.report.measurement_attempt}.",
             ))
             metrics = analyze_v6_stable_measurement(
                 waveform,
@@ -4463,7 +6601,7 @@ class EmitterTesterApp(tk.Tk):
             final = evaluate_result(offset_v, metrics, filter_setup)
             # The SNR gate is intentionally NOT applied here: the simulator
             # is a training model rather than calibrated hardware noise.
-        elif stability_analysis.report.timed_out:
+        elif stability_analysis.report.unstable:
             metrics, final = build_stability_timeout_result(
                 waveform,
                 sync,
@@ -4473,7 +6611,7 @@ class EmitterTesterApp(tk.Tk):
                 input_range_v=waveform_range_v,
             )
         else:
-            raise RuntimeError("Simulator capture did not reach a complete v6 decision.")
+            raise RuntimeError("Simulator capture did not reach a complete v6.1 decision.")
         report = StabilityCaptureReport.from_analysis(stability_analysis, data_source="simulator")
         self.last_capture_report = report
         return metrics, final, offset_v
@@ -4494,25 +6632,136 @@ class EmitterTesterApp(tk.Tk):
         self.preview_sync = sync
         self.redraw_waveform()
 
+    def _ensure_current_run_evidence(self) -> bool:
+        if self.last_run_manifest_path is not None and self.last_run_manifest_path.exists():
+            try:
+                validate_calibration_run_manifest(
+                    self.last_run_manifest_path,
+                    expected_run_id=self.active_run_id,
+                    expected_specimen_id=self.measured_specimen_id,
+                    expected_app_verdict=(
+                        ""
+                        if self.last_result is None
+                        else ("PASS" if self.last_result.passed else "FAIL")
+                    ),
+                )
+            except ValueError as exc:
+                self.last_run_evidence_error = str(exc)
+                return False
+            self.last_run_evidence_error = None
+            return True
+        if self.last_metrics is None or self.last_result is None:
+            self.last_run_evidence_error = "No completed waveform is available to preserve."
+            return False
+        if not self.active_run_id:
+            self.active_run_id = str(uuid.uuid4())
+        try:
+            paths, manifest_path = save_calibration_run_evidence(
+                batch_number=self.batch_number,
+                sensor_id=self.current_sensor_id,
+                specimen_id=self.measured_specimen_id,
+                tester_name=self.tester_name,
+                filter_setup=self.filter_setup,
+                session_id=self.session_id,
+                run_id=self.active_run_id,
+                measurement_run_number=max(1, self.measurement_run_number),
+                is_synthetic=self.batch_is_synthetic,
+                metrics=self.last_metrics,
+                final_result=self.last_result,
+                report=self.last_capture_report,
+                battery_v=self.battery_v,
+                reference_calibration=(
+                    None if self.batch_is_synthetic else self.last_reference_calibration
+                ),
+                reference_check_mv=(
+                    None if self.batch_is_synthetic else self.last_reference_check_mv
+                ),
+                dut_raw_samples=self.last_dut_raw_samples,
+                dut_stream_diagnostics=self.last_dut_stream_diagnostics,
+                reference_capture=(
+                    None if self.batch_is_synthetic else self.last_reference_capture
+                ),
+                offset_plausibility_override=self.offset_plausibility_override_applied,
+                rig_metadata=self.last_rig_metadata,
+            )
+        except Exception as exc:
+            self.last_run_evidence_paths = []
+            self.last_run_manifest_path = None
+            self.last_run_evidence_error = str(exc)
+            return False
+        self.last_run_evidence_paths = paths
+        self.last_run_manifest_path = manifest_path
+        self.last_run_evidence_error = None
+        self.stability_diagnostics_saved = True
+        if not any(item.get("run_id") == self.active_run_id for item in self.run_history):
+            self.run_history.append(
+                {
+                    "run_id": self.active_run_id,
+                    "measurement_run_number": max(1, self.measurement_run_number),
+                    "manifest_path": str(manifest_path),
+                    "evidence_paths": [str(path) for path in paths],
+                    "app_verdict": "PASS" if self.last_result.passed else "FAIL",
+                    "app_suggested_failure_mode": suggest_failure_mode(self.last_result),
+                }
+            )
+        return True
+
     def on_measure_done(self, token: int, metrics: WaveformMetrics, final: FinalResult) -> None:
         if token != self.measure_token:
             return
         self.measuring = False
-        self.busy = False
+        self.busy = True
         self.last_metrics = metrics
         self.last_result = final
-        self.failure_mode_var.set(suggest_failure_mode(final))
+        self.auto_suggested_failure_mode = suggest_failure_mode(final)
+        self.failure_mode_var.set(self.auto_suggested_failure_mode)
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
         verdict = "PASS" if final.passed else "FAIL"
-        if final.passed:
-            self.status_var.set(f"{self.current_sensor_id}: {verdict}.")
+        self.evidence_saving = True
+        self.status_var.set(
+            f"{self.current_sensor_id}: {verdict}. Preserving the run evidence…"
+        )
+        self.render_step()
+
+        def evidence_worker() -> None:
+            evidence_saved = self._ensure_current_run_evidence()
+            self.evidence_saving = False
+            self._post(
+                lambda: self.on_run_evidence_saved(
+                    token,
+                    verdict,
+                    evidence_saved,
+                )
+            )
+
+        threading.Thread(target=evidence_worker, daemon=True).start()
+
+    def on_run_evidence_saved(
+        self,
+        token: int,
+        verdict: str,
+        evidence_saved: bool,
+    ) -> None:
+        if token != self.measure_token:
+            return
+        self.busy = False
+        if evidence_saved:
+            self.status_var.set(
+                f"{self.current_sensor_id}: {verdict}. Complete the required ground-truth review."
+            )
         else:
             self.status_var.set(
-                f"{self.current_sensor_id}: FAIL — confirm the failure mode, then save the sensor."
+                f"{self.current_sensor_id}: {verdict}. Evidence save failed; review it and retry Save."
             )
         self.write_autosave("measurement_complete")
         self.render_step()
+        if not evidence_saved:
+            messagebox.showerror(
+                "Calibration evidence was not saved",
+                (self.last_run_evidence_error or "Unknown evidence error")
+                + "\n\nThe verdict is still visible, but Save is blocked until the evidence bundle succeeds.",
+            )
 
     def on_battery_block(self, token: int, battery_v: float) -> None:
         if token != self.measure_token:
@@ -4674,6 +6923,14 @@ class EmitterTesterApp(tk.Tk):
                     self.last_capture_report,
                 ),
                 filename_suffix="snapshot",
+                output_dir=(
+                    study_results_dir(is_synthetic=self.batch_is_synthetic)
+                    / "waveform_snapshots"
+                    / f"lot_{safe_filename_part(self.batch_number)}"
+                ),
+                specimen_id=self.measured_specimen_id,
+                run_id=self.active_run_id,
+                raw_samples=self.last_dut_raw_samples,
             )
         except Exception as exc:
             messagebox.showerror("Waveform snapshot problem", str(exc))
@@ -4688,18 +6945,280 @@ class EmitterTesterApp(tk.Tk):
         self.status_var.set(f"Saved waveform snapshot: {snapshot_paths[0]}")
 
     # ----- autosave ----- #
-    def write_autosave(self, stage: str) -> None:
-        if not self.batch_number or not self.current_sensor_id:
-            return
-        autosave_path = batch_autosave_path(self.batch_number)
+    @staticmethod
+    def _csv_contains_run_id(csv_path: Path, run_id: str) -> bool:
+        if not run_id or not csv_path.exists():
+            return False
+        try:
+            with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+                return any(
+                    (row.get("run_id") or "").strip() == run_id
+                    for row in csv.DictReader(csv_file)
+                )
+        except (OSError, csv.Error):
+            return False
+
+    def recover_pending_autosave(self, csv_path: Path) -> bool:
+        """Recover a crash-interrupted reviewed run; never silently overwrite it.
+
+        Return True when batch startup has been handled (recovered or blocked).
+        """
+        autosave_path = batch_autosave_path(
+            self.batch_number,
+            is_synthetic=self.batch_is_synthetic,
+        )
+        if not autosave_path.exists():
+            return False
+        try:
+            autosave = json.loads(autosave_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            self.batch_active = False
+            messagebox.showerror(
+                "Pending calibration recovery needs attention",
+                f"The pending autosave cannot be read and will not be overwritten:\n{autosave_path}\n\n{exc}\n\n"
+                "Use another batch ID until this file is archived or repaired.",
+            )
+            return True
+        if not isinstance(autosave, dict):
+            self.batch_active = False
+            messagebox.showerror(
+                "Pending calibration recovery needs attention",
+                f"The pending autosave is malformed and will not be overwritten:\n{autosave_path}",
+            )
+            return True
+        run_id = str(autosave.get("active_run_id") or "").strip()
+        if self._csv_contains_run_id(csv_path, run_id):
+            # A crash between CSV append and autosave deletion is harmless: the
+            # finalized row is authoritative, so remove only this stale pointer.
+            try:
+                autosave_path.unlink()
+            except OSError:
+                pass
+            return False
+        try:
+            autosave_schema = int(autosave.get("calibration_schema_version"))
+        except (TypeError, ValueError):
+            autosave_schema = -1
+        autosave_mode = autosave.get("is_synthetic")
+        if (
+            autosave_schema != CALIBRATION_SCHEMA_VERSION
+            or str(autosave.get("batch_number") or "") != self.batch_number
+            or not isinstance(autosave_mode, bool)
+            or autosave_mode != self.batch_is_synthetic
+            or not run_id
+        ):
+            self.batch_active = False
+            messagebox.showerror(
+                "Pending calibration recovery needs attention",
+                f"An incompatible pending run exists and will not be overwritten:\n{autosave_path}\n\n"
+                "Use another batch ID until the pending data is reviewed.",
+            )
+            return True
+
+        specimen_id = str(
+            autosave.get("measured_specimen_id")
+            or autosave.get("specimen_id")
+            or ""
+        ).strip()
+        manifest_text = str(autosave.get("last_run_manifest_path") or "").strip()
+        manifest_path = Path(manifest_text) if manifest_text else Path()
+        if not manifest_text or not manifest_path.exists():
+            manifest_path = (
+                calibration_run_dir(
+                    self.batch_number,
+                    specimen_id,
+                    run_id,
+                    is_synthetic=self.batch_is_synthetic,
+                )
+                / "run_manifest.json"
+            )
+        try:
+            manifest, metrics, final, report, captured_reference = (
+                recover_calibration_run_from_manifest(manifest_path)
+            )
+            validate_calibration_run_manifest(
+                manifest_path,
+                expected_run_id=run_id,
+                expected_specimen_id=specimen_id,
+                expected_app_verdict="PASS" if final.passed else "FAIL",
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            self.batch_active = False
+            messagebox.showerror(
+                "Pending calibration recovery needs attention",
+                f"The prior run cannot be safely reconstructed and will not be overwritten:\n"
+                f"{autosave_path}\n\n{exc}\n\nUse another batch ID until the evidence is reviewed.",
+            )
+            return True
+
+        try:
+            recovered_sensor_number = int(autosave.get("sensor_number"))
+            recovered_measurement_number = int(
+                autosave.get("measurement_run_number")
+                or manifest.get("measurement_run_number")
+            )
+            if recovered_sensor_number < 1 or recovered_measurement_number < 1:
+                raise ValueError("run counters must be positive")
+        except (TypeError, ValueError) as exc:
+            self.batch_active = False
+            messagebox.showerror(
+                "Pending calibration recovery needs attention",
+                f"The prior autosave has invalid run counters and will not be overwritten:\n"
+                f"{autosave_path}\n\n{exc}",
+            )
+            return True
+
+        if not messagebox.askyesno(
+            "Recover unsaved calibration review?",
+            f"Batch {self.batch_number} has an unsaved {final.passed and 'PASS' or 'FAIL'} run for "
+            f"specimen {specimen_id}. Recover its verdict and technician fields now?\n\n"
+            "Choosing No leaves the autosave untouched and blocks this batch from starting, "
+            "so it cannot be accidentally overwritten.",
+        ):
+            self.batch_active = False
+            self.status_var.set("Pending calibration run was preserved; recovery is still required.")
+            return True
+
+        recovering_reviewer = (
+            self.reviewer_var.get().strip()
+            or self.tester_var.get().strip()
+            or self.tester_name
+        )
+        self.tester_name = str(autosave.get("tester_name") or self.tester_name).strip()
+        self.reviewer_var.set(
+            str(autosave.get("reviewer") or "").strip() or recovering_reviewer
+        )
+        self.filter_setup = str(
+            autosave.get("filter_setup") or manifest.get("filter_setup") or self.filter_setup
+        )
+        self.filter_var.set(self.filter_setup)
+        self.current_sensor_number = recovered_sensor_number
+        self.current_sensor_id = str(
+            autosave.get("sensor_id") or f"{self.batch_number}-{self.current_sensor_number}"
+        )
+        self.session_id = str(autosave.get("session_id") or self.session_id)
+        self.active_run_id = run_id
+        self.measurement_run_number = recovered_measurement_number
+        self.measured_specimen_id = specimen_id
+        self.specimen_id_var.set(specimen_id)
+        self.last_metrics = metrics
+        self.last_result = final
+        self.last_capture_report = report
+        self.preview_waveform = metrics.waveform_v
+        self.preview_sync = metrics.sync_v
+        self.last_reference_check_mv = _finite_float(
+            (manifest.get("reference") or {}).get("check_mv")
+            if isinstance(manifest.get("reference"), dict)
+            else None
+        )
+        self.last_reference_calibration = captured_reference
+        self.battery_v = _finite_float(manifest.get("battery_v"))
+        # This is historical audit data, never a fresh preflight reading for a
+        # subsequent sensor.
+        self.battery_read_time = None
+        self.battery_read_is_synthetic = self.batch_is_synthetic
+        if self.battery_v is not None:
+            self.battery_state = battery_state_for(self.battery_v)
+            self._refresh_battery_pill()
+        self.last_rig_metadata = (
+            dict(manifest.get("rig")) if isinstance(manifest.get("rig"), dict) else {}
+        )
+        self.auto_suggested_failure_mode = str(
+            (manifest.get("app_prediction") or {}).get("suggested_failure_mode") or ""
+        )
+        self.failure_mode_var.set(
+            str(autosave.get("failure_mode") or self.auto_suggested_failure_mode)
+        )
+        self.ground_truth_verdict_var.set(str(autosave.get("ground_truth_verdict") or ""))
+        self.ground_truth_failure_mode_var.set(
+            str(autosave.get("ground_truth_failure_mode") or "")
+        )
+        self.failure_reason_assessment_var.set(
+            str(autosave.get("failure_reason_assessment") or "")
+        )
+        self.ground_truth_basis_var.set(str(autosave.get("ground_truth_basis") or ""))
+        self.review_confidence_var.set(str(autosave.get("review_confidence") or ""))
+        self.known_root_cause_var.set(
+            str(autosave.get("known_physical_root_cause") or "")
+        )
+        self.review_notes_var.set(str(autosave.get("review_notes") or ""))
+        self.notes_var.set(str(autosave.get("comment") or ""))
+        self.sensor_seated_override_var.set(
+            autosave.get("sensor_seated_override") is True
+        )
+        self.offset_plausibility_override_applied = (
+            autosave.get("offset_plausibility_override_applied") is True
+        )
+        snapshot_values = autosave.get("waveform_snapshot_paths")
+        if not isinstance(snapshot_values, list):
+            snapshot_values = []
+        self.snapshot_paths = [
+            Path(value)
+            for value in snapshot_values
+            if isinstance(value, str) and value.strip() and Path(value).exists()
+        ]
+        self.update_comment_snapshot_status()
+        evidence_paths = [
+            _manifest_artifact_path(manifest_path, artifact)
+            for artifact in manifest.get("artifacts", [])
+            if isinstance(artifact, dict)
+        ]
+        self.last_run_evidence_paths = [*evidence_paths, manifest_path]
+        self.last_run_manifest_path = manifest_path
+        self.last_run_evidence_error = None
+        self.stability_diagnostics_saved = True
+        self.last_reference_capture = None
+        self.last_dut_raw_samples = ()
+        self.last_dut_stream_diagnostics = None
+        self.run_history = [
+            {
+                "run_id": run_id,
+                "measurement_run_number": self.measurement_run_number,
+                "manifest_path": str(manifest_path),
+                "evidence_paths": [str(path) for path in self.last_run_evidence_paths],
+                "app_verdict": "PASS" if final.passed else "FAIL",
+                "app_suggested_failure_mode": self.auto_suggested_failure_mode,
+            }
+        ]
+        self.result_saved = False
+        self.evidence_saving = False
+        self.busy = False
+        self.measuring = False
+        self.status_var.set(
+            f"Recovered unsaved run {run_id[:8]} for specimen {specimen_id}. Review and save it."
+        )
+        self.step = self.RESULT_STEP
+        self.write_autosave("recovered_after_restart")
+        self.render_step()
+        return True
+
+    def write_autosave(self, stage: str) -> bool:
+        if (
+            not self.batch_number
+            or not self.current_sensor_id
+            or (self.last_result is None and not self.active_run_id)
+        ):
+            return True
+        autosave_path = batch_autosave_path(
+            self.batch_number,
+            is_synthetic=self.batch_is_synthetic,
+        )
         autosave_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
+            "calibration_schema_version": CALIBRATION_SCHEMA_VERSION,
+            "calibration_app_version": CALIBRATION_APP_VERSION,
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "stage": stage,
             "batch_number": self.batch_number,
             "tester_name": self.tester_name,
             "sensor_number": self.current_sensor_number,
             "sensor_id": self.current_sensor_id,
+            "specimen_id": self.specimen_id_var.get(),
+            "measured_specimen_id": self.measured_specimen_id,
+            "session_id": self.session_id,
+            "active_run_id": self.active_run_id,
+            "measurement_run_number": self.measurement_run_number,
+            "is_synthetic": self.batch_is_synthetic,
             "filter_setup": self.filter_setup,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
@@ -4707,6 +7226,17 @@ class EmitterTesterApp(tk.Tk):
             "pass_fail": None if self.last_result is None else ("PASS" if self.last_result.passed else "FAIL"),
             "fail_reasons": [] if self.last_result is None else self.last_result.fail_reasons,
             "failure_mode": self.failure_mode_var.get(),
+            "app_suggested_failure_mode": self.auto_suggested_failure_mode,
+            "ground_truth_verdict": self.ground_truth_verdict_var.get(),
+            "ground_truth_failure_mode": self.ground_truth_failure_mode_var.get(),
+            "failure_reason_assessment": self.failure_reason_assessment_var.get(),
+            "ground_truth_basis": self.ground_truth_basis_var.get(),
+            "review_confidence": self.review_confidence_var.get(),
+            "reviewer": self.reviewer_var.get(),
+            "known_physical_root_cause": self.known_root_cause_var.get(),
+            "review_notes": self.review_notes_var.get(),
+            "sensor_seated_override": self.sensor_seated_override_var.get(),
+            "offset_plausibility_override_applied": self.offset_plausibility_override_applied,
             "battery_v": self.battery_v,
             "reference_calibration_mv": (
                 None if self.reference_calibration is None else self.reference_calibration.mean_mv
@@ -4714,18 +7244,38 @@ class EmitterTesterApp(tk.Tk):
             "reference_check_mv": self.last_reference_check_mv,
             "comment": self.notes_var.get(),
             "waveform_snapshot_paths": [str(path) for path in self.snapshot_paths],
+            "run_history": self.run_history,
+            "last_run_evidence_paths": [
+                str(path) for path in self.last_run_evidence_paths
+            ],
+            "last_run_manifest_path": (
+                None
+                if self.last_run_manifest_path is None
+                else str(self.last_run_manifest_path)
+            ),
+            "last_run_evidence_error": self.last_run_evidence_error,
         }
         try:
-            with autosave_path.open("w", encoding="utf-8") as autosave_file:
-                json.dump(payload, autosave_file, indent=2)
-        except Exception:
-            pass
+            atomic_write_json(autosave_path, payload)
+        except Exception as exc:
+            self.autosave_error = str(exc)
+            if not self.closing:
+                self.status_var.set(
+                    "AUTOSAVE FAILED — do not close the app until storage is fixed: "
+                    + self.autosave_error
+                )
+            return False
+        self.autosave_error = None
+        return True
 
     def delete_autosave(self) -> None:
         if not self.batch_number:
             return
         try:
-            batch_autosave_path(self.batch_number).unlink(missing_ok=True)
+            batch_autosave_path(
+                self.batch_number,
+                is_synthetic=self.batch_is_synthetic,
+            ).unlink(missing_ok=True)
         except Exception:
             pass
 
@@ -4738,20 +7288,29 @@ class EmitterTesterApp(tk.Tk):
 
         rows = self._read_summary_rows(csv_path)
         tested = len(rows)
-        passed = sum(1 for row in rows if row[-1] == "PASS")
-        yield_pct = (100.0 * passed / tested) if tested else 0.0
+        exact = sum(1 for row in rows if row[-1] == "EXACT_MATCH")
+        verdict_mismatches = sum(
+            1 for row in rows if row[-1] == "VERDICT_MISMATCH"
+        )
+        reason_mismatches = sum(
+            1
+            for row in rows
+            if row[-1] in ("FAILURE_REASON_MISMATCH", "PARTIAL_REASON_MATCH")
+        )
+        inconclusive = tested - exact - verdict_mismatches - reason_mismatches
 
         head = tk.Frame(summary, bg=PAGE_BG)
         head.grid(row=0, column=0, sticky="ew", padx=20, pady=(16, 6))
         tk.Label(head, text="BATCH SUMMARY —", bg=PAGE_BG, fg=ELTEC_RED, font=self.fm(11, "bold")).pack(anchor="w")
-        tk.Label(head, text=f"Batch {batch_number} results", bg=PAGE_BG, fg=TEXT_DARK, font=self.fd(24)).pack(anchor="w", pady=(2, 0))
+        tk.Label(head, text=f"Batch {batch_number} calibration agreement", bg=PAGE_BG, fg=TEXT_DARK, font=self.fd(24)).pack(anchor="w", pady=(2, 0))
         chips = tk.Frame(head, bg=PAGE_BG)
         chips.pack(anchor="w", pady=(10, 0))
         chip_specs = [
             (f"{tested} TESTED", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
-            (f"{passed} PASSED", PASS_FG, PASS_BG),
-            (f"{tested - passed} FAILED", FAIL_FG, FAIL_BG),
-            (f"YIELD {yield_pct:.0f}%", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
+            (f"{exact} EXACT", PASS_FG, PASS_BG),
+            (f"{verdict_mismatches} VERDICT MISMATCH", FAIL_FG, FAIL_BG),
+            (f"{reason_mismatches} REASON REVIEW", WARN_FG, WARN_BG),
+            (f"{max(0, inconclusive)} INCONCLUSIVE", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
         ]
         for chip_text, chip_fg, chip_bg in chip_specs:
             tk.Label(chips, text=chip_text, bg=chip_bg, fg=chip_fg, font=self.fm(10, "bold"), padx=12, pady=5).pack(side="left", padx=(0, 8))
@@ -4766,16 +7325,29 @@ class EmitterTesterApp(tk.Tk):
         style = ttk.Style(summary)
         style.configure("Summary.Treeview", font=self.fb(12), rowheight=S(32), background=CARD_BG, fieldbackground=CARD_BG, foreground=TEXT_DARK, borderwidth=0)
         style.configure("Summary.Treeview.Heading", font=self.fb(12, "bold"), background=ELTEC_BLUE_LIGHT, foreground=ELTEC_BLUE_DARK, relief="flat")
-        columns = ("sensor", "offset", "sensitivity", "polarity", "result")
-        headings = {"sensor": "Sensor", "offset": "Offset", "sensitivity": "Sensitivity", "polarity": "Polarity", "result": "Result"}
+        columns = ("specimen", "app", "app_mode", "truth", "truth_mode", "comparison")
+        headings = {
+            "specimen": "Specimen",
+            "app": "App",
+            "app_mode": "App mode",
+            "truth": "Ground truth",
+            "truth_mode": "Actual mode",
+            "comparison": "Comparison",
+        }
         tree = ttk.Treeview(frame, columns=columns, show="headings", style="Summary.Treeview", height=14)
         for column in columns:
             tree.heading(column, text=headings[column])
             tree.column(column, width=150, anchor="center", stretch=True)
-        tree.tag_configure("pass", background=PASS_BG)
-        tree.tag_configure("fail", background=FAIL_BG)
+        tree.tag_configure("exact", background=PASS_BG)
+        tree.tag_configure("mismatch", background=FAIL_BG)
+        tree.tag_configure("review", background=WARN_BG)
         for row in rows:
-            tag = "pass" if row[-1] == "PASS" else "fail"
+            if row[-1] == "EXACT_MATCH":
+                tag = "exact"
+            elif row[-1] in ("VERDICT_MISMATCH", "FAILURE_REASON_MISMATCH"):
+                tag = "mismatch"
+            else:
+                tag = "review"
             tree.insert("", "end", values=row, tags=(tag,))
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=y_scroll.set)
@@ -4783,22 +7355,23 @@ class EmitterTesterApp(tk.Tk):
         y_scroll.grid(row=0, column=1, sticky="ns")
         self.btn(summary, "Close", summary.destroy, kind="primary", size="md").grid(row=2, column=0, sticky="e", padx=20, pady=14)
 
-    def _read_summary_rows(self, csv_path: Path) -> list[tuple[str, str, str, str, str]]:
-        rows: list[tuple[str, str, str, str, str]] = []
+    def _read_summary_rows(self, csv_path: Path) -> list[tuple[str, str, str, str, str, str]]:
+        rows: list[tuple[str, str, str, str, str, str]] = []
         try:
             with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
                 for row in csv.DictReader(csv_file):
                     rows.append(
                         (
-                            row.get("sensor_id", ""),
-                            self._fmt(row.get("offset_v", ""), 3, " V"),
-                            self._fmt(row.get("sensitivity_mv", ""), 2, " mV"),
-                            row.get("polarity_good_bad", "") or row.get("polarity", ""),
-                            row.get("pass_fail", ""),
+                            row.get("specimen_id", "") or row.get("sensor_id", ""),
+                            row.get("app_verdict", "") or row.get("pass_fail", ""),
+                            row.get("app_suggested_failure_mode_tag", ""),
+                            row.get("ground_truth_verdict", ""),
+                            row.get("ground_truth_failure_mode_tag", ""),
+                            row.get("review_classification", ""),
                         )
                     )
         except Exception:
-            rows.append(("Could not read batch CSV", "", "", "", "FAIL"))
+            rows.append(("Could not read batch CSV", "", "", "", "", "INCONCLUSIVE"))
         return rows
 
     def _fmt(self, value: str, decimals: int, suffix: str) -> str:
@@ -4818,7 +7391,7 @@ class EmitterTesterApp(tk.Tk):
     def startup_probe(self) -> None:
         if self.stability_config_error is not None:
             self.status_var.set(
-                "V6 stability configuration error — measurement is disabled. "
+                "V6.1 stability configuration error — measurement is disabled. "
                 + self.stability_config_error
             )
             return
@@ -4828,25 +7401,38 @@ class EmitterTesterApp(tk.Tk):
         # found, which let a technician run a "test" against synthetic numbers
         # (with plausible-looking results) without
         # noticing that nothing was plugged in.
-        if not ok and not self.simulator_var.get():
+        if not ok and not self.simulator_mode():
             message = self._friendly_hardware_error(message)
         self.status_var.set(message)
-        if self.simulator_var.get():
+        if self.simulator_mode():
             self.refresh_battery()
 
     def on_simulator_toggle(self) -> None:
         """Make entering/leaving simulator mode loud and reset stale readings."""
+        requested = bool(self.simulator_var.get())
+        if self.batch_active and requested != self.batch_is_synthetic:
+            self.simulator_var.set(self.batch_is_synthetic)
+            self._redraw_header()
+            messagebox.showinfo(
+                "Mode is locked for this batch",
+                "Hardware versus simulator mode is frozen when a batch starts. "
+                "Finish the current run or return to setup before changing it.",
+            )
+            return
+        self.battery_request_generation += 1
+        self.battery_checking = False
         self.battery_v = None
         self.battery_state = "unknown"
         self.battery_read_time = None
+        self.battery_read_is_synthetic = None
         self._refresh_battery_pill()
         self._redraw_header()  # shows/hides the SIMULATOR badge
         if self.stability_config_error is not None:
             self.status_var.set(
-                "V6 stability configuration error — measurement is disabled. "
+                "V6.1 stability configuration error — measurement is disabled. "
                 + self.stability_config_error
             )
-        elif self.simulator_var.get():
+        elif self.simulator_mode():
             self.status_var.set("SIMULATOR MODE - results are synthetic, no hardware is read.")
             self.refresh_battery()
         else:
@@ -4857,19 +7443,76 @@ class EmitterTesterApp(tk.Tk):
             self.update_navigation_state()
 
     def on_close(self) -> None:
+        if self.closing:
+            return
+        unsaved_result = (
+            getattr(self, "last_result", None) is not None
+            and not getattr(self, "result_saved", True)
+        )
+        if unsaved_result and not self.write_autosave("close_safety_check"):
+            messagebox.showerror(
+                "Cannot close safely",
+                "The pending calibration review could not be autosaved:\n\n"
+                + (self.autosave_error or "Unknown storage error")
+                + "\n\nFix the results-folder storage problem, then close again.",
+            )
+            return
+        if unsaved_result and not messagebox.askyesno(
+                "Close with an unsaved calibration review?",
+                "This sensor has a measured run that is not in the batch CSV. "
+                "The run evidence and current review fields will remain in the protected "
+                "autosave and will be offered for recovery next time this batch starts. Close now?",
+            ):
+            return
+        self.closing = True
         self.measure_token += 1
         self.animator.cancel_all()
-        # The worker observes the invalidated token, stops its stream, and
-        # releases this lock. Only then may the UI thread send final serial
-        # commands; concurrent STREAM reads and PWM/OFF writes can corrupt the
-        # protocol state.
-        with self.hardware_lock:
-            if self.device is not None:
+        self.status_var.set("Stopping capture and turning the emitter off…")
+        self._finish_close_when_hardware_idle()
+
+    def _finish_close_when_hardware_idle(self) -> None:
+        """Keep Tk responsive while a cancelled capture releases the rig."""
+        if self.evidence_saving:
+            self.after(50, self._finish_close_when_hardware_idle)
+            return
+        if (
+            self.last_result is not None
+            and not self.result_saved
+            and not self._ensure_current_run_evidence()
+        ):
+            self.closing = False
+            self.after(20, self._drain_ui_queue)
+            messagebox.showerror(
+                "Close cancelled — evidence is incomplete",
+                "The measured run remains open because its immutable evidence could not "
+                "be validated:\n\n"
+                + (self.last_run_evidence_error or "Unknown evidence error"),
+            )
+            return
+        if not self.hardware_lock.acquire(blocking=False):
+            self.after(50, self._finish_close_when_hardware_idle)
+            return
+        autosave_ok = True
+        try:
+            if self.last_result is not None and not self.result_saved:
+                autosave_ok = self.write_autosave("closed_with_unsaved_review")
+            if autosave_ok and self.device is not None:
                 try:
                     self.device.disable_emitter_pwm(EMITTER_PWM_CHANNEL)
                 except Exception:
                     pass
                 self.device.close()
+        finally:
+            self.hardware_lock.release()
+        if not autosave_ok:
+            self.closing = False
+            self.after(20, self._drain_ui_queue)
+            messagebox.showerror(
+                "Close cancelled — autosave failed",
+                "The pending calibration review is still open because its autosave failed:\n\n"
+                + (self.autosave_error or "Unknown storage error"),
+            )
+            return
         self.destroy()
 
 

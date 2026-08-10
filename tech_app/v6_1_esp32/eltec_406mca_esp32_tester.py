@@ -1,5 +1,5 @@
 """
-Eltec 406MCA ESP32 emitter tester v6 - Xubuntu production application.
+Eltec 406MCA ESP32 emitter tester v6.1 - strict retry evaluation build.
 
 The measurement engine and guided flow come from the proven v4 LabJack tester,
 but the hardware backend is the ESP32 + ADS1256 rig used on Xubuntu:
@@ -20,7 +20,8 @@ preserving the ~0.667 V DC offset and the small AC waveform.
 Wiring:
     ADS AIN0 = buffered DUT sensor (DC offset + AC waveform), +/-2.5 V range
     ADS AIN1 = permanently-mounted reference sensor (required emitter-health gate)
-    ADS AIN7 = 6 V SLA battery through a 100k/100k divider
+    ADS AIN7 = 6 V SLA battery through the measured 99.7k/99.6k divider
+               with 100 nF filtering across the lower resistor
     GPIO25   = PWM output to the MOSFET module
     sync     = the ESP32 PWM state included with every streamed sample
 
@@ -31,8 +32,10 @@ Guided flow:
     1. Calibrate AIN1 with a known-good emitter, then enter the batch details.
     2. Place the sensor in the rig and press Enter.
     3. The app checks the AIN1 reference against its calibration before it reads
-       AIN0. If the reference is outside +/-10%, testing remains locked until
-       the emitter is replaced and the reference is calibrated again.
+       AIN0. If AIN1 spikes high, the app checks the DUT offset before deciding
+       whether to lock: a confirmed high-offset DUT is allowed to fail normally
+       without invalidating AIN1; every other out-of-window reference locks
+       testing until the emitter is checked and the reference is calibrated.
     4. The app reads the DUT DC offset (PWM off), then turns on the emitter and
        measures sensitivity and polarity, shows the numbers and a GOOD/BAD
        polarity verdict, and turns the screen green (PASS) or red (FAIL).
@@ -84,13 +87,17 @@ from eltec_406mca_tester import (
     FinalResult,
     WaveformMetrics,
     analyze_waveform,
-    evaluate_result,
+    evaluate_result as evaluate_result_with_sensitivity_limit,
     find_sync_edges,
     format_polarity_detail,
     simulate_offset_v,
 )
 
 from esp32_backend import (
+    BATTERY_DIVIDER_FILTER_CAPACITANCE_F,
+    BATTERY_DIVIDER_RATIO,
+    BATTERY_DIVIDER_R_BOTTOM_OHMS,
+    BATTERY_DIVIDER_R_TOP_OHMS,
     EXPECTED_FIRMWARE_PREFIX,
     Esp32BackendError,
     Esp32EmitterRig,
@@ -98,6 +105,7 @@ from esp32_backend import (
 )
 from stability_analysis import (
     CycleAnalysis,
+    DEFAULT_MAX_MEASUREMENT_ATTEMPTS,
     DEFAULT_SETTINGS_PATH,
     StabilityAnalysis,
     StabilitySettings,
@@ -120,6 +128,7 @@ DEFAULT_FILTER_SETUP = "-284 filter + extra -6 + blackened tube"
 # Standard production failure taxonomy. This is the same set used by the
 # scope-verification workflow, minus its non-failure GOOD entry.
 FAILURE_MODE_CHOICES = (
+    "RETEST - Sensitivity guard band",
     "SB - Sensor bad",
     "GO/D - Good offset/no signal",
     "O - No sensitivity",
@@ -145,6 +154,11 @@ FAILURE_MODE_CHOICES = (
     "Drop - Dropped",
 )
 UNSTABLE_FAILURE_MODE = "Unstable - Unstable"
+SENSITIVITY_RETEST_FAILURE_MODE = "RETEST - Sensitivity guard band"
+
+OUTCOME_PASS = "PASS"
+OUTCOME_FAIL = "FAIL"
+OUTCOME_RETEST = "RETEST"
 
 # Fixed ESP32 rig settings. Technicians never change these in production.
 EMITTER_PWM_CHANNEL = "GPIO25"
@@ -152,8 +166,10 @@ EMITTER_PWM_FREQUENCY_HZ = DEFAULT_EMITTER_PWM_FREQUENCY_HZ
 EMITTER_PWM_DUTY_CYCLE = 50.0
 WAVEFORM_INPUT_RANGE_V = 2.5  # ADS1256 PGA x2 with 2.5 V reference => +/-2.5 V
 
-# 6 V SLA watcher. Firmware reads ADS1256 AIN7 through the existing divide-by-2
-# divider and returns battery volts after its 12-sample median and scaling.
+# 6 V SLA watcher. Firmware reads ADS1256 AIN7 through the measured
+# 99.7k/99.6k divider (ratio 2.001004) and returns battery volts after its
+# 12-sample median and scaling. The backend compatibility-corrects v1.7
+# firmware; v1.8+ applies the measured ratio on the ESP32 itself.
 BATTERY_MIN_V = 5.8               # hard block: recharge at or below this
 BATTERY_WARN_V = 6.0              # early warning band (testing is still allowed)
 # Reuse the load-step battery check instead of re-reading before the capture
@@ -182,10 +198,21 @@ SIM_BATTERY_LOW_V = 5.6
 # amplitude. Tune this up once real good-sensor SNRs are known (the SNR is now
 # logged to the batch CSV to help calibrate it).
 MIN_SIGNAL_TO_NOISE_RATIO = 1.5   # ~3.5 dB
-# V6 production capture policy. Stability itself is configured in the tracked
-# JSON file; these timing/measurement constants are fixed application behavior.
+# Paired old/new fixture measurements translate the raw ESP32 sensitivity to
+# the legacy fixture's scale. Preserve raw readings for traceability and apply
+# the factor only to the final sensitivity value--never to the waveform,
+# stability deltas, noise, SNR, polarity, or offset.
+SENSITIVITY_LEGACY_EQUIVALENT_FACTOR = 1.582
+SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV = 0.10
+SENSITIVITY_CALIBRATION_ID = "lot_520_paired_v1"
+SENSITIVITY_RETEST_REASON_PREFIX = "Sensitivity requires retest/quarantine:"
+LOW_SENSITIVITY_FAILURE_ENABLED = True
+# V6.1 production capture policy. The delta threshold comes from the tracked
+# JSON file; these timing/count constants are fixed application behavior.
 STABILITY_TIMEOUT_S = 20.0
-SENSITIVITY_MEASUREMENT_CYCLES = 10
+DUT_STABILITY_CONFIRMATION_DELTAS = 10
+SENSITIVITY_MEASUREMENT_CYCLES = 20
+MAX_MEASUREMENT_ATTEMPTS = DEFAULT_MAX_MEASUREMENT_ATTEMPTS
 SYNC_VALIDATION_CYCLES = 3
 STREAM_PREVIEW_MAX_SAMPLES = 2000
 SIM_CAPTURE_CYCLES = 220
@@ -194,14 +221,15 @@ SIM_CAPTURE_CYCLES = 220
 # PWM-on, uses a dedicated robust-peak delta limit, and averages the
 # next five complete cycle peak-to-peak values. Calibration averages five of
 # those adaptive readings. Every DUT test performs a fresh reference reading
-# first and requires it to remain inside the persisted +/-10 percent window.
+# first and requires it to remain inside the fixed +/-25 percent window.
 REFERENCE_CALIBRATION_READINGS = 5
 REFERENCE_MEASUREMENT_CYCLES = 5
 REFERENCE_PEAK_DELTA_THRESHOLD_MV = 0.250
-REFERENCE_TOLERANCE_PERCENT = 10.0
+REFERENCE_TOLERANCE_PERCENT = 25.0
 REFERENCE_CALIBRATION_SCHEMA_VERSION = 2
-if "Never stabilizes" not in SIM_CASES:
-    SIM_CASES = [*SIM_CASES, "Never stabilizes"]
+for _sim_case in ("Borderline sensitivity", "Never stabilizes"):
+    if _sim_case not in SIM_CASES:
+        SIM_CASES = [*SIM_CASES, _sim_case]
 
 
 def simulate_v6_startup_capture(
@@ -219,11 +247,16 @@ def simulate_v6_startup_capture(
     phase = (t * frequency_hz) % 1.0
     min_mv = FILTER_SPECS_MV[filter_setup]
     if case_name == "Low sensitivity":
-        sensitivity_mv = min_mv * 0.62
+        legacy_equivalent_sensitivity_mv = min_mv * 0.62
+    elif case_name == "Borderline sensitivity":
+        legacy_equivalent_sensitivity_mv = min_mv
     elif case_name == "Random good sensor":
-        sensitivity_mv = min_mv * 1.40
+        legacy_equivalent_sensitivity_mv = min_mv * 1.40
     else:
-        sensitivity_mv = min_mv * 1.35
+        legacy_equivalent_sensitivity_mv = min_mv * 1.35
+    sensitivity_mv = (
+        legacy_equivalent_sensitivity_mv / SENSITIVITY_LEGACY_EQUIVALENT_FACTOR
+    )
 
     triangle = np.where(phase < 0.5, -1.0 + 4.0 * phase, 3.0 - 4.0 * phase)
     if case_name == "Wrong polarity":
@@ -263,6 +296,105 @@ def analyze_esp32_waveform(*args, **kwargs) -> WaveformMetrics:
         rewritten.append(warning)
     metrics.warnings = rewritten
     return metrics
+
+
+def evaluate_result(
+    offset_v: float | None,
+    waveform_metrics: WaveformMetrics | None,
+    filter_setup: str,
+) -> FinalResult:
+    """Apply the v6.1 fixture sensitivity transfer plus every other gate."""
+    final = evaluate_result_with_sensitivity_limit(
+        offset_v,
+        waveform_metrics,
+        filter_setup,
+    )
+    # The shared engine compares the raw ESP32 amplitude directly with the
+    # legacy limit. Remove that incompatible result and apply the calibrated
+    # raw guard-band policy below.
+    final.fail_reasons = [
+        reason
+        for reason in final.fail_reasons
+        if not reason.startswith("Sensitivity too low:")
+    ]
+    if LOW_SENSITIVITY_FAILURE_ENABLED and waveform_metrics is not None:
+        raw_sensitivity_mv = waveform_metrics.sensitivity_mv
+        disposition = sensitivity_gate_outcome(raw_sensitivity_mv, filter_setup)
+        fail_below_mv, pass_above_mv = sensitivity_raw_limits_mv(filter_setup)
+        equivalent_mv = legacy_equivalent_sensitivity_mv(raw_sensitivity_mv)
+        if disposition == OUTCOME_FAIL:
+            final.fail_reasons.append(
+                f"Sensitivity too low: raw {raw_sensitivity_mv:.3f} mV is below "
+                f"{fail_below_mv:.2f} mV; legacy-equivalent {equivalent_mv:.3f} mV "
+                f"using factor {SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}."
+            )
+        elif disposition == OUTCOME_RETEST:
+            final.fail_reasons.append(
+                f"{SENSITIVITY_RETEST_REASON_PREFIX} raw {raw_sensitivity_mv:.3f} mV "
+                f"is inside the inclusive {fail_below_mv:.2f}-{pass_above_mv:.2f} mV "
+                f"guard band; legacy-equivalent {equivalent_mv:.3f} mV using factor "
+                f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}. Re-measure or quarantine "
+                "this sensor."
+            )
+    final.passed = not final.fail_reasons
+    return final
+
+
+def legacy_equivalent_sensitivity_mv(raw_sensitivity_mv: float) -> float:
+    """Translate a final raw ESP32 sensitivity to the old-fixture scale."""
+    return float(raw_sensitivity_mv) * SENSITIVITY_LEGACY_EQUIVALENT_FACTOR
+
+
+def sensitivity_raw_limits_mv(filter_setup: str) -> tuple[float, float]:
+    """Return rounded raw FAIL/RETEST/PASS boundaries for one filter setup.
+
+    The established legacy filter minimum remains at the center of a +/-0.10
+    mV raw guard band. For the production default this is exactly 2.43-2.63
+    mV around 4.0 / 1.582.
+    """
+    try:
+        legacy_min_mv = FILTER_SPECS_MV[filter_setup]
+    except KeyError as exc:
+        raise ValueError(f"Unknown filter/setup for sensitivity policy: {filter_setup}") from exc
+    raw_center_mv = legacy_min_mv / SENSITIVITY_LEGACY_EQUIVALENT_FACTOR
+    return (
+        round(raw_center_mv - SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV, 2),
+        round(raw_center_mv + SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV, 2),
+    )
+
+
+def sensitivity_gate_outcome(raw_sensitivity_mv: float, filter_setup: str) -> str:
+    """Classify raw sensitivity; guard-band endpoints require a retest."""
+    raw_mv = float(raw_sensitivity_mv)
+    if not math.isfinite(raw_mv):
+        return OUTCOME_FAIL
+    fail_below_mv, pass_above_mv = sensitivity_raw_limits_mv(filter_setup)
+    if raw_mv < fail_below_mv:
+        return OUTCOME_FAIL
+    if raw_mv > pass_above_mv:
+        return OUTCOME_PASS
+    return OUTCOME_RETEST
+
+
+def is_sensitivity_retest_reason(reason: str) -> bool:
+    return str(reason).startswith(SENSITIVITY_RETEST_REASON_PREFIX)
+
+
+def result_outcome(final_result: FinalResult | None) -> str:
+    """Return PASS, FAIL, or RETEST without weakening FinalResult.passed."""
+    if final_result is None:
+        return ""
+    if final_result.passed:
+        return OUTCOME_PASS
+    retest_reasons = [
+        reason for reason in final_result.fail_reasons if is_sensitivity_retest_reason(reason)
+    ]
+    definitive_reasons = [
+        reason for reason in final_result.fail_reasons if not is_sensitivity_retest_reason(reason)
+    ]
+    if retest_reasons and not definitive_reasons:
+        return OUTCOME_RETEST
+    return OUTCOME_FAIL
 
 # --------------------------------------------------------------------------- #
 # v6 theme - palette carried forward from v5 / eltecinstruments.com
@@ -429,7 +561,17 @@ CSV_FIELDS = [
     "pwm_hz",
     "pwm_duty",
     "offset_v",
+    # ``sensitivity_mv`` remains the raw ESP32 value for compatibility with
+    # existing v6.1 batch files. The explicit fields below make the calibrated
+    # value and decision policy unambiguous for new batches.
     "sensitivity_mv",
+    "sensitivity_raw_mv",
+    "sensitivity_legacy_equivalent_mv",
+    "sensitivity_correction_factor",
+    "sensitivity_calibration_id",
+    "sensitivity_gate_outcome",
+    "sensitivity_raw_fail_below_mv",
+    "sensitivity_raw_pass_above_mv",
     "polarity",
     "polarity_good_bad",
     "pass_fail",
@@ -459,6 +601,11 @@ CSV_FIELDS = [
     "last_peak_delta_mv",
     "capture_cycles",
     "measurement_cycles",
+    "stability_phase",
+    "measurement_attempt",
+    "measurement_failures",
+    "active_stability_required_deltas",
+    "active_measurement_cycles_required",
     "pwm_on_seconds",
     "data_source",
 ]
@@ -497,7 +644,7 @@ def results_root_dir() -> Path:
     # Each tester version keeps its data in its own subfolder so results can be
     # tracked and analyzed per version. Autosave and waveform-snapshot folders
     # derive from this path, so they follow automatically.
-    return Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v6_esp32"
+    return Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v6_1_esp32"
 
 
 def safe_filename_part(value: str) -> str:
@@ -515,7 +662,7 @@ def batch_autosave_path(batch_number: str) -> Path:
 
 
 def reference_calibration_path() -> Path:
-    """Persistent AIN1 emitter/reference baseline for this v6 installation."""
+    """Persistent AIN1 emitter/reference baseline for this v6.1 installation."""
     return results_root_dir() / "reference_sensor_calibration.json"
 
 
@@ -524,6 +671,25 @@ def reference_stability_settings(settings: StabilitySettings) -> StabilitySettin
     return StabilitySettings(
         peak_delta_threshold_mv=REFERENCE_PEAK_DELTA_THRESHOLD_MV,
         consecutive_deltas_required=settings.consecutive_deltas_required,
+    )
+
+
+def dut_stability_settings(settings: StabilitySettings) -> StabilitySettings:
+    """Apply the fixed v6.1 qualification count to the tracked DUT delta."""
+    return StabilitySettings(
+        peak_delta_threshold_mv=settings.peak_delta_threshold_mv,
+        consecutive_deltas_required=DUT_STABILITY_CONFIRMATION_DELTAS,
+    )
+
+
+def v6_reference_calibration_path() -> Path:
+    """Return the read-only compatibility baseline used to seed v6.1."""
+    return (
+        Path.home()
+        / "Documents"
+        / "Eltec_406MCA_Test_Results"
+        / "v6_esp32"
+        / "reference_sensor_calibration.json"
     )
 
 
@@ -632,11 +798,30 @@ class ReferenceCalibration:
             raise ReferenceCalibrationError(
                 "Reference calibration average does not match its readings; run calibration again."
             )
+        # A file invalidated only because its last reading missed the former
+        # narrower window may be used again when that recorded reading is
+        # inside the current policy. A fresh AIN1 check still runs before AIN0.
+        if (
+            not valid
+            and tolerance < REFERENCE_TOLERANCE_PERCENT
+            and failed_reading_mv is not None
+            and math.isfinite(failed_reading_mv)
+            and mean_mv * (1.0 - REFERENCE_TOLERANCE_PERCENT / 100.0)
+            <= failed_reading_mv
+            <= mean_mv * (1.0 + REFERENCE_TOLERANCE_PERCENT / 100.0)
+        ):
+            valid = True
+            invalidated_at = None
+            invalidation_reason = None
+            failed_reading_mv = None
         return cls(
             readings_mv=readings,
             mean_mv=mean_mv,
             recorded_at=recorded_at,
-            tolerance_percent=tolerance,
+            # The acceptance band is an application policy, not a per-file
+            # setting. This also upgrades calibration files saved when v6.1
+            # used the older +/-10% window.
+            tolerance_percent=REFERENCE_TOLERANCE_PERCENT,
             valid=valid,
             invalidated_at=None if invalidated_at is None else str(invalidated_at),
             invalidation_reason=None if invalidation_reason is None else str(invalidation_reason),
@@ -677,7 +862,13 @@ def build_reference_calibration(
 
 
 def load_reference_calibration(path: Path | None = None) -> ReferenceCalibration | None:
-    path = reference_calibration_path() if path is None else Path(path)
+    use_v6_fallback = path is None
+    path = reference_calibration_path() if use_v6_fallback else Path(path)
+    if use_v6_fallback and not path.exists():
+        # A compatible v6 baseline lets the evaluation build run immediately.
+        # Saving or invalidating always targets the separate v6.1 path, so
+        # trying v6.1 can never alter the production v6 calibration.
+        path = v6_reference_calibration_path()
     if not path.exists():
         return None
     try:
@@ -808,6 +999,8 @@ def suggest_failure_mode(final_result: FinalResult | None) -> str:
 
     if "unstable" in reason_text or "stabiliz" in reason_text:
         return UNSTABLE_FAILURE_MODE
+    if result_outcome(final_result) == OUTCOME_RETEST:
+        return SENSITIVITY_RETEST_FAILURE_MODE
     if "sensitivity too low" in reason_text:
         no_coherent_response = (
             "signal-to-noise too low" in reason_text
@@ -859,6 +1052,21 @@ def append_result_csv(
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
     metrics = final_result.waveform_metrics
+    outcome = result_outcome(final_result)
+    raw_sensitivity_mv = final_result.sensitivity_mv
+    equivalent_sensitivity_mv = (
+        None
+        if raw_sensitivity_mv is None or not math.isfinite(raw_sensitivity_mv)
+        else legacy_equivalent_sensitivity_mv(raw_sensitivity_mv)
+    )
+    sensitivity_gate = (
+        ""
+        if raw_sensitivity_mv is None
+        else sensitivity_gate_outcome(raw_sensitivity_mv, filter_setup)
+    )
+    sensitivity_fail_below_mv, sensitivity_pass_above_mv = sensitivity_raw_limits_mv(
+        filter_setup
+    )
     if final_result.passed:
         failure_mode_tag, failure_mode_reason = "", ""
     else:
@@ -878,9 +1086,18 @@ def append_result_csv(
         "pwm_duty": f"{pwm_duty:g}",
         "offset_v": "" if final_result.offset_v is None else f"{final_result.offset_v:.6f}",
         "sensitivity_mv": "" if final_result.sensitivity_mv is None else f"{final_result.sensitivity_mv:.6f}",
+        "sensitivity_raw_mv": "" if raw_sensitivity_mv is None else f"{raw_sensitivity_mv:.6f}",
+        "sensitivity_legacy_equivalent_mv": _fmt_optional_float(
+            equivalent_sensitivity_mv, 6
+        ),
+        "sensitivity_correction_factor": f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.6f}",
+        "sensitivity_calibration_id": SENSITIVITY_CALIBRATION_ID,
+        "sensitivity_gate_outcome": sensitivity_gate,
+        "sensitivity_raw_fail_below_mv": f"{sensitivity_fail_below_mv:.6f}",
+        "sensitivity_raw_pass_above_mv": f"{sensitivity_pass_above_mv:.6f}",
         "polarity": final_result.polarity,
         "polarity_good_bad": polarity_good_bad(final_result.polarity),
-        "pass_fail": "PASS" if final_result.passed else "FAIL",
+        "pass_fail": outcome,
         "fail_reasons": "; ".join(final_result.fail_reasons),
         "failure_mode_tag": failure_mode_tag,
         "failure_mode_reason": failure_mode_reason,
@@ -1200,11 +1417,14 @@ def snapshot_detail_lines(
     comment: str = "",
     report: "StabilityCaptureReport | None" = None,
 ) -> list[str]:
-    sensitivity_text = (
-        f"{metrics.sensitivity_mv:.2f} mV"
-        if metrics.stabilized
-        else "Not measured (stability timeout)"
-    )
+    sensitivity_text = "Not measured (unstable)"
+    raw_sensitivity_text = ""
+    if metrics.stabilized:
+        sensitivity_text = (
+            f"{legacy_equivalent_sensitivity_mv(metrics.sensitivity_mv):.2f} mV "
+            "legacy-equivalent"
+        )
+        raw_sensitivity_text = f"{metrics.sensitivity_mv:.3f} mV raw ESP32"
     polarity_text = (
         f"{metrics.polarity} ({polarity_good_bad(metrics.polarity)})"
         if metrics.stabilized
@@ -1216,14 +1436,17 @@ def snapshot_detail_lines(
         f"Sensitivity: {sensitivity_text}",
         f"Polarity: {polarity_text}",
     ]
+    if raw_sensitivity_text:
+        lines.insert(3, f"Raw sensitivity: {raw_sensitivity_text}")
     if metrics.offset_v is not None:
         lines.insert(2, f"Offset: {metrics.offset_v:.3f} V")
     if metrics.measured_frequency_hz is not None:
         lines.append(f"PWM sync: {metrics.measured_frequency_hz:.3f} Hz")
     if report is not None:
-        state = "stabilized" if report.stabilized else "stability timeout"
+        state = "stabilized" if report.stabilized else "unstable"
         lines.append(
-            f"Stability: {state}; {report.required_deltas} deltas <= "
+            f"Stability: {state}; attempt {report.measurement_attempt}; "
+            f"{report.active_required_deltas} deltas <= "
             f"{report.threshold_mv:.3f} mV"
         )
         if report.stabilization_seconds is not None:
@@ -1386,7 +1609,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
 
         The same samples drive sync validation, peak-delta progress, optional
         live preview, and the final result. The stability deadline is measured
-        from PWM activation; ten fresh measurement cycles may finish afterward.
+        from PWM activation; a started measurement window may finish afterward.
         """
         del waveform_range_v
         self.connect()
@@ -1402,22 +1625,30 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 )
         actual_scan_rate = float(header.sample_rate_hz)
         pwm_elapsed_offset_s = max(0.0, time.monotonic() - pwm_started_monotonic)
-        # Enough room for a decision on the deadline plus all ten fresh cycles
-        # and two edge-closing cycles. This is a safety ceiling, not the normal
-        # stop condition.
+        is_reference = str(channel).lower() in {"ref", "reference", "ain1"}
+        enforce_retry_policy = not is_reference
+        analysis_settings = (
+            dut_stability_settings(settings) if enforce_retry_policy else settings
+        )
+        maximum_measurement_cycles = measurement_cycles
+        # Enough room for a final measurement window that begins at the
+        # stability deadline, plus two edge-closing cycles. This is only a
+        # safety ceiling; the state machine normally stops earlier.
         max_stream_s = max(0.0, stability_timeout_s - pwm_elapsed_offset_s) + (
-            measurement_cycles + 2
+            maximum_measurement_cycles + 2
         ) / expected_frequency_hz
         # N samples span N-1 intervals, so include the sample at the safety
         # ceiling rather than stopping one conversion before it.
         target_scans = int(math.ceil(max_stream_s * actual_scan_rate)) + 1
         diagnostics = None
-        stream_data_source = "esp32_reference" if str(channel).lower() in {"ref", "reference", "ain1"} else "esp32"
+        stream_data_source = "esp32_reference" if is_reference else "esp32_v6_1"
         analysis = analyze_stability(
-            [], [], actual_scan_rate, settings,
+            [], [], actual_scan_rate, analysis_settings,
             pwm_elapsed_offset_s=pwm_elapsed_offset_s,
             stability_deadline_s=stability_timeout_s,
             measurement_cycles_required=measurement_cycles,
+            enforce_measurement_stability=enforce_retry_policy,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source=stream_data_source,
         )
         sync_validated = False
@@ -1461,10 +1692,12 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     waveform_np,
                     sync_np,
                     actual_scan_rate,
-                    settings,
+                    analysis_settings,
                     pwm_elapsed_offset_s=pwm_elapsed_offset_s,
                     stability_deadline_s=stability_timeout_s,
                     measurement_cycles_required=measurement_cycles,
+                    enforce_measurement_stability=enforce_retry_policy,
+                    max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
                     data_source=stream_data_source,
                 )
                 captured_s = (
@@ -1499,7 +1732,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                         waveform_np[-STREAM_PREVIEW_MAX_SAMPLES:].copy(),
                         sync_np[-STREAM_PREVIEW_MAX_SAMPLES:].copy(),
                     )
-                if analysis.report.measurement_complete or analysis.report.timed_out:
+                if analysis.report.measurement_complete or analysis.report.unstable:
                     break
         finally:
             if self.is_streaming:
@@ -1521,17 +1754,19 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             waveform_np,
             sync_np,
             actual_scan_rate,
-            settings,
+            analysis_settings,
             pwm_elapsed_offset_s=pwm_elapsed_offset_s,
             stability_deadline_s=stability_timeout_s,
             measurement_cycles_required=measurement_cycles,
+            enforce_measurement_stability=enforce_retry_policy,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source=stream_data_source,
         )
         if not sync_validated:
             raise HardwareNotReadyError(
                 "ESP32 PWM sync could not be validated before the capture ended."
             )
-        if not (analysis.report.measurement_complete or analysis.report.timed_out):
+        if not (analysis.report.measurement_complete or analysis.report.unstable):
             raise Esp32BackendError(
                 "Adaptive capture reached its safety limit before producing a complete decision."
             )
@@ -1560,17 +1795,51 @@ class ReferenceGateError(HardwareNotReadyError):
 
 
 class ReferenceCheckFailedError(ReferenceGateError):
-    def __init__(self, reading_mv: float, calibration: ReferenceCalibration) -> None:
+    def __init__(
+        self,
+        reading_mv: float,
+        calibration: ReferenceCalibration,
+        *,
+        dut_offset_v: float | None = None,
+    ) -> None:
         drift = calibration.drift_percent(reading_mv)
+        if dut_offset_v is None:
+            dut_detail = "The sensor under test was not read."
+        else:
+            dut_detail = (
+                f"AIN0 was checked at {dut_offset_v:.3f} V, but the combined readings did not "
+                "match the known high-AIN1/high-offset sensor interference pattern."
+            )
         super().__init__(
             f"Reference unit measured {reading_mv:.2f} mV, {drift:+.1f}% from the "
             f"{calibration.mean_mv:.2f} mV calibration. The allowed range is "
             f"{calibration.lower_mv:.2f}-{calibration.upper_mv:.2f} mV "
-            f"(+/-{calibration.tolerance_percent:g}%). The sensor under test was not read. "
+            f"(+/-{calibration.tolerance_percent:g}%). {dut_detail} "
             "Replace/check the emitter, then recalibrate the reference unit before testing another sensor."
         )
         self.reading_mv = reading_mv
         self.calibration = calibration
+        self.dut_offset_v = dut_offset_v
+
+
+def high_offset_dut_explains_reference_spike(
+    reference_mv: float,
+    calibration: ReferenceCalibration,
+    dut_offset_v: float,
+) -> bool:
+    """Return whether a high AIN1 result matches the known high-offset DUT coupling.
+
+    Suppression is deliberately one-sided: only a reference spike above the
+    calibrated window plus a connected DUT above the production high-offset
+    limit qualifies. Low reference readings and implausible/railed AIN0 values
+    remain reference failures.
+    """
+    return (
+        math.isfinite(reference_mv)
+        and reference_mv > calibration.upper_mv
+        and math.isfinite(dut_offset_v)
+        and OFFSET_MAX_V < dut_offset_v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V
+    )
 
 
 def battery_state_for(battery_v: float | None) -> str:
@@ -1631,7 +1900,7 @@ def apply_signal_quality_gate(final: FinalResult, metrics: WaveformMetrics | Non
 
 
 # --------------------------------------------------------------------------- #
-# V6 adaptive-stability capture telemetry
+# V6.1 adaptive-stability capture telemetry
 # --------------------------------------------------------------------------- #
 @dataclass
 class StabilityCaptureReport:
@@ -1639,6 +1908,13 @@ class StabilityCaptureReport:
     required_deltas: int
     stabilized: bool = False
     timed_out: bool = False
+    unstable: bool = False
+    unstable_reason: str | None = None
+    phase: str = "stabilizing"
+    measurement_attempt: int = 1
+    measurement_failures: int = 0
+    active_required_deltas: int = 5
+    measurement_cycles_required: int = 10
     stabilization_cycle: int | None = None
     stabilization_seconds: float | None = None
     confirming_max_delta_mv: float | None = None
@@ -1664,6 +1940,13 @@ class StabilityCaptureReport:
             required_deltas=source.configured_confirmation_count,
             stabilized=source.stabilized,
             timed_out=source.timed_out,
+            unstable=source.unstable,
+            unstable_reason=source.unstable_reason,
+            phase=source.phase,
+            measurement_attempt=source.measurement_attempt,
+            measurement_failures=source.measurement_failures,
+            active_required_deltas=source.active_confirmation_count,
+            measurement_cycles_required=source.measurement_cycles_required,
             stabilization_cycle=source.stabilization_cycle,
             stabilization_seconds=source.stabilization_elapsed_s,
             confirming_max_delta_mv=source.confirming_window_max_delta_mv,
@@ -1692,6 +1975,11 @@ class StabilityCaptureReport:
             "last_peak_delta_mv": _fmt_optional_float(self.last_peak_delta_mv, 6),
             "capture_cycles": str(self.capture_cycles),
             "measurement_cycles": str(self.measurement_cycles),
+            "stability_phase": self.phase,
+            "measurement_attempt": str(self.measurement_attempt),
+            "measurement_failures": str(self.measurement_failures),
+            "active_stability_required_deltas": str(self.active_required_deltas),
+            "active_measurement_cycles_required": str(self.measurement_cycles_required),
             "pwm_on_seconds": f"{self.pwm_on_seconds:.3f}",
             "data_source": self.data_source,
         }
@@ -1706,17 +1994,18 @@ def analyze_v6_stable_measurement(
     offset_v: float,
     input_range_v: float,
 ) -> WaveformMetrics:
-    """Apply the proven signal math to exactly ten fresh stable cycles."""
+    """Apply production signal math to the successful 20-cycle window."""
     segments = analysis.measurement_segments
-    if len(segments) != SENSITIVITY_MEASUREMENT_CYCLES:
+    expected_cycles = analysis.report.measurement_cycles_required
+    if len(segments) != expected_cycles:
         raise ValueError(
-            f"Stable measurement requires {SENSITIVITY_MEASUREMENT_CYCLES} complete cycles; "
+            f"Stable measurement requires {expected_cycles} complete cycles; "
             f"received {len(segments)}."
         )
     first_start = segments[0][0]
     last_end = segments[-1][1]
     # Include the low sample before the first rising edge and the closing edge
-    # after the tenth cycle so the shared edge detector sees all ten cycles.
+    # after the last selected cycle so the shared edge detector sees them all.
     slice_start = max(0, first_start - 1)
     slice_end = min(len(waveform_v), last_end + 1)
     measured_waveform = waveform_v[slice_start:slice_end]
@@ -1727,14 +2016,14 @@ def analyze_v6_stable_measurement(
         sample_rate_hz=sample_rate_hz,
         am502_gain=RIG_GAIN,
         sync_edge=PROCEDURE_SYNC_EDGE,
-        stability_window_cycles=SENSITIVITY_MEASUREMENT_CYCLES,
+        stability_window_cycles=expected_cycles,
         settle_cycles=0,
         input_range_v=input_range_v,
     )
-    if metrics.cycles_used != SENSITIVITY_MEASUREMENT_CYCLES:
+    if metrics.cycles_used != expected_cycles:
         raise Esp32BackendError(
             f"Selected stability window contained {metrics.cycles_used} analyzable cycles; "
-            f"expected {SENSITIVITY_MEASUREMENT_CYCLES}. Nothing was recorded."
+            f"expected {expected_cycles}. Nothing was recorded."
         )
     metrics.warnings = [
         warning for warning in metrics.warnings
@@ -1781,11 +2070,14 @@ def build_stability_timeout_result(
         expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
         edge=PROCEDURE_SYNC_EDGE,
     )
-    reason = (
-        f"Unstable: waveform peak did not stabilize within {analysis.report.stability_deadline_s:.1f} s: "
-        f"required {analysis.report.configured_confirmation_count} consecutive peak deltas "
-        f"at or below {analysis.report.configured_threshold_mv:.3f} mV."
-    )
+    detail = analysis.report.unstable_reason
+    if not detail:
+        detail = (
+            f"Waveform peak did not stabilize within {analysis.report.stability_deadline_s:.1f} s: "
+            f"required {analysis.report.active_confirmation_count} consecutive peak deltas "
+            f"at or below {analysis.report.configured_threshold_mv:.3f} mV."
+        )
+    reason = "Unstable: " + detail
     warnings = [
         warning.replace("blade sync", "ESP32 PWM sync").replace("Blade sync", "ESP32 PWM sync")
         for warning in sync_warnings
@@ -2568,7 +2860,7 @@ class ScopeView(tk.Canvas):
 
 
 # --------------------------------------------------------------------------- #
-# Guided ESP32 emitter tester UI (v6)
+# Guided ESP32 emitter tester UI (v6.1)
 # --------------------------------------------------------------------------- #
 class EmitterTesterApp(tk.Tk):
     SETUP_STEP = "setup"
@@ -2591,7 +2883,7 @@ class EmitterTesterApp(tk.Tk):
             self.tk.call("tk", "scaling", UI_SCALE * 96.0 / 72.0)
         except tk.TclError:
             pass
-        self.title("Eltec 406MCA ESP32 Emitter Tester v6")
+        self.title("Eltec 406MCA ESP32 Emitter Tester v6.1")
         self.minsize(S(1100), S(740))
 
         self.animator = Animator(self)
@@ -2665,7 +2957,7 @@ class EmitterTesterApp(tk.Tk):
         self._build_variables()
         if self.stability_config_error is not None:
             self.status_var.set(
-                "V6 stability configuration error — measurement is disabled. "
+                "V6.1 stability configuration error — measurement is disabled. "
                 + self.stability_config_error
             )
         self._build_style()
@@ -2922,7 +3214,7 @@ class EmitterTesterApp(tk.Tk):
         title_width = tkfont.Font(font=self.fd(21)).measure("406MCA EMITTER TESTER")
         chip_x = title_x + title_width + S(14)
         draw_round_rect(self.header, chip_x, S(15), chip_x + S(40), S(37), Sf(8), fill=ELTEC_RED, outline="", tags="static")
-        self.header.create_text(chip_x + S(20), S(26), text="V6", fill="#ffffff", font=self.fm(11, "bold"), tags="static")
+        self.header.create_text(chip_x + S(20), S(26), text="V6.1", fill="#ffffff", font=self.fm(10, "bold"), tags="static")
         if self.simulator_var.get():
             # Loud amber badge: everything on screen is synthetic.
             sim_text = "SIMULATOR"
@@ -3100,14 +3392,16 @@ class EmitterTesterApp(tk.Tk):
         panel.columnconfigure(1, weight=1)
         settings = self.stability_settings
         if settings is None:
-            stability_rule_text = "The tracked v6 stability settings are invalid; measurement is disabled."
+            stability_rule_text = "The tracked v6.1 stability settings are invalid; measurement is disabled."
         else:
             stability_rule_text = (
-                f"V6 continuously watches the robust AIN0 peak from PWM-on. It requires "
-                f"{settings.consecutive_deltas_required} consecutive cycle-to-cycle peak deltas "
-                f"at or below {settings.peak_delta_threshold_mv:.3f} mV, then measures sensitivity "
-                f"over {SENSITIVITY_MEASUREMENT_CYCLES} fresh cycles. A part that has not stabilized "
-                f"within {STABILITY_TIMEOUT_S:g} seconds fails as unstable."
+                f"V6.1 DUT attempts 1, 2, and 3 each require "
+                f"{DUT_STABILITY_CONFIRMATION_DELTAS} consecutive "
+                f"cycle-to-cycle peak deltas at or below {settings.peak_delta_threshold_mv:.3f} mV, "
+                f"then {SENSITIVITY_MEASUREMENT_CYCLES} measurement cycles that must stay within "
+                f"the same limit. A kick discards that window and restarts the same 10/20 check. "
+                f"A third measurement kick fails as unstable. Requalification must finish within "
+                f"{STABILITY_TIMEOUT_S:g} seconds of PWM-on."
             )
         ttk.Checkbutton(panel, text="Simulator mode (training only - synthetic data, clearly badged)",
                         variable=self.simulator_var,
@@ -3127,11 +3421,16 @@ class EmitterTesterApp(tk.Tk):
             panel,
             text=(f"ESP32 rig: ADS AIN1 = fixed reference/emitter gate, ADS AIN0 = buffered DUT "
                   f"(offset + AC), ADS AIN7 = 6 V SLA via "
-                  f"100k/100k divider (÷2), streamed sync = PWM state, {EMITTER_PWM_CHANNEL} = MOSFET gate. "
+                  f"{BATTERY_DIVIDER_R_TOP_OHMS / 1000:.1f}k/"
+                  f"{BATTERY_DIVIDER_R_BOTTOM_OHMS / 1000:.1f}k divider "
+                  f"(×{BATTERY_DIVIDER_RATIO:.6f}, "
+                  f"{BATTERY_DIVIDER_FILTER_CAPACITANCE_F * 1e9:.0f} nF filter), "
+                  f"streamed sync = PWM state, {EMITTER_PWM_CHANNEL} = MOSFET gate. "
                   f"Emitter driven at {EMITTER_PWM_FREQUENCY_HZ:g} Hz, {EMITTER_PWM_DUTY_CYCLE:g}% duty (fixed). "
                   f"ADS sensor range is ±{WAVEFORM_INPUT_RANGE_V:g} V through a unity-gain buffer. "
-                  f"AIN1 is checked before any AIN0 read and must remain within "
-                  f"+/-{REFERENCE_TOLERANCE_PERCENT:g}% of its calibration. Testing is blocked "
+                  f"AIN1 is checked before AIN0 and must remain within "
+                  f"+/-{REFERENCE_TOLERANCE_PERCENT:g}% of its calibration, except that a high "
+                  f"AIN1 spike is ignored when AIN0 confirms a high-offset DUT. Testing is blocked "
                   f"at or below {BATTERY_MIN_V:.1f} V."),
             bg=PAGE_BG, fg=MUTED_FG, font=self.fb(10), wraplength=S(640), justify="left",
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 0))
@@ -3175,8 +3474,23 @@ class EmitterTesterApp(tk.Tk):
         dialog.focus_set()
 
     def update_filter_hint(self) -> None:
-        min_mv = FILTER_SPECS_MV.get(self.filter_var.get())
-        self.filter_hint_var.set("" if min_mv is None else f"MINIMUM SENSITIVITY TO PASS: {min_mv:.1f} mV")
+        if LOW_SENSITIVITY_FAILURE_ENABLED:
+            try:
+                fail_below_mv, pass_above_mv = sensitivity_raw_limits_mv(
+                    self.filter_var.get()
+                )
+            except ValueError:
+                hint = "SENSITIVITY POLICY UNAVAILABLE FOR THIS FILTER"
+            else:
+                hint = (
+                    f"RAW SENSITIVITY: < {fail_below_mv:.2f} mV FAIL  ·  "
+                    f"{fail_below_mv:.2f}-{pass_above_mv:.2f} mV RETEST  ·  "
+                    f"> {pass_above_mv:.2f} mV PASS  ·  DISPLAY ×"
+                    f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}"
+                )
+        else:
+            hint = "SENSITIVITY FAILURE CHECK TEMPORARILY DISABLED"
+        self.filter_hint_var.set(hint)
 
     def reference_gate_ready(self) -> bool:
         if self.simulator_var.get():
@@ -3369,15 +3683,20 @@ class EmitterTesterApp(tk.Tk):
 
     def render_result_view(self) -> None:
         result = self.last_result
-        passed = result.passed
-        self._build_result_banner(row=0, passed=passed)
+        outcome = result_outcome(result)
+        passed = outcome == OUTCOME_PASS
+        retest = outcome == OUTCOME_RETEST
+        self._build_result_banner(row=0, outcome=outcome)
         next_row = 1
         if not passed:
+            card_bg = WARN_BG if retest else FAIL_BG
+            card_fg = WARN_FG if retest else FAIL_FG
+            card_accent = WARN_ACCENT if retest else FAIL_ACCENT
             failure_card = Card(
                 self.step_frame,
-                card_bg=FAIL_BG,
-                border=mix_color(FAIL_ACCENT, FAIL_BG, 0.45),
-                accent_stops=[FAIL_ACCENT, FAIL_ACCENT],
+                card_bg=card_bg,
+                border=mix_color(card_accent, card_bg, 0.45),
+                accent_stops=[card_accent, card_accent],
                 pad=(18, 14),
             )
             failure_card.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
@@ -3385,9 +3704,9 @@ class EmitterTesterApp(tk.Tk):
             failure_inner.columnconfigure(0, weight=1)
             tk.Label(
                 failure_inner,
-                text="FAILURE MODE",
-                bg=FAIL_BG,
-                fg=FAIL_FG,
+                text="RETEST / QUARANTINE" if retest else "FAILURE MODE",
+                bg=card_bg,
+                fg=card_fg,
                 font=self.fm(10, "bold"),
             ).grid(row=0, column=0, sticky="w", pady=(0, 5))
             failure_combo = ttk.Combobox(
@@ -3405,9 +3724,13 @@ class EmitterTesterApp(tk.Tk):
             )
             tk.Label(
                 failure_inner,
-                text="Confirm or change the failure mode, then save the sensor.",
-                bg=FAIL_BG,
-                fg=FAIL_FG,
+                text=(
+                    "Re-measure now, or save this sensor as a quarantine record."
+                    if retest
+                    else "Confirm or change the failure mode, then save the sensor."
+                ),
+                bg=card_bg,
+                fg=card_fg,
                 font=self.fb(10),
             ).grid(row=2, column=0, sticky="w", pady=(6, 0))
             next_row += 1
@@ -3417,17 +3740,51 @@ class EmitterTesterApp(tk.Tk):
             for column in range(3):
                 tiles.columnconfigure(column, weight=1, uniform="tiles")
             offset_ok = result.offset_v is not None and OFFSET_MIN_V <= result.offset_v <= OFFSET_MAX_V
-            min_mv = FILTER_SPECS_MV.get(self.filter_setup)
-            sens_ok = result.sensitivity_mv is not None and min_mv is not None and result.sensitivity_mv >= min_mv
+            fail_below_mv, pass_above_mv = sensitivity_raw_limits_mv(self.filter_setup)
+            sensitivity_outcome = (
+                ""
+                if result.sensitivity_mv is None
+                else sensitivity_gate_outcome(result.sensitivity_mv, self.filter_setup)
+            )
+            sensitivity_equivalent_mv = (
+                None
+                if result.sensitivity_mv is None
+                else legacy_equivalent_sensitivity_mv(result.sensitivity_mv)
+            )
             pol_verdict = polarity_good_bad(result.polarity)
             self._result_tile(tiles, 0, "Offset", result.offset_v, offset_ok, unit=" V", decimals=3)
-            self._result_tile(tiles, 1, "Sensitivity", result.sensitivity_mv, sens_ok, unit=" mV", decimals=2)
+            self._result_tile(
+                tiles,
+                1,
+                "Sensitivity (equiv.)",
+                sensitivity_equivalent_mv,
+                sensitivity_outcome == OUTCOME_PASS,
+                unit=" mV",
+                decimals=2,
+                accent_override=(
+                    WARN_ACCENT if sensitivity_outcome == OUTCOME_RETEST else None
+                ),
+            )
             self._result_tile(tiles, 2, "Polarity", pol_verdict or None, pol_verdict == "GOOD")
             next_row += 1
 
             detail_bits = [f"Filter: {self.filter_setup}"]
-            if min_mv is not None:
-                detail_bits.append(f"min sensitivity {min_mv:.1f} mV")
+            if LOW_SENSITIVITY_FAILURE_ENABLED:
+                detail_bits.append(
+                    f"raw sensitivity {result.sensitivity_mv:.3f} mV"
+                    if result.sensitivity_mv is not None
+                    else "raw sensitivity not measured"
+                )
+                detail_bits.append(
+                    f"raw gate <{fail_below_mv:.2f} fail / "
+                    f"{fail_below_mv:.2f}-{pass_above_mv:.2f} retest / "
+                    f">{pass_above_mv:.2f} pass"
+                )
+                detail_bits.append(
+                    f"legacy-equivalent factor ×{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}"
+                )
+            else:
+                detail_bits.append("sensitivity failure check disabled")
             if result.polarity and polarity_good_bad(result.polarity):
                 detail_bits.append(f"polarity {result.polarity}")
             pol_detail = format_polarity_detail(self.last_metrics)
@@ -3454,9 +3811,14 @@ class EmitterTesterApp(tk.Tk):
                 detail_bits.append(
                     f"stable at {report.stabilization_seconds:.1f} s / cycle {report.stabilization_cycle}"
                 )
-                detail_bits.append(f"sensitivity window {report.measurement_cycles} cycles")
-            elif report is not None and report.timed_out:
-                detail_bits.append("stability timeout")
+                detail_bits.append(
+                    f"attempt {report.measurement_attempt} / sensitivity window "
+                    f"{report.measurement_cycles} cycles"
+                )
+            elif report is not None and report.unstable:
+                detail_bits.append(
+                    f"unstable on attempt {report.measurement_attempt}"
+                )
             tk.Label(
                 self.step_frame,
                 text="   ·   ".join(detail_bits),
@@ -3516,15 +3878,19 @@ class EmitterTesterApp(tk.Tk):
             self._build_wave_canvas(row=next_row + 1, live=False)
             self.redraw_waveform()
 
-    def _build_result_banner(self, row: int, passed: bool) -> None:
-        accent = PASS_ACCENT if passed else FAIL_ACCENT
-        banner_bg = PASS_BG if passed else FAIL_BG
-        banner_fg = PASS_FG if passed else FAIL_FG
+    def _build_result_banner(self, row: int, outcome: str) -> None:
+        if outcome == OUTCOME_PASS:
+            accent, banner_bg, banner_fg = PASS_ACCENT, PASS_BG, PASS_FG
+            glyph, verdict = "✓", OUTCOME_PASS
+        elif outcome == OUTCOME_RETEST:
+            accent, banner_bg, banner_fg = WARN_ACCENT, WARN_BG, WARN_FG
+            glyph, verdict = "!", "RETEST / QUARANTINE"
+        else:
+            accent, banner_bg, banner_fg = FAIL_ACCENT, FAIL_BG, FAIL_FG
+            glyph, verdict = "✕", OUTCOME_FAIL
         banner = tk.Canvas(self.step_frame, height=S(112), bg=PAGE_BG, highlightthickness=0, bd=0)
         banner.grid(row=row, column=0, sticky="ew")
         vals = {"bar": 0.0, "glyph": 0.0, "text": 0.0}
-        glyph = "✓" if passed else "✕"
-        verdict = "PASS" if passed else "FAIL"
 
         def redraw() -> None:
             banner.delete("all")
@@ -3552,8 +3918,18 @@ class EmitterTesterApp(tk.Tk):
         animate("glyph", "step:banner_glyph", 520, ease_out_back, 120)
         animate("text", "step:banner_text", 420, ease_out_cubic, 220)
 
-    def _result_tile(self, parent: tk.Frame, column: int, label: str, value, ok: bool, unit: str = "", decimals: int = 2) -> None:
-        accent = PASS_ACCENT if ok else FAIL_ACCENT
+    def _result_tile(
+        self,
+        parent: tk.Frame,
+        column: int,
+        label: str,
+        value,
+        ok: bool,
+        unit: str = "",
+        decimals: int = 2,
+        accent_override: str | None = None,
+    ) -> None:
+        accent = accent_override or (PASS_ACCENT if ok else FAIL_ACCENT)
         card = Card(parent, accent_stops=[accent, accent], pad=(18, 14))
         card.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else S(12), 0))
         inner = card.inner
@@ -3644,8 +4020,23 @@ class EmitterTesterApp(tk.Tk):
             self.secondary_button.grid()
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
             ready = not self.busy and not self.measuring and self.last_result is not None and not self.result_saved
-            self.primary_button.configure(text="Save + Next Sensor (Enter)", state="normal" if ready else "disabled")
-            self.secondary_button.configure(text="Save + Exit Batch (Esc)", state="normal" if ready else "disabled")
+            retest = result_outcome(self.last_result) == OUTCOME_RETEST
+            self.primary_button.configure(
+                text=(
+                    "Save Quarantine + Next (Enter)"
+                    if retest
+                    else "Save + Next Sensor (Enter)"
+                ),
+                state="normal" if ready else "disabled",
+            )
+            self.secondary_button.configure(
+                text=(
+                    "Save Quarantine + Exit (Esc)"
+                    if retest
+                    else "Save + Exit Batch (Esc)"
+                ),
+                state="normal" if ready else "disabled",
+            )
 
     def go_next(self) -> None:
         if self.busy:
@@ -3778,12 +4169,12 @@ class EmitterTesterApp(tk.Tk):
         try:
             if (
                 self.last_capture_report is not None
-                and self.last_capture_report.timed_out
+                and self.last_capture_report.unstable
                 and not self.stability_diagnostics_saved
             ):
                 if self.last_metrics is None:
                     raise RuntimeError(
-                        "The timeout waveform is unavailable; the result was not saved."
+                        "The unstable waveform is unavailable; the result was not saved."
                     )
                 diagnostic_paths = save_waveform_diagnostic_bundle(
                     self.batch_number,
@@ -3791,7 +4182,7 @@ class EmitterTesterApp(tk.Tk):
                     self.last_metrics,
                     self.last_capture_report,
                     title=(
-                        f"{MODEL_NAME} {self.current_sensor_id} stability timeout"
+                        f"{MODEL_NAME} {self.current_sensor_id} unstable"
                     ),
                     detail_lines=snapshot_detail_lines(
                         self.batch_number,
@@ -3800,11 +4191,11 @@ class EmitterTesterApp(tk.Tk):
                         self.notes_var.get(),
                         self.last_capture_report,
                     ),
-                    filename_suffix="stability_timeout",
+                    filename_suffix="unstable",
                 )
                 if not diagnostic_paths:
                     raise RuntimeError(
-                        "The timeout diagnostic bundle could not be created."
+                        "The unstable diagnostic bundle could not be created."
                     )
                 self.snapshot_paths.extend(diagnostic_paths)
                 self.stability_diagnostics_saved = True
@@ -3917,7 +4308,7 @@ class EmitterTesterApp(tk.Tk):
     ) -> float:
         dut_settings = self.stability_settings
         if dut_settings is None:
-            raise StabilitySettingsError("V6 stability settings are unavailable.")
+            raise StabilitySettingsError("V6.1 stability settings are unavailable.")
         settings = reference_stability_settings(dut_settings)
 
         def progress(current: StabilityAnalysis) -> None:
@@ -4094,7 +4485,7 @@ class EmitterTesterApp(tk.Tk):
         simulator = self.simulator_var.get()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
-                "Measurement is disabled because the tracked v6 stability settings could not be loaded.\n\n"
+                "Measurement is disabled because the tracked v6.1 stability settings could not be loaded.\n\n"
                 + (self.stability_config_error or "Unknown stability configuration error.")
             )
             self.status_var.set(text.replace("\n", " "))
@@ -4190,7 +4581,7 @@ class EmitterTesterApp(tk.Tk):
         del show_live
         settings = self.stability_settings
         if settings is None:
-            raise StabilitySettingsError("V6 stability settings are unavailable.")
+            raise StabilitySettingsError("V6.1 stability settings are unavailable.")
         calibration = self.reference_calibration
         if calibration is None or not calibration.valid:
             raise ReferenceGateError(
@@ -4210,7 +4601,7 @@ class EmitterTesterApp(tk.Tk):
             if battery_state_for(battery_v) == "fault":
                 raise HardwareNotReadyError(
                     f"The battery input reads {battery_v:.2f} V, which is not a valid 6 V SLA level. "
-                    "The battery or the ADS AIN7 100k/100k divider is probably not connected - "
+                    "The battery or the ADS AIN7 99.7k/99.6k divider is probably not connected - "
                     "check the battery clip and the rig wiring, then press Re-check battery."
                 )
             if battery_v <= BATTERY_MIN_V:
@@ -4259,25 +4650,44 @@ class EmitterTesterApp(tk.Tk):
             finally:
                 device.disable_emitter_pwm(pwm_channel)
 
-            if not calibration.accepts(reference_check_mv):
-                failure = ReferenceCheckFailedError(reference_check_mv, calibration)
-                invalidated = calibration.invalidated(str(failure), reference_check_mv)
-                self.reference_calibration = invalidated
-                self.last_reference_check_mv = reference_check_mv
-                try:
-                    save_reference_calibration(invalidated)
-                except ReferenceCalibrationError as exc:
-                    self.reference_calibration_error = str(exc)
-                raise failure
-
             self.last_reference_check_mv = reference_check_mv
-            reference_drift = calibration.drift_percent(reference_check_mv)
-            push(lambda value=reference_check_mv, drift=reference_drift: self.set_measure_status(
-                token,
-                "Reference unit passed. Reading sensor offset…",
-            ))
+            reference_in_window = calibration.accepts(reference_check_mv)
+            if reference_in_window:
+                push(lambda: self.set_measure_status(
+                    token,
+                    "Reference unit passed. Reading sensor offset…",
+                ))
+            else:
+                push(lambda: self.set_measure_status(
+                    token,
+                    "Reference unit is outside its window. Checking AIN0 for a high-offset sensor…",
+                ))
 
             offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+            if not reference_in_window:
+                if high_offset_dut_explains_reference_spike(
+                    reference_check_mv,
+                    calibration,
+                    offset_v,
+                ):
+                    push(lambda: self.set_measure_status(
+                        token,
+                        "High-offset sensor confirmed. Ignoring its AIN1 interference and recording the failure…",
+                    ))
+                else:
+                    failure = ReferenceCheckFailedError(
+                        reference_check_mv,
+                        calibration,
+                        dut_offset_v=offset_v,
+                    )
+                    invalidated = calibration.invalidated(str(failure), reference_check_mv)
+                    self.reference_calibration = invalidated
+                    try:
+                        save_reference_calibration(invalidated)
+                    except ReferenceCalibrationError as exc:
+                        self.reference_calibration_error = str(exc)
+                    raise failure
+
             # Pre-flight: a connected 406MCA presents its ~0.3-1.2 V DC offset
             # through the buffer. A floating/railed AIN0 means no sensor (or no
             # buffer) - abort before capturing anything.
@@ -4307,14 +4717,16 @@ class EmitterTesterApp(tk.Tk):
                 )
                 push(lambda: self.set_measure_status(
                     token,
-                    f"Emitter PWM on. Stabilizing peak (0/{settings.consecutive_deltas_required})...",
+                    f"Emitter PWM on. Attempt 1/{MAX_MEASUREMENT_ATTEMPTS}: "
+                    f"stabilizing peak (0/{DUT_STABILITY_CONFIRMATION_DELTAS})...",
                 ))
 
                 def progress(current: StabilityAnalysis) -> None:
                     current_report = current.report
                     if current_report.stabilized:
                         text = (
-                            f"Stable at {current_report.stabilization_elapsed_s:.1f} s. "
+                            f"Attempt {current_report.measurement_attempt}/{MAX_MEASUREMENT_ATTEMPTS}: "
+                            f"stable at {current_report.stabilization_elapsed_s:.1f} s. "
                             f"Measuring sensitivity cycle {current_report.measurement_cycle_count}/"
                             f"{current_report.measurement_cycles_required}..."
                         )
@@ -4325,11 +4737,13 @@ class EmitterTesterApp(tk.Tk):
                             if latest is None or latest.absolute_peak_delta_mv is None
                             else f"peak Δ {latest.absolute_peak_delta_mv:.3f} mV"
                         )
-                        confirmation = 0 if latest is None else latest.confirmation_run_length
+                        confirmation = current_report.active_confirmation_run_length
                         text = (
-                            f"Stabilizing... {min(current_report.total_pwm_on_seconds, STABILITY_TIMEOUT_S):.1f}/"
+                            f"Attempt {current_report.measurement_attempt}/{MAX_MEASUREMENT_ATTEMPTS}: "
+                            f"stabilizing... {min(current_report.total_pwm_on_seconds, STABILITY_TIMEOUT_S):.1f}/"
                             f"{STABILITY_TIMEOUT_S:.1f} s · {delta_text} · "
-                            f"{confirmation}/{settings.consecutive_deltas_required} stable"
+                            f"{min(confirmation, current_report.active_confirmation_count)}/"
+                            f"{current_report.active_confirmation_count} stable"
                         )
                     push(lambda value=text: self.set_measure_status(token, value))
 
@@ -4367,7 +4781,7 @@ class EmitterTesterApp(tk.Tk):
             )
             final = evaluate_result(offset_v, metrics, filter_setup)
             final = apply_signal_quality_gate(final, metrics)
-        elif stability_analysis.report.timed_out:
+        elif stability_analysis.report.unstable:
             metrics, final = build_stability_timeout_result(
                 waveform,
                 sync,
@@ -4383,7 +4797,7 @@ class EmitterTesterApp(tk.Tk):
             host_pwm_on_seconds = emitter_off_time - emitter_on_time
         report = StabilityCaptureReport.from_analysis(
             stability_analysis,
-            data_source="esp32",
+            data_source="esp32_v6_1",
             pwm_on_seconds=host_pwm_on_seconds,
         )
         self.last_capture_report = report
@@ -4397,7 +4811,7 @@ class EmitterTesterApp(tk.Tk):
             raise BatteryTooLowError(battery_v)
         settings = self.stability_settings
         if settings is None:
-            raise StabilitySettingsError("V6 stability settings are unavailable.")
+            raise StabilitySettingsError("V6.1 stability settings are unavailable.")
         self.last_reference_check_mv = 100.0
         push(lambda: self.set_measure_status(
             token,
@@ -4412,13 +4826,16 @@ class EmitterTesterApp(tk.Tk):
             token,
             "Emitter PWM on (simulated). Evaluating startup peak drift...",
         ))
+        dut_settings = dut_stability_settings(settings)
         full_analysis = analyze_stability(
             waveform,
             sync,
             actual_rate,
-            settings,
+            dut_settings,
             stability_deadline_s=STABILITY_TIMEOUT_S,
             measurement_cycles_required=SENSITIVITY_MEASUREMENT_CYCLES,
+            enforce_measurement_stability=True,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source="simulator",
         )
         if full_analysis.report.measurement_complete:
@@ -4437,9 +4854,11 @@ class EmitterTesterApp(tk.Tk):
             waveform,
             sync,
             actual_rate,
-            settings,
+            dut_settings,
             stability_deadline_s=STABILITY_TIMEOUT_S,
             measurement_cycles_required=SENSITIVITY_MEASUREMENT_CYCLES,
+            enforce_measurement_stability=True,
+            max_measurement_attempts=MAX_MEASUREMENT_ATTEMPTS,
             data_source="simulator",
         )
         if show_live:
@@ -4450,7 +4869,8 @@ class EmitterTesterApp(tk.Tk):
             push(lambda: self.set_measure_status(
                 token,
                 f"Stable at {stability_analysis.report.stabilization_elapsed_s:.1f} s. "
-                f"Measured {SENSITIVITY_MEASUREMENT_CYCLES} sensitivity cycles.",
+                f"Measured {stability_analysis.report.measurement_cycles_required} "
+                f"sensitivity cycles on attempt {stability_analysis.report.measurement_attempt}.",
             ))
             metrics = analyze_v6_stable_measurement(
                 waveform,
@@ -4463,7 +4883,7 @@ class EmitterTesterApp(tk.Tk):
             final = evaluate_result(offset_v, metrics, filter_setup)
             # The SNR gate is intentionally NOT applied here: the simulator
             # is a training model rather than calibrated hardware noise.
-        elif stability_analysis.report.timed_out:
+        elif stability_analysis.report.unstable:
             metrics, final = build_stability_timeout_result(
                 waveform,
                 sync,
@@ -4473,7 +4893,7 @@ class EmitterTesterApp(tk.Tk):
                 input_range_v=waveform_range_v,
             )
         else:
-            raise RuntimeError("Simulator capture did not reach a complete v6 decision.")
+            raise RuntimeError("Simulator capture did not reach a complete v6.1 decision.")
         report = StabilityCaptureReport.from_analysis(stability_analysis, data_source="simulator")
         self.last_capture_report = report
         return metrics, final, offset_v
@@ -4504,9 +4924,14 @@ class EmitterTesterApp(tk.Tk):
         self.failure_mode_var.set(suggest_failure_mode(final))
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
-        verdict = "PASS" if final.passed else "FAIL"
-        if final.passed:
-            self.status_var.set(f"{self.current_sensor_id}: {verdict}.")
+        outcome = result_outcome(final)
+        if outcome == OUTCOME_PASS:
+            self.status_var.set(f"{self.current_sensor_id}: {OUTCOME_PASS}.")
+        elif outcome == OUTCOME_RETEST:
+            self.status_var.set(
+                f"{self.current_sensor_id}: RETEST / QUARANTINE — re-measure now or save "
+                "the quarantine record."
+            )
         else:
             self.status_var.set(
                 f"{self.current_sensor_id}: FAIL — confirm the failure mode, then save the sensor."
@@ -4703,8 +5128,29 @@ class EmitterTesterApp(tk.Tk):
             "filter_setup": self.filter_setup,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
+            "sensitivity_raw_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
+            "sensitivity_legacy_equivalent_mv": (
+                None
+                if self.last_result is None or self.last_result.sensitivity_mv is None
+                else legacy_equivalent_sensitivity_mv(self.last_result.sensitivity_mv)
+            ),
+            "sensitivity_correction_factor": SENSITIVITY_LEGACY_EQUIVALENT_FACTOR,
+            "sensitivity_calibration_id": SENSITIVITY_CALIBRATION_ID,
+            "sensitivity_gate_outcome": (
+                None
+                if self.last_result is None or self.last_result.sensitivity_mv is None
+                else sensitivity_gate_outcome(
+                    self.last_result.sensitivity_mv, self.filter_setup
+                )
+            ),
+            "sensitivity_raw_fail_below_mv": sensitivity_raw_limits_mv(
+                self.filter_setup
+            )[0],
+            "sensitivity_raw_pass_above_mv": sensitivity_raw_limits_mv(
+                self.filter_setup
+            )[1],
             "polarity": None if self.last_result is None else self.last_result.polarity,
-            "pass_fail": None if self.last_result is None else ("PASS" if self.last_result.passed else "FAIL"),
+            "pass_fail": result_outcome(self.last_result),
             "fail_reasons": [] if self.last_result is None else self.last_result.fail_reasons,
             "failure_mode": self.failure_mode_var.get(),
             "battery_v": self.battery_v,
@@ -4738,7 +5184,9 @@ class EmitterTesterApp(tk.Tk):
 
         rows = self._read_summary_rows(csv_path)
         tested = len(rows)
-        passed = sum(1 for row in rows if row[-1] == "PASS")
+        passed = sum(1 for row in rows if row[-1] == OUTCOME_PASS)
+        retest = sum(1 for row in rows if row[-1] == OUTCOME_RETEST)
+        failed = tested - passed - retest
         yield_pct = (100.0 * passed / tested) if tested else 0.0
 
         head = tk.Frame(summary, bg=PAGE_BG)
@@ -4750,7 +5198,8 @@ class EmitterTesterApp(tk.Tk):
         chip_specs = [
             (f"{tested} TESTED", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
             (f"{passed} PASSED", PASS_FG, PASS_BG),
-            (f"{tested - passed} FAILED", FAIL_FG, FAIL_BG),
+            (f"{retest} RETEST", WARN_FG, WARN_BG),
+            (f"{failed} FAILED", FAIL_FG, FAIL_BG),
             (f"YIELD {yield_pct:.0f}%", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
         ]
         for chip_text, chip_fg, chip_bg in chip_specs:
@@ -4773,9 +5222,15 @@ class EmitterTesterApp(tk.Tk):
             tree.heading(column, text=headings[column])
             tree.column(column, width=150, anchor="center", stretch=True)
         tree.tag_configure("pass", background=PASS_BG)
+        tree.tag_configure("retest", background=WARN_BG)
         tree.tag_configure("fail", background=FAIL_BG)
         for row in rows:
-            tag = "pass" if row[-1] == "PASS" else "fail"
+            if row[-1] == OUTCOME_PASS:
+                tag = "pass"
+            elif row[-1] == OUTCOME_RETEST:
+                tag = "retest"
+            else:
+                tag = "fail"
             tree.insert("", "end", values=row, tags=(tag,))
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         tree.configure(yscrollcommand=y_scroll.set)
@@ -4788,11 +5243,27 @@ class EmitterTesterApp(tk.Tk):
         try:
             with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
                 for row in csv.DictReader(csv_file):
+                    raw_sensitivity = (
+                        row.get("sensitivity_raw_mv", "")
+                        or row.get("sensitivity_mv", "")
+                    )
+                    equivalent_sensitivity = row.get(
+                        "sensitivity_legacy_equivalent_mv", ""
+                    )
+                    if equivalent_sensitivity:
+                        sensitivity_summary = (
+                            f"{self._fmt(equivalent_sensitivity, 2, ' mV eq')} "
+                            f"({self._fmt(raw_sensitivity, 2, ' raw')})"
+                        )
+                    else:
+                        sensitivity_summary = self._fmt(
+                            raw_sensitivity, 2, " mV"
+                        )
                     rows.append(
                         (
                             row.get("sensor_id", ""),
                             self._fmt(row.get("offset_v", ""), 3, " V"),
-                            self._fmt(row.get("sensitivity_mv", ""), 2, " mV"),
+                            sensitivity_summary,
                             row.get("polarity_good_bad", "") or row.get("polarity", ""),
                             row.get("pass_fail", ""),
                         )
@@ -4818,7 +5289,7 @@ class EmitterTesterApp(tk.Tk):
     def startup_probe(self) -> None:
         if self.stability_config_error is not None:
             self.status_var.set(
-                "V6 stability configuration error — measurement is disabled. "
+                "V6.1 stability configuration error — measurement is disabled. "
                 + self.stability_config_error
             )
             return
@@ -4843,7 +5314,7 @@ class EmitterTesterApp(tk.Tk):
         self._redraw_header()  # shows/hides the SIMULATOR badge
         if self.stability_config_error is not None:
             self.status_var.set(
-                "V6 stability configuration error — measurement is disabled. "
+                "V6.1 stability configuration error — measurement is disabled. "
                 + self.stability_config_error
             )
         elif self.simulator_var.get():
