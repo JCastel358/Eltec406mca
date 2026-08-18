@@ -1,9 +1,14 @@
 # Eltec 406MCA Tester
 
+> **Current Xubuntu production:** the active ESP32/ADS1256 application is v6 in
+> `tech_app/v6_esp32/`. For a fresh workstation, updates, offline USB bundles,
+> health checks, and result backups, use [XUBUNTU_FLEET_SETUP.md](XUBUNTU_FLEET_SETUP.md).
+> The older Windows/LabJack material below remains historical context.
+
 Code for the 406MCA sensitivity, polarity, offset, noise, and SNR test process.
-The tester apps use the LabJack T7-Pro through the `labjack.ljm` Python package
-and include a simulator mode, so the operator flow and analysis can be exercised
-without hardware connected.
+The active v6 tester uses the ESP32/ADS1256 fixture. Historical apps use the
+LabJack T7-Pro through the `labjack.ljm` Python package. Simulator modes let the
+operator flow and analysis be exercised without hardware connected.
 
 The repo holds **four versions of the same technician data-collection app** (one
 per physical test setup, plus the v4 visual refresh of the emitter rig app), the

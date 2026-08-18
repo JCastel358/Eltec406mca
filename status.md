@@ -1,6 +1,6 @@
 # Eltec 406MCA ESP32/Xubuntu status
 
-Last updated: 2026-08-05
+Last updated: 2026-08-10
 
 ## Executive summary
 
@@ -67,8 +67,10 @@ unit**. The application:
    fixed warm-up period.
 4. Computes one robust high peak per rising-edge PWM cycle. The robust peak is
    the median of the highest 10 percent of samples, using at least five.
-5. Requires five consecutive absolute cycle-to-cycle robust-peak deltas at or
-   below `0.100 mV`. A larger delta resets the confirmation run.
+5. Current v6 code requires five consecutive absolute cycle-to-cycle
+   robust-peak deltas at or below its dedicated `0.250 mV` reference threshold.
+   A larger delta resets the confirmation run. The DUT threshold remains
+   `0.100 mV`; see the open policy-review item below.
 6. After stability, averages the raw peak-to-peak values of the next five
    complete cycles to obtain one reference reading.
 7. Repeats that adaptive reading five times and averages the five readings to
@@ -257,9 +259,9 @@ reference-unit calibration.
 
 ## Firmware and wiring
 
-Required firmware is `Arduino/Eltec/Eltec.ino` v1.7 or newer. No firmware
-change was required for the latest GUI/reference changes because v1.7 already
-supports:
+The backend requires `Arduino/Eltec/Eltec.ino` v1.7 or newer, and the tracked
+sketch currently identifies itself as v1.8. No firmware change was required for
+the latest GUI/reference changes because v1.7 already supports:
 
 - `STREAM,START` for AIN0 DUT samples;
 - `STREAM,START,REF` for AIN1 reference samples;
@@ -320,6 +322,17 @@ sensitivity factor/boundary/CSV behavior; results/launcher isolation; and the
 unchanged v6 regression run described above.
 
 ## How to run v6
+
+For a fresh Xubuntu computer, use the repeatable fleet setup rather than
+installing these dependencies and permissions by hand:
+
+```bash
+./setup_xubuntu.sh
+```
+
+See `XUBUNTU_FLEET_SETUP.md` for first-install, online/offline update, health
+check, and result-backup procedures. The setup installs only production v6 by
+default and never copies a historical reference calibration to a new fixture.
 
 From the repository root:
 
@@ -384,7 +397,7 @@ Its optional launcher installer creates only the v6.1 identities:
   and GUI tests.
 - `tech_app/v6_1_esp32/` — isolated v6.1 evaluation build with the stricter
   three-attempt DUT policy, documentation, launchers, and tests.
-- `Arduino/Eltec/Eltec.ino` — v1.7 firmware.
+- `Arduino/Eltec/Eltec.ino` — tracked v1.8 firmware (backend minimum v1.7).
 - `Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md` — current fixture wiring.
 - `Arduino/Eltec/ESP32_memory.md` — detailed firmware/rig notes.
 - `tech_app/v5_esp32/` — historical v5 application; keep separate.
@@ -404,14 +417,17 @@ Its optional launcher installer creates only the v6.1 identities:
    fresh five-reading calibration.
 6. Evaluate v6.1 on representative intermittent parts before deciding whether
    to promote its three identical 10/20 attempts into production v6.
+7. Confirm the intended v6 reference-stability threshold before the first fleet
+   release. Current code, its v6 README, and integration coverage use a dedicated
+   `0.250 mV` reference threshold; earlier status text said `0.100 mV`, which is
+   still the separate DUT threshold.
 
 ## Working-tree state
 
-The v6.1 work is local and uncommitted. Current expected status includes the
-new/untracked `tech_app/v6_1_esp32/` directory and this modified `status.md`.
-The pre-existing deletion of `prompt.txt` is unrelated user work and must be
-preserved. There is no tracked diff under `tech_app/v6_esp32/` from the v6.1
-change.
+The v6.1 application and failure-calibration tools are committed on `main`; they
+are no longer expected to appear as an untracked application directory. Local
+batch CSVs, EWO data, calibration, or other operator evidence remain user data
+and must not be removed by setup or update work.
 
 Preserve unrelated user changes. Do not replace or reset the historical v4,
 v5, or active v6 applications.

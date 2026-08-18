@@ -1,5 +1,11 @@
 # Eltec 406MCA ESP32 Tester v6 for Xubuntu
 
+For a complete fresh-computer install, serial permissions, verified updates,
+offline USB update bundles, health checks, and result backups, see
+[`../../XUBUNTU_FLEET_SETUP.md`](../../XUBUNTU_FLEET_SETUP.md). The launcher
+installer in this folder only creates desktop/menu entries; it is not the full
+machine provisioner.
+
 This folder is the isolated v6 successor to the v5 ESP32/ADS1256 tester. It
 keeps the guided batch workflow, battery and offset checks, waveform snapshots,
 simulator, sensitivity/polarity/SNR gates, and strict serial diagnostics while
