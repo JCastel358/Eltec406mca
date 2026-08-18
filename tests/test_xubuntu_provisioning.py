@@ -124,18 +124,26 @@ class ScriptContractTests(unittest.TestCase):
         ):
             with self.subTest(package=package):
                 self.assertIn(package, installer)
+        self.assertIn("tech_app/eltec_rig", installer)
+        self.assertIn("m405m22", installer)
+        self.assertIn("m406mca", installer)
+        self.assertIn("run_eltec_rig_tester.sh", installer)
 
 
 class BackupTests(unittest.TestCase):
     def test_backup_contains_results_and_valid_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_home:
             home = Path(temporary_home)
-            results = home / "Documents" / "Eltec_406MCA_Test_Results" / "v6_esp32"
+            results = home / "Documents" / "Eltec_406MCA_Test_Results" / "v6_1_esp32"
+            results_405 = home / "Documents" / "Eltec_405M22_Test_Results" / "405m22_esp32"
             results.mkdir(parents=True)
+            results_405.mkdir(parents=True)
             calibration = results / "reference_sensor_calibration.json"
             calibration.write_text('{"schema_version": 2}\n', encoding="utf-8")
             batch = results / "406mca_esp32_lot_TEST.csv"
             batch.write_text("sensor_id,pass_fail\n1,PASS\n", encoding="utf-8")
+            batch_405 = results_405 / "405m22_esp32_lot_TEST.csv"
+            batch_405.write_text("sensor_id,pass_fail\n1,PASS\n", encoding="utf-8")
             destination = home / "usb-backup"
             env = os.environ.copy()
             env["HOME"] = str(home)
@@ -157,13 +165,17 @@ class BackupTests(unittest.TestCase):
             self.assertTrue(checksums[0].read_text(encoding="utf-8").startswith(digest))
             with tarfile.open(archives[0], "r:gz") as archive:
                 self.assertIn(
-                    "Eltec_406MCA_Test_Results/v6_esp32/reference_sensor_calibration.json",
+                    "Eltec_406MCA_Test_Results/v6_1_esp32/reference_sensor_calibration.json",
+                    archive.getnames(),
+                )
+                self.assertIn(
+                    "Eltec_405M22_Test_Results/405m22_esp32/405m22_esp32_lot_TEST.csv",
                     archive.getnames(),
                 )
                 self.assertTrue(
                     any(
                         name.endswith("/backup-station.txt")
-                        and "/_station_metadata/" in name
+                        and name.startswith("Eltec_TestRig_Backup_Metadata/")
                         for name in archive.getnames()
                     )
                 )
@@ -180,10 +192,19 @@ class BackupTests(unittest.TestCase):
             )
             self.assertEqual(restored.returncode, 0, restored.stdout)
             restored_root = (
-                restore_home / "Documents" / "Eltec_406MCA_Test_Results" / "v6_esp32"
+                restore_home / "Documents" / "Eltec_406MCA_Test_Results" / "v6_1_esp32"
             )
             self.assertTrue((restored_root / batch.name).is_file())
             self.assertFalse((restored_root / calibration.name).exists())
+            self.assertTrue(
+                (
+                    restore_home
+                    / "Documents"
+                    / "Eltec_405M22_Test_Results"
+                    / "405m22_esp32"
+                    / batch_405.name
+                ).is_file()
+            )
 
             same_fixture_home = home / "restored-same-fixture"
             same_fixture_home.mkdir()
@@ -202,7 +223,7 @@ class BackupTests(unittest.TestCase):
                     same_fixture_home
                     / "Documents"
                     / "Eltec_406MCA_Test_Results"
-                    / "v6_esp32"
+                    / "v6_1_esp32"
                     / calibration.name
                 ).is_file()
             )
@@ -292,6 +313,17 @@ class OfflineBundleTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (source / "setup_xubuntu.sh").chmod(0o755)
+            rig_dir = source / "tech_app" / "eltec_rig"
+            for relative in (
+                "eltec_rig_tester.py",
+                "run_eltec_rig_tester.sh",
+                "m405m22/eltec_405m22_esp32_tester.py",
+                "m406mca/eltec_406mca_esp32_tester.py",
+            ):
+                path = rig_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("# bundle fixture\n", encoding="utf-8")
+            (rig_dir / "run_eltec_rig_tester.sh").chmod(0o755)
             (source / "application-version.txt").write_text("v1\n", encoding="utf-8")
 
             commands = (
@@ -595,12 +627,16 @@ class UpdaterIntegrationTests(unittest.TestCase):
                 path = source / name
                 path.write_text("#!/usr/bin/env bash\nset -eu\n", encoding="utf-8")
                 path.chmod(0o755)
-            app_dir = source / "tech_app" / "v6_esp32"
+            app_dir = source / "tech_app" / "eltec_rig"
             app_tests = app_dir / "tests"
+            model_405_tests = app_dir / "m405m22" / "tests"
+            model_406_tests = app_dir / "m406mca" / "tests"
             root_tests = source / "tests"
             app_tests.mkdir(parents=True)
+            model_405_tests.mkdir(parents=True)
+            model_406_tests.mkdir(parents=True)
             root_tests.mkdir()
-            for name in ("install_xubuntu_launcher.sh", "run_eltec_406mca_esp32_tester.sh"):
+            for name in ("install_xubuntu_launcher.sh", "run_eltec_rig_tester.sh"):
                 path = app_dir / name
                 path.write_text("#!/usr/bin/env bash\nset -eu\n", encoding="utf-8")
                 path.chmod(0o755)
@@ -619,6 +655,14 @@ class UpdaterIntegrationTests(unittest.TestCase):
                 "        self.assertTrue(True)\n",
                 encoding="utf-8",
             )
+            for model_tests in (model_405_tests, model_406_tests):
+                (model_tests / "test_model.py").write_text(
+                    "import unittest\n\n"
+                    "class ModelTest(unittest.TestCase):\n"
+                    "    def test_model(self):\n"
+                    "        self.assertTrue(True)\n",
+                    encoding="utf-8",
+                )
             (source / "application-version.txt").write_text("v1\n", encoding="utf-8")
 
             def git(cwd: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
@@ -725,19 +769,25 @@ class RollbackIntegrationTests(unittest.TestCase):
                 path.write_text("#!/usr/bin/env bash\nset -eu\nprintf 'setup helper %s\\n' \"$*\"\n", encoding="utf-8")
                 path.chmod(0o755)
 
-            app_dir = source / "tech_app" / "v6_esp32"
+            app_dir = source / "tech_app" / "eltec_rig"
             app_tests = app_dir / "tests"
             root_tests = source / "tests"
             app_tests.mkdir(parents=True)
             root_tests.mkdir()
             for name in (
-                "eltec_406mca_esp32_tester.py",
+                "eltec_rig_tester.py",
                 "install_xubuntu_launcher.sh",
-                "run_eltec_406mca_esp32_tester.sh",
+                "run_eltec_rig_tester.sh",
             ):
                 path = app_dir / name
                 path.write_text("#!/usr/bin/env bash\nset -eu\n", encoding="utf-8")
                 path.chmod(0o755)
+            for model_dir, app_name in (
+                (app_dir / "m405m22", "eltec_405m22_esp32_tester.py"),
+                (app_dir / "m406mca", "eltec_406mca_esp32_tester.py"),
+            ):
+                model_dir.mkdir()
+                (model_dir / app_name).write_text("# rollback fixture\n", encoding="utf-8")
             (app_tests / "test_release.py").write_text(
                 "import unittest\n\n"
                 "class ReleaseTest(unittest.TestCase):\n"
@@ -804,13 +854,13 @@ class RollbackIntegrationTests(unittest.TestCase):
             self.assertEqual(clone.returncode, 0, clone.stdout)
             self.assertEqual(git(station, "checkout", "--detach").returncode, 0)
 
-            state_dir = station_home / ".local" / "state" / "eltec-406mca-esp32-v6"
+            state_dir = station_home / ".local" / "state" / "eltec-rig"
             state_dir.mkdir(parents=True)
             (state_dir / "rollback-target.txt").write_text(
                 f"previous_commit={first_commit}\nincoming_commit={second_commit}\n",
                 encoding="utf-8",
             )
-            results = station_home / "Documents" / "Eltec_406MCA_Test_Results" / "v6_esp32"
+            results = station_home / "Documents" / "Eltec_406MCA_Test_Results" / "v6_1_esp32"
             results.mkdir(parents=True)
             result_file = results / "lot.csv"
             result_file.write_text("sensor_id,pass_fail\n1,PASS\n", encoding="utf-8")

@@ -12,10 +12,11 @@ usage() {
     cat <<EOF
 Usage: $SCRIPT_NAME [--results-only | --same-fixture] [--dry-run] BACKUP.tar.gz
 
-Verify a backup's sibling .sha256 file and restore without overwriting any
-existing file. The safe default, --results-only, excludes every fixture-specific
-reference_sensor_calibration.json. Use --same-fixture only when restoring to the
-same physical fixture, reference sensor, and emitter assembly.
+Verify a unified-rig backup's sibling .sha256 file and restore both models
+without overwriting any existing file. The safe default, --results-only,
+excludes every fixture-specific reference_sensor_calibration.json. Use
+--same-fixture only when restoring to the same physical fixture, reference
+sensor, and emitter assembly.
 EOF
 }
 
@@ -62,7 +63,7 @@ CHECKSUM_FILE="$ARCHIVE.sha256"
     || die "Required checksum file is missing: $CHECKSUM_FILE"
 
 if command -v pgrep >/dev/null 2>&1 \
-    && pgrep -u "$(id -u)" -f '([e]ltec_406mca_esp32_tester.py|[s]tability_calibration.py)' >/dev/null 2>&1; then
+    && pgrep -u "$(id -u)" -f '([e]ltec_rig_tester.py|[e]ltec_405m22_esp32_tester.py|[e]ltec_406mca_esp32_tester.py|[s]tability_calibration.py)' >/dev/null 2>&1; then
     die "Close the Eltec tester and stability-calibration tools before restoring results."
 fi
 
@@ -92,7 +93,12 @@ with tarfile.open(archive_path, "r:gz") as archive:
         path = pathlib.PurePosixPath(name)
         if not name or path.is_absolute() or ".." in path.parts:
             raise SystemExit(f"unsafe archive path: {member.name}")
-        if path.parts[0] != "Eltec_406MCA_Test_Results":
+        allowed_roots = {
+            "Eltec_405M22_Test_Results",
+            "Eltec_406MCA_Test_Results",
+            "Eltec_TestRig_Backup_Metadata",
+        }
+        if path.parts[0] not in allowed_roots:
             raise SystemExit(f"unexpected archive path: {member.name}")
         if not (member.isfile() or member.isdir()):
             raise SystemExit(f"unsupported archive member type: {member.name}")
@@ -101,7 +107,9 @@ tar -tzf "$ARCHIVE" >/dev/null || die "Backup archive failed tar integrity valid
 
 while IFS= read -r archive_path; do
     case $archive_path in
-        Eltec_406MCA_Test_Results|Eltec_406MCA_Test_Results/*)
+        Eltec_405M22_Test_Results|Eltec_405M22_Test_Results/*|\
+        Eltec_406MCA_Test_Results|Eltec_406MCA_Test_Results/*|\
+        Eltec_TestRig_Backup_Metadata|Eltec_TestRig_Backup_Metadata/*)
             ;;
         *)
             die "Archive contains an unexpected path: $archive_path"
@@ -123,44 +131,52 @@ cleanup_restore_tmp() {
 trap cleanup_restore_tmp EXIT
 
 tar -xzf "$ARCHIVE" -C "$RESTORE_TMP" --no-same-owner --no-same-permissions
-STAGED_RESULTS="$RESTORE_TMP/Eltec_406MCA_Test_Results"
-[[ -d $STAGED_RESULTS ]] || die "Backup does not contain the Eltec results root."
+STAGED_405="$RESTORE_TMP/Eltec_405M22_Test_Results"
+STAGED_406="$RESTORE_TMP/Eltec_406MCA_Test_Results"
+[[ -d $STAGED_405 || -d $STAGED_406 ]] \
+    || die "Backup does not contain either unified-rig results root."
 
-UNSAFE_MEMBER=$(find "$STAGED_RESULTS" ! -type f ! -type d -print -quit)
+UNSAFE_MEMBER=$(find "$RESTORE_TMP" ! -type f ! -type d -print -quit)
 [[ -z $UNSAFE_MEMBER ]] || die "Backup contains an unsupported member and was not restored: $UNSAFE_MEMBER"
 
 if [[ $MODE == results-only ]]; then
     while IFS= read -r -d '' calibration_file; do
         rm -f -- "$calibration_file"
-    done < <(find "$STAGED_RESULTS" -type f -name reference_sensor_calibration.json -print0)
+    done < <(find "$RESTORE_TMP" -type f -name reference_sensor_calibration.json -print0)
 fi
 
 DESTINATION_PARENT="${HOME:?HOME is not set}/Documents"
-DESTINATION_RESULTS="$DESTINATION_PARENT/Eltec_406MCA_Test_Results"
 CONFLICT=''
 while IFS= read -r -d '' staged_file; do
-    relative_path=${staged_file#"$STAGED_RESULTS"/}
-    if [[ -e $DESTINATION_RESULTS/$relative_path ]]; then
+    relative_path=${staged_file#"$RESTORE_TMP"/}
+    if [[ -e $DESTINATION_PARENT/$relative_path ]]; then
         CONFLICT=$relative_path
         break
     fi
-done < <(find "$STAGED_RESULTS" -type f -print0)
+done < <(find "$RESTORE_TMP" -type f -print0)
 [[ -z $CONFLICT ]] \
-    || die "Restore would overwrite an existing file: $DESTINATION_RESULTS/$CONFLICT"
+    || die "Restore would overwrite an existing file: $DESTINATION_PARENT/$CONFLICT"
 
-FILE_COUNT=$(find "$STAGED_RESULTS" -type f | wc -l)
+FILE_COUNT=$(find "$RESTORE_TMP" -type f | wc -l)
 if (( DRY_RUN )); then
     printf 'Restore dry run passed: %s file(s), mode %s, no conflicts.\n' "$FILE_COUNT" "$MODE"
     exit 0
 fi
 
-mkdir -p -- "$DESTINATION_RESULTS"
-cp -a --no-clobber "$STAGED_RESULTS/." "$DESTINATION_RESULTS/"
+mkdir -p -- "$DESTINATION_PARENT"
+for staged_root in \
+    "$RESTORE_TMP/Eltec_405M22_Test_Results" \
+    "$RESTORE_TMP/Eltec_406MCA_Test_Results" \
+    "$RESTORE_TMP/Eltec_TestRig_Backup_Metadata"; do
+    if [[ -d $staged_root ]]; then
+        cp -a --no-clobber "$staged_root" "$DESTINATION_PARENT/"
+    fi
+done
 
 printf 'Restore complete: %s file(s), mode %s, destination %s\n' \
-    "$FILE_COUNT" "$MODE" "$DESTINATION_RESULTS"
+    "$FILE_COUNT" "$MODE" "$DESTINATION_PARENT"
 if [[ $MODE == results-only ]]; then
-    printf 'Fixture reference calibration was excluded; calibrate this fixture in the v6 app before DUT testing.\n'
+    printf 'Fixture reference calibration was excluded; complete each model-specific calibration/known-good check before DUT testing.\n'
 else
     printf 'Fixture calibration was restored under the operator-confirmed same-fixture mode.\n'
 fi

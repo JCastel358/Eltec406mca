@@ -1,12 +1,13 @@
-# Eltec 406MCA Xubuntu fleet setup
+# Eltec Test Rig Xubuntu fleet setup
 
 Use a clean Xubuntu installation plus the scripts in this repository. This is
 safer and easier to update than cloning a configured disk: a disk image can also
 clone machine IDs, usernames, credentials, old results, and the wrong fixture's
 reference calibration.
 
-The installer is safe to rerun. It installs the production **v6** launcher by
-default; v6.1 remains opt-in and clearly isolated.
+The installer is safe to rerun. It installs the production **Eltec Test Rig**
+launcher, whose sensor-version selector starts either the Model 405 M22 or
+Model 406 MCA qualified workflow. Legacy standalone launchers remain isolated.
 
 ## Choose the Xubuntu release
 
@@ -39,7 +40,7 @@ cd "$HOME/Eltec406mca"
 Wait for the success message and safely eject/unmount removable media before
 erasing the computer.
 
-The archive includes every tester version beneath
+The archive includes both `~/Documents/Eltec_405M22_Test_Results` and
 `~/Documents/Eltec_406MCA_Test_Results` plus timestamped station metadata: the
 hostname, a hashed machine identity, application commit, install record, and
 deployment history. A reference-calibration file belongs to the same physical
@@ -50,14 +51,14 @@ After reinstalling Xubuntu and rerunning setup, restore the archive. The safe
 default restores CSVs/snapshots but excludes fixture calibration:
 
 ```bash
-./restore_eltec_results.sh "/media/$USER/ELTEC_BACKUP/eltec-406mca-results-TIME.tar.gz"
+./restore_eltec_results.sh "/media/$USER/ELTEC_BACKUP/eltec-test-rig-results-TIME.tar.gz"
 ```
 
 Only for the same physical fixture/reference/emitter assembly, preserve its
 calibration with:
 
 ```bash
-./restore_eltec_results.sh --same-fixture "/media/$USER/ELTEC_BACKUP/eltec-406mca-results-TIME.tar.gz"
+./restore_eltec_results.sh --same-fixture "/media/$USER/ELTEC_BACKUP/eltec-test-rig-results-TIME.tar.gz"
 ```
 
 Restore verifies the sibling SHA-256 file and refuses to overwrite any existing
@@ -93,10 +94,10 @@ repository. `setup_xubuntu.sh` then installs and verifies the complete runtime:
 - Python 3, Tk, NumPy, pyserial, and Matplotlib;
 - desktop notifications, launcher validation, XDG helpers, and USB diagnostics;
 - `dialout` serial-port access for the signed-in technician;
-- the v6 desktop and Applications-menu launchers;
-- the literal `~/Documents/Eltec_406MCA_Test_Results/v6_esp32` data location;
-- Python compilation and all 80 v6 software tests (three display-only tests are
-  intentionally skipped during the headless check);
+- the unified Eltec Test Rig desktop and Applications-menu launchers;
+- both model-specific result locations;
+- Python compilation plus 282 unified/model tests (9 display/Windows-only
+  skips on the headless Xubuntu check) and the provisioning safety suite;
 - a local installation record containing the OS and Git commit.
 
 Reruns install only missing named packages; they do not upgrade the station's
@@ -107,8 +108,9 @@ The first installation requires internet access or an organization-managed
 Ubuntu package mirror. The small Git bundles described below are application
 updates; they are not a complete offline Xubuntu/package image.
 
-The full repository must remain together. V6 reuses signal math from the v1
-folder; copying only `tech_app/v6_esp32` is not a complete installation.
+The full repository must remain together. The production selector bundles both
+model applications and their shared analysis code under `tech_app/eltec_rig`;
+copying only an individual entry-point file is not a complete installation.
 
 To preview the setup without changing the computer:
 
@@ -116,15 +118,15 @@ To preview the setup without changing the computer:
 ./setup_xubuntu.sh --dry-run
 ```
 
-To also install the experimental v6.1 launcher on an engineering station:
+To also install the legacy standalone v6.1 launcher on an engineering station:
 
 ```bash
 ./setup_xubuntu.sh --with-experimental
 ```
 
-Production stations should use the default command and get only v6.
-Rerunning the default also removes this repository's v6.1 and v6.1
-failure-calibration launchers if they were installed previously.
+Production stations should use the default command and get only the unified
+launcher. Rerunning the default also removes this repository's old standalone
+v6, v6.1, and v6.1 failure-calibration launchers if installed previously.
 
 ## First login and fixture check
 
@@ -137,24 +139,25 @@ cd "$HOME/Eltec406mca"
 ./doctor_xubuntu.sh --gui --hardware
 ```
 
-The GUI option opens and closes the actual v6 window in the technician's
+The GUI option opens and closes the unified selector in the technician's
 logged-in XFCE session without starting a measurement. The hardware option
-opens and resets the ESP32, validates
-`ELTEC-ESP32-ADS1256,v1.7` or newer, reads the battery through ADS1256 AIN7,
-then closes with PWM forced off. This is a safe serial/firmware/battery check,
-not a full fixture acceptance. The current tracked firmware identifies itself
-as v1.8. A tester computer does not need Arduino IDE/CLI for daily work; boards
-should arrive already flashed. Firmware flashing remains a separate engineering procedure using
-`Arduino/Eltec/Eltec.ino` and board target
-`esp32:esp32:esp32doit-devkit-v1`.
+opens and resets the ESP32 through both model backends: Model 405 M22 verifies
+the gain-1/unbuffered firmware baseline and Model 406 MCA verifies the runtime
+`FE,V19` gain-2/buffered switch. It always closes with PWM forced off. Battery
+monitoring is currently disabled because the unified fixture no longer has a
+valid monitored battery divider. This is a safe serial/firmware/front-end
+check, not a full fixture acceptance. The tracked unified firmware is v3.0;
+v2.1 also supports both models. A tester computer does not need Arduino IDE/CLI
+for daily work; boards should arrive already flashed. Firmware flashing remains
+a separate engineering procedure using `Arduino/Eltec/Eltec.ino` and board
+target `esp32:esp32:esp32doit-devkit-v1`.
 
-Launch **Eltec 406MCA ESP32 Tester v6** from the desktop. Before testing DUTs on
-a fresh computer, use a known-good/new emitter to run **Calibrate reference
-unit** for that fixture. Historical calibration numbers in `status.md` must not
-be installed as a baseline. Complete station acceptance by calibrating the
-reference unit and recording one known-good DUT through the normal gated v6
-workflow; this exercises AIN1, AIN0, PWM cadence, stream integrity, and result
-writing without bypassing the application's reference safety gate.
+Launch **Eltec Test Rig** from the desktop, choose the sensor model, and follow
+that model's batch screen. Before production DUTs, complete every calibration
+or known-good step that model currently enables. Historical numbers in
+`status.md` must not be installed as a baseline. Record one known-good DUT for
+each model used on the station; this exercises the model-specific front end,
+AIN inputs, PWM cadence, stream integrity, and result writing.
 
 ## Update stations
 
@@ -168,7 +171,7 @@ cd "$HOME/Eltec406mca"
 The updater preserves untracked files and all external results, refuses to
 overwrite tracked local edits, and accepts only a fast-forward update. It first
 stages the incoming commit in a temporary Git worktree, prepares any declared
-Ubuntu packages, and runs both the v6 and provisioning suites. Only a verified
+Ubuntu packages, and runs the selector, both model, and provisioning suites. Only a verified
 candidate is merged into the live checkout; its launcher is then installed.
 Online mode rejects mutable branch names and requires the full reviewed commit
 SHA or an existing release tag. The exact SHA/tag is fetched from the selected
@@ -196,7 +199,7 @@ to USB. On each station, use that printed commit SHA:
 ```bash
 cd "$HOME/Eltec406mca"
 ./update_xubuntu.sh \
-  --bundle "/media/$USER/USB/eltec406mca-update-COMMIT.bundle" \
+  --bundle "/media/$USER/USB/eltec-test-rig-update-COMMIT.bundle" \
   --revision "APPROVED_FULL_40_CHARACTER_COMMIT_SHA"
 ```
 
@@ -215,7 +218,7 @@ a reviewed signed release tag.
 ### Validate and, if needed, roll back
 
 After every update, run `./doctor_xubuntu.sh --gui --hardware`, then complete
-the in-app reference/known-good fixture check before releasing the station back
+the relevant in-app calibration/known-good fixture checks before releasing the station back
 to production. If software passed but the real fixture rejects the release,
 return to the commit recorded immediately before the update:
 
@@ -247,17 +250,17 @@ Check a particular connected port:
 Relevant locations:
 
 ```text
-Production results:  ~/Documents/Eltec_406MCA_Test_Results/v6_esp32/
-Reference baseline:  .../v6_esp32/reference_sensor_calibration.json
-Launcher log:        ~/.local/state/eltec-406mca-esp32-v6/launcher.log
-Install record:      ~/.local/state/eltec-406mca-esp32-v6/install-info.txt
-Deployment history:  ~/.local/state/eltec-406mca-esp32-v6/deployment-history.log
-Rollback record:      ~/.local/state/eltec-406mca-esp32-v6/rollback-target.txt
-Menu launcher:       ~/.local/share/applications/com.eltec.406mca-esp32-tester-v6.desktop
+405 M22 results:     ~/Documents/Eltec_405M22_Test_Results/405m22_esp32/
+406 MCA results:     ~/Documents/Eltec_406MCA_Test_Results/v6_1_esp32/
+Launcher log:        ~/.local/state/eltec-rig/launcher.log
+Install record:      ~/.local/state/eltec-rig/install-info.txt
+Deployment history:  ~/.local/state/eltec-rig/deployment-history.log
+Rollback record:      ~/.local/state/eltec-rig/rollback-target.txt
+Menu launcher:       ~/.local/share/applications/com.eltec.test-rig.desktop
 ```
 
 No LabJack driver, custom udev rule, system service, Pillow, database, or network
-connection is needed for daily v6 testing. Linux's standard USB serial drivers
+connection is needed for daily unified-rig testing. Linux's standard USB serial drivers
 support the fixture's CP210x bridge. Avoid USB hubs and charge-only cables.
 
 ## Production review items not changed by provisioning
@@ -266,10 +269,9 @@ Provisioning reproduces the current code; it does not change measurement
 policy. Before declaring a fleet release, resolve these repository
 inconsistencies with the test owner:
 
-- Confirm that the current dedicated 0.250 mV reference-sensor threshold is the
-  intended fleet policy. The separate DUT setting is 0.100 mV; earlier status
-  text incorrectly used that DUT value for the reference check.
-- Sensitivity, SNR, and stability limits in `status.md` are still marked as
-  requiring broader production qualification.
+- Model 405 M22's reference gate is currently disabled until the fixture has
+  channel-isolated buffering; follow the operator/emitter checks in its README.
+- Confirm the active Model 406 MCA reference, sensitivity, SNR, and stability
+  policies against the latest qualification evidence in `status.md`.
 
 The scripts intentionally leave those engineering decisions unchanged.

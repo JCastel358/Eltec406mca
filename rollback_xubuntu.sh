@@ -24,7 +24,7 @@ Options:
   --revision REV        Use an older full commit SHA or local release tag
   --dry-run             Verify and show the rollback without activating it
   --skip-tests          Emergency override: skip candidate software tests
-  --with-experimental   Restore the optional v6.1 evaluation launcher too
+  --with-experimental   Restore the optional legacy v6.1 launcher too
   --force-unsupported   Forward to setup_xubuntu.sh
   -h, --help            Show this help
 EOF
@@ -92,7 +92,7 @@ if command -v readlink >/dev/null 2>&1; then
     fi
 fi
 REPO_ROOT=$(cd -- "$(dirname -- "$SOURCE_PATH")" && pwd -P)
-STATE_DIR=${XDG_STATE_HOME:-"${HOME:?HOME is not set}/.local/state"}/eltec-406mca-esp32-v6
+STATE_DIR=${XDG_STATE_HOME:-"${HOME:?HOME is not set}/.local/state"}/eltec-rig
 ROLLBACK_RECORD="$STATE_DIR/rollback-target.txt"
 
 (( EUID != 0 )) || die "Do not run rollback with sudo; run as the technician account."
@@ -104,7 +104,7 @@ if ! git -C "$REPO_ROOT" diff --quiet --ignore-submodules -- \
     die "Tracked repository files have local changes. They were preserved; review them before rollback."
 fi
 if command -v pgrep >/dev/null 2>&1 \
-    && pgrep -u "$(id -u)" -f '[e]ltec_406mca_esp32_tester.py' >/dev/null 2>&1; then
+    && pgrep -u "$(id -u)" -f '([e]ltec_rig_tester.py|[e]ltec_405m22_esp32_tester.py|[e]ltec_406mca_esp32_tester.py)' >/dev/null 2>&1; then
     die "The tester appears to be running. Close it before rollback."
 fi
 
@@ -137,7 +137,9 @@ git -C "$REPO_ROOT" merge-base --is-ancestor "$TARGET_COMMIT" "$CURRENT_COMMIT" 
 
 for required_file in \
     setup_xubuntu.sh doctor_xubuntu.sh update_xubuntu.sh rollback_xubuntu.sh \
-    tech_app/v6_esp32/eltec_406mca_esp32_tester.py; do
+    tech_app/eltec_rig/eltec_rig_tester.py \
+    tech_app/eltec_rig/m405m22/eltec_405m22_esp32_tester.py \
+    tech_app/eltec_rig/m406mca/eltec_406mca_esp32_tester.py; do
     git -C "$REPO_ROOT" cat-file -e "$TARGET_COMMIT:$required_file" 2>/dev/null \
         || die "Rollback target is not a complete fleet release; missing $required_file"
 done
@@ -164,8 +166,8 @@ bash -n \
     "$CANDIDATE_DIR/make_update_bundle.sh" \
     "$CANDIDATE_DIR/backup_eltec_results.sh" \
     "$CANDIDATE_DIR/restore_eltec_results.sh" \
-    "$CANDIDATE_DIR/tech_app/v6_esp32/install_xubuntu_launcher.sh" \
-    "$CANDIDATE_DIR/tech_app/v6_esp32/run_eltec_406mca_esp32_tester.sh"
+    "$CANDIDATE_DIR/tech_app/eltec_rig/install_xubuntu_launcher.sh" \
+    "$CANDIDATE_DIR/tech_app/eltec_rig/run_eltec_rig_tester.sh"
 
 if (( ! SKIP_TESTS )); then
     note "Running rollback candidate software tests"
@@ -175,7 +177,17 @@ if (( ! SKIP_TESTS )); then
         PYTHONDONTWRITEBYTECODE=1 \
         PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
         MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
-        python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/v6_esp32/tests" -q
+        python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/eltec_rig/tests" -q
+    env -u DISPLAY \
+        PYTHONDONTWRITEBYTECODE=1 \
+        PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
+        MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
+        python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/eltec_rig/m405m22/tests" -q
+    env -u DISPLAY \
+        PYTHONDONTWRITEBYTECODE=1 \
+        PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
+        MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
+        python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/eltec_rig/m406mca/tests" -q
     env -u DISPLAY \
         PYTHONDONTWRITEBYTECODE=1 \
         PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \

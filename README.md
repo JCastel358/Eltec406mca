@@ -1,8 +1,10 @@
 # Eltec 406MCA Tester
 
-> **Current Xubuntu production:** the active ESP32/ADS1256 application is v6 in
-> `tech_app/v6_esp32/`. For a fresh workstation, updates, offline USB bundles,
-> health checks, and result backups, use [XUBUNTU_FLEET_SETUP.md](XUBUNTU_FLEET_SETUP.md).
+> **Current Xubuntu production:** the active ESP32/ADS1256 application is the
+> unified **Eltec Test Rig** in `tech_app/eltec_rig/`, with a selector for Model
+> 405 M22 and Model 406 MCA. For a fresh workstation, updates, offline USB
+> bundles, health checks, and result backups, use
+> [XUBUNTU_FLEET_SETUP.md](XUBUNTU_FLEET_SETUP.md).
 > The older Windows/LabJack material below remains historical context.
 
 Code for the 406MCA sensitivity, polarity, offset, noise, and SNR test process.

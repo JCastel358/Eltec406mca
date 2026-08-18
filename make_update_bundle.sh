@@ -10,7 +10,7 @@ usage() {
 Usage: $SCRIPT_NAME [OUTPUT.bundle] [REVISION]
 
 Create an offline update from committed code. Defaults to the currently
-checked-out commit (HEAD) and ./eltec406mca-update-<short-commit>.bundle.
+checked-out commit (HEAD) and ./eltec-test-rig-update-<short-commit>.bundle.
 An optional full SHA or tag acts as an assertion and must resolve to HEAD.
 The bundle is pinned to that full commit in a companion manifest. Copy the .bundle,
 .manifest, and .sha256 files to USB, then run the exact printed command on a
@@ -54,7 +54,11 @@ HEAD_COMMIT=$(git -C "$REPO_ROOT" rev-parse 'HEAD^{commit}')
 for required_tracked_file in \
     setup_xubuntu.sh update_xubuntu.sh doctor_xubuntu.sh \
     rollback_xubuntu.sh backup_eltec_results.sh restore_eltec_results.sh \
-    make_update_bundle.sh; do
+    make_update_bundle.sh \
+    tech_app/eltec_rig/eltec_rig_tester.py \
+    tech_app/eltec_rig/run_eltec_rig_tester.sh \
+    tech_app/eltec_rig/m405m22/eltec_405m22_esp32_tester.py \
+    tech_app/eltec_rig/m406mca/eltec_406mca_esp32_tester.py; do
     git -C "$REPO_ROOT" cat-file -e "$FULL_COMMIT:$required_tracked_file" 2>/dev/null \
         || die "Provisioning file is absent from approved commit $FULL_COMMIT: $required_tracked_file"
 done
@@ -65,7 +69,7 @@ if ! git -C "$REPO_ROOT" diff --quiet --ignore-submodules -- \
 fi
 
 SHORT_COMMIT=${FULL_COMMIT:0:12}
-OUTPUT=${1:-"$PWD/eltec406mca-update-$SHORT_COMMIT.bundle"}
+OUTPUT=${1:-"$PWD/eltec-test-rig-update-$SHORT_COMMIT.bundle"}
 if [[ $OUTPUT != /* ]]; then
     OUTPUT="$PWD/$OUTPUT"
 fi

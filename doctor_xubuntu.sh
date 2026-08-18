@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Non-configuring software and optional ESP32 health checks for a station.
+# Non-configuring software and optional unified-rig ESP32 health checks.
 
 set -uo pipefail
 
@@ -15,9 +15,10 @@ usage() {
 Usage: $SCRIPT_NAME [--gui] [--hardware] [--port /dev/ttyUSB0]
 
 Check the Xubuntu workstation setup. By default this only enumerates serial
-adapters. --gui opens and closes the actual v6 window without starting a test.
---hardware opens the ESP32, validates firmware and battery ADC access,
-then closes it with PWM forced off. Opening the port resets this ESP32 board.
+adapters. --gui opens and closes the unified selector without starting a test.
+--hardware opens the ESP32 through both model backends, validates firmware and
+the model-specific front-end switching, then closes it with PWM forced off.
+Opening the port resets this ESP32 board.
 EOF
 }
 
@@ -73,8 +74,11 @@ if command -v readlink >/dev/null 2>&1; then
     fi
 fi
 REPO_ROOT=$(cd -- "$(dirname -- "$SOURCE_PATH")" && pwd -P)
-PRODUCTION_DIR="$REPO_ROOT/tech_app/v6_esp32"
-RESULTS_DIR="${HOME:-}/Documents/Eltec_406MCA_Test_Results/v6_esp32"
+PRODUCTION_DIR="$REPO_ROOT/tech_app/eltec_rig"
+MODEL_405_DIR="$PRODUCTION_DIR/m405m22"
+MODEL_406_DIR="$PRODUCTION_DIR/m406mca"
+RESULTS_405_DIR="${HOME:-}/Documents/Eltec_405M22_Test_Results/405m22_esp32"
+RESULTS_406_DIR="${HOME:-}/Documents/Eltec_406MCA_Test_Results/v6_1_esp32"
 DOCTOR_TMP=$(mktemp -d "${TMPDIR:-/tmp}/eltec-xubuntu-doctor.XXXXXX") || {
     printf 'Could not create a temporary health-check directory.\n' >&2
     exit 1
@@ -86,7 +90,7 @@ cleanup_doctor_tmp() {
 }
 trap cleanup_doctor_tmp EXIT
 
-printf 'Eltec 406MCA v6 station health check\n'
+printf 'Unified Eltec Test Rig station health check\n'
 printf 'Repository: %s\n\n' "$REPO_ROOT"
 
 OS_NAME='unknown'
@@ -133,14 +137,17 @@ else
 fi
 
 REQUIRED_FILES=(
-    "$PRODUCTION_DIR/eltec_406mca_esp32_tester.py"
-    "$PRODUCTION_DIR/esp32_backend.py"
-    "$PRODUCTION_DIR/stability_analysis.py"
-    "$PRODUCTION_DIR/stability_settings.json"
-    "$PRODUCTION_DIR/run_eltec_406mca_esp32_tester.sh"
-    "$REPO_ROOT/tech_app/v1_single_sensor/eltec_406mca_tester.py"
+    "$PRODUCTION_DIR/eltec_rig_tester.py"
+    "$PRODUCTION_DIR/sensor_versions.py"
+    "$PRODUCTION_DIR/run_eltec_rig_tester.sh"
+    "$MODEL_405_DIR/eltec_405m22_esp32_tester.py"
+    "$MODEL_405_DIR/esp32_backend.py"
+    "$MODEL_405_DIR/stability_settings.json"
+    "$MODEL_406_DIR/eltec_406mca_esp32_tester.py"
+    "$MODEL_406_DIR/esp32_backend.py"
+    "$MODEL_406_DIR/stability_settings.json"
     "$REPO_ROOT/Arduino/Eltec/Eltec.ino"
-    "$REPO_ROOT/Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md"
+    "$REPO_ROOT/Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md"
 )
 MISSING_FILES=0
 for required_file in "${REQUIRED_FILES[@]}"; do
@@ -150,7 +157,7 @@ for required_file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 if (( ! MISSING_FILES )); then
-    pass "Production app, shared math, firmware, and wiring files are present"
+    pass "Unified selector, both model apps, firmware, and wiring files are present"
 fi
 
 REQUIRED_COMMANDS=(python3 git xdg-user-dir desktop-file-validate notify-send gio lsusb)
@@ -179,29 +186,28 @@ fi
 if (( CHECK_GUI )) || [[ -n ${DISPLAY:-} ]]; then
     if [[ -z ${DISPLAY:-} ]]; then
         fail "GUI check was requested but DISPLAY is not set; run it inside the logged-in XFCE session"
-    elif (cd -- "$PRODUCTION_DIR" && PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR="$DOCTOR_TMP/matplotlib" python3 -c 'import eltec_406mca_esp32_tester as app; root = app.EmitterTesterApp(); root.update_idletasks(); root.destroy()') >/dev/null 2>&1; then
-        pass "The actual v6 GUI opens in the current graphical session"
+    elif (cd -- "$PRODUCTION_DIR" && PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR="$DOCTOR_TMP/matplotlib" python3 -c 'import eltec_rig_tester as app; root = app.EltecRigSelector(); root.update_idletasks(); root.destroy()') >/dev/null 2>&1; then
+        pass "The unified selector GUI opens in the current graphical session"
     elif (( CHECK_GUI )); then
-        fail "The actual v6 GUI could not open on DISPLAY=${DISPLAY:-unset}"
+        fail "The unified selector GUI could not open on DISPLAY=${DISPLAY:-unset}"
     else
-        warn "DISPLAY is set, but the v6 GUI could not open; rerun with --gui inside the technician's XFCE session"
+        warn "DISPLAY is set, but the unified GUI could not open; rerun with --gui inside the technician's XFCE session"
     fi
 else
     warn "Graphical-session smoke check not run; use --gui inside the logged-in XFCE desktop"
 fi
 
-SETTINGS_SUMMARY=''
-if [[ -f $PRODUCTION_DIR/stability_settings.json ]]; then
-    SETTINGS_SUMMARY=$(cd -- "$PRODUCTION_DIR" && PYTHONDONTWRITEBYTECODE=1 python3 -c 'from stability_analysis import load_stability_settings; value = load_stability_settings(); print(f"{value.peak_delta_threshold_mv:.3f} mV, {value.consecutive_deltas_required} deltas")' 2>/dev/null)
+for model_entry in "405 M22:$MODEL_405_DIR" "406 MCA:$MODEL_406_DIR"; do
+    MODEL_NAME=${model_entry%%:*}
+    MODEL_DIR=${model_entry#*:}
+    SETTINGS_SUMMARY=$(cd -- "$MODEL_DIR" && PYTHONDONTWRITEBYTECODE=1 python3 -c 'from stability_analysis import load_stability_settings; value = load_stability_settings(); print(f"{value.peak_delta_threshold_mv:.3f} mV, {value.consecutive_deltas_required} deltas")' 2>/dev/null)
     SETTINGS_STATUS=$?
-else
-    SETTINGS_STATUS=1
-fi
-if (( SETTINGS_STATUS == 0 )); then
-    pass "Production stability settings load: $SETTINGS_SUMMARY"
-else
-    fail "Production stability_settings.json is missing or invalid"
-fi
+    if (( SETTINGS_STATUS == 0 )); then
+        pass "$MODEL_NAME stability settings load: $SETTINGS_SUMMARY"
+    else
+        fail "$MODEL_NAME stability_settings.json is missing or invalid"
+    fi
+done
 
 TECHNICIAN_USER=$(id -un)
 DIALOUT_ENTRY=$(getent group dialout 2>/dev/null || true)
@@ -221,8 +227,8 @@ else
 fi
 
 APPLICATIONS_DIR=${XDG_DATA_HOME:-"${HOME:-}/.local/share"}/applications
-MENU_ENTRY="$APPLICATIONS_DIR/com.eltec.406mca-esp32-tester-v6.desktop"
-EXPECTED_RUNNER="$PRODUCTION_DIR/run_eltec_406mca_esp32_tester.sh"
+MENU_ENTRY="$APPLICATIONS_DIR/com.eltec.test-rig.desktop"
+EXPECTED_RUNNER="$PRODUCTION_DIR/run_eltec_rig_tester.sh"
 EXPECTED_ICON="$PRODUCTION_DIR/assets/eltec_desktop_icon.png"
 if [[ -f $MENU_ENTRY ]]; then
     if desktop-file-validate "$MENU_ENTRY" >/dev/null 2>&1; then
@@ -244,7 +250,7 @@ DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null || true)
 if [[ -z $DESKTOP_DIR || $DESKTOP_DIR != /* ]]; then
     DESKTOP_DIR="${HOME:-}/Desktop"
 fi
-DESKTOP_ENTRY="$DESKTOP_DIR/Eltec 406MCA ESP32 Tester v6.desktop"
+DESKTOP_ENTRY="$DESKTOP_DIR/Eltec Test Rig.desktop"
 if [[ -x $DESKTOP_ENTRY ]]; then
     pass "Executable XFCE desktop launcher is installed"
 elif [[ -f $DESKTOP_ENTRY ]]; then
@@ -267,22 +273,28 @@ if [[ -f $DESKTOP_ENTRY ]]; then
     fi
 fi
 
-if [[ -d $RESULTS_DIR && -w $RESULTS_DIR ]]; then
-    pass "Results directory exists and is writable: $RESULTS_DIR"
-elif [[ -d $RESULTS_DIR ]]; then
-    fail "Results directory is not writable: $RESULTS_DIR"
-else
-    fail "Results directory is missing: $RESULTS_DIR"
-fi
+for results_entry in "405 M22:$RESULTS_405_DIR" "406 MCA:$RESULTS_406_DIR"; do
+    MODEL_NAME=${results_entry%%:*}
+    RESULTS_DIR=${results_entry#*:}
+    if [[ -d $RESULTS_DIR && -w $RESULTS_DIR ]]; then
+        pass "$MODEL_NAME results directory exists and is writable: $RESULTS_DIR"
+    elif [[ -d $RESULTS_DIR ]]; then
+        fail "$MODEL_NAME results directory is not writable: $RESULTS_DIR"
+    else
+        fail "$MODEL_NAME results directory is missing: $RESULTS_DIR"
+    fi
+done
 
-STATE_DIR=${XDG_STATE_HOME:-"${HOME:-}/.local/state"}/eltec-406mca-esp32-v6
+STATE_DIR=${XDG_STATE_HOME:-"${HOME:-}/.local/state"}/eltec-rig
 if [[ -r $STATE_DIR/install-info.txt ]]; then
     INSTALL_COMMIT=$(sed -n 's/^git_commit=//p' "$STATE_DIR/install-info.txt" | head -n 1)
-    INSTALL_SETTINGS_SHA=$(sed -n 's/^stability_settings_sha256=//p' "$STATE_DIR/install-info.txt" | head -n 1)
+    INSTALL_405_SETTINGS_SHA=$(sed -n 's/^m405m22_stability_settings_sha256=//p' "$STATE_DIR/install-info.txt" | head -n 1)
+    INSTALL_406_SETTINGS_SHA=$(sed -n 's/^m406mca_stability_settings_sha256=//p' "$STATE_DIR/install-info.txt" | head -n 1)
     pass "Installation record is present (commit ${INSTALL_COMMIT:-unknown})"
 else
     INSTALL_COMMIT=''
-    INSTALL_SETTINGS_SHA=''
+    INSTALL_405_SETTINGS_SHA=''
+    INSTALL_406_SETTINGS_SHA=''
     warn "Installation record is missing; rerun ./setup_xubuntu.sh"
 fi
 
@@ -307,17 +319,25 @@ else
     warn "This is not a Git checkout; online/offline bundle updates are unavailable"
 fi
 
-if [[ -n $INSTALL_SETTINGS_SHA && -f $PRODUCTION_DIR/stability_settings.json ]]; then
-    CURRENT_SETTINGS_SHA=$(sha256sum "$PRODUCTION_DIR/stability_settings.json" | cut -d' ' -f1)
-    if [[ $CURRENT_SETTINGS_SHA == "$INSTALL_SETTINGS_SHA" ]]; then
-        pass "Production stability settings match the recorded installation"
-    else
-        fail "Production stability settings differ from the recorded installation"
+for settings_entry in \
+    "405 M22:$MODEL_405_DIR/stability_settings.json:$INSTALL_405_SETTINGS_SHA" \
+    "406 MCA:$MODEL_406_DIR/stability_settings.json:$INSTALL_406_SETTINGS_SHA"; do
+    MODEL_NAME=${settings_entry%%:*}
+    SETTINGS_REST=${settings_entry#*:}
+    SETTINGS_FILE=${SETTINGS_REST%%:*}
+    INSTALL_SETTINGS_SHA=${SETTINGS_REST#*:}
+    if [[ -n $INSTALL_SETTINGS_SHA && -f $SETTINGS_FILE ]]; then
+        CURRENT_SETTINGS_SHA=$(sha256sum "$SETTINGS_FILE" | cut -d' ' -f1)
+        if [[ $CURRENT_SETTINGS_SHA == "$INSTALL_SETTINGS_SHA" ]]; then
+            pass "$MODEL_NAME stability settings match the installation record"
+        else
+            fail "$MODEL_NAME stability settings differ from the installation record"
+        fi
     fi
-fi
+done
 
-if [[ -f $PRODUCTION_DIR/esp32_backend.py ]]; then
-    CANDIDATE_OUTPUT=$(cd -- "$PRODUCTION_DIR" && PYTHONDONTWRITEBYTECODE=1 python3 -c '
+if [[ -f $MODEL_405_DIR/esp32_backend.py ]]; then
+    CANDIDATE_OUTPUT=$(cd -- "$MODEL_405_DIR" && PYTHONDONTWRITEBYTECODE=1 python3 -c '
 from esp32_backend import discover_candidate_ports
 ports = discover_candidate_ports()
 if not ports:
@@ -336,21 +356,20 @@ for item in ports:
 fi
 
 if (( CHECK_HARDWARE )); then
-    printf '\nHardware serial/firmware/battery check (the port will reset; PWM is forced off on close):\n'
+    printf '\nHardware serial/firmware/front-end check (the port resets twice; PWM is forced off on close):\n'
     HARDWARE_OUTPUT=$(cd -- "$PRODUCTION_DIR" && PYTHONDONTWRITEBYTECODE=1 python3 -c '
 import sys
-from esp32_backend import Esp32Rig
+from m405m22.esp32_backend import Esp32Rig as Rig405
+from m406mca.esp32_backend import Esp32Rig as Rig406
 port = sys.argv[1] or None
-rig = Esp32Rig(port)
-try:
-    rig.connect()
-    identity = rig.identity.text if rig.identity is not None else "Eltec ESP32"
-    battery = rig.read_battery_voltage()
-    print(f"{identity} connected on {rig.port_name}; battery {battery:.3f} V")
-    if not 5.8 < battery <= 7.5:
-        raise RuntimeError(f"battery {battery:.3f} V is outside the usable >5.8 to 7.5 V station range")
-finally:
-    rig.close()
+for model_name, rig_class in (("405 M22", Rig405), ("406 MCA", Rig406)):
+    rig = rig_class(port)
+    try:
+        rig.connect()
+        identity = rig.identity.text if rig.identity is not None else "Eltec ESP32"
+        print(f"{model_name}: {identity} connected on {rig.port_name}")
+    finally:
+        rig.close()
 ' "$REQUESTED_PORT" 2>&1)
     HARDWARE_STATUS=$?
     if (( HARDWARE_STATUS == 0 )); then
@@ -359,7 +378,7 @@ finally:
         fail "$HARDWARE_OUTPUT"
     fi
 else
-    printf '\nHardware serial/firmware/battery check was not requested; use --hardware after connecting the fixture.\n'
+    printf '\nHardware serial/firmware/front-end check was not requested; use --hardware after connecting the fixture.\n'
 fi
 
 printf '\nSummary: %d failure(s), %d warning(s)\n' "$FAILURES" "$WARNINGS"

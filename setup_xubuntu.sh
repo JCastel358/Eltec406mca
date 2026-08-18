@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provision one Xubuntu workstation for the production Eltec 406MCA v6 tester.
+# Provision one Xubuntu workstation for the unified Eltec Test Rig.
 
 set -Eeuo pipefail
 
@@ -17,14 +17,14 @@ usage() {
     cat <<EOF
 Usage: $SCRIPT_NAME [options]
 
-Install or repair the production Eltec 406MCA v6 workstation setup.
+Install or repair the production unified Eltec Test Rig workstation setup.
 Run this as the signed-in technician account, not with sudo.
 
 Options:
   --dry-run             Show changes without making them
   --skip-apt            Do not update/install Ubuntu packages
-  --skip-tests          Skip compilation and the v6 software test suite
-  --with-experimental   Also install the isolated v6.1 evaluation launcher
+  --skip-tests          Skip compilation and the unified/model software suites
+  --with-experimental   Also install the legacy standalone v6.1 launcher
   --force-unsupported   Continue on an unqualified OS release/architecture
   --allow-mutable-checkout
                         Engineering override: permit setup from a Git branch
@@ -103,21 +103,31 @@ if command -v readlink >/dev/null 2>&1; then
     fi
 fi
 REPO_ROOT=$(cd -- "$(dirname -- "$SOURCE_PATH")" && pwd -P)
-PRODUCTION_DIR="$REPO_ROOT/tech_app/v6_esp32"
+PRODUCTION_DIR="$REPO_ROOT/tech_app/eltec_rig"
+MODEL_405_DIR="$PRODUCTION_DIR/m405m22"
+MODEL_406_DIR="$PRODUCTION_DIR/m406mca"
+LEGACY_V6_DIR="$REPO_ROOT/tech_app/v6_esp32"
 EXPERIMENTAL_DIR="$REPO_ROOT/tech_app/v6_1_esp32"
 FAILURE_CALIBRATION_DIR="$REPO_ROOT/tech_app/v6_1_failure_calibration"
-V1_MATH="$REPO_ROOT/tech_app/v1_single_sensor/eltec_406mca_tester.py"
+STANDALONE_405_DIR="$REPO_ROOT/tech_app/405m22_esp32"
 DOCTOR="$REPO_ROOT/doctor_xubuntu.sh"
 
 REQUIRED_FILES=(
-    "$PRODUCTION_DIR/eltec_406mca_esp32_tester.py"
-    "$PRODUCTION_DIR/esp32_backend.py"
-    "$PRODUCTION_DIR/stability_analysis.py"
-    "$PRODUCTION_DIR/stability_settings.json"
+    "$PRODUCTION_DIR/eltec_rig_tester.py"
+    "$PRODUCTION_DIR/sensor_versions.py"
     "$PRODUCTION_DIR/assets/eltec_desktop_icon.png"
-    "$PRODUCTION_DIR/run_eltec_406mca_esp32_tester.sh"
+    "$PRODUCTION_DIR/run_eltec_rig_tester.sh"
     "$PRODUCTION_DIR/install_xubuntu_launcher.sh"
-    "$V1_MATH"
+    "$MODEL_405_DIR/eltec_405m22_esp32_tester.py"
+    "$MODEL_405_DIR/esp32_backend.py"
+    "$MODEL_405_DIR/stability_analysis.py"
+    "$MODEL_405_DIR/stability_settings.json"
+    "$MODEL_406_DIR/eltec_406mca_esp32_tester.py"
+    "$MODEL_406_DIR/esp32_backend.py"
+    "$MODEL_406_DIR/stability_analysis.py"
+    "$MODEL_406_DIR/stability_settings.json"
+    "$REPO_ROOT/Arduino/Eltec/Eltec.ino"
+    "$REPO_ROOT/Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md"
     "$DOCTOR"
     "$REPO_ROOT/update_xubuntu.sh"
     "$REPO_ROOT/rollback_xubuntu.sh"
@@ -274,8 +284,9 @@ note "Creating per-user data locations without touching existing results"
 if command -v xdg-user-dirs-update >/dev/null 2>&1; then
     run xdg-user-dirs-update
 fi
-RESULTS_DIR="$TECHNICIAN_HOME/Documents/Eltec_406MCA_Test_Results/v6_esp32"
-run mkdir -p -- "$RESULTS_DIR"
+RESULTS_405_DIR="$TECHNICIAN_HOME/Documents/Eltec_405M22_Test_Results/405m22_esp32"
+RESULTS_406_DIR="$TECHNICIAN_HOME/Documents/Eltec_406MCA_Test_Results/v6_1_esp32"
+run mkdir -p -- "$RESULTS_405_DIR" "$RESULTS_406_DIR"
 
 note "Repairing script permissions"
 run chmod u+x -- \
@@ -286,7 +297,7 @@ run chmod u+x -- \
     "$REPO_ROOT/backup_eltec_results.sh" \
     "$REPO_ROOT/restore_eltec_results.sh" \
     "$REPO_ROOT/make_update_bundle.sh" \
-    "$PRODUCTION_DIR/run_eltec_406mca_esp32_tester.sh" \
+    "$PRODUCTION_DIR/run_eltec_rig_tester.sh" \
     "$PRODUCTION_DIR/install_xubuntu_launcher.sh"
 
 if (( WITH_EXPERIMENTAL )); then
@@ -302,6 +313,8 @@ if (( ! SKIP_TESTS )); then
         note "Software verification (dry run)"
         print_command python3 -c 'import tkinter, numpy, serial, matplotlib'
         print_command env -u DISPLAY python3 -m unittest discover -s "$PRODUCTION_DIR/tests" -q
+        print_command env -u DISPLAY python3 -m unittest discover -s "$MODEL_405_DIR/tests" -q
+        print_command env -u DISPLAY python3 -m unittest discover -s "$MODEL_406_DIR/tests" -q
         print_command env -u DISPLAY python3 -m unittest discover -s "$REPO_ROOT/tests" -q
     else
         note "Verifying Python, Tk, NumPy, pyserial, and Matplotlib"
@@ -317,18 +330,37 @@ if (( ! SKIP_TESTS )); then
 
         PYTHONDONTWRITEBYTECODE=1 PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
             python3 -m py_compile \
-            "$PRODUCTION_DIR/eltec_406mca_esp32_tester.py" \
-            "$PRODUCTION_DIR/esp32_backend.py" \
-            "$PRODUCTION_DIR/stability_analysis.py" \
-            "$PRODUCTION_DIR/stability_calibration.py" \
-            "$V1_MATH"
+            "$PRODUCTION_DIR/eltec_rig_tester.py" \
+            "$PRODUCTION_DIR/sensor_versions.py" \
+            "$MODEL_405_DIR/eltec_405m22_esp32_tester.py" \
+            "$MODEL_405_DIR/esp32_backend.py" \
+            "$MODEL_405_DIR/stability_analysis.py" \
+            "$MODEL_405_DIR/stability_calibration.py" \
+            "$MODEL_406_DIR/eltec_406mca_esp32_tester.py" \
+            "$MODEL_406_DIR/esp32_backend.py" \
+            "$MODEL_406_DIR/stability_analysis.py" \
+            "$MODEL_406_DIR/stability_calibration.py"
 
-        note "Running the production v6 software suite headlessly"
+        note "Running the unified selector software suite headlessly"
         env -u DISPLAY \
             PYTHONDONTWRITEBYTECODE=1 \
             PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
             MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
             python3 -m unittest discover -s "$PRODUCTION_DIR/tests" -q
+
+        note "Running the Model 405 M22 software suite headlessly"
+        env -u DISPLAY \
+            PYTHONDONTWRITEBYTECODE=1 \
+            PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
+            MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
+            python3 -m unittest discover -s "$MODEL_405_DIR/tests" -q
+
+        note "Running the Model 406 MCA software suite headlessly"
+        env -u DISPLAY \
+            PYTHONDONTWRITEBYTECODE=1 \
+            PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
+            MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
+            python3 -m unittest discover -s "$MODEL_406_DIR/tests" -q
 
         note "Running the workstation provisioning safety tests"
         env -u DISPLAY \
@@ -346,22 +378,31 @@ fi
 
 note "Installing the verified production launcher"
 run "$PRODUCTION_DIR/install_xubuntu_launcher.sh"
+
+note "Ensuring superseded standalone launchers are absent"
+if [[ -f $LEGACY_V6_DIR/install_xubuntu_launcher.sh ]]; then
+    run bash "$LEGACY_V6_DIR/install_xubuntu_launcher.sh" --uninstall
+fi
+if [[ -f $STANDALONE_405_DIR/install_xubuntu_launcher.sh ]]; then
+    run bash "$STANDALONE_405_DIR/install_xubuntu_launcher.sh" --uninstall
+fi
+if [[ -f $FAILURE_CALIBRATION_DIR/install_xubuntu_launcher.sh ]]; then
+    run bash "$FAILURE_CALIBRATION_DIR/install_xubuntu_launcher.sh" --uninstall
+fi
+
 if (( WITH_EXPERIMENTAL )); then
-    note "Installing the optional, isolated v6.1 evaluation launcher"
+    note "Installing the optional legacy standalone v6.1 launcher"
     run "$EXPERIMENTAL_DIR/install_xubuntu_launcher.sh"
 else
-    note "Ensuring experimental launchers are absent from this production station"
+    note "Ensuring the legacy standalone v6.1 launcher is absent"
     if [[ -f $EXPERIMENTAL_DIR/install_xubuntu_launcher.sh ]]; then
         run bash "$EXPERIMENTAL_DIR/install_xubuntu_launcher.sh" --uninstall
-    fi
-    if [[ -f $FAILURE_CALIBRATION_DIR/install_xubuntu_launcher.sh ]]; then
-        run bash "$FAILURE_CALIBRATION_DIR/install_xubuntu_launcher.sh" --uninstall
     fi
 fi
 
 if (( ! DRY_RUN )); then
     note "Recording this workstation installation"
-    STATE_DIR=${XDG_STATE_HOME:-"$TECHNICIAN_HOME/.local/state"}/eltec-406mca-esp32-v6
+    STATE_DIR=${XDG_STATE_HOME:-"$TECHNICIAN_HOME/.local/state"}/eltec-rig
     mkdir -p -- "$STATE_DIR"
     INSTALL_INFO="$STATE_DIR/install-info.txt"
     INFO_TMP=$(mktemp "$STATE_DIR/install-info.XXXXXX")
@@ -378,7 +419,8 @@ if (( ! DRY_RUN )); then
             GIT_DIRTY='yes'
         fi
     fi
-    SETTINGS_SHA256=$(sha256sum "$PRODUCTION_DIR/stability_settings.json" | cut -d' ' -f1)
+    SETTINGS_405_SHA256=$(sha256sum "$MODEL_405_DIR/stability_settings.json" | cut -d' ' -f1)
+    SETTINGS_406_SHA256=$(sha256sum "$MODEL_406_DIR/stability_settings.json" | cut -d' ' -f1)
     PACKAGE_VERSIONS=''
     for package_name in "${APT_PACKAGES[@]}"; do
         package_version=$(dpkg-query -W -f='${Version}' "$package_name" 2>/dev/null || printf 'missing')
@@ -397,9 +439,10 @@ if (( ! DRY_RUN )); then
         printf 'git_commit=%s\n' "$GIT_COMMIT"
         printf 'release_id=%s\n' "$RELEASE_ID"
         printf 'tracked_changes=%s\n' "$GIT_DIRTY"
-        printf 'stability_settings_sha256=%s\n' "$SETTINGS_SHA256"
+        printf 'm405m22_stability_settings_sha256=%s\n' "$SETTINGS_405_SHA256"
+        printf 'm406mca_stability_settings_sha256=%s\n' "$SETTINGS_406_SHA256"
         printf 'package_versions=%s\n' "$PACKAGE_VERSIONS"
-        printf 'production_app=v6_esp32\n'
+        printf 'production_app=eltec_rig\n'
     } >"$INFO_TMP"
     chmod 600 -- "$INFO_TMP"
     mv -f -- "$INFO_TMP" "$INSTALL_INFO"
@@ -418,10 +461,11 @@ if (( DRY_RUN )); then
 else
     note "Xubuntu workstation setup complete"
 fi
-printf 'Production launcher: Eltec 406MCA ESP32 Tester v6\n'
-printf 'Results (preserved across app updates): %s\n' "$RESULTS_DIR"
+printf 'Production launcher: Eltec Test Rig\n'
+printf '405 M22 results (preserved across app updates): %s\n' "$RESULTS_405_DIR"
+printf '406 MCA results (preserved across app updates): %s\n' "$RESULTS_406_DIR"
 printf 'GUI/hardware check after login and fixture connection: %s --gui --hardware\n' "$DOCTOR"
 if (( RELOGIN_REQUIRED )); then
     printf '\nIMPORTANT: %s\n' "$RELOGIN_NOTE"
 fi
-printf '\nA new computer still requires an in-app reference calibration with its own known-good/new emitter before DUT testing.\n'
+printf '\nA new computer still requires each enabled model-specific in-app calibration/known-good acceptance step before DUT testing.\n'

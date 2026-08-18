@@ -134,7 +134,7 @@ if ! git -C "$REPO_ROOT" diff --quiet --ignore-submodules -- \
 fi
 
 if command -v pgrep >/dev/null 2>&1 \
-    && pgrep -u "$(id -u)" -f '[e]ltec_406mca_esp32_tester.py' >/dev/null 2>&1; then
+    && pgrep -u "$(id -u)" -f '([e]ltec_rig_tester.py|[e]ltec_405m22_esp32_tester.py|[e]ltec_406mca_esp32_tester.py)' >/dev/null 2>&1; then
     die "The tester appears to be running. Close it before updating."
 fi
 
@@ -258,7 +258,9 @@ if (( DRY_RUN )); then
     fi
     if (( ! SKIP_TESTS_REQUESTED )); then
         note "Testing the candidate checkout before touching live code (dry run)"
-        print_command env -u DISPLAY python3 -m unittest discover -s '<candidate>/tech_app/v6_esp32/tests' -q
+        print_command env -u DISPLAY python3 -m unittest discover -s '<candidate>/tech_app/eltec_rig/tests' -q
+        print_command env -u DISPLAY python3 -m unittest discover -s '<candidate>/tech_app/eltec_rig/m405m22/tests' -q
+        print_command env -u DISPLAY python3 -m unittest discover -s '<candidate>/tech_app/eltec_rig/m406mca/tests' -q
         print_command env -u DISPLAY python3 -m unittest discover -s '<candidate>/tests' -q
         FINAL_SETUP_ARGS+=(--skip-tests)
     fi
@@ -316,13 +318,23 @@ else
             "$CANDIDATE_DIR/make_update_bundle.sh" \
             "$CANDIDATE_DIR/backup_eltec_results.sh" \
             "$CANDIDATE_DIR/restore_eltec_results.sh" \
-            "$CANDIDATE_DIR/tech_app/v6_esp32/install_xubuntu_launcher.sh" \
-            "$CANDIDATE_DIR/tech_app/v6_esp32/run_eltec_406mca_esp32_tester.sh"
+            "$CANDIDATE_DIR/tech_app/eltec_rig/install_xubuntu_launcher.sh" \
+            "$CANDIDATE_DIR/tech_app/eltec_rig/run_eltec_rig_tester.sh"
         env -u DISPLAY \
             PYTHONDONTWRITEBYTECODE=1 \
             PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
             MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
-            python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/v6_esp32/tests" -q
+            python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/eltec_rig/tests" -q
+        env -u DISPLAY \
+            PYTHONDONTWRITEBYTECODE=1 \
+            PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
+            MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
+            python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/eltec_rig/m405m22/tests" -q
+        env -u DISPLAY \
+            PYTHONDONTWRITEBYTECODE=1 \
+            PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
+            MPLCONFIGDIR="$VERIFY_TMP/matplotlib" \
+            python3 -m unittest discover -s "$CANDIDATE_DIR/tech_app/eltec_rig/m406mca/tests" -q
         env -u DISPLAY \
             PYTHONDONTWRITEBYTECODE=1 \
             PYTHONPYCACHEPREFIX="$VERIFY_TMP/pycache" \
@@ -335,7 +347,7 @@ else
     trap - EXIT
 
     note "Fast-forwarding live application code to verified candidate ${NEW_COMMIT:0:12}"
-    STATE_DIR=${XDG_STATE_HOME:-"${HOME:?HOME is not set}/.local/state"}/eltec-406mca-esp32-v6
+    STATE_DIR=${XDG_STATE_HOME:-"${HOME:?HOME is not set}/.local/state"}/eltec-rig
     mkdir -p -- "$STATE_DIR"
     ROLLBACK_RECORD_TMP=$(mktemp "$STATE_DIR/rollback-target.XXXXXX")
     {

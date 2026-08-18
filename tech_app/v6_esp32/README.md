@@ -1,10 +1,11 @@
 # Eltec 406MCA ESP32 Tester v6 for Xubuntu
 
-For a complete fresh-computer install, serial permissions, verified updates,
-offline USB update bundles, health checks, and result backups, see
-[`../../XUBUNTU_FLEET_SETUP.md`](../../XUBUNTU_FLEET_SETUP.md). The launcher
-installer in this folder only creates desktop/menu entries; it is not the full
-machine provisioner.
+This is now a legacy standalone/qualification build. Production fleet stations
+install the unified selector in `tech_app/eltec_rig/`, which contains the active
+Model 406 MCA workflow. For a complete fresh-computer install, serial
+permissions, verified updates, offline USB bundles, health checks, and backups,
+see [`../../XUBUNTU_FLEET_SETUP.md`](../../XUBUNTU_FLEET_SETUP.md). The launcher
+installer in this folder only creates the old standalone desktop/menu entries.
 
 This folder is the isolated v6 successor to the v5 ESP32/ADS1256 tester. It
 keeps the guided batch workflow, battery and offset checks, waveform snapshots,
