@@ -1,6 +1,6 @@
 /*
-  Eltec sensor test rig — ESP32 + ADS1256 firmware
-  ================================================
+  Eltec 406MCA emitter-tester rig — ESP32 + ADS1256 firmware
+  ==========================================================
 
   Replaces the LabJack T7-Pro in tech_app/v4_emitter. The Ubuntu host talks to
   this board over USB serial (500000 baud, ASCII lines) instead of the LJM
@@ -53,21 +53,15 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v3.0
-                        (v3.0 = the unified test-rig baseline. Functionally
-                         identical to v2.1; the version bump marks the split
-                         of the IR-telescope work into its own workspace
-                         (C:\Users\JoseCastelblanco\Documents\Eltec_IR_Telescope,
-                         firmware v2.2 with STREAM,START,BOTH) and the move to
-                         ONE host application for every sensor version. The
-                         unified app selects the sensor model in a dropdown
-                         and programs this firmware accordingly: 405 M22 runs
-                         on the boot-default v2.0 front end at 1 Hz PWM;
-                         406MCA testing sends FE,V19 after connect to restore
-                         that model's qualified gain-2 buffered front end and
-                         stays at the 10 Hz boot-default PWM. Dual-channel
-                         interleaved streaming does NOT exist in this build -
-                         flash the telescope workspace's v2.2 for that.
+    IDN?             -> ELTEC-ESP32-ADS1256,v2.2
+                        (v2.2 = dual-channel interleaved streaming via
+                         STREAM,START,BOTH, for the two-detector IR telescope
+                         (direction of travel from the AIN0/AIN1 lag). Purely
+                         additive: single-channel STREAM,START and
+                         STREAM,START,REF are byte-for-byte unchanged, so the
+                         406MCA and 405 M22 apps see no difference. Nothing
+                         about the front end changed either, so a v2.2 board
+                         is a drop-in replacement for a v2.1 one.
                          v2.1 = runtime-selectable ADS1256 front end via the
                          FE,... commands below, so the v1.9 (gain 2, buffer
                          ON) and v2.0 (gain 1, buffer OFF) configurations can
@@ -111,7 +105,10 @@
     PIN,<n>          -> OK,PIN,<n>       (retarget gate pin at runtime;
                                           allowed: 2/12/13/14/25/26/27/32/33;
                                           2 = onboard LED, visual gate test)
-    STATUS?          -> STATUS,pwm=<0|1>,streaming=<0|1>,vref=<V>,rate=<SPS>,pwm_hz=<Hz>
+    STATUS?          -> STATUS,pwm=<0|1>,streaming=<0|1>,vref=<V>,rate=<SPS>,pwm_hz=<Hz>,dual=<0|1>
+                        (rate is the single-channel 1000 SPS; dual=1 means the
+                         running stream is the interleaved BOTH mode, whose
+                         real per-channel rate is ~424 SPS)
     FE?              -> FE,gain=<1|2>,buf=<0|1>,fs=<V>
                         (current sensor front end; fs = full-scale volts)
     FE,V20           -> OK,FE,gain=1,buf=0  (gain 1, buffer OFF - the v2.0
@@ -156,8 +153,32 @@
                           D,<t_us>,<raw_code>,<volts>,<sync 0|1>
     STREAM,START,REF -> STREAM,BEGIN,1000,REF   (same format, but streams the
                                           reference sensor on AIN1 instead)
+    STREAM,START,BOTH-> STREAM,BEGIN,<per_ch_SPS>,BOTH   (v2.2: AIN0 AND AIN1
+                                          interleaved, for the two-detector IR
+                                          telescope. One line per PAIR:
+                          P,<t0_us>,<v0>,<t1_us>,<v1>,<sync 0|1>
+                                          t0/v0 = AIN0, t1/v1 = AIN1. The two
+                                          halves are NOT simultaneous - they are
+                                          one ADC settling time apart (~1.2 ms),
+                                          which is why each carries its own
+                                          timestamp: a host measuring the
+                                          channel-to-channel lag must interpolate
+                                          onto a common time base using t0/t1,
+                                          not assume a shared sample instant.
+                                          Raw codes are omitted to keep the line
+                                          short - two channels at 500000 baud
+                                          leaves less headroom, and USB-serial
+                                          overflow is the rig's known failure
+                                          mode. Per-channel rate is ~424 SPS,
+                                          not 1000: cycling the mux restarts the
+                                          conversion, so each sample costs a full
+                                          settling time. Treat the announced rate
+                                          as nominal and measure the real one
+                                          from the timestamps.)
     STREAM,STOP      -> STREAM,END,<samples_sent>,<adc_overruns>
-                        (adc_overruns must be zero for a valid measurement)
+                        (adc_overruns must be zero for a valid measurement.
+                         In BOTH mode samples_sent counts PAIRS, not
+                         conversions.)
     ERR,<message>    on any bad command or hardware fault
 
   Wiring (30-pin ESP32 DevKit <-> blue ADS1256 module with
@@ -197,6 +218,15 @@ static const float PWM_DEFAULT_FREQUENCY_HZ = 10.0f;  // DEFAULT_EMITTER_PWM_FRE
 static const float PWM_MIN_FREQUENCY_HZ = 0.1f;
 static const float PWM_MAX_FREQUENCY_HZ = 20.0f;
 static const float SAMPLE_RATE_HZ = 1000.0f;   // DEFAULT_SAMPLE_RATE_HZ
+// v2.2 dual-channel (STREAM,START,BOTH). The ADS1256 has ONE converter behind
+// an input mux, so two channels are read by cycling the mux. Every mux change
+// needs a SYNC, which restarts the conversion and costs a full settling time -
+// 1.18 ms at DRATE 1000 SPS (datasheet "settling time", single-cycle), not the
+// 1 ms conversion period. Two channels per round trip therefore yield
+// ~424 SPS PER CHANNEL. Announced to the host as nominal only: the host must
+// derive the real rate from the timestamps it receives.
+static const float DUAL_SETTLE_MS = 1.18f;
+static const float DUAL_SAMPLE_RATE_HZ = 1000.0f / (2.0f * DUAL_SETTLE_MS);
 static const int OFFSET_READ_SAMPLES = 24;     // OFFSET_READ_SAMPLES
 static const int OFFSET_READ_DELAY_MS = 3;     // OFFSET_READ_DELAY_S
 static const int BATTERY_READ_SAMPLES = 12;    // BATTERY_READ_SAMPLES
@@ -250,6 +280,15 @@ static volatile bool streaming = false;
 static uint32_t streamCount = 0;
 static uint8_t streamMux = MUX_SENSOR;   // which channel STREAM,START points at
 static uint8_t streamPga = 0;            // latched from pgaSensor at STREAM,START
+// v2.2 dual-channel state. streamDualPending is the channel whose conversion
+// the NEXT read will return - not the channel the mux currently points at. The
+// two run one step apart because the mux is advanced BEFORE the finished
+// conversion is read (see the datasheet's mux-cycling sequence in loop()).
+static bool streamDual = false;
+static uint8_t streamDualPending = MUX_SENSOR;
+static bool streamPairHaveA = false;     // AIN0 half collected, waiting on AIN1
+static uint32_t streamPairTimestampUs = 0;
+static float streamPairVoltsA = 0.0f;
 // DRDY is an active-low level. A GPIO interrupt latches each real falling edge
 // so Serial.printf() cannot make loop() miss the short HIGH phase between ADC
 // conversions. If a second conversion arrives before the previous one was
@@ -480,12 +519,15 @@ static void IRAM_ATTR onAdsDrdyFalling() {
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v3.0");
+    Serial.println("ELTEC-ESP32-ADS1256,v2.2");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
-    Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f\n",
+    // rate stays the single-channel 1000 SPS; dual=1 means the active stream is
+    // the interleaved BOTH mode, whose real per-channel rate is ~424 SPS.
+    Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f,"
+                  "dual=%d\n",
                   pwmOn ? 1 : 0, streaming ? 1 : 0, ADS_VREF,
-                  (int)SAMPLE_RATE_HZ, pwmFrequencyHz);
+                  (int)SAMPLE_RATE_HZ, pwmFrequencyHz, streamDual ? 1 : 0);
 
   // FE? / FE,...: v2.1 runtime front-end selection (A/B noise comparison
   // between the v1.9 and v2.0 qualified configurations - see header).
@@ -615,8 +657,12 @@ static void handleCommand(char *cmd) {
     else Serial.printf("REF,%.5f\n", v);
 
   } else if (strcmp(cmd, "STREAM,START") == 0 ||
-             strcmp(cmd, "STREAM,START,REF") == 0) {
+             strcmp(cmd, "STREAM,START,REF") == 0 ||
+             strcmp(cmd, "STREAM,START,BOTH") == 0) {
     bool refChannel = (strcmp(cmd, "STREAM,START,REF") == 0);
+    bool bothChannels = (strcmp(cmd, "STREAM,START,BOTH") == 0);
+    // BOTH always begins on AIN0, so the first pair half is the DUT/right
+    // detector and the emitted pair order matches the line format.
     streamMux = refChannel ? MUX_REF : MUX_SENSOR;
     streamPga = pgaSensor;                     // latch the active front end's gain
     if (!adsSelectChannel(streamMux, streamPga)) {
@@ -624,13 +670,20 @@ static void handleCommand(char *cmd) {
       return;
     }
     streamCount = 0;
+    streamDual = bothChannels;
+    streamDualPending = MUX_SENSOR;            // AIN0 is converting right now
+    streamPairHaveA = false;
     noInterrupts();
     streamSampleReady = false;
     streamDrdyOverruns = 0;
     streaming = true;
     interrupts();
-    Serial.printf("STREAM,BEGIN,%d,%s\n", (int)SAMPLE_RATE_HZ,
-                  refChannel ? "REF" : "SENSOR");
+    if (bothChannels) {
+      Serial.printf("STREAM,BEGIN,%d,BOTH\n", (int)(DUAL_SAMPLE_RATE_HZ + 0.5f));
+    } else {
+      Serial.printf("STREAM,BEGIN,%d,%s\n", (int)SAMPLE_RATE_HZ,
+                    refChannel ? "REF" : "SENSOR");
+    }
 
   } else if (strcmp(cmd, "STREAM,STOP") == 0) {
     noInterrupts();
@@ -638,8 +691,15 @@ static void handleCommand(char *cmd) {
     streamSampleReady = false;
     uint32_t overruns = streamDrdyOverruns;
     interrupts();
+    bool wasDual = streamDual;
+    streamDual = false;
+    streamPairHaveA = false;
     Serial.printf("STREAM,END,%lu,%lu\n", (unsigned long)streamCount,
                   (unsigned long)overruns);
+    // Leave the mux where every other command expects to find it. Without this
+    // a BOTH stream could stop with AIN1 selected and the next OFFSET?/stream
+    // would start on the wrong channel.
+    if (wasDual) adsSelectChannel(MUX_SENSOR, pgaSensor);
 
   } else if (cmd[0] != '\0') {
     Serial.printf("ERR,unknown command: %s\n", cmd);
@@ -705,13 +765,50 @@ void loop() {
     sampleTimestampUs = streamSampleTimestampUs;
     streamSampleReady = false;
     interrupts();
-    if (sampleReady) {
+    if (sampleReady && !streamDual) {
       int32_t raw = adsReadData();
       float volts = countsToVolts(raw, streamPga);
       Serial.printf("D,%lu,%ld,%.6f,%d\n",
                     (unsigned long)sampleTimestampUs, (long)raw, volts,
                     (pwmOn && pwmLevel) ? 1 : 0);
       streamCount++;
+    } else if (sampleReady) {
+      // Dual channel (v2.2). READ FIRST, switch the mux after.
+      //
+      // The obvious optimisation is the other order - point the mux at the next
+      // channel and SYNC/WAKEUP first, so its ~1.2 ms settling overlaps the SPI
+      // read of the conversion that just finished. That is measurably WRONG on
+      // this board: verified 2026-08-17 against the same physical input, AIN0
+      // is pristine in single-channel mode (sample-to-sample step max 6 mV, no
+      // full-scale reads in 8000 samples) but with SYNC before RDATA it showed
+      // 4.8 V single-sample jumps and hit +full-scale 7 times in 8474 pairs.
+      // SYNC restarts the converter, and the output register is evidently not
+      // safe to read across that. Reading before touching anything costs ~50 us
+      // of settling overlap per pair - about 2% of throughput - and removes the
+      // corruption entirely.
+      float volts = countsToVolts(adsReadData(), streamPga);
+      uint8_t nextMux =
+          (streamDualPending == MUX_SENSOR) ? MUX_REF : MUX_SENSOR;
+      adsWriteReg(REG_MUX, nextMux);
+      adsCommand(CMD_SYNC);
+      adsCommand(CMD_WAKEUP);
+      if (streamDualPending == MUX_SENSOR) {
+        streamPairTimestampUs = sampleTimestampUs;   // AIN0 half - hold it
+        streamPairVoltsA = volts;
+        streamPairHaveA = true;
+      } else if (streamPairHaveA) {
+        // AIN1 half completes the pair. Both timestamps go out: the halves are
+        // one settling time apart and the host needs that to measure the
+        // channel-to-channel lag without a built-in bias. The sync bit is
+        // sampled once, at emission.
+        Serial.printf("P,%lu,%.6f,%lu,%.6f,%d\n",
+                      (unsigned long)streamPairTimestampUs, streamPairVoltsA,
+                      (unsigned long)sampleTimestampUs, volts,
+                      (pwmOn && pwmLevel) ? 1 : 0);
+        streamCount++;
+        streamPairHaveA = false;
+      }
+      streamDualPending = nextMux;
     }
   }
 }

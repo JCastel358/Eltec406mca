@@ -1,6 +1,6 @@
 /*
-  Eltec sensor test rig — ESP32 + ADS1256 firmware
-  ================================================
+  Eltec 406MCA emitter-tester rig — ESP32 + ADS1256 firmware
+  ==========================================================
 
   Replaces the LabJack T7-Pro in tech_app/v4_emitter. The Ubuntu host talks to
   this board over USB serial (500000 baud, ASCII lines) instead of the LJM
@@ -53,22 +53,8 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v3.0
-                        (v3.0 = the unified test-rig baseline. Functionally
-                         identical to v2.1; the version bump marks the split
-                         of the IR-telescope work into its own workspace
-                         (C:\Users\JoseCastelblanco\Documents\Eltec_IR_Telescope,
-                         firmware v2.2 with STREAM,START,BOTH) and the move to
-                         ONE host application for every sensor version. The
-                         unified app selects the sensor model in a dropdown
-                         and programs this firmware accordingly: 405 M22 runs
-                         on the boot-default v2.0 front end at 1 Hz PWM;
-                         406MCA testing sends FE,V19 after connect to restore
-                         that model's qualified gain-2 buffered front end and
-                         stays at the 10 Hz boot-default PWM. Dual-channel
-                         interleaved streaming does NOT exist in this build -
-                         flash the telescope workspace's v2.2 for that.
-                         v2.1 = runtime-selectable ADS1256 front end via the
+    IDN?             -> ELTEC-ESP32-ADS1256,v2.1
+                        (v2.1 = runtime-selectable ADS1256 front end via the
                          FE,... commands below, so the v1.9 (gain 2, buffer
                          ON) and v2.0 (gain 1, buffer OFF) configurations can
                          be A/B-compared on the same board without reflashing
@@ -480,7 +466,7 @@ static void IRAM_ATTR onAdsDrdyFalling() {
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v3.0");
+    Serial.println("ELTEC-ESP32-ADS1256,v2.1");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
     Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f\n",

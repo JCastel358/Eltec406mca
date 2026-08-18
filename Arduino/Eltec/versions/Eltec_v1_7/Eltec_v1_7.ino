@@ -1,6 +1,6 @@
 /*
-  Eltec sensor test rig — ESP32 + ADS1256 firmware
-  ================================================
+  Eltec 406MCA emitter-tester rig — ESP32 + ADS1256 firmware
+  ==========================================================
 
   Replaces the LabJack T7-Pro in tech_app/v4_emitter. The Ubuntu host talks to
   this board over USB serial (500000 baud, ASCII lines) instead of the LJM
@@ -10,31 +10,24 @@
     ------------------------------  ------------------------------------------
     DIO0  10 Hz / 50% PWM (gate)    PIN_PWM_GATE, software-timed 10 Hz square
     AIN0  buffered sensor, +/-1 V   ADS1256 AIN0 (single-ended vs AINCOM),
-          (x10 range), 1000 Hz        PGA = 1 (+/-5 V full scale, v2.0),
-          stream                      streamed at 1000 SPS. Input buffer OFF
-                                      (v2.0), so the 405 M22's TP412 offset
-                                      band of 0.8-3.0 V reads linearly (the
-                                      old gain-2 buffered front end clipped
-                                      at 2.5 V). AIN0/AIN1 are driven by
-                                      low-impedance op-amp buffers, so the
-                                      unbuffered input load is fine there.
-    AIN1  battery via measured       ADS1256 AIN7, PGA = 1 (+/-5 V full scale).
-          99.7k/99.6k divider,         CAVEAT (v2.0): with the input buffer
-          +/-10 V range                OFF the unbuffered ADS1256 input loads
-                                      the ~50k divider, so BAT? reads LOW and
-                                      is only indicative. The current fixture
-                                      (2026-08-12) does not use it anyway: the
-                                      6.5 V battery drives the emitters ONLY
-                                      and the 9 V sensor battery is not on
-                                      AIN7 (planned: AIN6 with a >=4:1
-                                      divider). NEVER feed the ADS1256 more
-                                      than AVDD (+5 V)!
-    (new) reference 406MCA sensor   ADS1256 AIN1, PGA = 1 (+/-5 V, v2.0).
-                                      Permanently mounted in the fixture; its
-                                      pk-pk response to the chopped emitter is
-                                      trended over time to detect emitter aging
-                                      (no absolute spec, it just has to stay
-                                      constant).
+          (x10 range), 1000 Hz        PGA = 2 (+/-2.5 V full scale), streamed
+          stream                      at 1000 SPS
+    AIN1  battery via 100k/100k     ADS1256 AIN7, PGA = 1 (+/-5 V full scale).
+          divider, +/-10 V range      Battery is a 6 V 4.5 Ah SLA powering the
+                                      whole rig (sensors, buffer, emitter +
+                                      MOSFET module): Vbat/2 ~= 3.0-3.2 V.
+                                      CAVEAT: that is right at the buffered-
+                                      input linear limit (AVDD - 2 V = 3.0 V),
+                                      so BAT? compresses slightly near full
+                                      charge; a ~4:1 divider (300k/100k, set
+                                      BATTERY_DIVIDER_RATIO = 4.0) removes it.
+                                      NEVER feed the ADS1256 more than AVDD
+                                      (+5 V)!
+    (new) reference 406MCA sensor   ADS1256 AIN1, PGA = 2 (+/-2.5 V). Permanently
+                                      mounted in the fixture; its pk-pk response
+                                      to the chopped emitter is trended over time
+                                      to detect emitter aging (no absolute spec,
+                                      it just has to stay constant).
     AIN2  PWM looped back as sync   Not needed as an analog channel: the ESP32
                                       generates the PWM itself, so the sync
                                       state is reported as a digital 0/1 with
@@ -53,50 +46,8 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v3.0
-                        (v3.0 = the unified test-rig baseline. Functionally
-                         identical to v2.1; the version bump marks the split
-                         of the IR-telescope work into its own workspace
-                         (C:\Users\JoseCastelblanco\Documents\Eltec_IR_Telescope,
-                         firmware v2.2 with STREAM,START,BOTH) and the move to
-                         ONE host application for every sensor version. The
-                         unified app selects the sensor model in a dropdown
-                         and programs this firmware accordingly: 405 M22 runs
-                         on the boot-default v2.0 front end at 1 Hz PWM;
-                         406MCA testing sends FE,V19 after connect to restore
-                         that model's qualified gain-2 buffered front end and
-                         stays at the 10 Hz boot-default PWM. Dual-channel
-                         interleaved streaming does NOT exist in this build -
-                         flash the telescope workspace's v2.2 for that.
-                         v2.1 = runtime-selectable ADS1256 front end via the
-                         FE,... commands below, so the v1.9 (gain 2, buffer
-                         ON) and v2.0 (gain 1, buffer OFF) configurations can
-                         be A/B-compared on the same board without reflashing
-                         - e.g. to check whether a noise reading depends on
-                         the front end. Boots in the v2.0 configuration, and
-                         opening the USB port resets the board, so hosts that
-                         do not send FE commands (the 405 M22 app) always get
-                         v2.0 behavior. Not persisted.
-                         v2.0 = ADS1256 front end changed for the 405 M22
-                         TP412 offset band: sensor channels AIN0/AIN1 run at
-                         PGA gain 1 (+/-5 V, LSB 596 nV instead of 298 nV)
-                         and the input buffer is OFF, so DC offsets to 3.0 V+
-                         read linearly. WARNING: 406MCA v6/v6.1 rigs were
-                         qualified on v1.9's gain-2 buffered front end - keep
-                         them on v1.9 unless their noise floors/thresholds
-                         are re-verified on v2.0. BAT? accuracy also drops
-                         (unbuffered input loads the resistive divider); the
-                         405 M22 host disables its battery gate.
-                         v1.9 = runtime-selectable emitter PWM frequency via
-                         PWM,FREQ,<hz> (0.1-20 Hz). Boot default stays 10 Hz,
-                         so the existing 406MCA apps behave identically without
-                         sending the new command; the 405 M22 tools send
-                         PWM,FREQ,1 for that model's 1 Hz drive.
-                         v1.8 = battery scaling uses the measured divider:
-                         99.7 kOhm upper / 99.6 kOhm lower. The 100 nF filter
-                         capacitor across the lower resistor does not change
-                         the DC divider ratio. v1.4 = gate confirmed on
-                         GPIO25/D25 - the perf board
+    IDN?             -> ELTEC-ESP32-ADS1256,v1.7
+                        (v1.4 = gate confirmed on GPIO25/D25 - the perf board
                          is soldered to D25, earlier docs saying D26 were
                          wrong - plus GATE? pad readback and RTC-hold/DAC
                          release at boot. v1.5 = PIN,2 allowed: GPIO2 is the
@@ -111,33 +62,9 @@
     PIN,<n>          -> OK,PIN,<n>       (retarget gate pin at runtime;
                                           allowed: 2/12/13/14/25/26/27/32/33;
                                           2 = onboard LED, visual gate test)
-    STATUS?          -> STATUS,pwm=<0|1>,streaming=<0|1>,vref=<V>,rate=<SPS>,pwm_hz=<Hz>
-    FE?              -> FE,gain=<1|2>,buf=<0|1>,fs=<V>
-                        (current sensor front end; fs = full-scale volts)
-    FE,V20           -> OK,FE,gain=1,buf=0  (gain 1, buffer OFF - the v2.0
-                                          405 M22 front end; boot default)
-    FE,V19           -> OK,FE,gain=2,buf=1  (gain 2, buffer ON - the v1.9
-                                          406MCA front end, for A/B noise
-                                          comparison. CAVEAT: full scale
-                                          drops to +/-2.5 V and the buffer
-                                          is linear only to AVDD-2V = 3.0 V,
-                                          so offsets above ~2.4 V clip -
-                                          exactly why v2.0 exists. Applies
-                                          to AIN7/BAT? too, like real v1.9.)
-    FE,GAIN,<1|2>    -> OK,FE,...        (change only the PGA gain)
-    FE,BUF,<0|1>     -> OK,FE,...        (change only the input buffer)
-                        (all FE setters: rejected while streaming; the new
-                         configuration is SELFCALed and read back before OK;
-                         none of it is persisted - a reset returns to v2.0)
-    PWM,ON           -> OK,PWM,ON        (starts the emitter drive at the
-                                          current frequency; 10 Hz unless
-                                          changed with PWM,FREQ)
+    STATUS?          -> STATUS,pwm=<0|1>,streaming=<0|1>,vref=<V>,rate=<SPS>
+    PWM,ON           -> OK,PWM,ON        (starts the 10 Hz emitter drive)
     PWM,OFF          -> OK,PWM,OFF
-    PWM,FREQ,<hz>    -> OK,PWM,FREQ,<hz> (set drive frequency, 0.1-20 Hz,
-                                          50% duty. Takes effect immediately;
-                                          if the PWM is running its phase is
-                                          restarted. Not persisted - boots
-                                          back to 10 Hz.)
     GATE,ON          -> OK,GATE,ON      (hold gate steady HIGH - bring-up/debug)
     GATE,OFF         -> OK,GATE,OFF
     GATE?            -> GATE,pin=<n>,drive=<0|1>,read=<0|1>
@@ -172,10 +99,9 @@
     DUT sensor buffer -> AIN0, reference sensor -> AIN1,
     battery divider tap -> AIN7;
     module GND pins common with ESP32 GND and the rig ground.
-    Current wiring guide: ESP32_ADS1256_Wiring_v2_0.md in this folder
-    (ESP32_ADS1256_Wiring_v1_7.md matches the v1.9 firmware still used on
-    406MCA rigs). ESP32_ADS1256_Wiring.docx is historical (old 9 V/AIN1
-    fixture); do not use it to wire this version.
+    Current wiring guide: ESP32_ADS1256_Wiring_v1_7.md in this folder.
+    ESP32_ADS1256_Wiring.docx is historical (old 9 V/AIN1 fixture); do not use
+    it to wire this version.
 */
 
 #include <SPI.h>
@@ -192,35 +118,17 @@ static int pinGate = 25;
 
 // ------------------------------------------------- rig constants ----------
 // Mirror the Python app (eltec_406mca_emitter_tester.py / eltec_406mca_tester.py)
-// Boot default. Changeable at runtime with PWM,FREQ,<hz> (405 M22 uses 1 Hz).
-static const float PWM_DEFAULT_FREQUENCY_HZ = 10.0f;  // DEFAULT_EMITTER_PWM_FREQUENCY_HZ
-static const float PWM_MIN_FREQUENCY_HZ = 0.1f;
-static const float PWM_MAX_FREQUENCY_HZ = 20.0f;
+static const float PWM_FREQUENCY_HZ = 10.0f;   // DEFAULT_EMITTER_PWM_FREQUENCY_HZ
 static const float SAMPLE_RATE_HZ = 1000.0f;   // DEFAULT_SAMPLE_RATE_HZ
 static const int OFFSET_READ_SAMPLES = 24;     // OFFSET_READ_SAMPLES
 static const int OFFSET_READ_DELAY_MS = 3;     // OFFSET_READ_DELAY_S
 static const int BATTERY_READ_SAMPLES = 12;    // BATTERY_READ_SAMPLES
 static const int BATTERY_READ_DELAY_MS = 5;    // BATTERY_READ_DELAY_S
-// Measured installed divider values. R_TOP runs from battery+ to the AIN7 tap;
-// R_BOTTOM runs from the tap to ground. The 100 nF capacitor in parallel with
-// R_BOTTOM filters noise but has no effect on the steady-state voltage ratio.
-static const float BATTERY_DIVIDER_R_TOP_OHMS = 99700.0f;
-static const float BATTERY_DIVIDER_R_BOTTOM_OHMS = 99600.0f;
-static const float BATTERY_DIVIDER_RATIO =
-    (BATTERY_DIVIDER_R_TOP_OHMS + BATTERY_DIVIDER_R_BOTTOM_OHMS) /
-    BATTERY_DIVIDER_R_BOTTOM_OHMS;  // 2.001004016...
+static const float BATTERY_DIVIDER_RATIO = 2.0f;  // 100k/100k divider
 
 // ------------------------------------------------- ADS1256 setup ----------
 static const float ADS_VREF = 2.5f;            // on-board reference of the module
-// v2.0: gain 1 so the 405 M22's 0.8-3.0 V TP412 offset band (plus noise
-// excursions above it) reads linearly on AIN0/AIN1. LSB doubles to 596 nV -
-// still ~168 counts per 0.1 mV stability threshold.
-// v2.1: these became runtime state so FE,V19 / FE,V20 can A/B-compare the
-// two qualified front ends without reflashing. Boot defaults = v2.0; not
-// persisted (any reset - including the DTR toggle when a host opens the
-// port - returns to v2.0).
-static uint8_t pgaSensor = 0;                  // code 0 -> gain 1 -> +/-5 V (AIN0 DUT + AIN1 ref)
-static bool adsBufferOn = false;               // ADS1256 STATUS BUFEN (v1.9 = on, v2.0 = off)
+static const uint8_t PGA_SENSOR = 1;           // code 1 -> gain 2 -> +/-2.5 V (AIN0 DUT + AIN1 ref)
 static const uint8_t PGA_BATTERY = 0;          // code 0 -> gain 1 -> +/-5 V   (AIN7)
 static const uint8_t MUX_SENSOR = 0x08;        // AINP = AIN0, AINN = AINCOM (DUT sensor)
 static const uint8_t MUX_REF = 0x18;           // AINP = AIN1, AINN = AINCOM (reference sensor)
@@ -241,15 +149,13 @@ static const SPISettings ADS_SPI(1500000, MSBFIRST, SPI_MODE1);
 static bool pwmOn = false;
 static bool pwmLevel = false;
 static uint32_t pwmNextToggleUs = 0;
-static float pwmFrequencyHz = PWM_DEFAULT_FREQUENCY_HZ;
-// 50% duty: half period in us (50 ms at 10 Hz, 500 ms at 1 Hz).
-static uint32_t pwmHalfPeriodUs =
-    (uint32_t)(500000.0f / PWM_DEFAULT_FREQUENCY_HZ);
+static const uint32_t PWM_HALF_PERIOD_US =
+    (uint32_t)(500000.0f / PWM_FREQUENCY_HZ);  // 50 ms at 10 Hz -> 50% duty
 
 static volatile bool streaming = false;
 static uint32_t streamCount = 0;
 static uint8_t streamMux = MUX_SENSOR;   // which channel STREAM,START points at
-static uint8_t streamPga = 0;            // latched from pgaSensor at STREAM,START
+static uint8_t streamPga = PGA_SENSOR;
 // DRDY is an active-low level. A GPIO interrupt latches each real falling edge
 // so Serial.printf() cannot make loop() miss the short HIGH phase between ADC
 // conversions. If a second conversion arrives before the previous one was
@@ -352,24 +258,16 @@ static bool adsSelectChannel(uint8_t mux, uint8_t pgaCode) {
   return true;
 }
 
-// STATUS register value for the current front end: MSB first, auto-cal OFF,
-// BUFEN per adsBufferOn. (ACAL stays off: the old 0x06 enabled ACAL and then
-// wrote more registers while calibration was still busy, so DRATE could
-// remain at its 30 kSPS reset value.)
-static uint8_t adsStatusRegValue() { return adsBufferOn ? 0x02 : 0x00; }
-
 static bool adsInit() {
   adsCommand(CMD_RESET);
   delay(5);
   if (!waitDRDY(500)) return false;
-  // Boot default front end is v2.0: gain 1, input buffer OFF. The buffer's
-  // AVDD-2 V (3.0 V) linear ceiling blocked the 405 M22's 0.8-3.0 V offset
-  // band; the sensor channels are op-amp buffered externally, so the
-  // unbuffered switched-cap input load is fine there. FE,V19 switches back
-  // to the gain-2 buffered v1.9 front end at runtime (A/B comparison).
-  adsWriteReg(REG_STATUS, adsStatusRegValue());
+  // MSB first, auto-cal OFF, input buffer on. The previous 0x06 enabled ACAL
+  // and then wrote more registers while calibration was still busy, so DRATE
+  // could remain at its 30 kSPS reset value even though STATUS? said 1000.
+  adsWriteReg(REG_STATUS, 0x02);
   adsWriteReg(REG_DRATE, DRATE_1000SPS);
-  adsWriteReg(REG_ADCON, pgaSensor);
+  adsWriteReg(REG_ADCON, PGA_SENSOR);
   adsWriteReg(REG_MUX, MUX_SENSOR);
   adsCommand(CMD_SELFCAL);
   if (!waitDRDY(500)) return false;
@@ -379,21 +277,8 @@ static bool adsInit() {
   uint8_t mux = adsReadReg(REG_MUX);
   uint8_t adcon = adsReadReg(REG_ADCON);
   uint8_t drate = adsReadReg(REG_DRATE);
-  // BUFEN (bit 1) must match the requested front end; ACAL (bit 2) always 0.
-  return (status & 0x06) == adsStatusRegValue() && mux == MUX_SENSOR &&
-         (adcon & 0x67) == pgaSensor && drate == DRATE_1000SPS;
-}
-
-// v2.1: apply the current pgaSensor/adsBufferOn front end and verify it took.
-// SELFCAL runs via adsSelectChannel so offset/gain calibration matches the
-// new configuration before anything is measured on it.
-static bool adsApplyFrontEnd() {
-  adsWriteReg(REG_STATUS, adsStatusRegValue());
-  if (!adsSelectChannel(MUX_SENSOR, pgaSensor)) return false;
-  uint8_t status = adsReadReg(REG_STATUS);
-  uint8_t adcon = adsReadReg(REG_ADCON);
-  return (status & 0x06) == adsStatusRegValue() &&
-         (adcon & 0x67) == pgaSensor;
+  return (status & 0x06) == 0x02 && mux == MUX_SENSOR &&
+         (adcon & 0x67) == PGA_SENSOR && drate == DRATE_1000SPS;
 }
 
 // Median-of-N single-channel read (offset + battery checks). Blocks; not used
@@ -438,16 +323,15 @@ static void gateAttach(int pin) {
   gateWrite(false);
 }
 
-// Software-timed square wave: the loop() turnaround (<<1 ms) gives far less
-// than 1% period jitter at any allowed frequency (0.1-20 Hz), and the drive
-// level doubles as the sync bit.
+// Software-timed square wave: at 10 Hz the loop() turnaround (<<1 ms) gives
+// far less than 1% period jitter, and the drive level doubles as the sync bit.
 static void pwmService() {
   if (!pwmOn) return;
   uint32_t now = micros();
   if ((int32_t)(now - pwmNextToggleUs) >= 0) {
     pwmLevel = !pwmLevel;
     gateWrite(pwmLevel);
-    pwmNextToggleUs += pwmHalfPeriodUs;
+    pwmNextToggleUs += PWM_HALF_PERIOD_US;
   }
 }
 
@@ -455,15 +339,7 @@ static void pwmSet(bool on) {
   pwmOn = on;
   pwmLevel = false;
   gateWrite(false);
-  if (on) pwmNextToggleUs = micros() + pwmHalfPeriodUs;
-}
-
-// Change the drive frequency. If the PWM is running, restart its phase so the
-// first full cycle after the change is clean (no torn half-period).
-static void pwmSetFrequency(float hz) {
-  pwmFrequencyHz = hz;
-  pwmHalfPeriodUs = (uint32_t)(500000.0f / hz);
-  if (pwmOn) pwmSet(true);
+  if (on) pwmNextToggleUs = micros() + PWM_HALF_PERIOD_US;
 }
 
 // Latch conversion-ready events independently of the serial-output latency.
@@ -480,56 +356,12 @@ static void IRAM_ATTR onAdsDrdyFalling() {
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v3.0");
+    Serial.println("ELTEC-ESP32-ADS1256,v1.7");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
-    Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f\n",
+    Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d\n",
                   pwmOn ? 1 : 0, streaming ? 1 : 0, ADS_VREF,
-                  (int)SAMPLE_RATE_HZ, pwmFrequencyHz);
-
-  // FE? / FE,...: v2.1 runtime front-end selection (A/B noise comparison
-  // between the v1.9 and v2.0 qualified configurations - see header).
-  } else if (strcmp(cmd, "FE?") == 0) {
-    Serial.printf("FE,gain=%d,buf=%d,fs=%.3f\n", 1 << pgaSensor,
-                  adsBufferOn ? 1 : 0,
-                  2.0f * ADS_VREF / (float)(1 << pgaSensor));
-
-  } else if (strncmp(cmd, "FE,", 3) == 0) {
-    if (streaming) { Serial.println("ERR,stop stream first"); return; }
-    uint8_t newPga = pgaSensor;
-    bool newBuf = adsBufferOn;
-    if (strcmp(cmd, "FE,V20") == 0) {            // v2.0: gain 1, buffer off
-      newPga = 0; newBuf = false;
-    } else if (strcmp(cmd, "FE,V19") == 0) {     // v1.9: gain 2, buffer on
-      newPga = 1; newBuf = true;
-    } else if (strcmp(cmd, "FE,GAIN,1") == 0) {
-      newPga = 0;
-    } else if (strcmp(cmd, "FE,GAIN,2") == 0) {
-      newPga = 1;
-    } else if (strcmp(cmd, "FE,BUF,0") == 0) {
-      newBuf = false;
-    } else if (strcmp(cmd, "FE,BUF,1") == 0) {
-      newBuf = true;
-    } else {
-      Serial.printf("ERR,bad FE command: %s (use FE,V19 / FE,V20 / "
-                    "FE,GAIN,<1|2> / FE,BUF,<0|1>)\n", cmd);
-      return;
-    }
-    uint8_t oldPga = pgaSensor;
-    bool oldBuf = adsBufferOn;
-    pgaSensor = newPga;
-    adsBufferOn = newBuf;
-    if (adsApplyFrontEnd()) {
-      Serial.printf("OK,FE,gain=%d,buf=%d\n", 1 << pgaSensor,
-                    adsBufferOn ? 1 : 0);
-    } else {
-      // Verification failed: put the previous configuration back so the
-      // reported state always matches the silicon.
-      pgaSensor = oldPga;
-      adsBufferOn = oldBuf;
-      adsApplyFrontEnd();
-      Serial.println("ERR,front-end apply/verify failed (previous config restored)");
-    }
+                  (int)SAMPLE_RATE_HZ);
 
   } else if (strcmp(cmd, "PWM,ON") == 0) {
     pwmSet(true);
@@ -538,18 +370,6 @@ static void handleCommand(char *cmd) {
   } else if (strcmp(cmd, "PWM,OFF") == 0) {
     pwmSet(false);
     Serial.println("OK,PWM,OFF");
-
-  // PWM,FREQ,<hz>: runtime drive frequency (405 M22 = 1 Hz, 406MCA = 10 Hz).
-  // Not persisted; the board boots back to the 10 Hz default.
-  } else if (strncmp(cmd, "PWM,FREQ,", 9) == 0) {
-    float hz = atof(cmd + 9);
-    if (!(hz >= PWM_MIN_FREQUENCY_HZ && hz <= PWM_MAX_FREQUENCY_HZ)) {
-      Serial.printf("ERR,frequency %.3f out of range (%.1f-%.1f Hz)\n",
-                    hz, PWM_MIN_FREQUENCY_HZ, PWM_MAX_FREQUENCY_HZ);
-    } else {
-      pwmSetFrequency(hz);
-      Serial.printf("OK,PWM,FREQ,%.3f\n", hz);
-    }
 
   // Hardware bring-up helpers: hold the emitter gate steady so the drive path
   // can be checked with a multimeter / by eye (no 10 Hz shimmer to squint at).
@@ -595,22 +415,22 @@ static void handleCommand(char *cmd) {
     if (streaming) { Serial.println("ERR,stop stream first"); return; }
     float v = readMedianVolts(MUX_BATTERY, PGA_BATTERY,
                               BATTERY_READ_SAMPLES, BATTERY_READ_DELAY_MS);
-    adsSelectChannel(MUX_SENSOR, pgaSensor);   // leave mux ready for streaming
+    adsSelectChannel(MUX_SENSOR, PGA_SENSOR);   // leave mux ready for streaming
     if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
     else Serial.printf("BAT,%.4f\n", v * BATTERY_DIVIDER_RATIO);
 
   } else if (strcmp(cmd, "OFFSET?") == 0) {
     if (streaming) { Serial.println("ERR,stop stream first"); return; }
-    float v = readMedianVolts(MUX_SENSOR, pgaSensor,
+    float v = readMedianVolts(MUX_SENSOR, PGA_SENSOR,
                               OFFSET_READ_SAMPLES, OFFSET_READ_DELAY_MS);
     if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
     else Serial.printf("OFFSET,%.5f\n", v);
 
   } else if (strcmp(cmd, "REF?") == 0) {
     if (streaming) { Serial.println("ERR,stop stream first"); return; }
-    float v = readMedianVolts(MUX_REF, pgaSensor,
+    float v = readMedianVolts(MUX_REF, PGA_SENSOR,
                               OFFSET_READ_SAMPLES, OFFSET_READ_DELAY_MS);
-    adsSelectChannel(MUX_SENSOR, pgaSensor);   // leave mux ready for streaming
+    adsSelectChannel(MUX_SENSOR, PGA_SENSOR);   // leave mux ready for streaming
     if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
     else Serial.printf("REF,%.5f\n", v);
 
@@ -618,7 +438,7 @@ static void handleCommand(char *cmd) {
              strcmp(cmd, "STREAM,START,REF") == 0) {
     bool refChannel = (strcmp(cmd, "STREAM,START,REF") == 0);
     streamMux = refChannel ? MUX_REF : MUX_SENSOR;
-    streamPga = pgaSensor;                     // latch the active front end's gain
+    streamPga = PGA_SENSOR;                     // both sensors use gain 2
     if (!adsSelectChannel(streamMux, streamPga)) {
       Serial.println("ERR,ADS1256 channel select/calibration timeout");
       return;
@@ -675,7 +495,7 @@ void setup() {
 
   adsOk = adsInit();
   if (adsOk) {
-    adsOk = adsSelectChannel(MUX_SENSOR, pgaSensor);
+    adsOk = adsSelectChannel(MUX_SENSOR, PGA_SENSOR);
     if (adsOk) Serial.println("READY,ELTEC-ESP32-ADS1256");
     else Serial.println("ERR,ADS1256 channel select/calibration timeout");
   } else {

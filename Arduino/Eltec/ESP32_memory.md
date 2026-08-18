@@ -76,10 +76,12 @@ in `tech_app/v5_esp32`.
 
 | File | What it is |
 |---|---|
-| `Eltec.ino` | ESP32 firmware. PWM generation + ADS1256 driver + serial command protocol. |
+| `Eltec.ino` | ESP32 firmware, the live/editable sketch. PWM generation + ADS1256 driver + serial command protocol. |
+| `versions/` | **Frozen snapshot of every known firmware build** (v1.5/v1.7/v1.8/v1.9/v2.0), one compilable folder each. Read-only — see `versions/README.md` for provenance and revert commands. |
 | `esp32_rig_readout.py` | Host-side Python. Serial wrapper (`Esp32Rig` class) + CLI + light analysis. Runs on Windows and Linux. |
-| `ESP32_ADS1256_Wiring_v1_7.md` | Current 6 V/AIN7/GPIO25 wiring and safety guide. |
-| `ESP32_ADS1256_Wiring.docx` | Historical 9 V/AIN1/bare-MOSFET guide — do not use for v1.7. |
+| `ESP32_ADS1256_Wiring_v1_7.md` | 6 V/AIN7/GPIO25 wiring and safety guide — matches firmware v1.9 (406MCA rigs). |
+| `ESP32_ADS1256_Wiring_v2_0.md` | Current 405 M22 fixture wiring (separate emitter/sensor batteries), firmware v2.0. |
+| `ESP32_ADS1256_Wiring.docx` | Historical 9 V/AIN1/bare-MOSFET guide — do not use for v1.7 or later. |
 | `ESP32_memory.md` | This file. |
 | `../../tech_app/v5_esp32/eltec_406mca_esp32_tester.py` | Xubuntu GUI, kept separate from historical v4. |
 | `../../tech_app/v5_esp32/esp32_backend.py` | Strict ESP32 discovery/protocol/stream-integrity backend. |
@@ -150,6 +152,26 @@ in `tech_app/v5_esp32`.
 
 - Required production version: **v1.7 or newer**. The GUI and CLI reject older
   firmware because older streams can have a false sample rate or repeated data.
+- **Which build goes on which rig (as of 2026-08-12):**
+  - **406MCA rigs** (`tech_app/v6_esp32`, `tech_app/v6_1_esp32`): **v1.9** —
+    PGA gain 2 with the ADS1256 input buffer ON. Those apps were qualified on
+    that front end.
+  - **IR telescope rig** (`tech_app/ir_telescope`): **v2.2** — needs
+    `STREAM,START,BOTH`; the app refuses to start on anything older. v2.2 is
+    otherwise identical to v2.1, so the same board still runs the 405 M22 build.
+    NOTE 2026-08-17 (afternoon): a live `IDN?` check shows the bench board on
+    COM3 is running **v2.1** — flash v2.2 before the next telescope session.
+  - **405 M22 rig** (`tech_app/405m22_esp32`): **v2.0** — PGA gain 1 with the
+    input buffer OFF, so AIN0/AIN1 read linearly past 2.5 V for TP412's
+    0.8–3.0 V offset band. That app refuses pre-v2.0 boards. Do not flash it
+    on a 406MCA rig: the LSB doubles (298 nV → 596 nV), the noise floor
+    changes, and `BAT?` loses accuracy because the unbuffered input loads the
+    AIN7 divider.
+  - To revert a rig, flash the matching folder under `versions/`; always
+    confirm with `IDN?` afterwards. Note v1.9 is a **verified reconstruction**
+    (it was never committed) — details in `versions/README.md`.
+- Bump the `IDN?` version string on every flash-relevant change, and snapshot
+  the outgoing build into `versions/` before editing `Eltec.ino`.
 - Serial: **500000 baud**, ASCII, `\n`-terminated lines.
 - **Boot heartbeat:** repeats `READY,...` (or `ERR,...`) every 2 s until the first
   command arrives, then goes quiet. This was added because the original one-shot
@@ -160,6 +182,24 @@ in `tech_app/v5_esp32`.
   AIN0 (DUT) by default, AIN1 (reference) via `STREAM,START,REF`. Mux constants:
   `MUX_SENSOR=0x08` (AIN0), `MUX_REF=0x18` (AIN1), `MUX_BATTERY=0x78` (AIN7),
   all vs AINCOM.
+- **v2.2 adds `STREAM,START,BOTH`**: AIN0 and AIN1 interleaved by cycling the
+  mux, for the two-detector IR telescope (`tech_app/ir_telescope`). Purely
+  additive; single-channel streaming is unchanged. **Measured on the bench rig
+  2026-08-17: 379 SPS per channel, pair skew 1.32 ms** (the announced 424 comes
+  from the datasheet's 1.18 ms settling figure — treat it as nominal and measure
+  the real one, which the host now does).
+- ⚠ **Mux cycling: read the conversion BEFORE touching the mux.** The
+  throughput-optimised order — `WREG MUX` → `SYNC` → `WAKEUP` → `RDATA`, so the
+  next channel's settling overlaps the SPI read — is *wrong on this board* and
+  was shipped briefly in v2.2 before hardware testing caught it. `SYNC` restarts
+  the converter and the output register is not safe to read across it. Verified
+  against the same physical input: AIN0 is pristine in single-channel mode
+  (sample-to-sample step max 6 mV, zero full-scale reads in 8000 samples) but
+  with `SYNC` before `RDATA` it produced 4.8 V single-sample jumps and hit
+  +full-scale 7 times in 8474 pairs. Reading first costs ~50 µs of overlap per
+  pair (397 → 379 SPS) and removes the corruption completely: step max 8 mV,
+  zero full-scale reads, zero glitches on both channels. **Do not "optimise"
+  this back.**
 - v1.7 explicitly self-calibrates after PGA/channel setup, reads back STATUS,
   MUX, ADCON, and DRATE before declaring READY, and honors ADS1256 t6/t10/t11
   command timing. A GPIO4 falling-edge ISR latches each DRDY event. `STREAM,END`
@@ -186,8 +226,30 @@ in `tech_app/v5_esp32`.
 | `REF?` | `REF,<volts>` (same median read, reference sensor on AIN1) |
 | `STREAM,START` | `STREAM,BEGIN,1000,SENSOR` then `D,<t_us>,<raw_code>,<volts>,<sync>` per sample (AIN0) |
 | `STREAM,START,REF` | `STREAM,BEGIN,1000,REF` — same format, reference sensor on AIN1 |
-| `STREAM,STOP` | `STREAM,END,<count>,<adc_overruns>` (overruns must be zero) |
+| `STREAM,START,BOTH` | **v2.2.** `STREAM,BEGIN,424,BOTH` then `P,<t0_us>,<v0>,<t1_us>,<v1>,<sync>` per PAIR — AIN0 and AIN1 interleaved. See the note below. |
+| `STREAM,STOP` | `STREAM,END,<count>,<adc_overruns>` (overruns must be zero; in BOTH mode `count` is PAIRS) |
 | (bad input) | `ERR,<message>` |
+
+**Dual-channel streaming (v2.2, for `tech_app/ir_telescope`).** The ADS1256 is
+one converter behind a mux, so two channels are read by cycling it. Three
+consequences that matter to any host:
+
+- **~379 SPS per channel, not 1000** (measured; the firmware announces a nominal
+  424 from the datasheet settling figure). Every mux change needs a `SYNC`, which
+  restarts the conversion and costs a full settling time, and the SPI read cannot
+  overlap it — see the mux-cycling warning above. The announced rate is nominal;
+  measure the real one from the timestamps.
+- **The two halves of a pair are NOT simultaneous.** AIN1 is converted ~1.32 ms
+  after AIN0 (measured), which is why each half carries its own timestamp.
+  Anything measuring a channel-to-channel lag must interpolate onto a common time
+  base; treating a pair as one instant builds a fixed ~1.3 ms bias into the
+  result.
+- **Raw codes are omitted** to keep the line short. Two channels at 500000 baud
+  leaves less headroom, and USB-serial overflow is this rig's known failure mode.
+
+`STREAM,STOP` restores the mux to AIN0, so the next `OFFSET?`/single-channel
+stream is unaffected. Single-channel streaming is byte-for-byte unchanged, so
+v2.2 is a drop-in replacement for v2.1 on the 405 M22 rig.
 
 ---
 
@@ -292,6 +354,16 @@ compares the reference sensor's pk-pk against it: drift ≥10% warns,
   instead of saving a result.
 - **Stream dropping samples:** close the serial monitor, avoid USB hubs, try a
   shorter cable. Any nonzero `adc_overruns` invalidates the capture.
+- **Gaps + DUPLICATE timestamps + host/firmware count mismatch on Windows
+  (root-caused 2026-08-17):** host-side, not the board. The Windows CP210x
+  driver grants only a 512-byte receive queue (the 1 MiB `SetupComm` request
+  is ignored), and Windows 11 on battery throttles a backgrounded GUI process
+  (EcoQoS + ~15.6 ms timer coarsening), so a sleep-paced reader wakes too late
+  and the driver queue wraps — dropping and re-delivering chunks. Fixed in
+  `tech_app/405m22_esp32/esp32_backend.py` (blocking-read drain thread, power
+  -throttling opt-out, `CE_RXOVER` attribution). If it recurs: keep the app
+  window visible during capture, plug into AC, and check USB selective
+  suspend is still Disabled in the power plan.
 
 ---
 

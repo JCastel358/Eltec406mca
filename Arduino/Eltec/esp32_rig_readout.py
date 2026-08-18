@@ -30,6 +30,16 @@ Usage:
                                                       # battery -> offset -> PWM on
                                                       # -> warmup -> AIN0 capture
                                                       # -> sensitivity analysis
+    python3 esp32_rig_readout.py noisecmp              # emitter-off noise, captured
+                                                      # back-to-back on the v2.0
+                                                      # (gain 1, unbuffered) AND
+                                                      # v1.9 (gain 2, buffered)
+                                                      # front ends - shows whether
+                                                      # a noise figure depends on
+                                                      # the front end (fw v2.1+)
+    add --fe v19 (or --fe v20) to stream/test/ref/offset to run that
+    measurement on the other front end (firmware v2.1+; the board resets
+    back to the v2.0 front end whenever the port closes)
     add --port COM5 (or --port /dev/ttyUSB0) to skip auto-detection
 
 Reference sensor / emitter health:
@@ -78,7 +88,27 @@ CALIBRATED_DIVIDER_FIRMWARE_VERSION = (1, 8)
 
 # Mirror the tester app's rig constants (eltec_406mca_emitter_tester.py).
 SAMPLE_RATE_HZ = 1000.0
-PWM_FREQUENCY_HZ = 10.0
+PWM_FREQUENCY_HZ = 10.0               # firmware boot default (406MCA drive)
+# Runtime-selectable drive (firmware v1.9+): the 405 M22 sensor is specified
+# at 1 Hz, so its checks run with --freq 1. Range enforced by the firmware.
+PWM_FREQ_FIRMWARE_VERSION = (1, 9)
+PWM_MIN_FREQUENCY_HZ = 0.1
+PWM_MAX_FREQUENCY_HZ = 20.0
+# Runtime-selectable ADS1256 front end (firmware v2.1+): lets the v2.0
+# (gain 1, buffer OFF) and v1.9 (gain 2, buffer ON) configurations be
+# A/B-compared on the same board without reflashing - e.g. to check whether
+# a noise reading depends on the front end. NOT persisted: any board reset
+# (including simply opening the serial port) returns it to v2.0, so the
+# switch is only meaningful within one session (--fe / noisecmp).
+FE_FIRMWARE_VERSION = (2, 1)
+FE_PRESETS = {
+    "v20": "gain 1, buffer OFF, +/-5 V full scale (v2.0 / 405 M22, boot default)",
+    "v19": "gain 2, buffer ON, +/-2.5 V full scale (v1.9 / 406MCA)",
+}
+FE_FULL_SCALE_V = {"v20": 5.0, "v19": 2.5}
+# Emitter-off noise windows, mirroring the 405 M22 app's TP412 noise test.
+NOISE_WINDOW_S = 1.0
+NOISE_LIMIT_MV = 300.0            # per-window pk-pk limit (context only here)
 EMITTER_WARMUP_S = 5.0            # EMITTER_WARMUP_S: thermal ramp before measuring
 DEFAULT_CAPTURE_S = 8.0
 # Battery: 6 V 4.5 Ah sealed lead-acid powering EVERYTHING (sensor buffer,
@@ -158,6 +188,7 @@ class Esp32Rig:
         self.port_name = port
         self.ser: serial.Serial | None = None
         self.firmware_version: tuple[int, int] | None = None
+        self.pwm_frequency_hz = PWM_FREQUENCY_HZ   # firmware boot default
 
     # -- lifecycle -------------------------------------------------------- #
     def connect(self) -> None:
@@ -258,6 +289,50 @@ class Esp32Rig:
     def disable_emitter_pwm(self) -> None:
         self._command("PWM,OFF", "OK,PWM,OFF")
 
+    def set_pwm_frequency(self, hz: float) -> None:
+        """Set the emitter drive frequency (firmware v1.9+).
+
+        The 406MCA rig runs at the 10 Hz boot default; the 405 M22 sensor is
+        specified at 1 Hz. The setting is not persisted on the board.
+        """
+        if not (PWM_MIN_FREQUENCY_HZ <= hz <= PWM_MAX_FREQUENCY_HZ):
+            raise ValueError(
+                f"PWM frequency {hz:g} Hz out of range "
+                f"({PWM_MIN_FREQUENCY_HZ:g}-{PWM_MAX_FREQUENCY_HZ:g} Hz)"
+            )
+        if (self.firmware_version is not None
+                and self.firmware_version < PWM_FREQ_FIRMWARE_VERSION):
+            raise RuntimeError(
+                "PWM,FREQ needs firmware v1.9 or newer - re-flash Eltec.ino "
+                "(the installed build only drives the fixed 10 Hz 406MCA rate)."
+            )
+        self._command(f"PWM,FREQ,{hz:g}", "OK,PWM,FREQ")
+        self.pwm_frequency_hz = hz
+
+    def set_front_end(self, preset: str) -> str:
+        """Switch the ADS1256 analog front end (firmware v2.1+).
+
+        preset: "v20" = gain 1 / buffer off (boot default),
+                "v19" = gain 2 / buffer on (the 406MCA front end).
+        The firmware SELFCALs and read-back-verifies before replying OK.
+        Not persisted - the board reverts to v20 on any reset, including
+        the DTR toggle when a host opens the port.
+        """
+        preset = preset.lower()
+        if preset not in FE_PRESETS:
+            raise ValueError(f"unknown front end {preset!r} (use v19 or v20)")
+        if (self.firmware_version is not None
+                and self.firmware_version < FE_FIRMWARE_VERSION):
+            raise RuntimeError(
+                "FE selection needs firmware v2.1 or newer - re-flash "
+                "Eltec.ino (the installed build has a fixed front end)."
+            )
+        return self._command(f"FE,{preset.upper()}", "OK,FE")
+
+    def read_front_end(self) -> str:
+        """FE,gain=<1|2>,buf=<0|1>,fs=<V> (firmware v2.1+)."""
+        return self._command("FE?", "FE,")
+
     def capture(self, seconds: float, progress: bool = True,
                 channel: str = "sensor") -> list[Sample]:
         """Stream one channel for `seconds` and return the samples.
@@ -285,21 +360,7 @@ class Esp32Rig:
             if progress and len(samples) % 1000 == 0:
                 print(f"  {len(samples)}/{target} samples...", end="\r")
         self._send("STREAM,STOP")
-        # Drain buffered stream lines until the END marker (or brief timeout).
-        drain_deadline = time.time() + 2.0
-        adc_overruns = 0
-        while time.time() < drain_deadline:
-            line = self._readline()
-            if line.startswith("STREAM,END"):
-                fields = line.split(",")
-                if len(fields) >= 4:
-                    try:
-                        adc_overruns = int(fields[3])
-                    except ValueError:
-                        raise RuntimeError(f"Malformed stream end marker: {line}")
-                break
-            if not line:
-                break
+        adc_overruns = self._drain_to_stream_end()
         if adc_overruns:
             raise RuntimeError(
                 f"ADC stream overran {adc_overruns} time(s); discard this capture "
@@ -311,6 +372,23 @@ class Esp32Rig:
             print(f"WARNING: expected ~{target} samples, got {len(samples)} - "
                   "check the serial link / baud rate.")
         return samples
+
+    def _drain_to_stream_end(self, timeout_s: float = 2.0) -> int:
+        """Consume buffered stream lines up to STREAM,END; return adc_overruns."""
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            line = self._readline()
+            if line.startswith("STREAM,END"):
+                fields = line.split(",")
+                if len(fields) >= 4:
+                    try:
+                        return int(fields[3])
+                    except ValueError:
+                        raise RuntimeError(f"Malformed stream end marker: {line}")
+                return 0
+            if not line:
+                break
+        return 0
 
 
 # --------------------------------------------------------------------------- #
@@ -438,7 +516,8 @@ def cmd_bat(rig: Esp32Rig, _args) -> None:
         print("   the ADS1256's buffered 3.0 V input limit near full charge)")
 
 
-def cmd_offset(rig: Esp32Rig, _args) -> None:
+def cmd_offset(rig: Esp32Rig, args) -> None:
+    _apply_fe(rig, args)
     v = rig.read_offset_voltage()
     if not (SENSOR_OFFSET_MIN_PLAUSIBLE_V <= v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V):
         state = "no sensor detected (floating/railed input)"
@@ -455,17 +534,37 @@ def _retarget_pin(rig: Esp32Rig, args) -> None:
         print(f"Gate drive retargeted to GPIO{args.pin} (until next reset)")
 
 
+def _apply_freq(rig: Esp32Rig, args) -> None:
+    """Apply --freq (405 M22 = 1 Hz) before the PWM is turned on."""
+    freq = getattr(args, "freq", None)
+    if freq is not None:
+        rig.set_pwm_frequency(freq)
+        print(f"Emitter drive frequency set to {freq:g} Hz (firmware v1.9+)")
+
+
+def _apply_fe(rig: Esp32Rig, args) -> None:
+    """Apply --fe before measuring (firmware v2.1+)."""
+    fe = getattr(args, "fe", None)
+    if fe:
+        rig.set_front_end(fe)
+        print(f"Front end: {fe} = {FE_PRESETS[fe.lower()]}")
+        if fe.lower() == "v19":
+            print("  NOTE: +/-2.5 V full scale - DC offsets above ~2.4 V clip"
+                  " on this front end (that is why v2.0 exists)")
+
+
 def cmd_pwm(rig: Esp32Rig, args) -> None:
     _retarget_pin(rig, args)
+    _apply_freq(rig, args)
     if args.state == "on":
         rig.enable_emitter_pwm()
-        print(f"Emitter PWM ON ({PWM_FREQUENCY_HZ:g} Hz, 50% duty)")
+        print(f"Emitter PWM ON ({rig.pwm_frequency_hz:g} Hz, 50% duty)")
         if getattr(args, "no_hold", False):
             print("  WARNING: closing the port resets the board, so the PWM"
                   " stops as soon as this command exits (--no-hold given)")
         else:
             print("  holding the port open so the PWM keeps running -"
-                  " module LED should be BLINKING at 10 Hz")
+                  f" module LED should be BLINKING at {rig.pwm_frequency_hz:g} Hz")
             try:
                 input("  press Enter (or Ctrl+C) to stop the PWM and exit... ")
             except (KeyboardInterrupt, EOFError):
@@ -510,6 +609,7 @@ def cmd_gate(rig: Esp32Rig, args) -> None:
 
 
 def cmd_stream(rig: Esp32Rig, args) -> None:
+    _apply_fe(rig, args)
     print(f"Streaming AIN0 for {args.seconds:g} s at {SAMPLE_RATE_HZ:g} Hz...")
     samples = rig.capture(args.seconds)
     if args.output:
@@ -523,10 +623,12 @@ def cmd_stream(rig: Esp32Rig, args) -> None:
 
 def cmd_ref(rig: Esp32Rig, args) -> None:
     """Measure the reference sensor (AIN1) to trend emitter health."""
+    _apply_fe(rig, args)
     if args.dc:
         v = rig.read_ref_voltage()
         print(f"Reference DC level (AIN1): {v:.4f} V  (PWM untouched)")
         return
+    _apply_freq(rig, args)
     print(f"Emitter PWM on, warming up {EMITTER_WARMUP_S:g} s (thermal ramp)")
     rig.enable_emitter_pwm()
     time.sleep(EMITTER_WARMUP_S)
@@ -545,8 +647,72 @@ def cmd_ref(rig: Esp32Rig, args) -> None:
         report_ref_health(r["sensitivity_mv"])
 
 
+def _windowed_pkpk_mv(samples: list[Sample],
+                      window_s: float = NOISE_WINDOW_S) -> list[float]:
+    """Per-window pk-pk in mV, same 1 s windowing as the 405 M22 noise test."""
+    n = int(window_s * SAMPLE_RATE_HZ)
+    volts = [s.volts for s in samples]
+    return [
+        (max(volts[i:i + n]) - min(volts[i:i + n])) * 1000.0
+        for i in range(0, len(volts) - n + 1, n)
+    ]
+
+
+def cmd_noisecmp(rig: Esp32Rig, args) -> None:
+    """Emitter-off noise captured back-to-back on BOTH front ends (fw v2.1+).
+
+    Directly answers "did the v2.0 gain/buffer change alter my noise
+    reading?": same part, same wiring, same session - only the ADS1256
+    front end differs between the two captures.
+    """
+    presets = ["v19", "v20"] if args.v19_first else ["v20", "v19"]
+    print("Emitter is kept OFF for the whole comparison (noise, not response).")
+    rig.disable_emitter_pwm()
+    results: dict[str, tuple[list[float], float, int]] = {}
+    for preset in presets:
+        print(f"\n[{preset}] {FE_PRESETS[preset]}")
+        rig.set_front_end(preset)
+        print(f"  settling {args.settle:g} s after the front-end SELFCAL...")
+        time.sleep(args.settle)
+        print(f"  capturing {args.seconds:g} s from AIN0...")
+        samples = rig.capture(args.seconds)
+        if args.output:
+            stem = args.output[:-4] if args.output.lower().endswith(".csv") \
+                else args.output
+            save_csv(samples, f"{stem}_{preset}.csv")
+        wins = _windowed_pkpk_mv(samples)
+        if not wins:
+            print("  not enough samples for even one window - aborting")
+            return
+        fs = FE_FULL_SCALE_V[preset]
+        clipped = sum(1 for s in samples if abs(s.volts) >= fs * 0.98)
+        mean_v = statistics.fmean(s.volts for s in samples)
+        results[preset] = (wins, mean_v, clipped)
+        if clipped:
+            print(f"  WARNING: {clipped} samples at the +/-{fs:g} V rail - this"
+                  " front end is CLIPPING, its noise figure is NOT comparable"
+                  + (" (DC offset too high for the v1.9 +/-2.5 V range)"
+                     if preset == "v19" else ""))
+
+    print(f"\nComparison ({len(results[presets[0]][0])} x {NOISE_WINDOW_S:g} s "
+          "windows each, emitter off):")
+    for preset in presets:
+        wins, mean_v, clipped = results[preset]
+        over = sum(1 for w in wins if w > NOISE_LIMIT_MV)
+        flag = "  [CLIPPED - not comparable]" if clipped else ""
+        print(f"  {preset}:  worst {max(wins):8.2f} mV pk-pk   "
+              f"median {statistics.median(wins):8.2f} mV   "
+              f"windows >{NOISE_LIMIT_MV:g} mV: {over}/{len(wins)}   "
+              f"mean level {mean_v:.4f} V{flag}")
+    print(f"  (405 M22 app context: PASS iff <=20% of windows exceed "
+          f"{NOISE_LIMIT_MV:g} mV pk-pk)")
+    print("  Board note: the front end reverts to v20 automatically on the "
+          "next reset/port-open.")
+
+
 def cmd_test(rig: Esp32Rig, args) -> None:
     """Full sequence in the same order as the tester app's Measure step."""
+    _apply_fe(rig, args)
     print("1/6  Battery check")
     cmd_bat(rig, args)
 
@@ -556,7 +722,9 @@ def cmd_test(rig: Esp32Rig, args) -> None:
     offset_v = rig.read_offset_voltage()
     print(f"     offset = {offset_v:.4f} V")
 
-    print(f"3/6  Emitter PWM on, warming up {EMITTER_WARMUP_S:g} s (thermal ramp)")
+    _apply_freq(rig, args)
+    print(f"3/6  Emitter PWM on ({rig.pwm_frequency_hz:g} Hz), "
+          f"warming up {EMITTER_WARMUP_S:g} s (thermal ramp)")
     rig.enable_emitter_pwm()
     time.sleep(EMITTER_WARMUP_S)
 
@@ -588,7 +756,8 @@ def cmd_test(rig: Esp32Rig, args) -> None:
           f"(cycle spread {r['pp_spread_mv']:.2f} mV over {r['cycles']} cycles)")
     print(f"     Polarity        : {r['polarity']} "
           f"(delta {r['polarity_delta_mv']:+.2f} mV while emitter driven)")
-    print(f"     PWM measured    : {r['pwm_hz']:.2f} Hz (expected {PWM_FREQUENCY_HZ:g})")
+    print(f"     PWM measured    : {r['pwm_hz']:.2f} Hz "
+          f"(expected {rig.pwm_frequency_hz:g})")
 
 
 def main() -> None:
@@ -596,14 +765,22 @@ def main() -> None:
     ap.add_argument("--port", help="serial port (COM5, /dev/ttyUSB0); auto-detect if omitted")
     sub = ap.add_subparsers(dest="command", required=True)
 
+    fe_help = ("ADS1256 front end for this run (firmware v2.1+): v20 = gain 1/"
+               "buffer off (boot default), v19 = gain 2/buffer on (406MCA-era; "
+               "clips above ~2.4 V). Reverts to v20 when the port closes.")
+
     sub.add_parser("ports", help="list serial ports")
     sub.add_parser("bat", help="read the 6V battery")
-    sub.add_parser("offset", help="read the sensor DC offset")
+    p = sub.add_parser("offset", help="read the sensor DC offset")
+    p.add_argument("--fe", choices=["v19", "v20"], help=fe_help)
     p = sub.add_parser("pwm", help="emitter PWM on/off")
     p.add_argument("state", choices=["on", "off"])
     p.add_argument("--pin", type=int,
                    help="retarget gate GPIO first (2/12/13/14/25/26/27/32/33; "
                         "2 = onboard LED)")
+    p.add_argument("--freq", type=float,
+                   help="drive frequency in Hz (firmware v1.9+; 405 M22 = 1, "
+                        "default = board's 10 Hz)")
     p.add_argument("--no-hold", action="store_true",
                    help="exit immediately instead of holding the port open "
                         "(the drive drops when the port closes - board resets)")
@@ -618,17 +795,40 @@ def main() -> None:
     p = sub.add_parser("stream", help="capture the waveform stream")
     p.add_argument("-s", "--seconds", type=float, default=DEFAULT_CAPTURE_S)
     p.add_argument("-o", "--output", help="save samples to this CSV file")
+    p.add_argument("--fe", choices=["v19", "v20"], help=fe_help)
+    p = sub.add_parser("noisecmp",
+                       help="emitter-off noise A/B: v2.0 vs v1.9 front end "
+                            "back-to-back (firmware v2.1+)")
+    p.add_argument("-s", "--seconds", type=float, default=20.0,
+                   help="capture length per front end (default 20 s, same as "
+                        "the 405 M22 app's noise test)")
+    p.add_argument("--settle", type=float, default=5.0,
+                   help="settling wait after each front-end switch (default 5 s)")
+    p.add_argument("-o", "--output",
+                   help="save both captures as <output>_v20.csv / <output>_v19.csv")
+    p.add_argument("--v19-first", action="store_true",
+                   help="capture the v1.9 front end first (default order: "
+                        "v20 then v19; rerun with this flag to rule out "
+                        "order/drift effects)")
     p = sub.add_parser("ref", help="measure the reference sensor (emitter health)")
     p.add_argument("-s", "--seconds", type=float, default=DEFAULT_CAPTURE_S)
+    p.add_argument("--freq", type=float,
+                   help="drive frequency in Hz (firmware v1.9+; 405 M22 = 1, "
+                        "default = board's 10 Hz)")
     p.add_argument("--set-baseline", action="store_true",
                    help="record this reading as the known-good emitter baseline")
     p.add_argument("--dc", action="store_true",
                    help="quick DC read of AIN1 only (no PWM / warm-up) - wiring checks")
+    p.add_argument("--fe", choices=["v19", "v20"], help=fe_help)
     p = sub.add_parser("test", help="full battery -> offset -> ref -> capture sequence")
     p.add_argument("-s", "--seconds", type=float, default=DEFAULT_CAPTURE_S)
     p.add_argument("-o", "--output", help="save samples to this CSV file")
+    p.add_argument("--freq", type=float,
+                   help="drive frequency in Hz (firmware v1.9+; 405 M22 = 1, "
+                        "default = board's 10 Hz)")
     p.add_argument("--skip-ref", "--no-ref", dest="skip_ref", action="store_true",
                    help="skip the optional AIN1 reference-sensor check")
+    p.add_argument("--fe", choices=["v19", "v20"], help=fe_help)
 
     args = ap.parse_args()
     if args.command == "ports":
@@ -643,7 +843,8 @@ def main() -> None:
     leave_on = args.command in ("pwm", "gate") and args.state == "on"
     try:
         {"bat": cmd_bat, "offset": cmd_offset, "pwm": cmd_pwm, "ref": cmd_ref,
-         "gate": cmd_gate, "stream": cmd_stream, "test": cmd_test}[args.command](rig, args)
+         "gate": cmd_gate, "stream": cmd_stream, "test": cmd_test,
+         "noisecmp": cmd_noisecmp}[args.command](rig, args)
     finally:
         rig.close(disable_pwm=not leave_on)
 
