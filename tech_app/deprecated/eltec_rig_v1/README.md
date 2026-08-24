@@ -1,11 +1,4 @@
-# Eltec Test Rig — unified sensor tester (v2.0)
-
-**v2.0 (2026-08-24) — Skip part, footer Re-measure, attempt history.** Every
-older app (`405m22_esp32`, `v6_1_esp32`, `v6_esp32`, `v5_esp32`, the v1–v4
-LabJack apps, `v6_1_failure_calibration`) now lives in
-[`tech_app/deprecated/`](../deprecated/), together with a frozen snapshot of
-this app as it was before v2.0 (`deprecated/eltec_rig_v1/`). See
-[What changed in v2.0](#what-changed-in-v20) below.
+# Eltec Test Rig — unified sensor tester
 
 One desktop application for every sensor model the ESP32/ADS1256 rig can
 test. On start it shows a **sensor version dropdown**; picking a version and
@@ -18,7 +11,6 @@ sessions.
 tech_app/eltec_rig/
 ├── eltec_rig_tester.py          # the selector GUI (this app's entry point)
 ├── sensor_versions.py           # registry: one entry per testable model
-├── attempt_history.py           # v2.0: per-batch *_attempts.csv log + skipped-parts queue (shared by both models)
 ├── m405m22/                     # Model 405 M22 (1 Hz, TP412) tester + its 165-test suite
 ├── m406mca/                     # Model 406 MCA (10 Hz, v6.1 policy) tester + its 99-test suite
 ├── v1_single_sensor/            # shared 406MCA analysis/pass-fail engine (vendored)
@@ -76,9 +68,9 @@ arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
   measurable on the legacy AIN7 divider. The header shows "Battery: not
   monitored". Re-enable per model once the sensor battery is measurable (the
   plan is AIN6 through a ≥4:1 divider).
-- **Both models' reference gates are disabled** (`REFERENCE_GATE_ENABLED =
-  False`; 405 M22 since 2026-08-17, 406 MCA since 2026-08-24) until the
-  channel-isolated buffer board is installed.
+- The 405 M22 model's reference gate remains disabled
+  (`REFERENCE_GATE_ENABLED = False`) until the channel-isolated buffer board
+  is installed; the 406 MCA flow still uses its reference gate.
 
 ## Running it
 
@@ -98,84 +90,6 @@ The selector remembers the last-used sensor version in
 `~/.local/state/eltec-rig/state.json` (Xubuntu) /
 `%LOCALAPPDATA%\eltec-rig\state.json` (Windows). Only one tester can run at a
 time — both models share the same board and serial port.
-
-## What changed in v2.0
-
-### Footer (both models)
-
-The action bar at the bottom is now the only place the technician acts on a
-part, laid out left → right:
-
-| Button | Colour | When shown | What it does |
-| --- | --- | --- | --- |
-| **Back** | grey | always | as before |
-| **Measure skipped (N)** | blue outline | when skipped parts are waiting | loads the skipped pile, first skipped first |
-| **Skip part** | amber | load + result steps | sets the part aside **without spending its number** |
-| **Re-measure** | blue outline | result step | runs the test again (moved here from the small tools row) |
-| **Save + Exit Batch (Esc)** | blue outline | result step | as before |
-| **Save + Next Sensor (Enter)** | **green** | result step | as before |
-
-Buttons are one size larger than before; the tools row under the verdict
-keeps only Comment / Capture waveform / Save noise capture and the two
-toggles. The "nothing was recorded" view keeps its **Record as NOT
-MEASURED** option (writes the NOT MEASURED verdict row) next to the new Skip.
-
-### Skip part → Measure skipped
-
-- **Skip part** asks only for an optional comment (no reason list — two
-  clicks), then moves on to the next fresh number. The skipped id stays open: it is
-  never handed out again (`_next_fresh_sensor_number` looks at both the
-  batch CSV and the attempt log), so a part is never counted twice.
-- The skipped parts form a **first-skipped-first-measured pile**. When the
-  technician reaches it, **Measure skipped (N)** shows the ids in order and
-  loads the first one; after each save the next skipped id loads
-  automatically (heading shows "(skipped part)") until the pile is empty,
-  then fresh numbers resume. A part skipped again goes to the back of the
-  pile. The batch summary lists anything still skipped, and re-opening a
-  batch shows the waiting pile in the status line.
-- Skipping does not write a verdict row; nothing about the CSV format of a
-  saved sensor changed except two new trailing columns (below).
-
-### Attempt history (why was it re-measured / skipped?)
-
-Each batch now has a sibling **`<lot>_attempts.csv`** next to its results
-CSV with one row per event: `measured` (every finished measurement with its
-verdict, offset, sensitivity, polarity, noise worst pk-pk, fail reasons),
-`measure_error` (nothing recorded + the rig error), `remeasure` (the verdict
-that was discarded), `skipped` (the comment + whatever verdict was on
-screen), `resumed`, `saved`. The verdict row gains **`measure_attempts`**
-and **`skip_count`** so the count is visible without opening the log. Older
-batch CSVs keep their header (rows stay aligned, the two columns are simply
-absent). Autosave payloads carry `resuming_skipped`, `measure_attempts`,
-`skip_count`.
-
-### Shorted / dead sensor vs. empty slot (both models)
-
-A shorted or dead part floats AIN0 exactly like an empty slot. Instead of a
-hard "No sensor detected" wiring error, the app now asks **"Is a sensor
-loaded?"** — *Yes* records the part as a FAIL with no offset (failure mode
-preset to **SB - Sensor bad**, reason "No offset: AIN0 reads x V with a
-sensor loaded"), ready to save; *No* keeps the old behaviour (nothing
-recorded, seat the sensor and measure again).
-
-### 406 MCA reference gate disabled (2026-08-24)
-
-`REFERENCE_GATE_ENABLED = False` in `m406mca/eltec_406mca_esp32_tester.py`,
-exactly like the 405 M22 build: the shared dual op-amp buffer has no channel
-isolation, so the sensor under test couples into AIN1 and the reference could
-not be calibrated. No calibration is required to test; the load-step card
-says "Reference gate disabled (op-amp crosstalk)"; `reference_*` CSV columns
-stay blank. All gate code is intact and unit-tested with the flag forced on —
-set it back to `True` and run a fresh "Calibrate reference unit" once the
-channel-isolated op-amp board is installed.
-
-### Tests
-
-`tests/test_attempt_history.py` (14 tests: the log/queue module and the
-skip → resume → fresh-number flow driven through BOTH models' real
-`EmitterTesterApp` methods, plus the footer palette); the model suites'
-harnesses gained the three v2.0 attributes. Existing verdict logic,
-thresholds and calibrations are untouched.
 
 ## Tests
 
@@ -200,9 +114,8 @@ the v3.0 baseline cannot already select over serial.
 
 Created 2026-08-18 by unifying `tech_app/405m22_esp32` and
 `tech_app/v6_1_esp32` behind one selector. Those original directories remain
-in the repository untouched as the qualified standalone builds (moved to
-`tech_app/deprecated/` with v2.0 on 2026-08-24, contents unchanged); new work
-on either model happens **here**. The changes made to the bundled copies relative
+in the repository untouched as the qualified standalone builds; new work on
+either model happens **here**. The changes made to the bundled copies relative
 to the originals:
 
 - `m406mca/esp32_backend.py`: selects the qualified front end (`FE,V19` +

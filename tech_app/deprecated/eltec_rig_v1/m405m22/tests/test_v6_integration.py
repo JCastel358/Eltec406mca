@@ -2301,9 +2301,6 @@ class RawNoiseCaptureTests(unittest.TestCase):
         saver = SimpleNamespace(
             last_result=final,
             last_metrics=None,
-            measure_attempts=1,
-            skip_count=0,
-            _log_attempt=lambda *args, **kwargs: None,
             last_capture_report=None,
             last_noise_report=measure.last_noise_report,
             last_noise_metrics=measure.last_noise_metrics,
@@ -2634,78 +2631,6 @@ class FakeVar:
         self._value = value
 
 
-class NoSensorPromptTests(unittest.TestCase):
-    """A floating AIN0 asks whether a sensor is loaded; yes = bad part."""
-
-    def test_floating_ain0_raises_the_askable_error(self):
-        device = FakeMeasurementDevice(offset=0.02)
-        harness = MeasurementHarness(device)
-        with mock.patch.object(app, "OFFSET_WAKE_TIMEOUT_S", 0.0):
-            with self.assertRaises(app.NoSensorDetectedError) as ctx:
-                app.EmitterTesterApp._hardware_measurement(
-                    harness, app.DEFAULT_FILTER_SETUP, app.WAVEFORM_INPUT_RANGE_V,
-                    app.EMITTER_PWM_CHANNEL, app.EMITTER_PWM_FREQUENCY_HZ,
-                    app.EMITTER_PWM_DUTY_CYCLE, False, harness.measure_token,
-                    lambda callback: callback(),
-                )
-        self.assertIsInstance(ctx.exception, app.HardwareNotReadyError)
-        self.assertAlmostEqual(ctx.exception.offset_v, 0.02)
-
-    def test_bad_sensor_result_fails_with_no_offset_and_no_readings(self):
-        metrics, final = app.build_no_output_sensor_result(0.012, input_range_v=app.WAVEFORM_INPUT_RANGE_V)
-        self.assertFalse(final.passed)
-        self.assertEqual(app.result_outcome(final), app.OUTCOME_FAIL)
-        self.assertAlmostEqual(final.offset_v, 0.012)
-        self.assertIsNone(final.sensitivity_mv)
-        self.assertIn("No offset", final.fail_reasons[0])
-        self.assertEqual(metrics.cycles_used, 0)
-        self.assertIn(app.BAD_SENSOR_FAILURE_MODE, app.FAILURE_MODE_CHOICES)
-
-    def _harness(self, answer):
-        events = []
-        h = SimpleNamespace(
-            measure_token=3, measuring=True, busy=True, current_sensor_id="B1-4",
-            last_metrics=None, last_result=None, last_offset_initial_v=None,
-            last_measure_error=None, last_noise_report=None, last_noise_metrics=None,
-            preview_waveform=None, preview_sync=None,
-            failure_mode_var=FakeVar(""),
-            status_var=FakeVar(""),
-            measure_status_var=FakeVar(""),
-            write_autosave=lambda stage: events.append(("autosave", stage)),
-            render_step=lambda: events.append(("render",)),
-            _reset_measure_progress=lambda: events.append(("progress_reset",)),
-            _log_attempt=lambda event, **kw: events.append(("log", event)),
-            _confirm_sensor_loaded=lambda exc: answer,
-            events=events,
-        )
-        h.record_bad_sensor = lambda v: app.EmitterTesterApp.record_bad_sensor(h, v)
-        return h
-
-    def test_yes_records_a_failed_sensor_instead_of_a_wiring_error(self):
-        h = self._harness(True)
-        exc = app.NoSensorDetectedError("No sensor detected", 0.01)
-        with mock.patch.object(app.messagebox, "showwarning") as warn:
-            app.EmitterTesterApp.on_hardware_not_ready(h, 3, exc)
-        warn.assert_not_called()
-        self.assertFalse(h.measuring); self.assertFalse(h.busy)
-        self.assertIsNotNone(h.last_result)
-        self.assertFalse(h.last_result.passed)
-        self.assertIsNone(h.last_measure_error)
-        self.assertEqual(h.failure_mode_var.get(), app.BAD_SENSOR_FAILURE_MODE)
-        self.assertIn(("log", app.attempt_history.EVENT_MEASURED), h.events)
-        self.assertIn(("render",), h.events)
-
-    def test_no_keeps_the_wiring_warning(self):
-        h = self._harness(False)
-        exc = app.NoSensorDetectedError("No sensor detected", 0.01)
-        with mock.patch.object(app.messagebox, "showwarning") as warn:
-            app.EmitterTesterApp.on_hardware_not_ready(h, 3, exc)
-        warn.assert_called_once()
-        self.assertIsNone(h.last_result)
-        self.assertIn("No sensor detected", h.last_measure_error)
-        self.assertIn(("log", app.attempt_history.EVENT_MEASURE_ERROR), h.events)
-
-
 class NotMeasuredSkipTests(unittest.TestCase):
     """A sensor the rig could not read is recorded, not silently retried."""
 
@@ -2739,9 +2664,6 @@ class NotMeasuredSkipTests(unittest.TestCase):
             tester_name="Operator",
             filter_setup=app.DEFAULT_FILTER_SETUP,
             last_offset_initial_v=None,
-            measure_attempts=1,
-            skip_count=0,
-            _log_attempt=lambda *args, **kwargs: None,
             failure_mode_var=FakeVar(""),
             notes_var=FakeVar(""),
             status_var=FakeVar(""),

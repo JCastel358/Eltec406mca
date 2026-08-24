@@ -1,49 +1,67 @@
 """
-Eltec 406MCA ESP32 emitter tester v6.1 - strict retry evaluation build.
+Eltec 405 M22 ESP32 tester - TP412 evaluation build (based on v6.1).
 
-The measurement engine and guided flow come from the proven v4 LabJack tester,
-but the hardware backend is the ESP32 + ADS1256 rig used on Xubuntu:
+This build adapts the 406MCA v6.1 ESP32 tester to the Model 405 M22 high-gain
+thermally compensated pyroelectric detector, following document TP412. The
+405 M22's responsivity is specified at 1 Hz, so the emitter chop is 1 Hz / 50%
+(the backend programs PWM,FREQ before every PWM,ON) and every timing constant
+is retimed for 1-second PWM cycles. Sensitivity PASS/FAIL limits are NOT yet
+qualified on this fixture - the sensitivity gate is disabled until a
+comparison batch (~50 sensors measured on the legacy fixture and on this rig
+in the same order) yields the fixture calibration factor. A TP412-style
+emitter-off NOISE test runs after the offset gate and BEFORE the driven
+sensitivity capture, so a noisy part is rejected early.
 
-    - Deep Eltec-blue gradient app bar with an animated signal trace
-    - Numbered step rail ("01 / 02 / 03") with animated progress transitions
-    - Rounded, soft-shadow cards with the Eltec technical gradient accent
-    - Custom hover-animated rounded buttons and an animated toggle switch
-    - Count-up result tiles, PASS/FAIL banner sweep, scanning-beam scope view
-    - Dark navy oscilloscope panel with grid + glow traces (site "dark section"
-      look), with a clean monospace face for technical readouts
+The hardware backend is the same ESP32 + ADS1256 rig used on Xubuntu and
+requires firmware v2.0 (ADS1256 at PGA gain 1 with the input buffer off, so
+the full 0.8-3.0 V TP412 offset band reads linearly).
 
-This app drives the test rig itself: the ESP32 generates a 10 Hz / 50% PWM
-signal on GPIO25 that switches a MOSFET module to drive the black-body emitter.
-An ADS1256 reads the 406MCA through a unity-gain voltage-follower buffer,
-preserving the ~0.667 V DC offset and the small AC waveform.
-
-Wiring:
-    ADS AIN0 = buffered DUT sensor (DC offset + AC waveform), +/-2.5 V range
+Wiring / power (batteries isolated 2026-08-12 to fix the emitter spike):
+    ADS AIN0 = buffered DUT sensor (DC offset + AC waveform), +/-5 V range
     ADS AIN1 = permanently-mounted reference sensor (required emitter-health gate)
-    ADS AIN7 = 6 V SLA battery through the measured 99.7k/99.6k divider
-               with 100 nF filtering across the lower resistor
+    ADS AIN7 = legacy battery divider tap - NOT MONITORED anymore (see below)
     GPIO25   = PWM output to the MOSFET module
     sync     = the ESP32 PWM state included with every streamed sample
+    6.5 V battery -> emitters ONLY (via the MOSFET module)
+    9 V battery   -> sensors (DUT + AIN1 reference buffer supplies)
 
-The emitter is always driven with a fixed 50% duty-cycle square wave, so the
-technician never has to think about PWM settings - they only pick the filter.
+Model 405 M22 notes (Data-Sheet-Model-405 + TP412):
+    - JFET source-follower with gain (~5x with a 100k source resistor); the
+      TP412 offset band is 0.8-3.0 V and is gated in full (firmware v2.0's
+      gain-1/unbuffered front end reads to ~3.5 V linearly).
+    - Thermal breakpoint is ~0.2 Hz and responsivity is specified at 1 Hz,
+      hence the 1 Hz chop. Cycles last a full second: reference readings and
+      DUT captures take roughly ten times longer than on the 406MCA build.
+    - TP412 noise: emitter off, a fixed 3 s quiet wait, then a 20 s capture.
+      This build cuts the 20 s capture into 1 s windows and fails the part
+      when more than 20% of the windows exceed the pk-pk limit (deliberately
+      looser than TP412's zero-tolerance largest-excursion rule; the sensors
+      are extremely sensitive and a few excursions are acceptable). TP412's
+      300 mV was read behind the legacy x4000 bench amplifier, so the
+      pin-level limit is 75 uV pk-pk, gated on a band-limited (anti-alias
+      FIR, 1000 -> 50 SPS) trace - see the NOISE_* constants. Provisional until
+      the comparison batch qualifies it. There is no settle detection: with
+      the emitter off there is no signal to stabilize, only noise.
+    - The AIN1 reference sensor baseline must be calibrated by THIS build at
+      1 Hz; 406MCA baselines (10 Hz chop) are deliberately not read, and any
+      baseline recorded before firmware v2.0 is rejected by schema version.
 
 Guided flow:
-    1. Calibrate AIN1 with a known-good emitter, then enter the batch details.
+    1. Calibrate AIN1 with a known-good emitter, then enter the batch details
+       (including the TP412 filter setup: -625, -628, or -629).
     2. Place the sensor in the rig and press Enter.
-    3. The app checks the AIN1 reference against its calibration before it reads
-       AIN0. If AIN1 spikes high, the app checks the DUT offset before deciding
-       whether to lock: a confirmed high-offset DUT is allowed to fail normally
-       without invalidating AIN1; every other out-of-window reference locks
-       testing until the emitter is checked and the reference is calibrated.
-    4. The app reads the DUT DC offset (PWM off), then turns on the emitter and
-       measures sensitivity and polarity, shows the numbers and a GOOD/BAD
-       polarity verdict, and turns the screen green (PASS) or red (FAIL).
-       Leave a comment, capture the waveform for troubleshooting, or watch the
-       live waveform while it reads.
+    3. The app checks the AIN1 reference against its calibration before it
+       reads AIN0, then runs the per-part steps in TP412 order with a step
+       progress bar: (a) DUT DC offset, PWM off - an out-of-band offset fails
+       the part immediately; (b) emitter-off noise - 3 s quiet wait plus the
+       20 s windowed capture, shown band-limited as range-around-mean with
+       red ±37.5 µV cutoff lines (the 75 µV pk-pk pin-level limit), and a
+       noisy part fails without a sensitivity capture;
+       (c) sensitivity - 1 Hz emitter drive, peak stability, then the
+       10-cycle chopped-response measurement.
 
 Run:
-    python3 eltec_406mca_esp32_tester.py
+    python3 eltec_405m22_esp32_tester.py
 """
 
 from __future__ import annotations
@@ -69,23 +87,14 @@ import numpy as np
 # is provided locally by esp32_backend.py.
 import sys
 
-_RIG_PACKAGE_DIR = Path(__file__).resolve().parents[1]
-if str(_RIG_PACKAGE_DIR) not in sys.path:
-    sys.path.insert(0, str(_RIG_PACKAGE_DIR))
-import attempt_history  # noqa: E402 - v2.0 per-batch attempt / skip log
-
 _V1_TESTER_DIR = Path(__file__).resolve().parents[1] / "v1_single_sensor"
 if str(_V1_TESTER_DIR) not in sys.path:
     sys.path.insert(0, str(_V1_TESTER_DIR))
 
+import eltec_406mca_tester as _shared_engine
 from eltec_406mca_tester import (
-    DEFAULT_EMITTER_PWM_FREQUENCY_HZ,
     DEFAULT_SAMPLE_RATE_HZ,
-    EXPECTED_FREQUENCY_HZ,
     FILTER_SPECS_MV,
-    MODEL_NAME,
-    OFFSET_MAX_V,
-    OFFSET_MIN_V,
     POSITIVE_POLARITY,
     PROCEDURE_SYNC_EDGE,
     SIM_CASES,
@@ -98,6 +107,57 @@ from eltec_406mca_tester import (
     simulate_offset_v,
 )
 
+# ---- Model 405 M22 overrides of the shared 406MCA engine ------------------- #
+# The shared v1 engine carries 406MCA constants. The 405 M22 is chopped at
+# 1 Hz (its responsivity spec frequency) and gates the full TP412 offset band
+# of 0.8-3.0 V (firmware v2.0 runs the ADS1256 at gain 1 with the input buffer
+# off, so the band reads linearly). The engine's gate functions read these as
+# module globals at call time, so patching the module keeps every shared gate
+# consistent.
+MODEL_NAME = "405M22"
+EXPECTED_FREQUENCY_HZ = 1.0
+OFFSET_MIN_V = 0.8
+OFFSET_MAX_V = 3.0
+_shared_engine.MODEL_NAME = MODEL_NAME
+_shared_engine.EXPECTED_FREQUENCY_HZ = EXPECTED_FREQUENCY_HZ
+_shared_engine.OFFSET_MIN_V = OFFSET_MIN_V
+_shared_engine.OFFSET_MAX_V = OFFSET_MAX_V
+
+# TP412 sensitivity setups for the 405 M22 (legacy scope mV, measured with the
+# blackened tube + extra -25B filter at 10 cm from the 500 K blackbody).
+# FILTER_SPECS_MV is the SAME dict object inside the shared engine, this
+# module, the setup-step combobox, and the simulator - mutate it IN PLACE so
+# every reader stays synchronized. It keeps the engine's historical shape
+# (filter -> legacy minimum); the full TP412 min-max ranges live in
+# FILTER_RANGES_MV for the (future) over-max gate and the operator hint.
+FILTER_SPECS_MV.clear()
+FILTER_SPECS_MV.update(
+    {
+        "-625 filter": 5.99,
+        "-628 filter": 4.22,
+        "-629 filter": 4.92,
+    }
+)
+FILTER_RANGES_MV = {
+    "-625 filter": (5.99, 11.98),
+    "-628 filter": (4.22, 8.44),
+    "-629 filter": (4.92, 9.84),
+}
+
+
+def simulate_offset_v(case_name: str) -> float:  # noqa: F811 - 405 M22 override
+    """Simulator offsets matched to the 405 M22's 0.8-3.0 V TP412 band."""
+    import random as _random
+
+    if case_name == "Low offset":
+        return 0.55
+    if case_name == "High offset":
+        return 5.0    # railed at the ADS full scale - the real high-offset signature
+    return _random.uniform(1.0, 1.8)
+
+
+_shared_engine.simulate_offset_v = simulate_offset_v
+
 from esp32_backend import (
     BATTERY_DIVIDER_FILTER_CAPACITANCE_F,
     BATTERY_DIVIDER_RATIO,
@@ -106,16 +166,27 @@ from esp32_backend import (
     EXPECTED_FIRMWARE_PREFIX,
     Esp32BackendError,
     Esp32EmitterRig,
+    StreamSample,
+    _opt_out_of_windows_power_throttling,
     probe_esp32_status,
 )
+
+# Windows 11 on battery demotes a backgrounded GUI process to EcoQoS and
+# coarsens its timers to ~15.6 ms, which overflows the CP210x driver's real
+# 512-byte receive queue mid-capture (2026-08-17 root cause). Opt the whole
+# process out as early as possible - before the first reference calibration
+# capture, not merely at rig connect.
+_opt_out_of_windows_power_throttling()
 from stability_analysis import (
     CycleAnalysis,
     DEFAULT_MAX_MEASUREMENT_ATTEMPTS,
     DEFAULT_SETTINGS_PATH,
+    NoiseAnalysis,
     StabilityAnalysis,
     StabilitySettings,
     StabilitySettingsError,
     SyncValidationError,
+    analyze_noise_capture_band_limited,
     analyze_stability,
     load_stability_settings,
     rising_edge_indices,
@@ -126,9 +197,9 @@ from stability_analysis import (
 # external gain is always 1.0 and the offset rides on the waveform channel.
 RIG_GAIN = 1.0
 
-# Technicians run the "-6" setup (the -284 + extra -6 + blackened tube) about
-# 80% of the time, so it is the default selection.
-DEFAULT_FILTER_SETUP = "-284 filter + extra -6 + blackened tube"
+# TP412 lists -625 first; the operator picks the actual filter setup per batch
+# on the setup step.
+DEFAULT_FILTER_SETUP = "-625 filter"
 
 # Standard production failure taxonomy. This is the same set used by the
 # scope-verification workflow, minus its non-failure GOOD entry.
@@ -161,35 +232,69 @@ FAILURE_MODE_CHOICES = (
 UNSTABLE_FAILURE_MODE = "Unstable - Unstable"
 SENSITIVITY_RETEST_FAILURE_MODE = "RETEST - Sensitivity guard band"
 
+# A sensor can also leave the fixture without any verdict: the rig or the
+# serial stream failed and nothing was recorded, so there is no offset,
+# sensitivity or polarity to judge. Those sensors are written as NOT MEASURED
+# rows - they keep the batch CSV complete (no silent hole in the sensor
+# numbering) while staying out of the pass/fail statistics and the yield.
+# They are NOT part of the production failure taxonomy above, so they never
+# appear in the failure-mode picker on a measured sensor.
+NOT_MEASURED_TAG = "NM"
+NOT_MEASURED_REASON_PREFIX = "Not measured:"
+NOT_MEASURED_REASON_CHOICES = (
+    "NM - Not measured: ESP32 stream/rig fault",
+    "NM - Not measured: sensor could not be loaded",
+    "NM - Not measured: skipped by technician",
+)
+DEFAULT_NOT_MEASURED_REASON = NOT_MEASURED_REASON_CHOICES[0]
+
 OUTCOME_PASS = "PASS"
 OUTCOME_FAIL = "FAIL"
 OUTCOME_RETEST = "RETEST"
+OUTCOME_NOT_MEASURED = "NOT MEASURED"
 
 # Fixed ESP32 rig settings. Technicians never change these in production.
+# 405 M22: 1 Hz chop (responsivity spec frequency) for the DUT; the backend
+# programs the board with PWM,FREQ on every activation (firmware v2.0
+# required overall). The permanently mounted AIN1 reference unit is a 406MCA
+# sensor, so every reference phase (calibration and the per-test gate) drives
+# the emitter at that model's qualified 10 Hz instead — its baseline is then
+# directly comparable to the sensor's historical 10 Hz characterization, and
+# the ~10x shorter reference captures also reduce serial-stream exposure.
 EMITTER_PWM_CHANNEL = "GPIO25"
-EMITTER_PWM_FREQUENCY_HZ = DEFAULT_EMITTER_PWM_FREQUENCY_HZ
+EMITTER_PWM_FREQUENCY_HZ = 1.0
+REFERENCE_PWM_FREQUENCY_HZ = 10.0
 EMITTER_PWM_DUTY_CYCLE = 50.0
-WAVEFORM_INPUT_RANGE_V = 2.5  # ADS1256 PGA x2 with 2.5 V reference => +/-2.5 V
+WAVEFORM_INPUT_RANGE_V = 5.0  # ADS1256 PGA x1 (firmware v2.0), buffer off => +/-5 V
 
-# 6 V SLA watcher. Firmware reads ADS1256 AIN7 through the measured
-# 99.7k/99.6k divider (ratio 2.001004) and returns battery volts after its
-# 12-sample median and scaling. The backend compatibility-corrects v1.7
-# firmware; v1.8+ applies the measured ratio on the ESP32 itself.
-#
-# Battery monitoring is DISABLED on the unified test rig (2026-08-18): since
-# the 2026-08-12 fixture rewiring the 6.5 V battery drives the emitters only,
-# the 9 V battery drives the sensors, and neither is measurable on the legacy
-# AIN7 divider — with firmware v2.x/v3.x the ADS1256 also runs unbuffered on
-# that pin, loading the divider. This mirrors the 405 M22 build's flag.
-# TODO(hardware): measure the sensor battery on AIN6 with a >=4:1 divider and
-# re-enable this gate with thresholds for the actual supply. On a legacy
-# standalone 406MCA rig with the 6 V SLA still wired to AIN7, set this back
-# to True. All battery machinery below is kept intact for that re-enable.
+# Battery monitoring is DISABLED on this fixture (2026-08-12 rewiring): the
+# 6.5 V battery drives the emitters only and the 9 V battery drives the
+# sensors. Neither battery is measurable on AIN7 - the legacy ~2:1 divider
+# would put a 9 V pack at ~4.5 V on the pin, and firmware v2.0 runs the
+# ADS1256 unbuffered, which loads that resistive divider anyway.
+# TODO(hardware): measure the sensor battery on AIN6 with a >=4:1 divider
+# (e.g. 300k/100k) and re-enable this gate with thresholds for the actual
+# supply (the plan is to step the sensor supply down to ~8 V, or use an 8 V
+# battery, so the noise limits stay comparable to TP412's +8 V bench supply).
+# All battery machinery below is kept intact for that re-enable.
 BATTERY_MONITORING_ENABLED = False
 BATTERY_MIN_V = 5.8               # hard block: recharge at or below this
 BATTERY_WARN_V = 6.0              # early warning band (testing is still allowed)
+
+# Reference gate is DISABLED (2026-08-17): the fixture's buffer/voltage
+# follower is a dual op-amp with no channel isolation, so the sensor under
+# test couples into the AIN1 reference signal (seen as the reference reading
+# collapsing 4.94 -> 0.30 mV with a DUT loaded). A baseline captured with one
+# sensor is invalid the moment another is loaded, so no recalibration can
+# make the gate trustworthy on this hardware - it would randomly block good
+# parts or pass a weak emitter. All reference machinery below is kept intact:
+# when the reworked buffer board (per-channel isolated op-amps) is installed,
+# set this back to True and run a fresh "Calibrate reference unit".
+# Operator mitigation meanwhile: if several sensors in a row fail low
+# sensitivity, suspect the emitter before condemning the parts.
+REFERENCE_GATE_ENABLED = False
 # Reuse the load-step battery check instead of re-reading before the capture
-# when the reading is healthy and at most this old (the SLA sags slowly).
+# when the reading is healthy and at most this old (the battery sags slowly).
 BATTERY_REUSE_WINDOW_S = 30.0
 
 # Hardware plausibility guards ("is everything actually plugged in?").
@@ -198,18 +303,21 @@ BATTERY_REUSE_WINDOW_S = 30.0
 # come from a correctly wired rig, so the app blocks the test and tells the
 # technician what to plug in instead of recording bogus numbers.
 BATTERY_FAULT_MIN_V = 3.0    # below this: battery missing / AIN7 divider not wired
-BATTERY_FAULT_MAX_V = 7.5    # above this: not a plausible 6 V SLA reading
-# AIN1 emitter-health (reference) gate. Disabled 2026-08-24, exactly as on
-# the 405 M22 build: the shared dual op-amp buffer has no channel isolation,
-# so the sensor under test couples into AIN1 and the reference cannot be
-# calibrated reliably. When the channel-isolated op-amp board is installed,
-# set this back to True and run a fresh "Calibrate reference unit". All the
-# gate machinery is kept intact (and still unit-tested with the flag forced
-# on). Operator mitigation meanwhile: if several sensors in a row fail low
-# sensitivity, suspect the emitter before condemning the parts.
-REFERENCE_GATE_ENABLED = False
-SENSOR_OFFSET_MIN_PLAUSIBLE_V = 0.05   # connected 406MCA sits near 0.3-1.2 V;
-SENSOR_OFFSET_MAX_PLAUSIBLE_V = 2.5    # outside this band = no sensor / no buffer
+BATTERY_FAULT_MAX_V = 7.5    # above this: not a plausible battery reading
+# A connected 405 M22 presents its DC offset on AIN0 through the buffer; a
+# missing/unwired sensor floats near 0 V, so only a near-zero reading is
+# treated as "no sensor". There is deliberately NO high-side plausibility
+# rail: a bad high-offset part rails AIN0 at the ADC full scale (~5 V), so
+# any reading above the TP412 3.0 V limit is a real part that must be
+# recorded as an immediate HO failure, never blocked as a wiring error.
+SENSOR_OFFSET_MIN_PLAUSIBLE_V = 0.05
+# A JUST-inserted 405 M22 can also read below the plausibility floor (or well
+# below its settled offset) for several seconds while the pyroelectric
+# element's DC level wakes up - seen twice on the 2026-08-17 comparison lot
+# (500-44 first read as "no sensor", 500-5 first read 0.6 V then 1.3 V on the
+# immediate re-measure). Poll this long before declaring the slot empty.
+OFFSET_WAKE_TIMEOUT_S = 5.0
+OFFSET_WAKE_POLL_S = 0.5
 # Battery level as displayed by the header gauge: full at ~6.4 V.
 BATTERY_GAUGE_FULL_V = 6.4
 # Simulator battery levels so the low-battery lockout can be exercised without hardware.
@@ -223,24 +331,142 @@ SIM_BATTERY_LOW_V = 5.6
 # amplitude. Tune this up once real good-sensor SNRs are known (the SNR is now
 # logged to the batch CSV to help calibrate it).
 MIN_SIGNAL_TO_NOISE_RATIO = 1.5   # ~3.5 dB
-# Paired old/new fixture measurements translate the raw ESP32 sensitivity to
-# the legacy fixture's scale. Preserve raw readings for traceability and apply
-# the factor only to the final sensitivity value--never to the waveform,
-# stability deltas, noise, SNR, polarity, or offset.
-SENSITIVITY_LEGACY_EQUIVALENT_FACTOR = 1.582
+
+# TP412 noise test (emitter OFF), run right after the offset gate and BEFORE
+# the driven sensitivity capture (2026-08-12 rework: a noisy part is rejected
+# early instead of first spending up to three 60 s stabilization attempts).
+# There is no signal while the emitter is off - only noise - so the old
+# stability-style "wait for settle, restart on a breached delta" rule was
+# meaningless here and was removed: the app now simply streams a fixed quiet
+# wait (discarded) and then keeps the next NOISE_CAPTURE_SECONDS. The capture
+# is cut into 1 s windows and the part fails when more than 20% of them
+# exceed the pk-pk limit. TP412 itself allows NO excursion over the limit;
+# the 20% allowance is a deliberate engineering relaxation for these very
+# sensitive parts.
+#
+# THE LIMIT (recalibrated 2026-08-13, evening): TP412's 300 mV pk-pk is
+# read on a scope BEHIND the legacy bench amplifier (TL084-based, NOMINAL
+# x4000 per its paperwork), so the pin-level limit is 300 mV divided by the
+# chain's EFFECTIVE gain. That effective gain was measured by
+# cross-measuring the SAME part on both fixtures on the same day (see
+# noise_experiments/): pin span ~240-270 uV over a 50 s / 20 Sa/s
+# scope-equivalent view vs ~150-200 mV displayed on the legacy scope
+# (GDS-1054B, 100 mV/div, cursors +/-150 mV, roll 5 s/div, 20 Sa/s) =>
+# effective factor ~620-830x, adopted as 700. A true x4000 chain would
+# have painted that part at ~1 V (10 divisions) - it demonstrably did not,
+# so the sticker figure is not the effective one (10:1 probe, an amp range
+# switch, or midband-vs-passband gain are the usual suspects). The
+# resulting ~429 uV pin limit is provisional: single-part derivation;
+# refine with 2-3 more parts / the comparison batch, and correct
+# NOISE_EFFECTIVE_CHAIN_FACTOR if the probe/amp question resolves it
+# exactly.
+#
+# Resolving hundreds of uV on this ADS1256 front end (PGA 1, +/-5 V, LSB
+# ~0.6 uV) is comfortable ONLY band-limited: at 1000 SPS the ADC's own
+# input noise is ~30-50 uV pk-pk per 1 s window and the raw ~500 Hz
+# bandwidth admits mains/EMI the legacy amplifier never saw. The capture is
+# therefore decimated by NOISE_DECIMATION_FACTOR (1000 -> 50 SPS, passband
+# ~22 Hz) before the windowed pk-pk rule. Since 2026-08-20 the decimator is
+# a proper anti-alias FIR (stability_analysis.decimate_antialiased, Kaiser
+# windowed-sinc, >= 60 dB stopband): the original 20:1 boxcar's ~-13 dB
+# sidelobes let out-of-band interference FOLD into the judged band at the
+# rate drop (60 Hz mains landed at 10 Hz at only -16 dB; measured at 41% of
+# the in-band signal on an interference-heavy bench capture). Same passband
+# and output timeline, so quiet parts read the same (the lot-500 anchors
+# replay to identical verdicts) and the live-preview boxcar is display-only.
+# Clipping is still detected on the RAW samples.
+NOISE_TEST_ENABLED = True
+NOISE_WINDOW_S = 1.0
+NOISE_LEGACY_AMPLIFIER_GAIN = 4000.0  # NOMINAL sticker gain (not effective)
+NOISE_LEGACY_PP_LIMIT_MV = 300.0      # TP412 scope limit through that chain
+# Effective end-to-end display factor measured by the 2026-08-13 same-part
+# cross-measurement (range 620-830; refine with more parts).
+NOISE_EFFECTIVE_CHAIN_FACTOR = 700.0
+NOISE_PP_LIMIT_MV = NOISE_LEGACY_PP_LIMIT_MV / NOISE_EFFECTIVE_CHAIN_FACTOR
+NOISE_DECIMATION_FACTOR = 20          # 1000 SPS -> 50 SPS (anti-alias FIR)
+# <= 15% of windows may exceed the limit (3 of 20). Tightened from 20% on
+# 2026-08-17 using the lot-500 fixture comparison: the one part the legacy
+# fixture failed for noise (500-44, 496 mV on the old scope) measured 4/20
+# windows over here and was passing at 20%; every other part measured 0/20
+# except 500-3's isolated 2-window environmental spike (old fixture read it
+# mid-pack at 192 mV), which stays tolerated. 4 over now fails, 2 passes.
+NOISE_MAX_OVER_FRACTION = 0.15
+NOISE_CAPTURE_SECONDS = 20.0          # standard capture; see the soak below
+# Per-part EXTENDED NOISE SOAK (2026-08-18, calibrated on the lot-500
+# re-run): part 500-44's burst noise is INTERMITTENT - it measured 4/20
+# windows over on 08-17 but 0/20 over (worst 38% below the limit) on 08-18,
+# while scope verification on the legacy fixture confirms it is genuinely
+# noisy. No threshold catches a capture with zero over-windows, and
+# tightening would false-fail clean parts (500-1 took an environmental
+# transient to 3/20 over at 1.03 mV on 08-18). The discriminator is
+# OBSERVATION TIME: the soak triples the capture to 60 s and holds the
+# allowed over-window count at the SAME ABSOLUTE 3 (i.e. 3 of 60, not 15%
+# of 60 = 9) - one environmental bang still spans only 1-3 windows
+# regardless of capture length, while genuine burst noise recurs and
+# accumulates windows. Operator-selectable per part on the load step; use
+# it on suspect or historically noisy parts.
+NOISE_SOAK_CAPTURE_SECONDS = 60.0
+NOISE_SOAK_MAX_OVER_FRACTION = (
+    NOISE_MAX_OVER_FRACTION * NOISE_CAPTURE_SECONDS / NOISE_SOAK_CAPTURE_SECONDS
+)
+# Quiet wait before the capture window (streamed but discarded). Reworked
+# again 2026-08-13 (user request, after a real part passed with a "worst
+# 1.0 mV" window that was pure DC settling): the wait is now ADAPTIVE. The
+# capture starts once NOISE_BASELINE_SETTLE_BLOCKS consecutive 1 s
+# block-mean deltas stay at/below NOISE_BASELINE_SETTLE_DELTA_MV (earliest
+# at NOISE_WAIT_BEFORE_CAPTURE_S); if the baseline is still moving at
+# NOISE_WAIT_MAX_S the capture starts anyway and the report notes it —
+# unlike the old settle rule, this can NEVER fail the part by itself.
+# Combined with per-window detrending in the analysis (each 1 s window is
+# judged against its own least-squares baseline = "a fresh offset every
+# second"), residual settling cannot inflate the windowed pk-pk while real
+# noise excursions around the moving baseline are fully retained.
+NOISE_WAIT_BEFORE_CAPTURE_S = 3.0     # minimum quiet wait
+NOISE_WAIT_MAX_S = 20.0               # settle deadline; then measure anyway
+NOISE_BASELINE_SETTLE_DELTA_MV = NOISE_PP_LIMIT_MV / 4.0  # ~107 uV per second
+NOISE_BASELINE_SETTLE_BLOCKS = 2      # consecutive in-threshold mean deltas
+NOISE_CLIP_LIMIT_V = WAVEFORM_INPUT_RANGE_V * 0.98  # clipped window = over-limit
+NOISE_FAIL_REASON_PREFIX = "Emitter-off noise"
+
+
+def format_noise_pp(value_mv: float, *, decimals: int = 0) -> str:
+    """Render a pk-pk noise level in uV below 1 mV, else in mV."""
+    if abs(value_mv) < 1.0:
+        return f"{value_mv * 1000.0:.{decimals}f} µV"
+    return f"{value_mv:.{decimals}f} mV"
+
+# Paired-fixture sensitivity calibration, measured 2026-08-17 on lot 500:
+# 46 sensors measured on the legacy fixture and on this rig (batch CSVs in
+# analysis/405M22_Data/). Per-part legacy/raw ratio: median 4.2973,
+# regression-through-origin 4.2853, spread 4.4% (sd), range 3.67-4.66 - the
+# two estimators agree within 0.3%, so the factor is set to 4.30.
+# Validation against the same batch with the TP412 -625 limit (5.99 mV):
+#   - part 500-10 -> 4.03 mV legacy-equivalent, FAIL (old fixture read 4.08
+#     and failed it) - the only low-sensitivity part in the lot;
+#   - every other part passes with the nearest at 6.52 mV (500-15), the SAME
+#     value the old fixture recorded for it; none land in the guard band;
+#   - highest part 500-41 -> 10.88 mV, inside the 11.98 mV TP412 maximum
+#     (old fixture read 11.30).
+SENSITIVITY_LEGACY_EQUIVALENT_FACTOR = 4.30
+# +/-0.10 mV raw around the limit (~7% of the -625 raw center 1.393 mV,
+# i.e. +/-0.43 mV legacy-equivalent). No lot-500 part fell inside it.
 SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV = 0.10
-SENSITIVITY_CALIBRATION_ID = "lot_520_paired_v1"
+SENSITIVITY_CALIBRATION_ID = "405m22_tp412_lot500_pairwise_v1"
 SENSITIVITY_RETEST_REASON_PREFIX = "Sensitivity requires retest/quarantine:"
 LOW_SENSITIVITY_FAILURE_ENABLED = True
-# V6.1 production capture policy. The delta threshold comes from the tracked
-# JSON file; these timing/count constants are fixed application behavior.
-STABILITY_TIMEOUT_S = 20.0
-DUT_STABILITY_CONFIRMATION_DELTAS = 10
-SENSITIVITY_MEASUREMENT_CYCLES = 20
+# 405 M22 capture policy: same structure as v6, retimed for 1-second cycles.
+# Qualification (5 deltas -> 6+ cycles) plus 10 measurement cycles needs at
+# least ~16 s of PWM-on time, so the deadline is 60 s instead of 20 s.
+STABILITY_TIMEOUT_S = 60.0
+DUT_STABILITY_CONFIRMATION_DELTAS = 5
+SENSITIVITY_MEASUREMENT_CYCLES = 10
 MAX_MEASUREMENT_ATTEMPTS = DEFAULT_MAX_MEASUREMENT_ATTEMPTS
 SYNC_VALIDATION_CYCLES = 3
-STREAM_PREVIEW_MAX_SAMPLES = 2000
-SIM_CAPTURE_CYCLES = 220
+# Live preview window: 6000 samples = 6 s = six full 1 Hz cycles.
+STREAM_PREVIEW_MAX_SAMPLES = 6000
+# Simulator length: 70 one-second cycles covers stabilization (~17 s), the
+# measurement window, and the 60 s "Never stabilizes" timeout.
+SIM_CAPTURE_CYCLES = 70
 
 # Permanently-mounted AIN1 reference sensor. Each reference reading starts at
 # PWM-on, uses a dedicated robust-peak delta limit, and averages the
@@ -249,9 +475,35 @@ SIM_CAPTURE_CYCLES = 220
 # first and requires it to remain inside the fixed +/-25 percent window.
 REFERENCE_CALIBRATION_READINGS = 5
 REFERENCE_MEASUREMENT_CYCLES = 5
+# Independent of the DUT threshold in stability_settings.json: relaxing the
+# part-under-test rule must never relax the fixture's own reference gate.
 REFERENCE_PEAK_DELTA_THRESHOLD_MV = 0.250
 REFERENCE_TOLERANCE_PERCENT = 25.0
-REFERENCE_CALIBRATION_SCHEMA_VERSION = 2
+# Windows USB serial can lose a handful of bytes in a rare transient hiccup;
+# the integrity validator then rejects the capture with nothing recorded. A
+# calibration streams five long readings back to back, so give each reading
+# this many fresh attempts before failing the whole calibration. Only
+# StreamIntegrityError is retried; real hardware faults still abort at once.
+REFERENCE_READING_STREAM_RETRIES = 2
+# Even with the 1 MiB receive buffer and the dedicated drain thread, the
+# Windows CP210x driver still drops a few samples in rare USB-scheduling
+# hiccups (bench: isolated ~3-6 sample gaps, i.e. milliseconds of a 17-23 s
+# capture). Rejecting the whole capture for that made real tests fail
+# repeatedly even with retries, so a capture now tolerates BOUNDED micro-gap
+# loss: at most STREAM_MAX_MICRO_GAPS gaps and STREAM_MAX_MISSING_SAMPLES
+# lost samples in total, with the firmware/host counters agreeing within the
+# same budget. Duplicate/reordered/torn records, ADC overruns, or a >2% rate
+# error are the driver-overflow corruption signature and still reject the
+# capture with nothing recorded (and are then retried as before).
+STREAM_MAX_MICRO_GAPS = 3
+STREAM_MAX_MISSING_SAMPLES = 20   # 20 ms of data at 1000 S/s
+# Schema v3 marked baselines taken on firmware v2.0 (PGA gain 1, buffer off).
+# Schema v4 additionally marks baselines whose reference readings were driven
+# at the 406MCA reference unit's qualified 10 Hz (the app's first bench runs
+# drove it at the DUT's 1 Hz, where a pyroelectric response is several times
+# larger and not comparable). Older schemas are deliberately rejected so a
+# fresh "Calibrate reference unit" run is forced after each change.
+REFERENCE_CALIBRATION_SCHEMA_VERSION = 4
 for _sim_case in ("Borderline sensitivity", "Never stabilizes"):
     if _sim_case not in SIM_CASES:
         SIM_CASES = [*SIM_CASES, _sim_case]
@@ -288,12 +540,15 @@ def simulate_v6_startup_capture(
         triangle = -triangle
     stable_case = case_name if case_name in SIM_CASES and case_name != "Never stabilizes" else "Known good"
     offset_v = simulate_offset_v(stable_case)
-    # A 100 mV exponential baseline transient crosses the provisional 0.1 mV
-    # adjacent-cycle threshold at roughly ten seconds.
+    # A 100 mV exponential baseline transient crosses the provisional 0.5 mV
+    # adjacent-cycle DUT threshold at roughly twelve seconds.
     startup_drift_v = 0.100 * np.exp(-t / 3.0)
     if case_name == "Never stabilizes":
+        # +/-1.25 mV per cycle keeps every adjacent-peak delta at 2.5 mV, five
+        # times the DUT threshold, so this case never qualifies no matter how
+        # long the capture runs.
         cycle_number = np.floor(t * frequency_hz).astype(int)
-        startup_drift_v += np.where(cycle_number % 2 == 0, 0.00025, -0.00025)
+        startup_drift_v += np.where(cycle_number % 2 == 0, 0.00125, -0.00125)
     seed = sum((index + 1) * ord(char) for index, char in enumerate(case_name))
     rng = np.random.default_rng(seed)
     noise_v = rng.normal(0.0, 0.00001, sample_count)
@@ -309,6 +564,9 @@ def simulate_v6_startup_capture(
 
 def analyze_esp32_waveform(*args, **kwargs) -> WaveformMetrics:
     """Run the shared production analysis with ESP32-specific warning text."""
+    # The shared engine's def-time default is the 406MCA's 10 Hz; force the
+    # 405 M22 chop frequency for callers that do not pass it explicitly.
+    kwargs.setdefault("expected_frequency_hz", EXPECTED_FREQUENCY_HZ)
     metrics = analyze_waveform(*args, **kwargs)
     rewritten: list[str] = []
     for warning in metrics.warnings:
@@ -361,6 +619,18 @@ def evaluate_result(
                 f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}. Re-measure or quarantine "
                 "this sensor."
             )
+        else:
+            # TP412 also sets an upper sensitivity limit per filter. A max-side
+            # guard-band policy is deliberately not defined yet - decide it when
+            # the comparison batch turns this gate on.
+            legacy_max_mv = FILTER_RANGES_MV[filter_setup][1]
+            if equivalent_mv > legacy_max_mv:
+                final.fail_reasons.append(
+                    f"Sensitivity too high: legacy-equivalent {equivalent_mv:.3f} mV "
+                    f"exceeds the TP412 maximum {legacy_max_mv:.2f} mV for "
+                    f"{filter_setup} (raw {raw_sensitivity_mv:.3f} mV, factor "
+                    f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f})."
+                )
     final.passed = not final.fail_reasons
     return final
 
@@ -374,8 +644,8 @@ def sensitivity_raw_limits_mv(filter_setup: str) -> tuple[float, float]:
     """Return rounded raw FAIL/RETEST/PASS boundaries for one filter setup.
 
     The established legacy filter minimum remains at the center of a +/-0.10
-    mV raw guard band. For the production default this is exactly 2.43-2.63
-    mV around 4.0 / 1.582.
+    mV raw guard band. For the production default (-625, 5.99 mV legacy) this
+    is 1.29-1.49 mV raw around 5.99 / 4.30.
     """
     try:
         legacy_min_mv = FILTER_SPECS_MV[filter_setup]
@@ -405,12 +675,69 @@ def is_sensitivity_retest_reason(reason: str) -> bool:
     return str(reason).startswith(SENSITIVITY_RETEST_REASON_PREFIX)
 
 
+def is_not_measured(final_result: FinalResult | None) -> bool:
+    """True for a placeholder record written when nothing could be measured."""
+    if final_result is None or final_result.passed:
+        return False
+    return any(
+        str(reason).startswith(NOT_MEASURED_REASON_PREFIX)
+        for reason in final_result.fail_reasons
+    )
+
+
+def build_not_measured_result(detail: str) -> FinalResult:
+    """Placeholder record for a sensor that was never actually read.
+
+    Every measured quantity stays empty on purpose: a NOT MEASURED row must
+    never look like a 0 V offset or a 0 mV sensitivity in the analysis.
+    """
+    reason = " ".join(str(detail).split())
+    return FinalResult(
+        passed=False,
+        offset_v=None,
+        sensitivity_mv=None,
+        polarity="",
+        fail_reasons=[
+            f"{NOT_MEASURED_REASON_PREFIX} {reason}"
+            if reason
+            else f"{NOT_MEASURED_REASON_PREFIX} nothing was recorded"
+        ],
+        warnings=[],
+        waveform_metrics=None,
+    )
+
+
+def summarize_batch_outcomes(outcomes: list[str]) -> dict[str, float]:
+    """Count a batch's rows for the summary window.
+
+    Skipped sensors were never read, so they are neither a pass nor a fail:
+    they are counted separately and excluded from both the tested count and
+    the yield, which would otherwise be dragged down by a rig fault.
+    """
+    recorded = len(outcomes)
+    passed = sum(1 for outcome in outcomes if outcome == OUTCOME_PASS)
+    retest = sum(1 for outcome in outcomes if outcome == OUTCOME_RETEST)
+    not_measured = sum(1 for outcome in outcomes if outcome == OUTCOME_NOT_MEASURED)
+    tested = recorded - not_measured
+    return {
+        "recorded": recorded,
+        "tested": tested,
+        "passed": passed,
+        "retest": retest,
+        "failed": tested - passed - retest,
+        "not_measured": not_measured,
+        "yield_pct": (100.0 * passed / tested) if tested else 0.0,
+    }
+
+
 def result_outcome(final_result: FinalResult | None) -> str:
-    """Return PASS, FAIL, or RETEST without weakening FinalResult.passed."""
+    """Return PASS, FAIL, RETEST, or NOT MEASURED without weakening .passed."""
     if final_result is None:
         return ""
     if final_result.passed:
         return OUTCOME_PASS
+    if is_not_measured(final_result):
+        return OUTCOME_NOT_MEASURED
     retest_reasons = [
         reason for reason in final_result.fail_reasons if is_sensitivity_retest_reason(reason)
     ]
@@ -468,6 +795,7 @@ TRACE_MID = "#2f6fce"
 TRACE_HALO = "#1c3a68"
 SYNC_CORE = "#f5b93c"
 SYNC_HALO = "#5c4310"
+SCOPE_LIMIT_RED = "#ff4757"     # solid noise-range cutoff lines on navy
 
 # The site's "technical gradient" strip (blue -> indigo -> violet), used as the
 # accent line across the top of cards.
@@ -586,6 +914,11 @@ CSV_FIELDS = [
     "pwm_hz",
     "pwm_duty",
     "offset_v",
+    # The insertion-time offset read. ``offset_v`` is the settled re-read
+    # taken after the sensitivity capture (2026-08-17: these parts' offsets
+    # rise for tens of seconds after insertion); comparing the two columns
+    # shows each part's settling behavior.
+    "offset_initial_v",
     # ``sensitivity_mv`` remains the raw ESP32 value for compatibility with
     # existing v6.1 batch files. The explicit fields below make the calibrated
     # value and decision policy unambiguous for new batches.
@@ -633,11 +966,19 @@ CSV_FIELDS = [
     "active_measurement_cycles_required",
     "pwm_on_seconds",
     "data_source",
-    # v2.0 attempt history: how many measurement attempts this verdict
-    # took and how often the part was set aside (details per event in the
-    # batch's *_attempts.csv, see attempt_history.py).
-    "measure_attempts",
-    "skip_count",
+    # TP412 emitter-off noise test (windowed pk-pk; distinct from the
+    # driven-capture noise_rms_mv/snr_db SNR metrics above).
+    "noise_test_outcome",
+    "noise_windows_total",
+    "noise_windows_over",
+    "noise_over_percent",
+    "noise_worst_pp_mv",
+    "noise_median_pp_mv",
+    "noise_settle_s",
+    "noise_capture_s",
+    "noise_pp_limit_mv",
+    "noise_analysis_rate_hz",
+    "noise_baseline_settled",
 ]
 
 STABILITY_SAMPLE_DIAGNOSTIC_FIELDS = (
@@ -674,7 +1015,7 @@ def results_root_dir() -> Path:
     # Each tester version keeps its data in its own subfolder so results can be
     # tracked and analyzed per version. Autosave and waveform-snapshot folders
     # derive from this path, so they follow automatically.
-    return Path.home() / "Documents" / "Eltec_406MCA_Test_Results" / "v6_1_esp32"
+    return Path.home() / "Documents" / "Eltec_405M22_Test_Results" / "405m22_esp32"
 
 
 def safe_filename_part(value: str) -> str:
@@ -683,7 +1024,7 @@ def safe_filename_part(value: str) -> str:
 
 
 def batch_results_path(batch_number: str) -> Path:
-    return results_root_dir() / f"406mca_esp32_lot_{safe_filename_part(batch_number)}.csv"
+    return results_root_dir() / f"405m22_esp32_lot_{safe_filename_part(batch_number)}.csv"
 
 
 def batch_autosave_path(batch_number: str) -> Path:
@@ -692,12 +1033,24 @@ def batch_autosave_path(batch_number: str) -> Path:
 
 
 def reference_calibration_path() -> Path:
-    """Persistent AIN1 emitter/reference baseline for this v6.1 installation."""
+    """Persistent AIN1 emitter/reference baseline for this 405 M22 build.
+
+    The 406MCA baselines (v6/v6.1) were measured with a 10 Hz chop and a
+    pyroelectric response is strongly frequency dependent, so they are NOT
+    read as a fallback here: this build always requires its own calibration
+    captured at 1 Hz.
+    """
     return results_root_dir() / "reference_sensor_calibration.json"
 
 
 def reference_stability_settings(settings: StabilitySettings) -> StabilitySettings:
-    """Use the relaxed fixed delta only for AIN1 reference captures."""
+    """Use the dedicated fixed delta for AIN1 reference captures.
+
+    The permanently mounted reference unit keeps its own
+    ``REFERENCE_PEAK_DELTA_THRESHOLD_MV`` and deliberately ignores the tracked
+    DUT threshold: the DUT limit is a screening knob for the part under test,
+    while the reference limit guards the fixture's own repeatability.
+    """
     return StabilitySettings(
         peak_delta_threshold_mv=REFERENCE_PEAK_DELTA_THRESHOLD_MV,
         consecutive_deltas_required=settings.consecutive_deltas_required,
@@ -712,15 +1065,6 @@ def dut_stability_settings(settings: StabilitySettings) -> StabilitySettings:
     )
 
 
-def v6_reference_calibration_path() -> Path:
-    """Return the read-only compatibility baseline used to seed v6.1."""
-    return (
-        Path.home()
-        / "Documents"
-        / "Eltec_406MCA_Test_Results"
-        / "v6_esp32"
-        / "reference_sensor_calibration.json"
-    )
 
 
 class ReferenceCalibrationError(RuntimeError):
@@ -779,6 +1123,7 @@ class ReferenceCalibration:
         return {
             "schema_version": REFERENCE_CALIBRATION_SCHEMA_VERSION,
             "channel": "AIN1",
+            "reference_pwm_hz": REFERENCE_PWM_FREQUENCY_HZ,
             "metric": "mean peak-to-peak response of five post-stability cycles (mV)",
             "reading_count": len(self.readings_mv),
             "readings_mv": [round(value, 6) for value in self.readings_mv],
@@ -892,13 +1237,9 @@ def build_reference_calibration(
 
 
 def load_reference_calibration(path: Path | None = None) -> ReferenceCalibration | None:
-    use_v6_fallback = path is None
-    path = reference_calibration_path() if use_v6_fallback else Path(path)
-    if use_v6_fallback and not path.exists():
-        # A compatible v6 baseline lets the evaluation build run immediately.
-        # Saving or invalidating always targets the separate v6.1 path, so
-        # trying v6.1 can never alter the production v6 calibration.
-        path = v6_reference_calibration_path()
+    # No 406MCA fallback: those baselines were captured with a 10 Hz chop and
+    # cannot gate a 1 Hz reference reading. Calibrate this build directly.
+    path = reference_calibration_path() if path is None else Path(path)
     if not path.exists():
         return None
     try:
@@ -1001,9 +1342,14 @@ def polarity_good_bad(polarity: str) -> str:
 
 
 def split_failure_mode(choice: str) -> tuple[str, str]:
-    """Validate and split a displayed production failure-mode choice."""
+    """Validate and split a displayed production failure-mode choice.
+
+    The NOT MEASURED reasons are accepted here too so a skipped sensor can be
+    written with a tag, but they are kept out of FAILURE_MODE_CHOICES so the
+    result-step picker only ever offers real production failure modes.
+    """
     choice = str(choice).strip()
-    if choice not in FAILURE_MODE_CHOICES:
+    if choice not in FAILURE_MODE_CHOICES + NOT_MEASURED_REASON_CHOICES:
         raise ValueError("Choose a failure mode before saving this failed sensor.")
     tag, reason = choice.split(" - ", 1)
     return tag, reason
@@ -1013,6 +1359,8 @@ def suggest_failure_mode(final_result: FinalResult | None) -> str:
     """Choose the primary failure in measurement order."""
     if final_result is None or final_result.passed:
         return ""
+    if is_not_measured(final_result):
+        return DEFAULT_NOT_MEASURED_REASON
     reason_text = " ".join(final_result.fail_reasons).lower()
 
     # Offset is measured before waveform capture, so an electrical offset
@@ -1047,6 +1395,10 @@ def suggest_failure_mode(final_result: FinalResult | None) -> str:
         return "LS - Low sensitivity"
     if "polarity" in reason_text:
         return "RP - Reversed polarity"
+    # The TP412 emitter-off noise test (windowed pk-pk) and the
+    # driven-capture SNR gate both indicate a noisy part.
+    if "emitter-off noise" in reason_text:
+        return "N - Noisy"
     if "signal-to-noise" in reason_text or "snr" in reason_text:
         return "N - Noisy"
     return "SB - Sensor bad"
@@ -1075,11 +1427,11 @@ def append_result_csv(
     snapshot_paths: list[Path],
     battery_v: float | None = None,
     capture_report: "StabilityCaptureReport | None" = None,
+    noise_report: "NoiseCaptureReport | None" = None,
     reference_calibration: "ReferenceCalibration | None" = None,
     reference_check_mv: float | None = None,
     failure_mode: str = "",
-    measure_attempts: int = 0,
-    skip_count: int = 0,
+    offset_initial_v: float | None = None,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
@@ -1091,9 +1443,12 @@ def append_result_csv(
         if raw_sensitivity_mv is None or not math.isfinite(raw_sensitivity_mv)
         else legacy_equivalent_sensitivity_mv(raw_sensitivity_mv)
     )
+    # With the 405 M22 gate disabled the guard-band classification would be
+    # misleading next to a PASS verdict, so the column stays blank until real
+    # 405 M22 limits are qualified and the gate is re-enabled.
     sensitivity_gate = (
         ""
-        if raw_sensitivity_mv is None
+        if raw_sensitivity_mv is None or not LOW_SENSITIVITY_FAILURE_ENABLED
         else sensitivity_gate_outcome(raw_sensitivity_mv, filter_setup)
     )
     sensitivity_fail_below_mv, sensitivity_pass_above_mv = sensitivity_raw_limits_mv(
@@ -1117,6 +1472,7 @@ def append_result_csv(
         "pwm_hz": f"{pwm_hz:g}",
         "pwm_duty": f"{pwm_duty:g}",
         "offset_v": "" if final_result.offset_v is None else f"{final_result.offset_v:.6f}",
+        "offset_initial_v": _fmt_optional_float(offset_initial_v, 5),
         "sensitivity_mv": "" if final_result.sensitivity_mv is None else f"{final_result.sensitivity_mv:.6f}",
         "sensitivity_raw_mv": "" if raw_sensitivity_mv is None else f"{raw_sensitivity_mv:.6f}",
         "sensitivity_legacy_equivalent_mv": _fmt_optional_float(
@@ -1135,8 +1491,6 @@ def append_result_csv(
         "failure_mode_reason": failure_mode_reason,
         "operator_comments": comment.strip(),
         "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
-        "measure_attempts": str(measure_attempts),
-        "skip_count": str(skip_count),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
         "noise_rms_mv": _fmt_optional_float(metrics.noise_rms_mv if metrics else None, 4),
         "snr_db": _fmt_optional_float(metrics.signal_to_noise_db if metrics else None, 2),
@@ -1162,6 +1516,8 @@ def append_result_csv(
     }
     if capture_report is not None:
         row.update(capture_report.csv_fields())
+    if noise_report is not None:
+        row.update(noise_report.csv_fields())
     # Batch CSVs created before a column was added keep their original header;
     # write only the columns that file already has so rows stay aligned.
     fieldnames = CSV_FIELDS
@@ -1444,6 +1800,68 @@ def save_waveform_diagnostic_bundle(
     return paths
 
 
+def save_raw_noise_capture(
+    batch_number: str,
+    sensor_id: str,
+    waveform_v: np.ndarray,
+    sample_rate_hz: float,
+    *,
+    metadata: dict[str, object] | None = None,
+) -> list[Path]:
+    """Persist one part's RAW emitter-off noise capture for offline analysis.
+
+    Saved on request per part (and automatically for noise failures) so spike
+    morphology - rise time, width, amplitude distribution - can be studied
+    from the full-bandwidth 1000 SPS record rather than the band-limited
+    50 SPS trace the verdict uses (the band-limited trace is recomputable
+    from this raw record, but not the other way around). Two files per
+    capture with the same stem: a plain CSV (sample,t_s,volts with one
+    leading '#' metadata line) and an NPZ carrying the same array plus
+    metadata for numpy work.
+    """
+    waveform = np.asarray(waveform_v, dtype=float)
+    if waveform.size == 0:
+        return []
+    capture_dir = (
+        results_root_dir() / "noise_captures" / f"lot_{safe_filename_part(batch_number)}"
+    )
+    capture_dir.mkdir(parents=True, exist_ok=True)
+    base = f"{safe_filename_part(sensor_id)}_noise_raw"
+    stem = base
+    counter = 2
+    while (capture_dir / f"{stem}.csv").exists() or (capture_dir / f"{stem}.npz").exists():
+        stem = f"{base}_{counter}"
+        counter += 1
+    meta: dict[str, object] = {
+        "batch_number": batch_number,
+        "sensor_id": sensor_id,
+        "sample_rate_hz": float(sample_rate_hz),
+        "samples": int(waveform.size),
+        "recorded_at": datetime.now().isoformat(timespec="seconds"),
+        "noise_pp_limit_mv": NOISE_PP_LIMIT_MV,
+        "noise_decimation_factor": NOISE_DECIMATION_FACTOR,
+    }
+    if metadata:
+        meta.update(metadata)
+    csv_path = capture_dir / f"{stem}.csv"
+    meta_text = "; ".join(f"{key}={value}" for key, value in meta.items())
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        handle.write(f"# {meta_text}\n")
+        writer = csv.writer(handle)
+        writer.writerow(["sample", "t_s", "volts"])
+        rate = max(float(sample_rate_hz), 1.0)
+        for index, volts in enumerate(waveform):
+            writer.writerow([index, f"{index / rate:.6f}", f"{volts:.7f}"])
+    npz_path = capture_dir / f"{stem}.npz"
+    np.savez_compressed(
+        npz_path,
+        waveform_v=waveform,
+        sample_rate_hz=float(sample_rate_hz),
+        **{key: np.asarray(str(value)) for key, value in meta.items() if key != "sample_rate_hz"},
+    )
+    return [csv_path, npz_path]
+
+
 def snapshot_detail_lines(
     batch_number: str,
     sensor_id: str,
@@ -1498,6 +1916,120 @@ def snapshot_detail_lines(
 # --------------------------------------------------------------------------- #
 # ESP32 + ADS1256 device adapter for the v4-compatible measurement engine
 # --------------------------------------------------------------------------- #
+class StreamIntegrityError(Esp32BackendError):
+    """A capture was rejected because the serial stream was unreliable.
+
+    Nothing is recorded from such a capture, and on Windows the trigger is
+    typically a transient USB/driver hiccup, so callers with time budget may
+    retry the whole capture a bounded number of times (see
+    ``call_with_stream_retries``).
+    """
+
+
+def call_with_stream_retries(
+    capture,
+    *,
+    retries: int = REFERENCE_READING_STREAM_RETRIES,
+    on_retry=None,
+):
+    """Run ``capture(attempt)``, retrying only transient stream failures.
+
+    ``capture`` receives the zero-based attempt number. Only
+    ``StreamIntegrityError`` is retried — hardware faults, cancellation, and
+    every other error propagate immediately, as does the final integrity
+    failure once ``retries`` extra attempts are exhausted.
+    """
+
+    attempt = 0
+    while True:
+        try:
+            return capture(attempt)
+        except StreamIntegrityError:
+            attempt += 1
+            if attempt > retries:
+                raise
+            if on_retry is not None:
+                on_retry(attempt)
+
+
+class StreamGapFiller:
+    """Rebuild a contiguous sample timeline across tolerated serial micro-gaps.
+
+    The Windows CP210x link occasionally drops a few samples even after the
+    1 MiB-buffer/drain-thread fixes (USB scheduling level; noticeably more
+    often with a laptop charger's EMI on the link). The integrity validator
+    bounds that loss, but every downstream consumer — PWM sync cadence
+    validation, cycle segmentation, noise windows, elapsed-time estimates —
+    indexes the sample array assuming an unbroken 1 kS/s timeline, so a
+    2-sample gap inside one 10 Hz reference cycle used to read as
+    1000/98 = 10.204 Hz and fail the ±0.1 Hz sync check as a fake rig error.
+
+    Each streamed sample carries the firmware's own ``timestamp_us``; when
+    consecutive timestamps show a gap of 1..STREAM_MAX_MISSING_SAMPLES
+    samples, the missing slots are refilled with linearly interpolated volts
+    and a mid-gap sync transition (max cadence error ≈ gap/2 samples). Gaps
+    beyond the budget are left unfilled and only counted — the integrity
+    validator rejects those captures anyway. Samples without timestamps
+    (tests, simulators) pass through untouched.
+    """
+
+    _UINT32_MASK = 0xFFFFFFFF
+
+    def __init__(self, sample_rate_hz: float) -> None:
+        self.period_us = 1_000_000.0 / float(sample_rate_hz)
+        self.gap_count = 0
+        self.filled_count = 0
+        self.oversize_gap_count = 0
+        self._last: StreamSample | None = None
+
+    @property
+    def saw_gaps(self) -> bool:
+        return bool(self.gap_count or self.oversize_gap_count)
+
+    def extend(self, chunk):
+        """Return ``chunk`` with tolerated micro-gaps refilled in place."""
+        out = []
+        for sample in chunk:
+            timestamp = getattr(sample, "timestamp_us", None)
+            last = self._last
+            last_timestamp = (
+                None if last is None else getattr(last, "timestamp_us", None)
+            )
+            if timestamp is not None and last_timestamp is not None:
+                delta_us = (int(timestamp) - int(last_timestamp)) & self._UINT32_MASK
+                missing = int(round(delta_us / self.period_us)) - 1
+                if missing >= 1:
+                    if missing <= STREAM_MAX_MISSING_SAMPLES:
+                        self.gap_count += 1
+                        self.filled_count += missing
+                        for index in range(1, missing + 1):
+                            # Sync flips at the gap midpoint so a transition
+                            # swallowed by the gap lands within gap/2 samples
+                            # of its true position.
+                            take_new = index > missing / 2.0
+                            fraction = index / (missing + 1)
+                            out.append(
+                                StreamSample(
+                                    timestamp_us=(
+                                        int(last_timestamp)
+                                        + int(round(index * self.period_us))
+                                    )
+                                    & self._UINT32_MASK,
+                                    raw=0,
+                                    volts=(
+                                        last.volts
+                                        + (sample.volts - last.volts) * fraction
+                                    ),
+                                    sync=int(sample.sync if take_new else last.sync),
+                                )
+                            )
+                    else:
+                        self.oversize_gap_count += 1
+            out.append(sample)
+            self._last = sample
+        return out
+
+
 class EmitterEsp32Rig(Esp32EmitterRig):
     """Add NumPy frame/adaptive-capture methods to the serial backend."""
 
@@ -1510,9 +2042,24 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         sync = np.asarray([sample.sync for sample in samples], dtype=float)
         return waveform, sync
 
-    @staticmethod
-    def _validate_stream_diagnostics(diagnostics, *, minimum_samples: int) -> None:
-        """Reject incomplete/corrupted streams instead of recording a verdict."""
+    #: Human-readable note about micro-gap loss tolerated in the last
+    #: validated capture, or None when that stream was perfectly clean.
+    last_stream_tolerance_note: str | None = None
+
+    def _validate_stream_diagnostics(self, diagnostics, *, minimum_samples: int) -> None:
+        """Reject incomplete/corrupted streams instead of recording a verdict.
+
+        Bounded micro-gap loss (see STREAM_MAX_MICRO_GAPS /
+        STREAM_MAX_MISSING_SAMPLES) is tolerated and only noted on
+        ``last_stream_tolerance_note`` — the Windows CP210x driver drops a few
+        samples in rare USB-scheduling hiccups even with the enlarged receive
+        buffer and the drain thread, and a handful of lost milliseconds does
+        not change a 1 s-window noise verdict or a robust per-cycle peak.
+        Anything beyond that budget, and every corruption signature
+        (duplicates, reordering, torn lines, ADC overruns, rate error), still
+        raises ``StreamIntegrityError`` with nothing recorded.
+        """
+        self.last_stream_tolerance_note = None
         problems: list[str] = []
         if diagnostics.received_samples < minimum_samples:
             problems.append(
@@ -1520,10 +2067,13 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             )
         if diagnostics.torn_lines:
             problems.append(f"{diagnostics.torn_lines} malformed serial records")
-        if diagnostics.timestamp_gap_count:
+        gaps = diagnostics.timestamp_gap_count
+        missing = diagnostics.estimated_missing_samples
+        if gaps and (
+            gaps > STREAM_MAX_MICRO_GAPS or missing > STREAM_MAX_MISSING_SAMPLES
+        ):
             problems.append(
-                f"{diagnostics.timestamp_gap_count} timestamp gaps "
-                f"(~{diagnostics.estimated_missing_samples} missing samples)"
+                f"{gaps} timestamp gaps (~{missing} missing samples)"
             )
         if diagnostics.duplicate_timestamps:
             problems.append(f"{diagnostics.duplicate_timestamps} duplicate timestamps")
@@ -1533,10 +2083,18 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             problems.append(
                 f"{diagnostics.firmware_adc_overruns} ADC conversions overran the serial loop"
             )
-        if diagnostics.count_matches_firmware is False:
+        firmware_sent = getattr(diagnostics, "firmware_samples_sent", None)
+        count_difference = (
+            None
+            if firmware_sent is None
+            else firmware_sent - diagnostics.received_samples
+        )
+        if count_difference is not None and not (
+            0 <= count_difference <= STREAM_MAX_MISSING_SAMPLES
+        ):
             problems.append(
                 "host/firmware sample counts differ "
-                f"({diagnostics.received_samples}/{diagnostics.firmware_samples_sent})"
+                f"({diagnostics.received_samples}/{firmware_sent})"
             )
         rate_error = diagnostics.rate_error_percent
         if rate_error is not None and abs(rate_error) > 2.0:
@@ -1545,10 +2103,34 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 f"({rate_error:+.1f}% from expected)"
             )
         if problems:
-            raise Esp32BackendError(
+            overflow_events = getattr(diagnostics, "driver_rx_overflow_events", 0)
+            if overflow_events:
+                # The Windows serial driver itself reported that IT dropped
+                # receive data (CE_RXOVER/CE_OVERRUN): the computer stalled
+                # reading, the cable is not the problem. Say so, with the two
+                # operator remedies that address the real mechanism.
+                advice = (
+                    f". The Windows serial driver reported its receive queue "
+                    f"overflowed {overflow_events} time(s) — the computer was "
+                    "too slow to read the stream. Keep this window visible "
+                    "during the capture, plug the laptop into power, then retry."
+                )
+            else:
+                advice = (
+                    ". Check the USB cable and close other serial programs, "
+                    "then retry."
+                )
+            raise StreamIntegrityError(
                 "ESP32 waveform stream was not reliable; nothing was recorded: "
                 + "; ".join(problems)
-                + ". Check the USB cable and close other serial programs, then retry."
+                + advice
+            )
+        if gaps or count_difference:
+            self.last_stream_tolerance_note = (
+                f"Tolerated {gaps} serial micro-gap(s), ~{missing} of "
+                f"{diagnostics.received_samples} samples lost (within the "
+                f"{STREAM_MAX_MICRO_GAPS} gaps / {STREAM_MAX_MISSING_SAMPLES} "
+                "samples budget)."
             )
 
     def read_waveform_frame(
@@ -1573,15 +2155,16 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 raise Esp32BackendError(
                     f"ESP32 advertised {header.sample_rate_hz:g} samples/s; "
                     f"this tester requires {sample_rate_hz:g}. Re-flash "
-                    f"{EXPECTED_FIRMWARE_PREFIX}1.7 or newer."
+                    f"{EXPECTED_FIRMWARE_PREFIX}2.0 or newer."
                 )
+        gap_filler = StreamGapFiller(float(header.sample_rate_hz))
         diagnostics = None
         try:
             while len(samples) < target_scans:
-                chunk = self.read_stream(
+                chunk = gap_filler.extend(self.read_stream(
                     max_samples=min(self.STREAM_CHUNK_SAMPLES, target_scans - len(samples)),
                     timeout_s=self.STREAM_TIMEOUT_S,
-                )
+                ))
                 if not chunk:
                     raise Esp32BackendError(
                         f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
@@ -1594,7 +2177,10 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             diagnostics = self.stream_diagnostics
         if diagnostics is None:
             raise Esp32BackendError("ESP32 stream diagnostics were unavailable.")
-        self._validate_stream_diagnostics(diagnostics, minimum_samples=target_scans)
+        self._validate_stream_diagnostics(
+            diagnostics,
+            minimum_samples=target_scans - gap_filler.filled_count,
+        )
         waveform, sync = self._sample_arrays(samples[:target_scans])
         actual_scan_rate = diagnostics.measured_rate_hz or header.sample_rate_hz
         return waveform, sync, float(actual_scan_rate)
@@ -1606,11 +2192,15 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         settings: StabilitySettings,
         pwm_started_monotonic: float,
         sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
-        expected_frequency_hz: float = EXPECTED_FREQUENCY_HZ,
+        expected_frequency_hz: float = REFERENCE_PWM_FREQUENCY_HZ,
         progress=None,
         cancelled=None,
     ) -> tuple[np.ndarray, np.ndarray, float, StabilityAnalysis]:
-        """Adaptively stabilize AIN1, then retain five fresh reference cycles."""
+        """Adaptively stabilize AIN1, then retain five fresh reference cycles.
+
+        The reference unit is a 406MCA sensor, so the caller must have started
+        the emitter at REFERENCE_PWM_FREQUENCY_HZ (10 Hz), not the DUT's 1 Hz.
+        """
         return self.read_waveform_until_stable(
             waveform_range_v=waveform_range_v,
             settings=reference_stability_settings(settings),
@@ -1655,9 +2245,10 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             finally:
                 raise Esp32BackendError(
                     f"ESP32 advertised {header.sample_rate_hz:g} samples/s; "
-                    f"this tester requires {sample_rate_hz:g}. Re-flash {EXPECTED_FIRMWARE_PREFIX}1.7 or newer."
+                    f"this tester requires {sample_rate_hz:g}. Re-flash {EXPECTED_FIRMWARE_PREFIX}2.0 or newer."
                 )
         actual_scan_rate = float(header.sample_rate_hz)
+        gap_filler = StreamGapFiller(actual_scan_rate)
         pwm_elapsed_offset_s = max(0.0, time.monotonic() - pwm_started_monotonic)
         is_reference = str(channel).lower() in {"ref", "reference", "ain1"}
         enforce_retry_policy = not is_reference
@@ -1675,7 +2266,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         # ceiling rather than stopping one conversion before it.
         target_scans = int(math.ceil(max_stream_s * actual_scan_rate)) + 1
         diagnostics = None
-        stream_data_source = "esp32_reference" if is_reference else "esp32_v6_1"
+        stream_data_source = "esp32_reference" if is_reference else "esp32_405m22"
         analysis = analyze_stability(
             [], [], actual_scan_rate, analysis_settings,
             pwm_elapsed_offset_s=pwm_elapsed_offset_s,
@@ -1696,6 +2287,18 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             )
             + 1,
         )
+        # Re-analyzing the whole capture after every 0.1 s chunk walks an
+        # ever-growing array while holding the GIL, which starves the serial
+        # drain thread and (on Windows) risks receive-queue overflow. Analyze
+        # every half PWM period instead — decisions happen on completed
+        # cycles, so nothing is learned more often than that anyway.
+        analysis_stride = max(
+            self.STREAM_CHUNK_SAMPLES,
+            int(round(0.5 * actual_scan_rate / expected_frequency_hz)),
+        )
+        volts_list: list[float] = []
+        sync_list: list[float] = []
+        samples_analyzed = 0
         try:
             while len(samples) < target_scans:
                 if cancelled is not None and cancelled():
@@ -1712,16 +2315,36 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                         read_count,
                         max(1, samples_through_deadline - len(samples)),
                     )
-                chunk = self.read_stream(
+                chunk = gap_filler.extend(self.read_stream(
                     max_samples=read_count,
                     timeout_s=self.STREAM_TIMEOUT_S,
-                )
-                if not chunk:
-                    raise Esp32BackendError(
-                        f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
-                    )
+                ))
                 samples.extend(chunk)
-                waveform_np, sync_np = self._sample_arrays(samples)
+                for sample in chunk:
+                    volts_list.append(sample.volts)
+                    sync_list.append(sample.sync)
+                analysis_due = (
+                    len(samples) - samples_analyzed >= analysis_stride
+                    or len(samples) >= target_scans
+                    or (
+                        not analysis.report.stabilized
+                        and len(samples) >= samples_through_deadline
+                    )
+                    # A stalled/ended stream gets one closing analysis pass:
+                    # if the already-received samples complete the decision,
+                    # use them rather than declaring a stall.
+                    or (not chunk and len(samples) > samples_analyzed)
+                )
+                if not analysis_due:
+                    if not chunk:
+                        raise Esp32BackendError(
+                            f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
+                        )
+                    continue
+                stream_ended = not chunk
+                samples_analyzed = len(samples)
+                waveform_np = np.asarray(volts_list, dtype=float)
+                sync_np = np.asarray(sync_list, dtype=float)
                 analysis = analyze_stability(
                     waveform_np,
                     sync_np,
@@ -1754,6 +2377,19 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                                 cycles_required=SYNC_VALIDATION_CYCLES,
                             )
                         except SyncValidationError as exc:
+                            if gap_filler.saw_gaps:
+                                # The validation window itself lost samples
+                                # (micro-gap on/near a sync edge): that is a
+                                # transient transport problem, not a PWM or
+                                # wiring fault - reject the capture with
+                                # nothing recorded so the caller's bounded
+                                # retries take a fresh one.
+                                raise StreamIntegrityError(
+                                    "ESP32 waveform stream was not reliable; "
+                                    "nothing was recorded: serial micro-gaps "
+                                    "corrupted the PWM sync validation window "
+                                    f"({exc})"
+                                ) from exc
                             raise HardwareNotReadyError(
                                 f"ESP32 {exc}. Check firmware and "
                                 f"{EMITTER_PWM_CHANNEL}, then measure again."
@@ -1768,6 +2404,10 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     )
                 if analysis.report.measurement_complete or analysis.report.unstable:
                     break
+                if stream_ended:
+                    raise Esp32BackendError(
+                        f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
+                    )
         finally:
             if self.is_streaming:
                 diagnostics = self.stop_stream(timeout_s=self.STREAM_TIMEOUT_S)
@@ -1779,10 +2419,13 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         # STREAM,STOP can drain a short tail that was sampled while PWM was
         # still on. Retain it so timeout troubleshooting gets the full stream
         # represented by the backend diagnostics.
-        drained_samples = list(self.drained_samples)
+        drained_samples = gap_filler.extend(list(self.drained_samples))
         if drained_samples:
             samples.extend(drained_samples)
-        self._validate_stream_diagnostics(diagnostics, minimum_samples=len(samples))
+        self._validate_stream_diagnostics(
+            diagnostics,
+            minimum_samples=len(samples) - gap_filler.filled_count,
+        )
         waveform_np, sync_np = self._sample_arrays(samples)
         analysis = analyze_stability(
             waveform_np,
@@ -1806,12 +2449,183 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             )
         return waveform_np, sync_np, actual_scan_rate, analysis
 
+    def read_noise_capture(
+        self,
+        *,
+        sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
+        min_wait_seconds: float = NOISE_WAIT_BEFORE_CAPTURE_S,
+        max_wait_seconds: float = NOISE_WAIT_MAX_S,
+        settle_delta_mv: float = NOISE_BASELINE_SETTLE_DELTA_MV,
+        settle_blocks: int = NOISE_BASELINE_SETTLE_BLOCKS,
+        capture_seconds: float = NOISE_CAPTURE_SECONDS,
+        progress=None,
+        preview=None,
+        cancelled=None,
+    ) -> tuple[np.ndarray, float, float, float, bool]:
+        """Stream AIN0 with the emitter OFF: adaptive quiet wait, then capture.
+
+        The PWM drive must already be off, so the sync bit stays 0 and none of
+        the sync-cycle machinery applies. The quiet wait is adaptive
+        (2026-08-13, user request): the capture starts once ``settle_blocks``
+        consecutive 1 s block-mean deltas stay at/below ``settle_delta_mv``
+        (earliest at ``min_wait_seconds``); if the DC level is still moving
+        at ``max_wait_seconds`` the capture starts anyway — a slow baseline
+        can NEVER fail the part from here, it only delays the start (the
+        per-window detrend in the analysis absorbs what remains).
+        ``progress`` receives ``(capturing, elapsed_s, baseline_delta_mv)``
+        where ``capturing`` is False during the wait and ``baseline_delta_mv``
+        is the latest per-second mean movement (None until two blocks exist).
+
+        Returns ``(noise_waveform, actual_rate, wait_s, elapsed_s,
+        baseline_settled)``.
+        """
+        self.connect()
+        samples = []
+        header = self.start_stream("sensor")
+        if not math.isclose(header.sample_rate_hz, sample_rate_hz, rel_tol=0.01):
+            try:
+                self.stop_stream(timeout_s=self.STREAM_TIMEOUT_S)
+            finally:
+                raise Esp32BackendError(
+                    f"ESP32 advertised {header.sample_rate_hz:g} samples/s; "
+                    f"this tester requires {sample_rate_hz:g}. Re-flash "
+                    f"{EXPECTED_FIRMWARE_PREFIX}2.0 or newer."
+                )
+        actual_scan_rate = float(header.sample_rate_hz)
+        gap_filler = StreamGapFiller(actual_scan_rate)
+        block_samples = max(5, int(round(NOISE_WINDOW_S * actual_scan_rate)))
+        min_wait_samples = max(
+            block_samples, int(math.ceil(min_wait_seconds * actual_scan_rate))
+        )
+        max_wait_samples = max(
+            min_wait_samples, int(math.ceil(max_wait_seconds * actual_scan_rate))
+        )
+        capture_samples = max(5, int(math.ceil(capture_seconds * actual_scan_rate)))
+        capture_start: int | None = None
+        baseline_settled = False
+        block_means: list[float] = []
+        consecutive_quiet = 0
+        last_delta_mv: float | None = None
+        diagnostics = None
+        volts_list: list[float] = []
+        sync_list: list[float] = []
+        samples_reported = 0
+        # UI updates every half noise window; only the preview tail is
+        # materialized per update (never the whole growing array), so the GIL
+        # stays available to the serial drain thread on Windows.
+        update_stride = max(
+            self.STREAM_CHUNK_SAMPLES, int(round(0.5 * NOISE_WINDOW_S * actual_scan_rate))
+        )
+        try:
+            while (
+                capture_start is None
+                or len(samples) < capture_start + capture_samples
+            ):
+                if cancelled is not None and cancelled():
+                    raise Esp32BackendError("Measurement was cancelled.")
+                if capture_start is None:
+                    # Approach the next block boundary (or the wait deadline)
+                    # exactly so the settle decision lands on whole blocks.
+                    target = min(
+                        max_wait_samples,
+                        (len(block_means) + 1) * block_samples,
+                    )
+                else:
+                    target = capture_start + capture_samples
+                read_count = min(
+                    self.STREAM_CHUNK_SAMPLES, max(1, target - len(samples))
+                )
+                chunk = gap_filler.extend(self.read_stream(
+                    max_samples=read_count, timeout_s=self.STREAM_TIMEOUT_S
+                ))
+                if not chunk:
+                    raise Esp32BackendError(
+                        f"ESP32 noise stream stalled after {len(samples)} samples."
+                    )
+                samples.extend(chunk)
+                for sample in chunk:
+                    volts_list.append(sample.volts)
+                    sync_list.append(sample.sync)
+                while (
+                    capture_start is None
+                    and len(samples) // block_samples > len(block_means)
+                ):
+                    block_index = len(block_means)
+                    block = volts_list[
+                        block_index * block_samples : (block_index + 1) * block_samples
+                    ]
+                    block_mean = sum(block) / len(block)
+                    if block_means:
+                        last_delta_mv = abs(block_mean - block_means[-1]) * 1000.0
+                        if last_delta_mv <= settle_delta_mv:
+                            consecutive_quiet += 1
+                        else:
+                            consecutive_quiet = 0
+                    block_means.append(block_mean)
+                    boundary = (block_index + 1) * block_samples
+                    if (
+                        boundary >= min_wait_samples
+                        and consecutive_quiet >= settle_blocks
+                    ):
+                        capture_start = boundary
+                        baseline_settled = True
+                    elif boundary >= max_wait_samples:
+                        # Deadline: measure anyway. The report notes it and
+                        # the per-window detrend absorbs the residual drift.
+                        capture_start = boundary
+                        baseline_settled = False
+                if not (
+                    len(samples) - samples_reported >= update_stride
+                    or (
+                        capture_start is not None
+                        and len(samples) >= capture_start + capture_samples
+                    )
+                ):
+                    continue
+                samples_reported = len(samples)
+                elapsed_s = len(samples) / actual_scan_rate
+                if progress is not None:
+                    progress(capture_start is not None, elapsed_s, last_delta_mv)
+                if preview is not None:
+                    preview(
+                        np.asarray(
+                            volts_list[-STREAM_PREVIEW_MAX_SAMPLES:], dtype=float
+                        ),
+                        np.asarray(
+                            sync_list[-STREAM_PREVIEW_MAX_SAMPLES:], dtype=float
+                        ),
+                    )
+        finally:
+            if self.is_streaming:
+                diagnostics = self.stop_stream(timeout_s=self.STREAM_TIMEOUT_S)
+        if diagnostics is None:
+            diagnostics = self.stream_diagnostics
+        if diagnostics is None:
+            raise Esp32BackendError("ESP32 stream diagnostics were unavailable.")
+        drained_samples = gap_filler.extend(list(self.drained_samples))
+        if drained_samples:
+            samples.extend(drained_samples)
+        self._validate_stream_diagnostics(
+            diagnostics,
+            minimum_samples=len(samples) - gap_filler.filled_count,
+        )
+        waveform_np, _sync_np = self._sample_arrays(samples)
+        elapsed_s = len(samples) / actual_scan_rate
+        noise_waveform = waveform_np[capture_start : capture_start + capture_samples]
+        return (
+            noise_waveform,
+            actual_scan_rate,
+            capture_start / actual_scan_rate,
+            elapsed_s,
+            baseline_settled,
+        )
+
 
 # --------------------------------------------------------------------------- #
 # Battery watcher helpers
 # --------------------------------------------------------------------------- #
 class BatteryTooLowError(RuntimeError):
-    """Raised mid-measurement when the 6 V SLA is at/below the block threshold."""
+    """Raised mid-measurement when the battery is at/below the block threshold."""
 
     def __init__(self, battery_v: float) -> None:
         super().__init__(f"Battery too low to test: {battery_v:.2f} V (minimum {BATTERY_MIN_V:.1f} V).")
@@ -1822,14 +2636,6 @@ class HardwareNotReadyError(RuntimeError):
     """Raised before/at the start of a measurement when the rig is not wired
     up (missing sensor, unwired battery divider, no PWM sync). Nothing is
     measured or recorded; the message tells the technician what to plug in."""
-
-class NoSensorDetectedError(HardwareNotReadyError):
-    """AIN0 floats like an empty slot. A shorted/dead part looks identical, so
-    the UI asks the technician whether a sensor is loaded before deciding."""
-
-    def __init__(self, message: str, offset_v: float) -> None:
-        super().__init__(message)
-        self.offset_v = offset_v
 
 
 class ReferenceGateError(HardwareNotReadyError):
@@ -1849,8 +2655,9 @@ class ReferenceCheckFailedError(ReferenceGateError):
             dut_detail = "The sensor under test was not read."
         else:
             dut_detail = (
-                f"AIN0 was checked at {dut_offset_v:.3f} V, but the combined readings did not "
-                "match the known high-AIN1/high-offset sensor interference pattern."
+                f"AIN0 was checked at {dut_offset_v:.3f} V, which is not above the "
+                f"{OFFSET_MAX_V:.1f} V high-offset limit, so a high-offset sensor does not "
+                "explain the reference failure."
             )
         super().__init__(
             f"Reference unit measured {reading_mv:.2f} mV, {drift:+.1f}% from the "
@@ -1864,31 +2671,26 @@ class ReferenceCheckFailedError(ReferenceGateError):
         self.dut_offset_v = dut_offset_v
 
 
-def high_offset_dut_explains_reference_spike(
-    reference_mv: float,
-    calibration: ReferenceCalibration,
-    dut_offset_v: float,
-) -> bool:
-    """Return whether a high AIN1 result matches the known high-offset DUT coupling.
+def high_offset_dut_explains_reference_failure(dut_offset_v: float) -> bool:
+    """Return whether the sensor under test explains a failed reference gate.
 
-    Suppression is deliberately one-sided: only a reference spike above the
-    calibrated window plus a connected DUT above the production high-offset
-    limit qualifies. Low reference readings and implausible/railed AIN0 values
-    remain reference failures.
+    A high-offset part - AIN0 above the TP412 limit, typically railed at the
+    ~5 V ADC full scale - couples into the AIN1 reference channel and can
+    push the reference reading out of its window (either direction) or keep
+    it from stabilizing. Swapping in a good part restores the reference, so
+    such a failure condemns the part, not the fixture: the part records an
+    immediate high-offset FAIL and the reference calibration stays intact.
+    The check is one-sided on the DUT: in-band, low, or missing (near-0 V)
+    sensors never suppress a reference failure.
     """
-    return (
-        math.isfinite(reference_mv)
-        and reference_mv > calibration.upper_mv
-        and math.isfinite(dut_offset_v)
-        and OFFSET_MAX_V < dut_offset_v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V
-    )
+    return math.isfinite(dut_offset_v) and dut_offset_v > OFFSET_MAX_V
 
 
 def battery_state_for(battery_v: float | None) -> str:
     """Classify a battery reading: 'fault', 'low', 'warn', 'ok', or 'unknown'.
 
-    'fault' means the number cannot be a real 6 V SLA through the divider
-    (missing battery / AIN7 not wired / floating input) - testing is blocked.
+    'fault' means the number cannot be a real battery through the divider
+    (missing battery / divider not wired / floating input) - testing is blocked.
     """
     if battery_v is None:
         return "unknown"
@@ -1902,7 +2704,7 @@ def battery_state_for(battery_v: float | None) -> str:
 
 
 def battery_gauge_fraction(battery_v: float | None) -> float:
-    """Map the 6 V SLA reading to a 0..1 fill for the header battery gauge."""
+    """Map the battery reading to a 0..1 fill for the header battery gauge."""
     if battery_v is None:
         return 0.0
     span = BATTERY_GAUGE_FULL_V - BATTERY_MIN_V
@@ -1935,6 +2737,127 @@ def apply_signal_quality_gate(final: FinalResult, metrics: WaveformMetrics | Non
         )
     else:
         return final
+    if reason not in final.fail_reasons:
+        final.fail_reasons.append(reason)
+    final.passed = False
+    return final
+
+
+# --------------------------------------------------------------------------- #
+# TP412 emitter-off noise test telemetry + gate
+# --------------------------------------------------------------------------- #
+@dataclass
+class NoiseCaptureReport:
+    """Verdict and telemetry for one emitter-off noise capture.
+
+    ``outcome`` is PASS/FAIL for a completed capture, or SKIPPED when the test
+    did not run (unstable DUT, disabled, simulator shortcut). These fields are
+    distinct from the driven-capture ``noise_rms_mv``/``snr_db`` SNR metrics.
+    """
+
+    outcome: str = "SKIPPED"
+    windows_total: int | None = None
+    windows_over: int | None = None
+    over_percent: float | None = None
+    worst_pp_mv: float | None = None
+    median_pp_mv: float | None = None
+    clipped_windows: int | None = None
+    # Fixed quiet wait streamed (and discarded) before the capture window.
+    # The CSV column keeps its historical noise_settle_s name.
+    settle_s: float | None = None
+    capture_s: float | None = None
+    pp_limit_mv: float = NOISE_PP_LIMIT_MV
+    max_over_percent: float = NOISE_MAX_OVER_FRACTION * 100.0
+    # Sample rate of the band-limited trace the pk-pk rule ran on; documents
+    # the analysis bandwidth alongside the recorded numbers.
+    analysis_rate_hz: float | None = None
+    # Whether the DC level settled before the capture window started (a
+    # False here never fails the part - the capture simply began at the
+    # wait deadline and the per-window detrend absorbed the residue).
+    baseline_settled: bool | None = None
+    skip_reason: str | None = None
+
+    @classmethod
+    def skipped(cls, reason: str) -> "NoiseCaptureReport":
+        return cls(outcome="SKIPPED", skip_reason=str(reason))
+
+    @classmethod
+    def from_analysis(
+        cls,
+        analysis: NoiseAnalysis,
+        *,
+        settle_s: float,
+        capture_s: float,
+        analysis_rate_hz: float | None = None,
+        baseline_settled: bool | None = None,
+    ) -> "NoiseCaptureReport":
+        return cls(
+            outcome=OUTCOME_PASS if analysis.passed else OUTCOME_FAIL,
+            windows_total=analysis.windows_total,
+            windows_over=analysis.windows_over,
+            over_percent=analysis.over_fraction * 100.0,
+            worst_pp_mv=analysis.worst_pp_mv,
+            median_pp_mv=analysis.median_pp_mv,
+            clipped_windows=analysis.clipped_windows,
+            settle_s=max(0.0, float(settle_s)),
+            capture_s=max(0.0, float(capture_s)),
+            analysis_rate_hz=(
+                None if analysis_rate_hz is None else float(analysis_rate_hz)
+            ),
+            baseline_settled=(
+                None if baseline_settled is None else bool(baseline_settled)
+            ),
+        )
+
+    def csv_fields(self) -> dict[str, str]:
+        return {
+            "noise_test_outcome": self.outcome,
+            "noise_windows_total": "" if self.windows_total is None else str(self.windows_total),
+            "noise_windows_over": "" if self.windows_over is None else str(self.windows_over),
+            "noise_over_percent": _fmt_optional_float(self.over_percent, 1),
+            # 6 decimals: the pin-level limit is sub-mV, so worst/median
+            # land in the microvolt range.
+            "noise_worst_pp_mv": _fmt_optional_float(self.worst_pp_mv, 6),
+            "noise_median_pp_mv": _fmt_optional_float(self.median_pp_mv, 6),
+            "noise_settle_s": _fmt_optional_float(self.settle_s, 3),
+            "noise_capture_s": _fmt_optional_float(self.capture_s, 3),
+            "noise_pp_limit_mv": f"{self.pp_limit_mv:.6f}",
+            "noise_analysis_rate_hz": _fmt_optional_float(self.analysis_rate_hz, 1),
+            "noise_baseline_settled": (
+                ""
+                if self.baseline_settled is None
+                else ("YES" if self.baseline_settled else "NO")
+            ),
+        }
+
+
+def apply_noise_gate(
+    final: FinalResult, noise_report: "NoiseCaptureReport | None"
+) -> FinalResult:
+    """Fold a failed emitter-off noise capture into the production verdict.
+
+    Mutates ``final`` in place like ``apply_signal_quality_gate`` so the fail
+    reason flows through to the CSV, autosave, failure-mode suggestion, and UI.
+    PASS/SKIPPED reports leave the verdict untouched.
+    """
+    if noise_report is None or noise_report.outcome != OUTCOME_FAIL:
+        return final
+    total = noise_report.windows_total or 0
+    allowed = int(total * NOISE_MAX_OVER_FRACTION + 1e-9)
+    clipped = noise_report.clipped_windows or 0
+    clip_text = (
+        f" ({clipped} window(s) clipped at the ADC rail)" if clipped else ""
+    )
+    # Deliberately no voltage magnitudes: this reason is shown on the result
+    # screen, where a pin-level µV figure invites a false comparison with the
+    # legacy station's mV reading. Every level (worst, median, limit, over
+    # percent) is still recorded in the dedicated noise_* CSV columns and in
+    # the auto-saved failure snapshot.
+    reason = (
+        f"{NOISE_FAIL_REASON_PREFIX} too high: {noise_report.windows_over} of "
+        f"{total} one-second windows exceeded the noise limit "
+        f"(allowed {allowed}){clip_text}."
+    )
     if reason not in final.fail_reasons:
         final.fail_reasons.append(reason)
     final.passed = False
@@ -2096,55 +3019,6 @@ def analyze_v6_stable_measurement(
     return metrics
 
 
-BAD_SENSOR_FAILURE_MODE = "SB - Sensor bad"
-
-
-def build_no_output_sensor_result(
-    offset_v: float,
-    *,
-    input_range_v: float,
-    sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
-) -> tuple[WaveformMetrics, FinalResult]:
-    """FAIL for a loaded sensor whose AIN0 floats like an empty slot.
-
-    A shorted or dead part and a missing part read the same (near 0 V); the
-    technician confirmed a part is in the rig, so it fails with no offset
-    instead of being reported as a wiring error. Nothing else is measured.
-    """
-    reason = (
-        f"No offset: AIN0 reads {offset_v:.3f} V with a sensor loaded "
-        f"(a connected 406MCA sits near 0.3-1.2 V) - shorted or dead part."
-    )
-    note = "Noise and sensitivity were not measured: the part presents no output."
-    metrics = WaveformMetrics(
-        sensitivity_mv=0.0,
-        sensitivity_amplified_mv=0.0,
-        polarity="NOT MEASURED",
-        measured_frequency_hz=None,
-        cycles_used=0,
-        offset_v=offset_v,
-        stabilized=False,
-        stabilization_cycle=None,
-        warnings=[reason, note],
-        edges=[],
-        waveform_v=np.asarray([], dtype=float),
-        sync_v=np.asarray([], dtype=float),
-        sample_rate_hz=sample_rate_hz,
-        ignored_initial_cycles=0,
-        input_range_v=input_range_v,
-    )
-    final = FinalResult(
-        passed=False,
-        offset_v=offset_v,
-        sensitivity_mv=None,
-        polarity="",
-        fail_reasons=[reason],
-        warnings=[note],
-        waveform_metrics=metrics,
-    )
-    return metrics, final
-
-
 def build_stability_timeout_result(
     waveform_v: np.ndarray,
     sync_v: np.ndarray,
@@ -2207,6 +3081,135 @@ def build_stability_timeout_result(
         waveform_metrics=metrics,
     )
     return metrics, final
+
+
+def build_offset_failure_result(
+    offset_v: float,
+    *,
+    input_range_v: float,
+    sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
+) -> tuple[WaveformMetrics, FinalResult]:
+    """Immediate FAIL for a TP412 offset violation - nothing else is measured.
+
+    The offset gate is the first per-part step, and a part outside the
+    0.8-3.0 V band fails on the spot: the noise and sensitivity steps are
+    skipped entirely, so there is no waveform to attach.
+    """
+    reason = (
+        f"Offset out of range: {offset_v:.3f} V, expected "
+        f"{OFFSET_MIN_V:.1f} to {OFFSET_MAX_V:.1f} V."
+    )
+    note = (
+        "Noise and sensitivity were not measured: the offset gate fails the "
+        "part immediately."
+    )
+    metrics = WaveformMetrics(
+        sensitivity_mv=0.0,
+        sensitivity_amplified_mv=0.0,
+        polarity="NOT MEASURED",
+        measured_frequency_hz=None,
+        cycles_used=0,
+        offset_v=offset_v,
+        stabilized=False,
+        stabilization_cycle=None,
+        warnings=[reason, note],
+        edges=[],
+        waveform_v=np.asarray([], dtype=float),
+        sync_v=np.asarray([], dtype=float),
+        sample_rate_hz=sample_rate_hz,
+        ignored_initial_cycles=0,
+        input_range_v=input_range_v,
+    )
+    final = FinalResult(
+        passed=False,
+        offset_v=offset_v,
+        sensitivity_mv=None,
+        polarity="",
+        fail_reasons=[reason],
+        warnings=[note],
+        waveform_metrics=metrics,
+    )
+    return metrics, final
+
+
+def build_noise_failure_result(
+    offset_v: float,
+    noise_report: "NoiseCaptureReport",
+    *,
+    input_range_v: float,
+    sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
+) -> tuple[WaveformMetrics, FinalResult]:
+    """Immediate FAIL for a failed emitter-off noise test (no driven capture).
+
+    The noise test now runs before the sensitivity capture, and a noisy part
+    is rejected on the spot rather than first spending up to three 60 s
+    stabilization attempts. The noise stream itself is preserved separately
+    via ``build_noise_waveform_metrics``.
+    """
+    note = (
+        "Sensitivity was not measured: the emitter-off noise test fails the "
+        "part before the driven capture."
+    )
+    metrics = WaveformMetrics(
+        sensitivity_mv=0.0,
+        sensitivity_amplified_mv=0.0,
+        polarity="NOT MEASURED",
+        measured_frequency_hz=None,
+        cycles_used=0,
+        offset_v=offset_v,
+        stabilized=False,
+        stabilization_cycle=None,
+        warnings=[note],
+        edges=[],
+        waveform_v=np.asarray([], dtype=float),
+        sync_v=np.asarray([], dtype=float),
+        sample_rate_hz=sample_rate_hz,
+        ignored_initial_cycles=0,
+        input_range_v=input_range_v,
+    )
+    final = FinalResult(
+        passed=False,
+        offset_v=offset_v,
+        sensitivity_mv=None,
+        polarity="",
+        fail_reasons=[],
+        warnings=[note],
+        waveform_metrics=metrics,
+    )
+    final = apply_noise_gate(final, noise_report)
+    return metrics, final
+
+
+def build_noise_waveform_metrics(
+    noise_waveform_v: np.ndarray,
+    sample_rate_hz: float,
+    *,
+    offset_v: float,
+    input_range_v: float,
+) -> WaveformMetrics:
+    """Diagnostic-only metrics wrapping the emitter-off noise capture.
+
+    The emitter is off, so sync is a constant 0 and no cycle analysis applies.
+    This exists purely so the noise stream can reuse the waveform snapshot
+    plumbing when a noisy sensor's capture is preserved.
+    """
+    return WaveformMetrics(
+        sensitivity_mv=0.0,
+        sensitivity_amplified_mv=0.0,
+        polarity="NOT MEASURED",
+        measured_frequency_hz=None,
+        cycles_used=0,
+        offset_v=offset_v,
+        stabilized=False,
+        stabilization_cycle=None,
+        warnings=[],
+        edges=[],
+        waveform_v=np.asarray(noise_waveform_v, dtype=float),
+        sync_v=np.zeros(len(noise_waveform_v), dtype=float),
+        sample_rate_hz=sample_rate_hz,
+        ignored_initial_cycles=0,
+        input_range_v=input_range_v,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -2389,19 +3392,8 @@ class RoundButton(tk.Canvas):
             "fg": ELTEC_BLUE_DARK, "outline": "",
             "disabled_fill": PAGE_BG, "disabled_fg": "#aeb9c5", "disabled_outline": "",
         },
-        # v2.0 footer: green = save / move on, amber = set the part aside.
-        "success": {
-            "fill": "#1f8a4c", "hover": "#176d3c", "press": "#125630",
-            "fg": "#ffffff", "outline": "",
-            "disabled_fill": "#b9d8c5", "disabled_fg": "#f1f7f3", "disabled_outline": "",
-        },
-        "warn": {
-            "fill": "#fff4d6", "hover": "#ffe9b3", "press": "#ffd98a",
-            "fg": "#8a5a00", "outline": "#e8b94a",
-            "disabled_fill": PAGE_BG, "disabled_fg": "#c2b7a3", "disabled_outline": "#e6dccb",
-        },
     }
-    SIZE_PADS = {"xl": (34, 18), "lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
+    SIZE_PADS = {"lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
 
     def __init__(
         self,
@@ -2882,19 +3874,58 @@ class StepRail(tk.Canvas):
 
 
 class ScopeView(tk.Canvas):
-    """Dark navy oscilloscope panel: grid + glow traces (site dark-section look)."""
+    """Dark navy oscilloscope panel with real axes (site dark-section look).
 
-    PAD_X = 14
-    PAD_TOP = 30
-    PAD_BOTTOM = 12
+    - The PWM sync square wave is overlaid ON the signal band (scaled to the
+      same plot height) so polarity is inspectable directly: a POSITIVE part
+      peaks while the overlay is HIGH (emitter on).
+    - X (seconds) and Y (volts) carry numeric tick labels on a nice-step
+      grid. ``min_span_v`` stops auto-zoom from magnifying tiny signals —
+      the noise scope uses it so normal noise cannot look enormous — and
+      ``limit_band_mv`` draws a dashed pk-pk acceptance band around the
+      signal mean for visual verification.
+    - ``relative_band_mv`` switches to the noise-range display: the trace is
+      plotted as its deviation from its own mean, symmetric around 0 (in µV
+      when the band is below 1 mV, else mV), with SOLID RED cutoff lines at
+      ±band/2 — the pk-pk limit reads directly as "does the trace cross the
+      red lines", instead of hunting absolute volt values. The readout shows
+      the pk-pk range.
+    - Traces render as per-pixel min/max envelopes, so downsampling a long
+      capture can never hide a narrow spike.
+    """
 
-    def __init__(self, parent: tk.Widget, animator: Animator, name_prefix: str, height: int = 250) -> None:
+    PAD_LEFT = 64
+    PAD_RIGHT = 16
+    PAD_TOP = 32
+    PAD_BOTTOM = 28
+
+    def __init__(
+        self,
+        parent: tk.Widget,
+        animator: Animator,
+        name_prefix: str,
+        height: int = 250,
+        *,
+        sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
+        channel_label: str = "AIN0 · SENSOR",
+        empty_text: str = "SIGNAL APPEARS HERE DURING MEASUREMENT",
+        min_span_v: float | None = None,
+        limit_band_mv: float | None = None,
+        relative_band_mv: float | None = None,
+    ) -> None:
         super().__init__(parent, height=S(height), bg=WAVE_BG, highlightthickness=1, highlightbackground=NAVY_EDGE, bd=0)
         self._animator = animator
         self._prefix = name_prefix
-        self._pad_x = S(self.PAD_X)
+        self._pad_left = S(self.PAD_LEFT)
+        self._pad_right = S(self.PAD_RIGHT)
         self._pad_top = S(self.PAD_TOP)
         self._pad_bottom = S(self.PAD_BOTTOM)
+        self._sample_rate_hz = float(sample_rate_hz)
+        self._channel_label = channel_label
+        self._empty_text = empty_text
+        self._min_span_v = min_span_v
+        self._limit_band_mv = limit_band_mv
+        self._relative_band_mv = relative_band_mv
         self.waveform: np.ndarray = np.array([], dtype=float)
         self.sync: np.ndarray = np.array([], dtype=float)
         self.bind("<Configure>", lambda _e: self.redraw())
@@ -2904,61 +3935,219 @@ class ScopeView(tk.Canvas):
         self.sync = sync
         self.redraw()
 
-    def _draw_grid(self, width: int, height: int) -> None:
-        spacing = S(34)
-        for x in range(self._pad_x, width - self._pad_x, spacing):
-            major = ((x - self._pad_x) // spacing) % 4 == 0
-            self.create_line(x, S(4), x, height - S(4), fill=NAVY_GRID_MAJOR if major else NAVY_GRID_MINOR)
-        for y in range(S(6), height - S(4), spacing):
-            self.create_line(self._pad_x - S(8), y, width - self._pad_x + S(8), y, fill=NAVY_GRID_MINOR)
+    def set_display_mode(
+        self,
+        *,
+        relative_band_mv: float | None,
+        min_span_v: float | None,
+        channel_label: str | None = None,
+        sample_rate_hz: float | None = None,
+    ) -> None:
+        """Flip between absolute volts and the relative noise-range display.
 
-    def _chip(self, x: int, y: int, text: str, core: str, tags: str = "") -> None:
+        ``sample_rate_hz`` keeps the time axis honest when the displayed data
+        changes rate (the noise view shows the band-limited 50 SPS trace).
+        """
+        self._relative_band_mv = relative_band_mv
+        self._min_span_v = min_span_v
+        if channel_label is not None:
+            self._channel_label = channel_label
+        if sample_rate_hz is not None:
+            self._sample_rate_hz = float(sample_rate_hz)
+        self.redraw()
+
+    # ----- axis helpers ----- #
+    @staticmethod
+    def _nice_step(span: float, target_ticks: int = 4) -> float:
+        """A 1/2/5 x 10^k step giving roughly ``target_ticks`` intervals."""
+        raw = span / max(1, target_ticks)
+        magnitude = 10.0 ** math.floor(math.log10(max(raw, 1e-12)))
+        for multiple in (1.0, 2.0, 5.0):
+            if raw <= multiple * magnitude * (1.0 + 1e-9):
+                return multiple * magnitude
+        return 10.0 * magnitude
+
+    @staticmethod
+    def _ticks(lo: float, hi: float, step: float) -> list[float]:
+        first = math.ceil(lo / step - 1e-9) * step
+        values = []
+        value = first
+        while value <= hi + step * 1e-6:
+            values.append(0.0 if abs(value) < step * 1e-6 else value)
+            value += step
+        return values
+
+    @staticmethod
+    def _fmt(value: float, step: float) -> str:
+        decimals = 0 if step >= 1 else min(6, max(0, -math.floor(math.log10(step))))
+        return f"{value:.{decimals}f}"
+
+    def _chip(self, x: int, y: int, text: str, core: str, tags: str = "") -> int:
+        """Draw a labelled chip and return the x just after its right edge."""
         font_spec = ("DejaVu Sans Mono", 9, "bold")
         text_width = tkfont.Font(font=font_spec).measure(text)
         draw_round_rect(self, x, y, x + text_width + S(18), y + S(20), Sf(9), fill=mix_color(WAVE_BG, core, 0.16), outline=mix_color(WAVE_BG, core, 0.45), tags=tags)
         self.create_text(x + S(9) + text_width / 2, y + S(10), text=text, fill=core, font=font_spec, tags=tags)
+        return x + text_width + S(18)
 
-    def _plot_trace(self, signal: np.ndarray, idx: np.ndarray, x: np.ndarray, top: float, bottom: float, halo: str, mid: str, core: str) -> None:
-        lo, hi = float(np.min(signal)), float(np.max(signal))
-        if abs(hi - lo) < 1e-9:
-            lo -= 0.5
-            hi += 0.5
-        y = bottom - (signal[idx] - lo) / (hi - lo) * (bottom - top)
+    def _y_of(self, value: float, lo: float, hi: float, top: float, bottom: float) -> float:
+        return bottom - (value - lo) / (hi - lo) * (bottom - top)
+
+    def _plot_envelope(self, signal: np.ndarray, left: float, right: float, lo: float, hi: float, top: float, bottom: float, halo: str, mid: str, core: str) -> None:
+        """Per-pixel min/max envelope polyline: spikes survive downsampling."""
+        n = len(signal)
+        columns = max(2, int(right - left))
         points: list[float] = []
-        for px, py in zip(x, y):
-            points.extend([float(px), float(py)])
-        self.create_line(points, fill=halo, width=Sf(6), joinstyle="round", capstyle="round")
-        self.create_line(points, fill=mid, width=Sf(3), joinstyle="round", capstyle="round")
+        if n <= columns:
+            x_positions = np.linspace(left, right, n)
+            for px, value in zip(x_positions, signal):
+                points.extend([float(px), self._y_of(float(value), lo, hi, top, bottom)])
+        else:
+            edges = np.linspace(0, n, columns + 1).astype(int)
+            for column in range(columns):
+                begin, end = edges[column], max(edges[column] + 1, edges[column + 1])
+                segment = signal[begin:end]
+                seg_lo, seg_hi = float(np.min(segment)), float(np.max(segment))
+                px = left + (right - left) * column / (columns - 1)
+                # Alternate the min/max order so the polyline sweeps through
+                # each column's full range without doubling back visibly.
+                first, second = (seg_hi, seg_lo) if column % 2 == 0 else (seg_lo, seg_hi)
+                points.extend([float(px), self._y_of(first, lo, hi, top, bottom)])
+                if seg_hi - seg_lo > 1e-12:
+                    points.extend([float(px), self._y_of(second, lo, hi, top, bottom)])
+        self.create_line(points, fill=halo, width=Sf(5), joinstyle="round", capstyle="round")
+        self.create_line(points, fill=mid, width=Sf(2.6), joinstyle="round", capstyle="round")
         self.create_line(points, fill=core, width=Sf(1.4), joinstyle="round", capstyle="round")
 
     def redraw(self) -> None:
         self.delete("all")
         width = max(1, self.winfo_width())
         height = max(1, self.winfo_height())
-        self._draw_grid(width, height)
         waveform = self.waveform
         sync = self.sync
-        if waveform.size < 2:
-            self.create_text(
-                width / 2, height / 2 - S(6),
-                text="SIGNAL APPEARS HERE DURING MEASUREMENT",
-                fill="#3d4f78", font=("DejaVu Sans Mono", 11, "bold"),
-            )
-            mid_y = height / 2 + S(18)
-            self.create_line(self._pad_x + S(20), mid_y, width - self._pad_x - S(20), mid_y, fill="#22345c", width=Sf(1.4), dash=(6, 5))
+        left = self._pad_left
+        right = width - self._pad_right
+        top = self._pad_top
+        bottom = height - self._pad_bottom
+        if waveform.size < 2 or right - left < S(40) or bottom - top < S(30):
+            if self._empty_text:
+                self.create_text(
+                    width / 2, height / 2 - S(6),
+                    text=self._empty_text,
+                    fill="#3d4f78", font=("DejaVu Sans Mono", 11, "bold"),
+                )
+                mid_y = height / 2 + S(18)
+                self.create_line(left + S(20), mid_y, right - S(20), mid_y, fill="#22345c", width=Sf(1.4), dash=(6, 5))
+            self._chip(S(10), S(8), self._channel_label, TRACE_CORE)
+            return
+
+        # --- relative (noise-range) mode: deviation from the mean --- #
+        # Units auto-select: µV when the acceptance band is below 1 mV (the
+        # 75 µV pin-level TP412 limit), mV otherwise.
+        relative = self._relative_band_mv is not None
+        if relative:
+            band_in_uv = self._relative_band_mv < 1.0
+            display_scale = 1_000_000.0 if band_in_uv else 1000.0
+            band_display = self._relative_band_mv * (display_scale / 1000.0)
+            display = (waveform - float(np.mean(waveform))) * display_scale
+            unit_label = "µV" if band_in_uv else "mV"
         else:
-            n = len(waveform)
-            idx = np.linspace(0, n - 1, min(n, max(2, width - 2 * self._pad_x))).astype(int)
-            x = idx / max(1, n - 1) * (width - 2 * self._pad_x) + self._pad_x
-            wave_bottom = height * 0.62
-            self._plot_trace(waveform, idx, x, self._pad_top, wave_bottom, TRACE_HALO, TRACE_MID, TRACE_CORE)
-            if sync.size == n:
-                self._plot_trace(sync, idx, x, height * 0.72, height - self._pad_bottom - S(12), SYNC_HALO, SYNC_HALO, SYNC_CORE)
-            lo, hi = float(np.min(waveform)), float(np.max(waveform))
-            self.create_text(width - self._pad_x, S(12), anchor="e", text=f"{lo:+.4f} V  …  {hi:+.4f} V", fill="#8ea6d4", font=("DejaVu Sans Mono", 10))
-        self._chip(self._pad_x, S(8), "AIN0 · SENSOR", TRACE_CORE)
-        if waveform.size >= 2 and sync.size == waveform.size:
-            self._chip(self._pad_x, int(height * 0.72) - S(24), "ESP32 · PWM SYNC", SYNC_CORE)
+            display = waveform
+            unit_label = "V"
+
+        # --- y range: data + margin, but never zoomed past min_span_v --- #
+        data_lo, data_hi = float(np.min(display)), float(np.max(display))
+        span = data_hi - data_lo
+        if relative:
+            # Symmetric around 0 so the ±band/2 cutoffs sit mirrored, and
+            # never zoomed past min_span_v (2x the pk-pk limit for the noise
+            # scopes) so normal noise cannot be magnified into looking large.
+            half_limit = band_display / 2.0
+            min_half_span = (
+                (self._min_span_v * display_scale) / 2.0
+                if self._min_span_v is not None
+                else band_display
+            )
+            hi = max(abs(data_lo), abs(data_hi), half_limit) * 1.10
+            hi = max(hi, min_half_span)
+            lo = -hi
+        else:
+            margin = max(span * 0.10, 1e-4)
+            lo, hi = data_lo - margin, data_hi + margin
+            if self._min_span_v is not None and (hi - lo) < self._min_span_v:
+                center = 0.5 * (data_lo + data_hi)
+                lo = center - self._min_span_v / 2.0
+                hi = center + self._min_span_v / 2.0
+
+        # --- grid + numeric ticks --- #
+        tick_font = ("DejaVu Sans Mono", 8)
+        y_step = self._nice_step(hi - lo)
+        for value in self._ticks(lo, hi, y_step):
+            y = self._y_of(value, lo, hi, top, bottom)
+            self.create_line(left, y, right, y, fill=NAVY_GRID_MINOR)
+            self.create_text(left - S(6), y, anchor="e", text=self._fmt(value, y_step), fill="#8ea6d4", font=tick_font)
+        total_s = (len(display) - 1) / self._sample_rate_hz
+        x_step = self._nice_step(max(total_s, 1e-6), target_ticks=6)
+        for value in self._ticks(0.0, total_s, x_step):
+            x = left + (right - left) * (value / total_s if total_s > 0 else 0.0)
+            self.create_line(x, top, x, bottom, fill=NAVY_GRID_MINOR)
+            self.create_text(x, bottom + S(4), anchor="n", text=self._fmt(value, x_step), fill="#8ea6d4", font=tick_font)
+        self.create_line(left, bottom, right, bottom, fill=NAVY_GRID_MAJOR)
+        self.create_line(left, top, left, bottom, fill=NAVY_GRID_MAJOR)
+        self.create_text(left - S(6), top - S(12), anchor="e", text=unit_label, fill="#8ea6d4", font=tick_font)
+        self.create_text(right, bottom + S(4), anchor="ne", text="s", fill="#8ea6d4", font=tick_font)
+
+        if relative:
+            # --- solid RED cutoff lines at ±band/2 (the pk-pk limit) --- #
+            half_limit = band_display / 2.0
+            zero_y = self._y_of(0.0, lo, hi, top, bottom)
+            self.create_line(left, zero_y, right, zero_y, fill=NAVY_GRID_MAJOR)
+            for edge in (-half_limit, half_limit):
+                y = self._y_of(edge, lo, hi, top, bottom)
+                self.create_line(left, y, right, y, fill=SCOPE_LIMIT_RED, width=Sf(1.8))
+            self.create_text(
+                right - S(6),
+                self._y_of(half_limit, lo, hi, top, bottom) - S(9),
+                anchor="e",
+                text=(
+                    f"±{half_limit:.1f} {unit_label} CUTOFF "
+                    f"({band_display:.0f} {unit_label} PK-PK LIMIT)"
+                ),
+                fill=SCOPE_LIMIT_RED,
+                font=tick_font,
+            )
+        elif self._limit_band_mv is not None:
+            # --- optional pk-pk acceptance band around the signal mean --- #
+            mean_v = float(np.mean(waveform))
+            half_band = self._limit_band_mv / 2000.0  # mV pk-pk -> ±V
+            for edge in (mean_v - half_band, mean_v + half_band):
+                if lo <= edge <= hi:
+                    y = self._y_of(edge, lo, hi, top, bottom)
+                    self.create_line(left, y, right, y, fill="#d95f5f", width=Sf(1.2), dash=(7, 5))
+            band_top = self._y_of(min(mean_v + half_band, hi), lo, hi, top, bottom)
+            self.create_text(right - S(6), band_top + S(4), anchor="ne", text=f"{self._limit_band_mv:.0f} mV PK-PK LIMIT", fill="#d95f5f", font=tick_font)
+
+        # --- sync square wave overlaid on the SAME band (polarity check) --- #
+        if sync.size == waveform.size and float(np.max(sync)) > float(np.min(sync)):
+            # HIGH rides just under the top edge, LOW just above the bottom,
+            # so peak-vs-emitter-state (polarity) reads off directly.
+            sync_scaled = np.where(sync > 0.5, hi - (hi - lo) * 0.06, lo + (hi - lo) * 0.06)
+            self._plot_envelope(sync_scaled, left, right, lo, hi, top, bottom, SYNC_HALO, SYNC_HALO, SYNC_CORE)
+
+        # --- signal trace on top --- #
+        self._plot_envelope(display, left, right, lo, hi, top, bottom, TRACE_HALO, TRACE_MID, TRACE_CORE)
+        if relative:
+            readout = (
+                f"range {span:.1f} {unit_label} pk-pk  ·  "
+                f"{data_lo:+.1f} … {data_hi:+.1f} {unit_label}"
+            )
+        else:
+            readout = f"{data_lo:+.4f} V  …  {data_hi:+.4f} V"
+        self.create_text(right, S(12), anchor="e", text=readout, fill="#8ea6d4", font=("DejaVu Sans Mono", 10))
+
+        chip_end = self._chip(S(10), S(8), self._channel_label, TRACE_CORE)
+        if sync.size == waveform.size and float(np.max(sync)) > float(np.min(sync)):
+            self._chip(chip_end + S(8), S(8), "PWM SYNC · HIGH = EMITTER ON", SYNC_CORE)
 
 
 # --------------------------------------------------------------------------- #
@@ -2985,7 +4174,7 @@ class EmitterTesterApp(tk.Tk):
             self.tk.call("tk", "scaling", UI_SCALE * 96.0 / 72.0)
         except tk.TclError:
             pass
-        self.title("Eltec 406MCA ESP32 Emitter Tester v6.1")
+        self.title("Eltec 405 M22 ESP32 Tester (1 Hz)")
         self.minsize(S(1100), S(740))
 
         self.animator = Animator(self)
@@ -3017,7 +4206,8 @@ class EmitterTesterApp(tk.Tk):
         except StabilitySettingsError as exc:
             self.stability_config_error = str(exc)
 
-        # 6 V SLA battery watcher state.
+        # Battery watcher state (currently idle: the sensor battery is not
+        # measurable on AIN7 - see BATTERY_MONITORING_ENABLED).
         self.battery_v: float | None = None
         self.battery_state = "unknown"  # "ok" | "warn" | "low" | "unknown"
         self.battery_checking = False
@@ -3040,28 +4230,43 @@ class EmitterTesterApp(tk.Tk):
         self.current_sensor_number = 0
         self.current_sensor_id = ""
         self.result_saved = True
-        # v2.0 skip / attempt history (attempt_history.py). While
-        # ``resuming_skipped`` is set, "next" walks the skipped queue in
-        # first-skipped-first-measured order instead of handing out fresh
-        # sensor numbers.
-        self.resuming_skipped = False
-        self.measure_attempts = 0
-        self.skip_count = 0
-        self.skip_button: RoundButton | None = None
-        self.remeasure_button: RoundButton | None = None
-        self.skipped_button: RoundButton | None = None
 
         # Current-sensor measurement state.
         self.last_metrics: WaveformMetrics | None = None
         self.last_result: FinalResult | None = None
         self.last_capture_report: StabilityCaptureReport | None = None
+        self.last_noise_report: NoiseCaptureReport | None = None
+        self.last_noise_metrics: WaveformMetrics | None = None
+        # RAW emitter-off noise capture for the current part (full 1000 SPS
+        # record), kept so it can be saved on demand for offline spike
+        # analysis; the band-limited verdict trace cannot recover it.
+        self.last_noise_raw_waveform: np.ndarray | None = None
+        self.last_noise_raw_rate_hz: float | None = None
+        # True once this part's raw capture was auto-saved (any window over).
+        self.noise_raw_auto_saved = False
+        # Insertion-time offset read (the settled re-read carries the verdict).
+        self.last_offset_initial_v: float | None = None
+        # Text of the last attempt that recorded nothing (stream/rig fault).
+        # While it is set, the result step offers "skip this sensor" next to
+        # Measure so a batch is never stuck on one unreadable sensor.
+        self.last_measure_error: str | None = None
         self.preview_waveform: np.ndarray = np.array([], dtype=float)
         self.preview_sync: np.ndarray = np.array([], dtype=float)
+        # During the emitter-off noise step the live scope switches to the
+        # relative noise-range display (deviation from mean + red cutoffs).
+        self.preview_noise_display = False
+        # Step-ladder progress state for the measuring screen's bar.
+        self.measure_progress_step = 0
+        self.measure_progress_total = 1
+        self.measure_progress_fraction = 0.0
+        self.measure_progress_canvas: tk.Canvas | None = None
         self.snapshot_paths: list[Path] = []
         self.stability_diagnostics_saved = False
+        self.noise_diagnostics_saved = False
 
         self.logo_image: tk.PhotoImage | None = None
         self.wave_canvas: ScopeView | None = None
+        self.noise_canvas: ScopeView | None = None
         self.default_focus_widget: tk.Widget | None = None
         self._advanced_dialog: tk.Toplevel | None = None
         self.step_frame: tk.Frame | None = None
@@ -3107,7 +4312,7 @@ class EmitterTesterApp(tk.Tk):
         return (self.FONT_MONO, size, weight)
 
     def btn(self, parent: tk.Widget, text: str, command, kind: str = "primary", size: str = "lg", parent_bg: str = PAGE_BG) -> RoundButton:
-        fonts = {"xl": self.fd(17), "lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
+        fonts = {"lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
         return RoundButton(parent, text=text, command=command, kind=kind, size=size, font=fonts[size], parent_bg=parent_bg)
 
     # ----- variables / style / logo ----- #
@@ -3126,8 +4331,18 @@ class EmitterTesterApp(tk.Tk):
 
         self.status_var = tk.StringVar(value="Checking ESP32 rig...")
         self.measure_status_var = tk.StringVar(value="")
+        # "STEP 3/4 — NOISE (EMITTER OFF)" label above the progress bar.
+        self.measure_step_var = tk.StringVar(value="")
+        self.live_wave_header_var = tk.StringVar(
+            value="LIVE SIGNAL  ·  ADS AIN0 SENSOR + PWM SYNC OVERLAY (HIGH = EMITTER ON)"
+        )
         self.comment_status_var = tk.StringVar(value="")
         self.snapshot_status_var = tk.StringVar(value="")
+        self.noise_capture_status_var = tk.StringVar(value="")
+        # Per-part opt-in: 60 s noise soak for suspect/intermittent-burst
+        # parts. Resets to off for every new sensor (deliberate - the soak is
+        # a judgment call per part, not a sticky mode).
+        self.noise_soak_var = tk.BooleanVar(value=False)
         self.reference_progress_var = tk.StringVar(value="")
 
         # One-line summary shown next to the "Advanced options" link.
@@ -3322,8 +4537,8 @@ class EmitterTesterApp(tk.Tk):
             self.header.create_text(badge_cx, badge_cy, text="ELTEC", fill=ELTEC_RED, font=(self.FONT_DISPLAY, 22, "bold italic"), tags="static")
 
         title_x = badge_x1 + S(26)
-        self.header.create_text(title_x, S(26), anchor="w", text="406MCA EMITTER TESTER", fill=HEADER_FG, font=self.fd(21), tags="static")
-        title_width = tkfont.Font(font=self.fd(21)).measure("406MCA EMITTER TESTER")
+        self.header.create_text(title_x, S(26), anchor="w", text="405 M22 EMITTER TESTER", fill=HEADER_FG, font=self.fd(21), tags="static")
+        title_width = tkfont.Font(font=self.fd(21)).measure("405 M22 EMITTER TESTER")
         chip_x = title_x + title_width + S(14)
         draw_round_rect(self.header, chip_x, S(15), chip_x + S(40), S(37), Sf(8), fill=ELTEC_RED, outline="", tags="static")
         self.header.create_text(chip_x + S(20), S(26), text="V6.1", fill="#ffffff", font=self.fm(10, "bold"), tags="static")
@@ -3376,6 +4591,7 @@ class EmitterTesterApp(tk.Tk):
     def clear_content(self) -> None:
         self.animator.cancel_prefix("step:")
         self.wave_canvas = None
+        self.noise_canvas = None
         if self.step_frame is not None and self.step_frame.winfo_exists():
             self.step_frame.destroy()
         if self._step_window is not None:
@@ -3530,27 +4746,28 @@ class EmitterTesterApp(tk.Tk):
             text=stability_rule_text,
             bg=PAGE_BG, fg=MUTED_FG, font=self.fb(10), wraplength=S(640), justify="left",
         ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(12, 0))
-        if BATTERY_MONITORING_ENABLED:
-            battery_info = (f"ADS AIN7 = 6 V SLA via "
-                            f"{BATTERY_DIVIDER_R_TOP_OHMS / 1000:.1f}k/"
-                            f"{BATTERY_DIVIDER_R_BOTTOM_OHMS / 1000:.1f}k divider "
-                            f"(×{BATTERY_DIVIDER_RATIO:.6f}, "
-                            f"{BATTERY_DIVIDER_FILTER_CAPACITANCE_F * 1e9:.0f} nF filter), ")
-            battery_gate_info = f" Testing is blocked at or below {BATTERY_MIN_V:.1f} V."
-        else:
-            battery_info = "battery not monitored (no battery on the AIN7 divider on this fixture), "
-            battery_gate_info = ""
         tk.Label(
             panel,
-            text=(f"ESP32 rig: ADS AIN1 = fixed reference/emitter gate, ADS AIN0 = buffered DUT "
-                  f"(offset + AC), {battery_info}"
+            text=(f"ESP32 rig (firmware v2.0): ADS AIN1 = fixed reference/emitter gate, "
+                  f"ADS AIN0 = buffered DUT (offset + AC), "
                   f"streamed sync = PWM state, {EMITTER_PWM_CHANNEL} = MOSFET gate. "
-                  f"Emitter driven at {EMITTER_PWM_FREQUENCY_HZ:g} Hz, {EMITTER_PWM_DUTY_CYCLE:g}% duty (fixed). "
-                  f"ADS sensor range is ±{WAVEFORM_INPUT_RANGE_V:g} V through a unity-gain buffer. "
+                  f"Emitter driven at {EMITTER_PWM_FREQUENCY_HZ:g} Hz for the DUT and "
+                  f"{REFERENCE_PWM_FREQUENCY_HZ:g} Hz for the 406MCA reference phases, "
+                  f"{EMITTER_PWM_DUTY_CYCLE:g}% duty (fixed). "
+                  f"ADS sensor range is ±{WAVEFORM_INPUT_RANGE_V:g} V (PGA ×1, input buffer off) "
+                  f"through a unity-gain buffer. "
                   f"AIN1 is checked before AIN0 and must remain within "
                   f"+/-{REFERENCE_TOLERANCE_PERCENT:g}% of its calibration, except that a high "
-                  f"AIN1 spike is ignored when AIN0 confirms a high-offset DUT."
-                  f"{battery_gate_info}"),
+                  f"AIN1 spike is ignored when AIN0 confirms a high-offset DUT. "
+                  f"After the driven capture, the emitter turns off and a "
+                  f"{NOISE_CAPTURE_SECONDS:g} s noise capture runs once the level settles: at most "
+                  f"{NOISE_MAX_OVER_FRACTION:.0%} of its {NOISE_WINDOW_S:g} s windows may exceed "
+                  f"{NOISE_PP_LIMIT_MV:g} mV pk-pk (provisional TP412 limit). "
+                  f"Power: the 6.5 V battery drives the emitters ONLY and the 9 V battery drives "
+                  f"the sensors; neither is monitored - the legacy AIN7 divider "
+                  f"({BATTERY_DIVIDER_R_TOP_OHMS / 1000:.1f}k/"
+                  f"{BATTERY_DIVIDER_R_BOTTOM_OHMS / 1000:.1f}k) cannot read them. "
+                  f"TODO: sensor-battery monitoring on AIN6 with a >=4:1 divider."),
             bg=PAGE_BG, fg=MUTED_FG, font=self.fb(10), wraplength=S(640), justify="left",
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 0))
         return panel
@@ -3608,7 +4825,18 @@ class EmitterTesterApp(tk.Tk):
                     f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}"
                 )
         else:
-            hint = "SENSITIVITY FAILURE CHECK TEMPORARILY DISABLED"
+            range_text = ""
+            tp412_range = FILTER_RANGES_MV.get(self.filter_var.get())
+            if tp412_range is not None:
+                range_text = (
+                    f"TP412 {tp412_range[0]:.2f}-{tp412_range[1]:.2f} mV "
+                    "(LEGACY SCOPE, W/ BLACKENED TUBE + EXTRA -25B)  ·  "
+                )
+            hint = (
+                range_text
+                + "SENSITIVITY GATE DISABLED UNTIL THE COMPARISON-BATCH "
+                "CALIBRATION FACTOR IS DERIVED"
+            )
         self.filter_hint_var.set(hint)
 
     def reference_gate_ready(self) -> bool:
@@ -3703,13 +4931,7 @@ class EmitterTesterApp(tk.Tk):
                 button.configure(state="disabled")
 
     def render_load_step(self) -> None:
-        self._step_heading(
-            0,
-            "02",
-            f"Load sensor {self.current_sensor_id}"
-            + ("  (skipped part)" if self.resuming_skipped else ""),
-            f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}",
-        )
+        self._step_heading(0, "02", f"Load sensor {self.current_sensor_id}", f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}")
 
         self._build_reference_calibration_card(row=1)
 
@@ -3729,6 +4951,26 @@ class EmitterTesterApp(tk.Tk):
         for chip_text in (f"SENSOR {self.current_sensor_id}", f"{EMITTER_PWM_FREQUENCY_HZ:g} Hz · 50% DUTY", "GAIN ×1 BUFFER"):
             chip = tk.Label(chips, text=chip_text, bg=ELTEC_BLUE_LIGHT, fg=ELTEC_BLUE_DARK, font=self.fm(9, "bold"), padx=10, pady=4)
             chip.pack(side="left", padx=(0, 8))
+        ToggleSwitch(
+            text_col,
+            f"Extended noise soak ({NOISE_SOAK_CAPTURE_SECONDS:.0f} s) for this sensor",
+            self.noise_soak_var,
+            font=self.fb(12),
+            bg=CARD_BG,
+        ).pack(anchor="w", pady=(S(12), 0))
+        tk.Label(
+            text_col,
+            text=(
+                "For suspect parts with come-and-go burst noise: 3× the noise "
+                "observation with the same 3-window allowance. Resets after "
+                "each sensor."
+            ),
+            bg=CARD_BG,
+            fg=MUTED_FG,
+            font=self.fb(10),
+            wraplength=S(520),
+            justify="left",
+        ).pack(anchor="w", pady=(2, 0))
         self._build_battery_banner()
 
     def _draw_rig_illustration(self, rig: tk.Canvas) -> None:
@@ -3759,11 +5001,80 @@ class EmitterTesterApp(tk.Tk):
             self.render_measuring_view()
         elif self.last_result is not None:
             self.render_result_view()
+        elif self.last_measure_error is not None:
+            self.render_measure_fault_view()
         else:
             self._step_heading(0, "03", f"{self.current_sensor_id}: ready to measure", "Press Enter (or Measure) to run the emitter test.")
             self.btn(self.step_frame, "Measure", self.run_measurement, kind="primary", size="lg").grid(row=2, column=0, sticky="w", pady=(22, 0))
         if not self.measuring:
             self._build_battery_banner()
+
+    def render_measure_fault_view(self) -> None:
+        """Nothing was recorded: offer a retry AND a way past this sensor.
+
+        A rig or serial fault used to leave the technician with Measure as the
+        only option, which blocks the whole batch on one sensor that may not
+        even be at fault. Skipping writes a NOT MEASURED row with a reason, so
+        the sensor is accounted for without inventing a verdict for it.
+        """
+        self._step_heading(
+            0,
+            "03",
+            f"{self.current_sensor_id}: nothing was recorded",
+            "Measure again, or skip this sensor and record why it was not measured.",
+        )
+        card = Card(
+            self.step_frame,
+            card_bg=FAIL_BG,
+            border=mix_color(FAIL_ACCENT, FAIL_BG, 0.45),
+            accent_stops=[FAIL_ACCENT, FAIL_ACCENT],
+            pad=(18, 14),
+        )
+        card.grid(row=1, column=0, sticky="ew", pady=(16, 0))
+        inner = card.inner
+        inner.columnconfigure(1, weight=1)
+        tk.Label(inner, text="⚠", bg=FAIL_BG, fg=FAIL_ACCENT, font=self.fd(22)).grid(
+            row=0, column=0, padx=(0, S(12)), sticky="n"
+        )
+        tk.Label(
+            inner,
+            text="LAST ATTEMPT FAILED",
+            bg=FAIL_BG,
+            fg=FAIL_FG,
+            font=self.fm(10, "bold"),
+        ).grid(row=0, column=1, sticky="w")
+        tk.Label(
+            inner,
+            text=self.last_measure_error or "",
+            bg=FAIL_BG,
+            fg=FAIL_FG,
+            font=self.fb(12),
+            wraplength=S(700),
+            justify="left",
+        ).grid(row=1, column=1, sticky="w", pady=(6, 0))
+
+        buttons = tk.Frame(self.step_frame, bg=PAGE_BG)
+        buttons.grid(row=2, column=0, sticky="w", pady=(22, 0))
+        self.btn(buttons, "Measure again", self.run_measurement, kind="primary", size="lg").grid(row=0, column=0)
+        self.btn(
+            buttons,
+            "Skip sensor (not measured)",
+            self.open_skip_sensor_window,
+            kind="outline",
+            size="lg",
+        ).grid(row=0, column=1, padx=(S(12), 0))
+        tk.Label(
+            self.step_frame,
+            text=(
+                f"A skipped sensor is saved as {OUTCOME_NOT_MEASURED} with no offset, "
+                "sensitivity or polarity, and is left out of the batch yield."
+            ),
+            bg=PAGE_BG,
+            fg=MUTED_FG,
+            font=self.fb(11),
+            wraplength=S(700),
+            justify="left",
+        ).grid(row=3, column=0, sticky="w", pady=(10, 0))
 
     def _build_battery_banner(self) -> None:
         """Show a yellow low-warning strip or a red block, with a re-check button."""
@@ -3777,10 +5088,10 @@ class EmitterTesterApp(tk.Tk):
         accent = FAIL_ACCENT if blocked else WARN_ACCENT
         volts = "" if self.battery_v is None else f" ({self.battery_v:.2f} V)"
         if self.battery_state == "fault":
-            message = (f"Battery reads{volts}, which is not a valid 6 V SLA level — the battery or the ADS AIN7 "
+            message = (f"Battery reads{volts}, which is not a valid battery level — the battery or the "
                        "divider is probably not connected. Check the battery clip and rig wiring, then re-check.")
         elif self.battery_state == "low":
-            message = f"Recharge the 6 V SLA{volts}. Testing is blocked until it is charged and re-checked."
+            message = f"Recharge the sensor battery{volts}. Testing is blocked until it is charged and re-checked."
         else:
             message = f"Battery is getting low{volts}. Swap it soon — testing is still allowed."
         card = Card(self.step_frame, card_bg=bg, border=mix_color(accent, bg, 0.45), accent_stops=[accent, accent], pad=(18, 12))
@@ -3797,27 +5108,63 @@ class EmitterTesterApp(tk.Tk):
         PulseDot(head, self.animator, "step:pulse", color=ELTEC_RED, bg=PAGE_BG, size=18).pack(side="left", padx=(0, 10), pady=(6, 0))
         tk.Label(head, text=f"{self.current_sensor_id}: measuring…", bg=PAGE_BG, fg=ELTEC_BLUE_DARK, font=self.fd(28)).pack(side="left")
         tk.Label(self.step_frame, textvariable=self.measure_status_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fb(15)).grid(row=1, column=0, sticky="w", pady=(10, 0))
-        self._build_scan_bar(row=2)
+        self._build_progress_bar(row=2)
         ToggleSwitch(self.step_frame, "Show live waveform while reading", self.show_live_var, command=self.toggle_live_view, font=self.fb(12)).grid(row=3, column=0, sticky="w", pady=(S(14), 0))
         if self.show_live_var.get():
             self._build_wave_canvas(row=4, live=True)
 
-    def _build_scan_bar(self, row: int) -> None:
-        """Indeterminate scanning bar shown while a measurement runs."""
-        bar = tk.Canvas(self.step_frame, height=S(6), bg=PAGE_BG, highlightthickness=0, bd=0)
-        bar.grid(row=row, column=0, sticky="ew", pady=(S(16), 0))
-        track = bar.create_rectangle(0, S(1), 0, S(5), fill=GHOST_BG, outline="")
-        segment = bar.create_rectangle(0, S(1), 0, S(5), fill=ELTEC_BLUE, outline="")
+    def _build_progress_bar(self, row: int) -> None:
+        """Step-ladder progress bar: which test step is running and how far.
 
-        def frame(t: float) -> None:
-            width = max(1, bar.winfo_width())
-            bar.coords(track, 0, S(2), width, S(5))
-            seg_w = max(S(90), width * 0.22)
-            x = (width + seg_w) * t - seg_w
-            bar.coords(segment, x, S(1), x + seg_w, S(6))
-            bar.itemconfigure(segment, fill=mix_color(ELTEC_BLUE, ELTEC_BLUE_BRIGHT, 0.5 + 0.5 * math.sin(t * 2 * math.pi)))
+        The label reads e.g. "STEP 3/4 — NOISE (EMITTER OFF)"; the bar fills
+        continuously as the sequence proceeds, with tick marks at the step
+        boundaries so the position reads off directly.
+        """
+        holder = tk.Frame(self.step_frame, bg=PAGE_BG)
+        holder.grid(row=row, column=0, sticky="ew", pady=(S(16), 0))
+        holder.columnconfigure(0, weight=1)
+        tk.Label(
+            holder,
+            textvariable=self.measure_step_var,
+            bg=PAGE_BG,
+            fg=ELTEC_BLUE_DARK,
+            font=self.fm(11, "bold"),
+            anchor="w",
+        ).grid(row=0, column=0, sticky="w")
+        bar = tk.Canvas(holder, height=S(14), bg=PAGE_BG, highlightthickness=0, bd=0)
+        bar.grid(row=1, column=0, sticky="ew", pady=(S(6), 0))
+        self.measure_progress_canvas = bar
+        bar.bind("<Configure>", lambda _e: self._redraw_measure_progress())
+        self._redraw_measure_progress()
 
-        self.animator.animate("step:scan", 1400, frame, easing=None, loop=True)
+    def _redraw_measure_progress(self) -> None:
+        bar = self.measure_progress_canvas
+        if bar is None or not bar.winfo_exists():
+            return
+        bar.delete("all")
+        width = max(1, bar.winfo_width())
+        height = max(1, bar.winfo_height())
+        total = max(1, self.measure_progress_total)
+        step = self.measure_progress_step
+        overall = 0.0
+        if step > 0:
+            overall = min(
+                1.0, (step - 1 + self.measure_progress_fraction) / total
+            )
+        top = max(0, (height - S(8)) // 2)
+        bottom = top + S(8)
+        draw_round_rect(bar, 0, top, width, bottom, Sf(4), fill=GHOST_BG, outline="")
+        if overall > 0.0:
+            fill_width = max(S(8), int(round(width * overall)))
+            draw_round_rect(
+                bar, 0, top, fill_width, bottom, Sf(4),
+                fill=mix_color(ELTEC_BLUE, ELTEC_BLUE_BRIGHT, 0.25), outline="",
+            )
+        # Step boundaries as ticks so "step 2 of 4" reads off the bar.
+        for boundary in range(1, total):
+            x = int(round(width * boundary / total))
+            bar.create_line(x, top - S(2), x, bottom + S(2), fill=PAGE_BG, width=Sf(3))
+            bar.create_line(x, top - S(2), x, bottom + S(2), fill=STEP_IDLE, width=Sf(1.2))
 
     def render_result_view(self) -> None:
         result = self.last_result
@@ -3875,7 +5222,7 @@ class EmitterTesterApp(tk.Tk):
         if self.show_details_var.get():
             tiles = tk.Frame(self.step_frame, bg=PAGE_BG)
             tiles.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
-            for column in range(3):
+            for column in range(4):
                 tiles.columnconfigure(column, weight=1, uniform="tiles")
             offset_ok = result.offset_v is not None and OFFSET_MIN_V <= result.offset_v <= OFFSET_MAX_V
             fail_below_mv, pass_above_mv = sensitivity_raw_limits_mv(self.filter_setup)
@@ -3904,6 +5251,24 @@ class EmitterTesterApp(tk.Tk):
                 ),
             )
             self._result_tile(tiles, 2, "Polarity", pol_verdict or None, pol_verdict == "GOOD")
+            noise_report = self.last_noise_report
+            # Verdict only, deliberately no magnitude: this rig reads the
+            # sensor pin in µV while the legacy station reads mV behind its
+            # amplifier chain, so a number here invites a false comparison.
+            # The full telemetry stays in the batch CSV and the snapshot.
+            if noise_report is None or noise_report.outcome == "SKIPPED":
+                self._result_tile(
+                    tiles, 3, "Noise", "Skipped", False,
+                    accent_override=WARN_ACCENT,
+                )
+            else:
+                self._result_tile(
+                    tiles,
+                    3,
+                    "Noise",
+                    noise_report.outcome,
+                    noise_report.outcome == OUTCOME_PASS,
+                )
             next_row += 1
 
             detail_bits = [f"Filter: {self.filter_setup}"]
@@ -3931,6 +5296,18 @@ class EmitterTesterApp(tk.Tk):
             if self.last_metrics is not None and self.last_metrics.signal_to_noise_db is not None \
                     and math.isfinite(self.last_metrics.signal_to_noise_db):
                 detail_bits.append(f"SNR {self.last_metrics.signal_to_noise_db:.1f} dB")
+            if noise_report is not None:
+                if noise_report.outcome == "SKIPPED":
+                    detail_bits.append(
+                        "noise test SKIPPED"
+                        + (f" ({noise_report.skip_reason})" if noise_report.skip_reason else "")
+                    )
+                else:
+                    # Same reasoning as the noise tile: verdict, not levels.
+                    noise_bit = f"noise {noise_report.outcome}"
+                    if noise_report.baseline_settled is False:
+                        noise_bit += " (level still moving at the wait deadline)"
+                    detail_bits.append(noise_bit)
             report = self.last_capture_report
             if report is not None and report.data_source == "simulator":
                 detail_bits.append("SIMULATED DATA")
@@ -3994,6 +5371,17 @@ class EmitterTesterApp(tk.Tk):
         tools.grid(row=next_row, column=0, sticky="w", pady=(16, 0))
         self.btn(tools, "Comment", self.open_comment_window, kind="ghost", size="sm").grid(row=0, column=0, padx=(0, 10))
         self.btn(tools, "Capture waveform", self.capture_waveform_snapshot, kind="ghost", size="sm").grid(row=0, column=1, padx=(0, 10))
+        noise_capture_button = self.btn(
+            tools,
+            "Save noise capture",
+            self.save_noise_capture_for_analysis,
+            kind="ghost",
+            size="sm",
+        )
+        noise_capture_button.grid(row=0, column=2, padx=(0, 10))
+        if self.last_noise_raw_waveform is None:
+            noise_capture_button.configure(state="disabled")
+        self.btn(tools, "Re-measure", self.run_measurement, kind="ghost", size="sm").grid(row=0, column=3, padx=(0, 14))
         ToggleSwitch(
             tools,
             "Show test details",
@@ -4008,8 +5396,9 @@ class EmitterTesterApp(tk.Tk):
             command=self.toggle_live_view,
             font=self.fb(12),
         ).grid(row=1, column=2, sticky="w", pady=(S(12), 0))
-        tk.Label(tools, textvariable=self.comment_status_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11)).grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        tk.Label(tools, textvariable=self.snapshot_status_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11)).grid(row=3, column=0, columnspan=3, sticky="w")
+        tk.Label(tools, textvariable=self.comment_status_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11)).grid(row=2, column=0, columnspan=4, sticky="w", pady=(6, 0))
+        tk.Label(tools, textvariable=self.snapshot_status_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11)).grid(row=3, column=0, columnspan=4, sticky="w")
+        tk.Label(tools, textvariable=self.noise_capture_status_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11)).grid(row=4, column=0, columnspan=4, sticky="w")
 
         if self.show_live_var.get():
             self._build_wave_canvas(row=next_row + 1, live=False)
@@ -4108,83 +5497,106 @@ class EmitterTesterApp(tk.Tk):
         wrapper.rowconfigure(1, weight=1)
         if live:
             PulseDot(wrapper, self.animator, "step:live", color=ELTEC_RED, bg=PAGE_BG, size=13).grid(row=0, column=0, padx=(0, S(6)))
-        tk.Label(wrapper, text="LIVE SIGNAL  ·  ADS AIN0 SENSOR + ESP32 PWM SYNC", bg=PAGE_BG, fg=MUTED_FG, font=self.fm(10, "bold")).grid(row=0, column=1, sticky="w")
-        scope = ScopeView(wrapper, self.animator, "step:scope", height=240)
+            tk.Label(wrapper, textvariable=self.live_wave_header_var, bg=PAGE_BG, fg=MUTED_FG, font=self.fm(10, "bold")).grid(row=0, column=1, sticky="w")
+        else:
+            tk.Label(
+                wrapper,
+                text="DRIVEN CAPTURE  ·  ADS AIN0 SENSOR + PWM SYNC OVERLAY (HIGH = EMITTER ON)",
+                bg=PAGE_BG, fg=MUTED_FG, font=self.fm(10, "bold"),
+            ).grid(row=0, column=1, sticky="w")
+        scope = ScopeView(
+            wrapper,
+            self.animator,
+            "step:scope",
+            height=240,
+            empty_text=(
+                "SIGNAL APPEARS HERE DURING MEASUREMENT"
+                if live
+                else "NO DRIVEN CAPTURE — THE TEST ENDED BEFORE THE SENSITIVITY STEP"
+            ),
+        )
         scope.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(S(6), 0))
         self.wave_canvas = scope
+        if live:
+            # A measurement may already be in its noise step when the live
+            # scope is toggled on - apply the current display mode.
+            self._apply_preview_display_mode()
         scope.set_data(self.preview_waveform, self.preview_sync)
+
+        # Result view: also show the emitter-off noise capture so the noise
+        # verdict can be verified visually. The noise scope uses the RELATIVE
+        # range display: deviation from the capture mean (µV at the current
+        # 75 µV pin-level limit) with solid red cutoff lines at ±limit/2, so
+        # "does it cross the lines" is the whole reading. min_span_v (2x the
+        # limit) keeps the y-axis from zooming into the noise, so a passing
+        # part's noise looks small. The stored trace is the band-limited one
+        # the verdict was computed from (see NOISE_DECIMATION_FACTOR).
+        self.noise_canvas = None
+        noise_metrics = self.last_noise_metrics
+        if not live and noise_metrics is not None and noise_metrics.waveform_v.size >= 2:
+            wrapper.rowconfigure(3, weight=1)
+            noise_caption = (
+                f"EMITTER-OFF NOISE  ·  {NOISE_CAPTURE_SECONDS:.0f} s BAND-LIMITED CAPTURE, EACH 1 s WINDOW AROUND ITS OWN BASELINE  ·  "
+                f"RED = ±{format_noise_pp(NOISE_PP_LIMIT_MV / 2, decimals=1)} CUTOFF, PASS IF ≤ "
+                f"{NOISE_MAX_OVER_FRACTION * 100:.0f}% OF 1 s WINDOWS EXCEED "
+                f"{format_noise_pp(NOISE_PP_LIMIT_MV)} PK-PK "
+                f"(= {NOISE_LEGACY_PP_LIMIT_MV:.0f} mV ON THE LEGACY SCOPE, ×{NOISE_EFFECTIVE_CHAIN_FACTOR:.0f} EFFECTIVE CHAIN)"
+            )
+            tk.Label(wrapper, text=noise_caption, bg=PAGE_BG, fg=MUTED_FG, font=self.fm(10, "bold")).grid(row=2, column=0, columnspan=2, sticky="w", pady=(S(12), 0))
+            noise_scope = ScopeView(
+                wrapper,
+                self.animator,
+                "step:noise",
+                height=190,
+                sample_rate_hz=noise_metrics.sample_rate_hz,
+                channel_label="AIN0 · NOISE RANGE (EMITTER OFF)",
+                empty_text="",
+                min_span_v=2.0 * NOISE_PP_LIMIT_MV / 1000.0,
+                relative_band_mv=NOISE_PP_LIMIT_MV,
+            )
+            noise_scope.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(S(6), 0))
+            self.noise_canvas = noise_scope
+            noise_scope.set_data(
+                noise_metrics.waveform_v, np.array([], dtype=float)
+            )
 
     # ----- navigation ----- #
     def render_navigation(self) -> None:
         # The footer bar is a fixed row below the step frame (built once in
         # _build_layout), so the buttons can never be pushed off-screen by
         # tall step content. Rebuild its buttons for the current step.
-        #
-        # v2.0 layout, left -> right:
-        #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
-        #   Save + Exit Batch · Save + Next Sensor
-        # Colour carries the meaning: green = save and move on, amber = set
-        # the part aside for later, blue outline = run the test again.
         for child in self.footer_bar.winfo_children():
             child.destroy()
-        self.footer_bar.columnconfigure(0, weight=0)
-        self.footer_bar.columnconfigure(1, weight=1)
-        result_step = self.step == self.RESULT_STEP
         self.back_button = self.btn(self.footer_bar, "Back", self.go_back, kind="ghost", size="lg")
         self.back_button.grid(row=0, column=0, sticky="w")
-        self.skipped_button = self.btn(self.footer_bar, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
-        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(S(10), 0))
-        self.skip_button = self.btn(self.footer_bar, "Skip part", self.open_skip_window, kind="warn", size="xl")
-        self.skip_button.grid(row=0, column=2, sticky="e", padx=(0, S(10)))
-        self.remeasure_button = self.btn(self.footer_bar, "Re-measure", self.run_measurement, kind="outline", size="xl")
-        self.remeasure_button.grid(row=0, column=3, sticky="e", padx=(0, S(10)))
-        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
-        self.secondary_button.grid(row=0, column=4, sticky="e", padx=(0, S(10)))
-        self.primary_button = self.btn(
-            self.footer_bar, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
-        )
-        self.primary_button.grid(row=0, column=5, sticky="e")
+        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="lg")
+        self.secondary_button.grid(row=0, column=1, sticky="e", padx=(0, S(10)))
+        self.primary_button = self.btn(self.footer_bar, "Next", self.go_next, kind="primary", size="lg")
+        self.primary_button.grid(row=0, column=2, sticky="e")
 
     def update_navigation_state(self) -> None:
-        idle = not self.busy and not self.measuring
-        for button in (self.skipped_button, self.skip_button, self.remeasure_button, self.secondary_button):
-            if button is not None:
-                button.grid_remove()
+        self.secondary_button.grid_remove()
         if self.step == self.SETUP_STEP:
             self.back_button.configure(state="disabled")
             self.primary_button.configure(text="Start (Enter)", state="disabled" if self.busy else "normal")
-            return
-        # Skipped parts waiting to be measured (never the one on the bench).
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if waiting and not self.resuming_skipped:
-            self.skipped_button.grid()
-            self.skipped_button.configure(
-                text=f"Measure skipped ({len(waiting)})", state="normal" if idle else "disabled"
-            )
-        if self.step == self.LOAD_STEP:
+        elif self.step == self.LOAD_STEP:
             self.back_button.configure(state="disabled" if self.busy else "normal")
-            self.skip_button.grid()
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            # Hard block: no measurement on a low battery or a wiring fault.
-            # Inert while battery monitoring is disabled (nothing measurable
-            # on AIN7 on this fixture - see BATTERY_MONITORING_ENABLED).
-            battery_blocked = (
-                BATTERY_MONITORING_ENABLED
-                and self.battery_state in ("low", "fault")
+            # Hard block: no measurement on a low battery or a wiring fault
+            # (battery branches are inert while monitoring is disabled).
+            battery_blocking = (
+                BATTERY_MONITORING_ENABLED and self.battery_state in ("low", "fault")
             )
             blocked = (
                 self.busy
-                or battery_blocked
+                or battery_blocking
                 or self.stability_config_error is not None
                 or not self.reference_gate_ready()
             )
             if self.stability_config_error is not None:
                 measure_text = "Fix stability settings"
-            elif battery_blocked and self.battery_state == "fault":
+            elif battery_blocking and self.battery_state == "fault":
                 measure_text = "Check wiring to test"
-            elif battery_blocked and self.battery_state == "low":
+            elif battery_blocking:
                 measure_text = "Recharge battery to test"
             elif not self.reference_gate_ready():
                 measure_text = "Calibrate reference unit to test"
@@ -4192,17 +5604,10 @@ class EmitterTesterApp(tk.Tk):
                 measure_text = "Measure (Enter)"
             self.primary_button.configure(text=measure_text, state="disabled" if blocked else "normal")
         else:
-            self.skip_button.grid()
-            self.remeasure_button.grid()
             self.secondary_button.grid()
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
-            ready = idle and self.last_result is not None and not self.result_saved
+            ready = not self.busy and not self.measuring and self.last_result is not None and not self.result_saved
             retest = result_outcome(self.last_result) == OUTCOME_RETEST
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            self.remeasure_button.configure(
-                text="Re-measure" if self.last_result is not None else "Measure",
-                state="normal" if idle and not self.result_saved else "disabled",
-            )
             self.primary_button.configure(
                 text=(
                     "Save Quarantine + Next (Enter)"
@@ -4294,40 +5699,41 @@ class EmitterTesterApp(tk.Tk):
         self.tester_name = tester_name
         self.filter_setup = self.filter_var.get()
         csv_path = batch_results_path(batch_number)
-        self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        self.current_sensor_number = next_sensor_number_for_batch(csv_path)
         existing = count_existing_batch_rows(csv_path)
         position = "next" if existing else "first"
-        waiting = self.skipped_parts_queue()
-        status = f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}."
-        if waiting:
-            status += f"  {len(waiting)} skipped part(s) waiting: {attempt_history.format_queue(waiting)}."
-        self.status_var.set(status)
+        self.status_var.set(f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}.")
         self.prepare_current_sensor()
         self.show_step(self.LOAD_STEP)
 
     def prepare_current_sensor(self) -> None:
         self.current_sensor_id = f"{self.batch_number}-{self.current_sensor_number}"
         self.result_saved = False
-        # Earlier attempts on this id (a part coming back from the skipped
-        # pile keeps its history) so the verdict row reports the true count.
-        self.measure_attempts, self.skip_count = attempt_history.attempt_counts(
-            self._attempts_path(), self.current_sensor_id
-        )
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
+        self.last_noise_report = None
+        self.last_noise_metrics = None
+        self.last_noise_raw_waveform = None
+        self.last_noise_raw_rate_hz = None
+        self.noise_raw_auto_saved = False
+        self.noise_soak_var.set(False)
         self.last_reference_check_mv = None
+        self.last_offset_initial_v = None
+        self.last_measure_error = None
         self.show_details_var.set(False)
         self.preview_waveform = np.array([], dtype=float)
         self.preview_sync = np.array([], dtype=float)
         self.snapshot_paths = []
         self.stability_diagnostics_saved = False
+        self.noise_diagnostics_saved = False
         self.notes_var.set("")
         self.failure_mode_var.set("")
         self.comment_status_var.set("")
         self.snapshot_status_var.set("")
+        self.noise_capture_status_var.set("")
         self.measure_status_var.set("")
+        self._reset_measure_progress()
 
     def save_and_continue(self) -> None:
         if self.save_current_sensor():
@@ -4338,17 +5744,7 @@ class EmitterTesterApp(tk.Tk):
             self._end_batch()
 
     def _advance_to_next_sensor(self) -> None:
-        if self.resuming_skipped:
-            # Walk the skipped pile in the order it was built; once it is
-            # empty fall back to fresh numbers.
-            waiting = [
-                item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-            ]
-            if waiting:
-                self._load_skipped_part(*waiting[0])
-                return
-            self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        self.current_sensor_number += 1
         self.prepare_current_sensor()
         self.show_step(self.LOAD_STEP)
 
@@ -4361,77 +5757,24 @@ class EmitterTesterApp(tk.Tk):
         self.show_batch_summary_window(saved_batch, saved_csv)
         self.render_step()
 
-    # ----- v2.0: set a part aside and come back to it in skip order ----- #
-    def _attempts_path(self) -> Path:
-        return attempt_history.attempts_path_for(batch_results_path(self.batch_number))
-
-    def skipped_parts_queue(self) -> list[tuple[int, str]]:
-        """Skipped parts without a verdict yet, first skipped first."""
-        if not self.batch_number:
-            return []
-        return attempt_history.skipped_queue(
-            self._attempts_path(), batch_results_path(self.batch_number)
-        )
-
-    def _next_fresh_sensor_number(self) -> int:
-        """Next never-used number: above every saved AND every skipped id."""
-        csv_path = batch_results_path(self.batch_number)
-        return max(
-            next_sensor_number_for_batch(csv_path),
-            attempt_history.highest_sensor_number(self._attempts_path()) + 1,
-        )
-
-    def can_skip_part(self) -> bool:
+    # ----- skip a sensor that could not be measured ----- #
+    def can_skip_sensor(self) -> bool:
+        """Skipping is only offered when an attempt recorded nothing."""
         return (
-            self.step in (self.LOAD_STEP, self.RESULT_STEP)
+            self.step == self.RESULT_STEP
             and not self.busy
             and not self.measuring
             and not self.result_saved
-            and bool(self.current_sensor_id)
+            and self.last_result is None
+            and self.last_measure_error is not None
         )
 
-    def _log_attempt(
-        self,
-        event: str,
-        *,
-        result: FinalResult | None = None,
-        reason: str = "",
-        note: str = "",
-    ) -> None:
-        """Append one event to the batch's attempt log (never blocks a test)."""
-        if not self.batch_number or not self.current_sensor_id:
-            return
-        if event in (attempt_history.EVENT_MEASURED, attempt_history.EVENT_MEASURE_ERROR):
-            self.measure_attempts += 1
-        elif event == attempt_history.EVENT_SKIPPED:
-            self.skip_count += 1
-        try:
-            attempt_history.append_attempt(
-                self._attempts_path(),
-                batch_number=self.batch_number,
-                sensor_number=self.current_sensor_number,
-                sensor_id=self.current_sensor_id,
-                event=event,
-                attempt=self.measure_attempts,
-                outcome=result_outcome(result) if result is not None else "",
-                reason=reason,
-                note=note or self.notes_var.get(),
-                tester_name=self.tester_name,
-                offset_v=None if result is None else result.offset_v,
-                sensitivity_mv=None if result is None else result.sensitivity_mv,
-                polarity="" if result is None else result.polarity,
-                fail_reasons=None if result is None else result.fail_reasons,
-            )
-        except Exception:
-            if event == attempt_history.EVENT_SKIPPED:
-                raise
-
-    def open_skip_window(self) -> None:
-        if not self.can_skip_part():
+    def open_skip_sensor_window(self) -> None:
+        if not self.can_skip_sensor():
             return
         dialog = tk.Toplevel(self)
         dialog.title(f"Skip {self.current_sensor_id}")
-        dialog.minsize(S(560), S(320))
+        dialog.minsize(S(640), S(430))
         dialog.configure(bg=PAGE_BG)
         dialog.transient(self)
 
@@ -4439,24 +5782,46 @@ class EmitterTesterApp(tk.Tk):
         frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
         dialog.rowconfigure(0, weight=1)
         dialog.columnconfigure(0, weight=1)
-        frame.rowconfigure(4, weight=1)
+        frame.rowconfigure(5, weight=1)
         frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIP PART —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(frame, text="SKIP SENSOR —", bg=PAGE_BG, fg=ELTEC_RED, font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
         tk.Label(
             frame,
-            text=f"Set {self.current_sensor_id} aside",
+            text=f"Sensor {self.current_sensor_id} was not measured",
             bg=PAGE_BG,
             fg=TEXT_DARK,
             font=self.fd(19),
         ).grid(row=1, column=0, sticky="w", pady=(2, 8))
+        tk.Label(
+            frame,
+            text=(
+                f"It is saved as {OUTCOME_NOT_MEASURED}: no offset, sensitivity or "
+                "polarity is written, and it does not count as a pass or a fail."
+            ),
+            bg=PAGE_BG,
+            fg=MUTED_FG,
+            font=self.fb(12),
+            wraplength=S(600),
+            justify="left",
+        ).grid(row=2, column=0, sticky="w")
 
-        # Just a comment box - no reason list to click through (2026-08-24:
-        # keep the skip to two clicks; the attempt log carries the numbers).
+        reason_var = tk.StringVar(value=DEFAULT_NOT_MEASURED_REASON)
+        self._field_label(frame, 3, "Reason", bg=PAGE_BG, pady=(16, 4))
+        reason_combo = ttk.Combobox(
+            frame,
+            textvariable=reason_var,
+            values=list(NOT_MEASURED_REASON_CHOICES),
+            state="readonly",
+            font=self.fb(14),
+            height=6,
+        )
+        reason_combo.grid(row=4, column=0, sticky="ew")
+
         note_holder = tk.Frame(frame, bg=PAGE_BG)
-        note_holder.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
+        note_holder.grid(row=5, column=0, sticky="nsew", pady=(14, 0))
         note_holder.rowconfigure(1, weight=1)
         note_holder.columnconfigure(0, weight=1)
-        tk.Label(note_holder, text="COMMENT (OPTIONAL)", bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 4))
+        tk.Label(note_holder, text="NOTE (OPTIONAL)", bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 4))
         note = tk.Text(
             note_holder, wrap="word", font=self.fb(13), undo=True, relief="flat", bd=0,
             bg=CARD_BG, fg=TEXT_DARK, padx=12, pady=10, insertbackground=ELTEC_BLUE,
@@ -4465,135 +5830,62 @@ class EmitterTesterApp(tk.Tk):
         )
         note.grid(row=1, column=0, sticky="nsew")
 
+        # The rig error itself is recorded automatically, so the technician
+        # only has to add what the message cannot say.
         tk.Label(
             frame,
-            text=(
-                f"Put it on the skipped pile, in order. It comes back as "
-                f"{self.current_sensor_id} under “Measure skipped”."
-            ),
+            text=f"Recorded automatically: {self.last_measure_error}",
             bg=PAGE_BG,
             fg=MUTED_FG,
-            font=self.fb(11),
-            wraplength=S(520),
+            font=self.fb(10),
+            wraplength=S(600),
             justify="left",
-        ).grid(row=5, column=0, sticky="w", pady=(10, 0))
+        ).grid(row=6, column=0, sticky="w", pady=(10, 0))
 
-        def commit(_event: tk.Event | None = None) -> str:
-            if self.skip_current_part("", note.get("1.0", "end-1c")):
+        def commit(end_batch: bool) -> None:
+            if self.save_skipped_sensor(reason_var.get(), note.get("1.0", "end-1c")):
                 dialog.destroy()
-            return "break"
+                if end_batch:
+                    self._end_batch()
+                else:
+                    self._advance_to_next_sensor()
 
         buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=6, column=0, sticky="e", pady=(16, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, "Skip part", commit, kind="warn", size="md").grid(row=0, column=1)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        note.focus_set()
+        buttons.grid(row=7, column=0, sticky="e", pady=(16, 0))
+        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="sm").grid(row=0, column=0, padx=(0, 10))
+        self.btn(buttons, "Skip + Exit Batch", lambda: commit(True), kind="outline", size="sm").grid(row=0, column=1, padx=(0, 10))
+        self.btn(buttons, "Skip + Next Sensor", lambda: commit(False), kind="primary", size="sm").grid(row=0, column=2)
+        reason_combo.focus_set()
 
-    def skip_current_part(self, reason: str, note: str = "") -> bool:
-        """Record the skip and move on WITHOUT spending a sensor number."""
-        if not self.can_skip_part():
+    def save_skipped_sensor(self, reason: str, note: str) -> bool:
+        """Write the NOT MEASURED row, restoring state if the write fails."""
+        if not self.can_skip_sensor():
             return False
-        skipped_id = self.current_sensor_id
         try:
-            self._log_attempt(
-                attempt_history.EVENT_SKIPPED,
-                result=self.last_result,
-                reason=reason,
-                note=note,
+            split_failure_mode(reason)
+        except ValueError:
+            messagebox.showerror(
+                "Reason needed", "Choose why this sensor could not be measured."
             )
-        except Exception as exc:
-            messagebox.showerror("Could not record the skip", str(exc))
             return False
-        self.result_saved = True  # nothing left to save for this part now
-        self.delete_autosave()
-        self._advance_to_next_sensor()
-        waiting = len(self.skipped_parts_queue())
+        previous_mode = self.failure_mode_var.get()
+        previous_notes = self.notes_var.get()
+        detail = self.last_measure_error or "nothing was recorded"
+        self.last_result = build_not_measured_result(detail)
+        self.failure_mode_var.set(reason)
+        self.notes_var.set(
+            "; ".join(part for part in (previous_notes.strip(), note.strip()) if part)
+        )
+        if not self.save_current_sensor():
+            self.last_result = None
+            self.failure_mode_var.set(previous_mode)
+            self.notes_var.set(previous_notes)
+            self.render_step()
+            return False
         self.status_var.set(
-            f"{skipped_id} set aside ({waiting} skipped, waiting). Now loading {self.current_sensor_id}."
+            f"{self.current_sensor_id}: saved as {OUTCOME_NOT_MEASURED}."
         )
         return True
-
-    def measure_skipped(self) -> None:
-        """Bring the skipped pile back, first skipped first."""
-        if self.busy or self.measuring:
-            return
-        if self.step == self.RESULT_STEP and self.last_result is not None and not self.result_saved:
-            messagebox.showinfo(
-                "Finish this part first",
-                f"Save, skip or re-measure {self.current_sensor_id} before loading a skipped part.",
-            )
-            return
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if not waiting:
-            return
-        first_number, first_id = waiting[0]
-        dialog = tk.Toplevel(self)
-        dialog.title("Skipped parts")
-        dialog.minsize(S(520), S(260))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIPPED PARTS —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"{len(waiting)} waiting, in skip order",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-        tk.Label(
-            frame,
-            text=attempt_history.format_queue(waiting),
-            bg=CARD_BG,
-            fg=ELTEC_BLUE_DARK,
-            font=self.fm(13, "bold"),
-            padx=12,
-            pady=10,
-            wraplength=S(480),
-            justify="left",
-            anchor="w",
-        ).grid(row=2, column=0, sticky="ew")
-        tk.Label(
-            frame,
-            text=f"Take the first part off the pile — it is {first_id}. The rest follow in this order.",
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(12),
-            wraplength=S(480),
-            justify="left",
-        ).grid(row=3, column=0, sticky="w", pady=(12, 0))
-
-        def load(_event: tk.Event | None = None) -> str:
-            dialog.destroy()
-            self._load_skipped_part(first_number, first_id)
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=4, column=0, sticky="e", pady=(18, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, f"Load {first_id} (Enter)", load, kind="primary", size="md").grid(row=0, column=1)
-        dialog.bind("<Return>", load)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        dialog.focus_set()
-
-    def _load_skipped_part(self, sensor_number: int, sensor_id: str) -> None:
-        self.resuming_skipped = True
-        self.current_sensor_number = sensor_number
-        self.prepare_current_sensor()
-        self._log_attempt(attempt_history.EVENT_RESUMED)
-        remaining = len(self.skipped_parts_queue()) - 1
-        self.status_var.set(
-            f"Skipped part {sensor_id} loaded — measure it now."
-            + (f"  {remaining} more waiting." if remaining > 0 else "  Last skipped part.")
-        )
-        self.show_step(self.LOAD_STEP)
 
     def save_current_sensor(self) -> bool:
         if self.last_result is None:
@@ -4641,6 +5933,52 @@ class EmitterTesterApp(tk.Tk):
                     )
                 self.snapshot_paths.extend(diagnostic_paths)
                 self.stability_diagnostics_saved = True
+            if (
+                self.last_noise_report is not None
+                and self.last_noise_report.outcome == OUTCOME_FAIL
+                and not self.noise_diagnostics_saved
+                and self.last_noise_metrics is not None
+            ):
+                # Preserve the emitter-off noise stream for a noisy sensor the
+                # same way an unstable capture is preserved. The cycle-CSV
+                # sidecars are sync-based and do not apply (report=None).
+                noise_paths = save_waveform_diagnostic_bundle(
+                    self.batch_number,
+                    self.current_sensor_id,
+                    self.last_noise_metrics,
+                    None,
+                    title=(
+                        f"{MODEL_NAME} {self.current_sensor_id} emitter-off noise"
+                    ),
+                    detail_lines=self.noise_snapshot_detail_lines(),
+                    filename_suffix="noisy",
+                )
+                self.snapshot_paths.extend(noise_paths)
+                # A noise failure is exactly the part whose spikes are worth
+                # studying: keep its RAW 1000 SPS capture automatically
+                # alongside the band-limited snapshot (skipped when the
+                # any-window-over auto-save already wrote it mid-measurement).
+                if (
+                    not self.noise_raw_auto_saved
+                    and self.last_noise_raw_waveform is not None
+                    and self.last_noise_raw_rate_hz is not None
+                ):
+                    self.snapshot_paths.extend(
+                        save_raw_noise_capture(
+                            self.batch_number,
+                            self.current_sensor_id,
+                            self.last_noise_raw_waveform,
+                            self.last_noise_raw_rate_hz,
+                            metadata={
+                                "operator_requested": "no (automatic on noise FAIL)",
+                                "noise_outcome": self.last_noise_report.outcome,
+                                "noise_windows_over": self.last_noise_report.windows_over,
+                                "noise_windows_total": self.last_noise_report.windows_total,
+                                "noise_worst_pp_mv": self.last_noise_report.worst_pp_mv,
+                            },
+                        )
+                    )
+                self.noise_diagnostics_saved = True
             append_result_csv(
                 batch_results_path(self.batch_number),
                 batch_number=self.batch_number,
@@ -4656,21 +5994,55 @@ class EmitterTesterApp(tk.Tk):
                 snapshot_paths=self.snapshot_paths,
                 battery_v=self.battery_v,
                 capture_report=self.last_capture_report,
+                noise_report=self.last_noise_report,
                 reference_calibration=self.reference_calibration,
                 reference_check_mv=self.last_reference_check_mv,
                 failure_mode=failure_mode,
-                measure_attempts=self.measure_attempts,
-                skip_count=self.skip_count,
+                offset_initial_v=self.last_offset_initial_v,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
             return False
         self.result_saved = True
         self.delete_autosave()
-        self._log_attempt(attempt_history.EVENT_SAVED, result=self.last_result)
         self.status_var.set(f"Saved {self.current_sensor_id}.")
         self.update_navigation_state()
         return True
+
+    def noise_snapshot_detail_lines(self) -> list[str]:
+        """PNG footer lines for a preserved emitter-off noise capture."""
+        report = self.last_noise_report
+        lines = [
+            f"Batch: {self.batch_number}",
+            f"Sensor: {self.current_sensor_id}",
+        ]
+        metrics = self.last_noise_metrics
+        if metrics is not None and metrics.offset_v is not None:
+            lines.append(f"Offset: {metrics.offset_v:.3f} V")
+        if report is not None:
+            allowed = int((report.windows_total or 0) * NOISE_MAX_OVER_FRACTION + 1e-9)
+            lines.append(
+                f"Noise: {report.outcome} - {report.windows_over}/{report.windows_total} "
+                f"windows over {format_noise_pp(report.pp_limit_mv)} pk-pk (allowed {allowed})"
+            )
+            if report.worst_pp_mv is not None:
+                lines.append(
+                    "Worst window: "
+                    f"{format_noise_pp(report.worst_pp_mv, decimals=1)} pk-pk"
+                )
+            if report.analysis_rate_hz is not None:
+                lines.append(
+                    f"Band-limited to {report.analysis_rate_hz:.0f} SPS, per-window "
+                    "baseline removed, before the pk-pk rule"
+                )
+            if report.settle_s is not None:
+                lines.append(f"Quiet wait before capture: {report.settle_s:.1f} s")
+            if report.baseline_settled is False:
+                lines.append("DC level was still moving at the wait deadline (measured anyway)")
+        comment = self.notes_var.get().strip()
+        if comment:
+            lines.append(f"Comment: {comment}")
+        return lines
 
     def _post(self, callback) -> None:
         """Schedule a callback on the UI thread, ignoring app-shutdown races."""
@@ -4697,11 +6069,11 @@ class EmitterTesterApp(tk.Tk):
         self.battery_pill.set_state(self.battery_state, text, battery_gauge_fraction(self.battery_v))
 
     def refresh_battery(self) -> None:
-        """Read the 6 V SLA in the background and update the watcher state.
+        """Read the sensor battery in the background and update the watcher state.
 
         Idle while battery monitoring is disabled (nothing measurable on AIN7
-        on the unified-rig fixture; see BATTERY_MONITORING_ENABLED) - the pill
-        just shows "not monitored" and no BAT? read is issued.
+        since the 2026-08-12 battery isolation; see BATTERY_MONITORING_ENABLED)
+        - the pill just shows "not monitored" and no BAT? read is issued.
         """
         if not BATTERY_MONITORING_ENABLED:
             self._refresh_battery_pill()
@@ -4761,6 +6133,7 @@ class EmitterTesterApp(tk.Tk):
         push,
         status_prefix: str,
         calibration_ui: bool = False,
+        step_progress=None,
     ) -> float:
         dut_settings = self.stability_settings
         if dut_settings is None:
@@ -4774,6 +6147,11 @@ class EmitterTesterApp(tk.Tk):
                     f"{status_prefix}: stable. Averaging cycle "
                     f"{report.measurement_cycle_count}/{REFERENCE_MEASUREMENT_CYCLES}…"
                 )
+                fraction = 0.5 + 0.5 * min(
+                    1.0,
+                    report.measurement_cycle_count
+                    / max(1, REFERENCE_MEASUREMENT_CYCLES),
+                )
             else:
                 latest = current.cycles[-1] if current.cycles else None
                 delta_text = (
@@ -4786,7 +6164,13 @@ class EmitterTesterApp(tk.Tk):
                     f"{status_prefix}: {delta_text} · "
                     f"{confirmation}/{settings.consecutive_deltas_required} stable"
                 )
+                fraction = 0.5 * min(
+                    1.0,
+                    confirmation / max(1, settings.consecutive_deltas_required),
+                )
             push(lambda value=text: self.set_measure_status(token, value))
+            if step_progress is not None:
+                step_progress(fraction)
             if calibration_ui:
                 push(lambda value=text: self.reference_progress_var.set(value))
 
@@ -4795,7 +6179,7 @@ class EmitterTesterApp(tk.Tk):
             settings=settings,
             pwm_started_monotonic=pwm_started_monotonic,
             sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
-            expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
+            expected_frequency_hz=REFERENCE_PWM_FREQUENCY_HZ,
             progress=progress,
             cancelled=lambda: token != self.measure_token,
         )
@@ -4846,22 +6230,22 @@ class EmitterTesterApp(tk.Tk):
             self.ensure_connected()
             device = self.device
             device.disable_emitter_pwm(EMITTER_PWM_CHANNEL)
-            # Battery gate (inert while BATTERY_MONITORING_ENABLED is False -
-            # nothing measurable on AIN7 on the unified-rig fixture).
             if BATTERY_MONITORING_ENABLED:
                 battery_v = device.read_battery_voltage()
                 push(lambda v=battery_v: self.on_battery_update(v))
                 if battery_state_for(battery_v) == "fault":
                     raise HardwareNotReadyError(
-                        f"The battery input reads {battery_v:.2f} V, which is not a valid 6 V SLA level. "
-                        "Check the battery clip and ADS AIN7 divider before calibrating the reference unit."
+                        f"The battery input reads {battery_v:.2f} V, which is not a valid battery level. "
+                        "Check the battery clip and divider wiring before calibrating the reference unit."
                     )
                 if battery_v <= BATTERY_MIN_V:
                     raise BatteryTooLowError(battery_v)
             try:
+                # The AIN1 reference unit is a 406MCA sensor: calibrate it at
+                # its qualified 10 Hz drive, not the DUT's 1 Hz.
                 activation_time = device.configure_emitter_pwm(
                     channel=EMITTER_PWM_CHANNEL,
-                    frequency_hz=EMITTER_PWM_FREQUENCY_HZ,
+                    frequency_hz=REFERENCE_PWM_FREQUENCY_HZ,
                     duty_cycle_percent=EMITTER_PWM_DUTY_CYCLE,
                 )
                 first_reading_start = (
@@ -4870,20 +6254,37 @@ class EmitterTesterApp(tk.Tk):
                     else time.monotonic()
                 )
                 for reading_number in range(1, REFERENCE_CALIBRATION_READINGS + 1):
-                    reading_start = (
-                        first_reading_start if reading_number == 1 else time.monotonic()
-                    )
-                    reading_mv = self._capture_reference_reading(
-                        device,
-                        pwm_started_monotonic=reading_start,
-                        token=token,
-                        push=push,
-                        status_prefix=(
-                            f"Reference calibration {reading_number}/"
-                            f"{REFERENCE_CALIBRATION_READINGS}"
-                        ),
-                        calibration_ui=True,
-                    )
+                    def capture(attempt: int, reading_number: int = reading_number) -> float:
+                        # Only the very first attempt of reading 1 anchors its
+                        # stability deadline to the PWM,ON moment; retries and
+                        # later readings start their own timing window.
+                        reading_start = (
+                            first_reading_start
+                            if reading_number == 1 and attempt == 0
+                            else time.monotonic()
+                        )
+                        return self._capture_reference_reading(
+                            device,
+                            pwm_started_monotonic=reading_start,
+                            token=token,
+                            push=push,
+                            status_prefix=(
+                                f"Reference calibration {reading_number}/"
+                                f"{REFERENCE_CALIBRATION_READINGS}"
+                            ),
+                            calibration_ui=True,
+                        )
+
+                    def on_retry(attempt: int, reading_number: int = reading_number) -> None:
+                        text = (
+                            f"Serial stream glitch in reading {reading_number}; "
+                            f"nothing was recorded — retrying "
+                            f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…"
+                        )
+                        push(lambda value=text: self.reference_progress_var.set(value))
+                        push(lambda value=text: self.status_var.set(value))
+
+                    reading_mv = call_with_stream_retries(capture, on_retry=on_retry)
                     readings_mv.append(reading_mv)
                     progress_text = (
                         f"Reference reading {reading_number}/{REFERENCE_CALIBRATION_READINGS} complete"
@@ -4941,10 +6342,6 @@ class EmitterTesterApp(tk.Tk):
     def run_measurement(self, _event: tk.Event | None = None) -> None:
         if self.busy or self.measuring:
             return
-        if self.last_result is not None and not self.result_saved:
-            # The shown verdict is being discarded: keep it in the attempt
-            # log so a later review can see WHY the part was re-measured.
-            self._log_attempt(attempt_history.EVENT_REMEASURE, result=self.last_result)
         simulator = self.simulator_var.get()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
@@ -4969,15 +6366,14 @@ class EmitterTesterApp(tk.Tk):
             )
             return
         # Hard block: refuse to start a test on a known-low battery or a
-        # wiring fault. The tech must fix it and re-check before testing.
-        # Inert while battery monitoring is disabled (see
-        # BATTERY_MONITORING_ENABLED).
+        # wiring fault. Inert while battery monitoring is disabled (the sensor
+        # battery is not measurable on AIN7 - see BATTERY_MONITORING_ENABLED).
         if BATTERY_MONITORING_ENABLED and self.battery_state in ("low", "fault"):
             volts = "" if self.battery_v is None else f" ({self.battery_v:.2f} V)"
             if self.battery_state == "fault":
-                self.status_var.set(f"Battery reading is not valid{volts}. Check the battery clip and ADS AIN7 divider, then press “Re-check battery”.")
+                self.status_var.set(f"Battery reading is not valid{volts}. Check the battery clip and divider wiring, then press “Re-check battery”.")
             else:
-                self.status_var.set(f"Battery too low{volts}. Recharge the 6 V SLA and press “Re-check battery”.")
+                self.status_var.set(f"Battery too low{volts}. Recharge the sensor battery and press “Re-check battery”.")
             self.refresh_battery()
             return
 
@@ -4989,16 +6385,28 @@ class EmitterTesterApp(tk.Tk):
         sim_low_battery = self.sim_low_battery_var.get()
         filter_setup = self.filter_setup
         show_live = self.show_live_var.get()
+        noise_soak = self.noise_soak_var.get()
 
         self.measuring = True
         self.busy = True
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
+        self.last_noise_report = None
+        self.last_noise_metrics = None
+        self.last_noise_raw_waveform = None
+        self.last_noise_raw_rate_hz = None
+        self.noise_raw_auto_saved = False
         self.last_reference_check_mv = None
+        self.last_offset_initial_v = None
+        self.last_measure_error = None
         self.show_details_var.set(False)
         self.stability_diagnostics_saved = False
-        self.measure_status_var.set("Checking reference unit before reading the sensor…")
+        self.noise_diagnostics_saved = False
+        self.measure_status_var.set("Reading the sensor offset first…")
+        self._reset_measure_progress()
+        self.measure_progress_total = 4 if NOISE_TEST_ENABLED else 3
+        self._apply_preview_display_mode()
         self.measure_token += 1
         token = self.measure_token
         self.render_step()
@@ -5009,10 +6417,14 @@ class EmitterTesterApp(tk.Tk):
         def worker() -> None:
             try:
                 if simulator:
-                    metrics, final, offset_v = self._simulate_measurement(filter_setup, sim_case, sim_low_battery, waveform_range_v, show_live, token, push)
+                    metrics, final, offset_v = self._simulate_measurement(
+                        filter_setup, sim_case, sim_low_battery, waveform_range_v,
+                        show_live, token, push, noise_soak=noise_soak,
+                    )
                 else:
                     metrics, final, offset_v = self._hardware_measurement(
-                        filter_setup, waveform_range_v, pwm_channel, pwm_hz, pwm_duty, show_live, token, push
+                        filter_setup, waveform_range_v, pwm_channel, pwm_hz, pwm_duty,
+                        show_live, token, push, noise_soak=noise_soak,
                     )
             except BatteryTooLowError as exc:
                 push(lambda exc=exc: self.on_battery_block(token, exc.battery_v))
@@ -5040,7 +6452,7 @@ class EmitterTesterApp(tk.Tk):
             return self.battery_v
         return None
 
-    def _hardware_measurement(self, filter_setup, waveform_range_v, pwm_channel, pwm_hz, pwm_duty, show_live, token, push):
+    def _hardware_measurement(self, filter_setup, waveform_range_v, pwm_channel, pwm_hz, pwm_duty, show_live, token, push, *, noise_soak=False):
         # Preview samples always flow from the production stream; this initial
         # UI state must never select a different acquisition path.
         del show_live
@@ -5053,15 +6465,49 @@ class EmitterTesterApp(tk.Tk):
                 "The reference unit has no valid calibration. The sensor was not read. "
                 "Replace/check the emitter and recalibrate the reference unit before testing."
             )
+        # TP412 per-part sequence (2026-08-13 order): offset fail-fast ->
+        # reference gate (while REFERENCE_GATE_ENABLED) -> emitter-off noise
+        # -> driven sensitivity capture.
+        # Offset runs FIRST (a plain DC read with the emitter off): a part
+        # outside 0.8-3.0 V - including one railed at the ~5 V ADC full
+        # scale - fails on the spot and never reaches the reference gate,
+        # so its AIN1 interference can never invalidate the reference
+        # calibration. The step ladder below drives the measuring screen's
+        # progress bar.
+        reference_steps = 1 if REFERENCE_GATE_ENABLED else 0
+        noise_step = 2 + reference_steps
+        total_steps = reference_steps + (3 if NOISE_TEST_ENABLED else 2)
+        sensitivity_step = total_steps
+
+        def step_progress(step: int, label: str, fraction: float) -> None:
+            push(
+                lambda: self.set_measure_progress(
+                    token, step, total_steps, label, fraction
+                )
+            )
+
+        def offset_fail_fast(offset_value: float, skip_reason: str):
+            """Record an immediate TP412 offset FAIL - nothing else is measured."""
+            push(lambda v=offset_value: self.set_measure_status(
+                token,
+                f"Offset {v:.3f} V is outside the {OFFSET_MIN_V:.1f}-"
+                f"{OFFSET_MAX_V:.1f} V band — recording the failure…",
+            ))
+            metrics, final = build_offset_failure_result(
+                offset_value, input_range_v=waveform_range_v
+            )
+            self.last_capture_report = None
+            self.last_noise_report = NoiseCaptureReport.skipped(skip_reason)
+            return metrics, final, offset_value
+
         with self.hardware_lock:
             self.ensure_connected()
             device = self.device
             device.disable_emitter_pwm(pwm_channel)
-            # Check the 6 V SLA before doing anything else: if it is too low,
-            # bail out before measuring so no unreliable reading is recorded.
-            # Inert while battery monitoring is disabled (nothing measurable
-            # on AIN7 on the unified-rig fixture; see
-            # BATTERY_MONITORING_ENABLED).
+            # Battery gate (currently disabled - the sensor battery is not
+            # measurable on AIN7 since the 2026-08-12 battery isolation; see
+            # BATTERY_MONITORING_ENABLED). When re-enabled: bail out before
+            # measuring so no unreliable reading is recorded.
             if BATTERY_MONITORING_ENABLED:
                 battery_v = self._fresh_battery_reading()
                 if battery_v is None:
@@ -5069,93 +6515,196 @@ class EmitterTesterApp(tk.Tk):
                     push(lambda v=battery_v: self.on_battery_update(v))
                 if battery_state_for(battery_v) == "fault":
                     raise HardwareNotReadyError(
-                        f"The battery input reads {battery_v:.2f} V, which is not a valid 6 V SLA level. "
-                        "The battery or the ADS AIN7 99.7k/99.6k divider is probably not connected - "
+                        f"The battery input reads {battery_v:.2f} V, which is not a valid battery level. "
+                        "The battery or the ADS battery divider is probably not connected - "
                         "check the battery clip and the rig wiring, then press Re-check battery."
                     )
                 if battery_v <= BATTERY_MIN_V:
                     raise BatteryTooLowError(battery_v)
 
-            reference_check_mv: float | None = None
-            reference_in_window = True
-            if not REFERENCE_GATE_ENABLED:
+            # STEP 1: the quick offset check, deliberately BEFORE the
+            # reference gate. The emitter is off and this is a plain DC
+            # read, so nothing about the fixture needs to be trusted yet -
+            # and a bad part is rejected before it can disturb AIN1.
+            push(lambda: self.set_measure_status(
+                token,
+                "Reading sensor offset first (emitter off)…",
+            ))
+            step_progress(1, "Offset", 0.0)
+            offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+            # Pre-flight: through the buffer a missing/unseated sensor floats
+            # near 0 V. A high reading is never "no sensor" - a high-offset
+            # part rails AIN0 at the ~5 V ADC full scale and must record the
+            # HO failure below, not a wiring error. A just-inserted part can
+            # also sit below the floor for a few seconds while its offset
+            # wakes up (lot 500: 500-44's first attempt read as "no sensor"),
+            # so poll briefly before declaring the slot empty.
+            wake_deadline = time.monotonic() + OFFSET_WAKE_TIMEOUT_S
+            while (
+                offset_v < SENSOR_OFFSET_MIN_PLAUSIBLE_V
+                and time.monotonic() < wake_deadline
+            ):
                 push(lambda: self.set_measure_status(
                     token,
-                    "Reference gate disabled - reading sensor offset first…",
+                    "AIN0 reads near 0 V — waiting for the sensor offset to wake up…",
                 ))
-            else:
-                # The reference gate is deliberately first: start the emitter and
-                # immediately stream the fixed reference unit. The same 0.1 mV / 5
-                # consecutive-peak stability rule as AIN0 selects five fresh cycles;
-                # there is no fixed warm-up delay.
+                time.sleep(OFFSET_WAKE_POLL_S)
+                offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+            if offset_v < SENSOR_OFFSET_MIN_PLAUSIBLE_V:
+                raise HardwareNotReadyError(
+                    f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 405 M22 "
+                    f"presents at least {SENSOR_OFFSET_MIN_PLAUSIBLE_V:.2f} V. "
+                    "Seat the sensor in the rig and check the buffer wiring, then press Measure again."
+                )
+            push(lambda v=offset_v: self.on_initial_offset(token, v))
+            push(lambda v=offset_v: self.on_offset_update(token, v))
+            step_progress(1, "Offset", 1.0)
+
+            # The early gate is HIGH-SIDE ONLY (2026-08-17). These sensors'
+            # offsets settle UPWARD for tens of seconds after insertion: on
+            # the lot-500 fixture comparison, 35 of 48 parts read 0.15-1.1 V
+            # lower on this first read than their settled legacy-fixture
+            # value, while the two parts that got an immediate second attempt
+            # matched it almost exactly. A low first read is therefore not a
+            # verdict - the part continues, and the offset is re-verified
+            # after the sensitivity capture once it has had ~25 s to settle.
+            # A HIGH first read is real (HO parts read high or railed at
+            # once and never settle back into band), so it still fails on
+            # the spot without wasting the noise + sensitivity time.
+            if offset_v > OFFSET_MAX_V:
+                return offset_fail_fast(
+                    offset_v,
+                    "offset out of range - reference, noise and sensitivity skipped",
+                )
+            if offset_v < OFFSET_MIN_V:
+                push(lambda v=offset_v: self.set_measure_status(
+                    token,
+                    f"Offset {v:.3f} V is below the {OFFSET_MIN_V:.1f} V minimum but "
+                    "may still be settling — continuing; it is re-verified after "
+                    "the sensitivity capture.",
+                ))
+
+            # STEP 2 (only while REFERENCE_GATE_ENABLED): the reference gate.
+            # Start the emitter and immediately stream the fixed reference
+            # unit. The same consecutive-peak stability rule as AIN0 selects
+            # five fresh cycles — but against the reference unit's own
+            # dedicated delta limit, not the DUT's — and there is no fixed
+            # warm-up delay. Disabled 2026-08-17: the shared dual op-amp
+            # buffer couples the DUT into AIN1, so this reading tracks the
+            # loaded sensor instead of the emitter (see REFERENCE_GATE_ENABLED).
+            if REFERENCE_GATE_ENABLED:
                 push(lambda: self.set_measure_status(
                     token,
-                    "Checking reference unit first — watching peak stability…",
+                    "Offset OK. Checking reference unit — watching peak stability…",
                 ))
+                step_progress(2, "Reference check", 0.0)
+                reference_capture_error: ReferenceCaptureError | None = None
+                reference_check_mv: float | None = None
                 try:
-                    reference_activation_time = device.configure_emitter_pwm(
-                        channel=pwm_channel,
-                        frequency_hz=pwm_hz,
-                        duty_cycle_percent=pwm_duty,
-                    )
-                    reference_started_monotonic = (
-                        float(reference_activation_time)
-                        if isinstance(reference_activation_time, (int, float))
-                        else time.monotonic()
-                    )
-                    try:
-                        reference_check_mv = self._capture_reference_reading(
+                    def reference_gate_capture(attempt: int) -> float:
+                        # The AIN1 reference unit is a 406MCA sensor: gate it at
+                        # its qualified 10 Hz drive, then switch to 1 Hz for the
+                        # DUT capture below. Re-activating on a retry restarts the
+                        # PWM phase and gives a fresh stability anchor.
+                        reference_activation_time = device.configure_emitter_pwm(
+                            channel=pwm_channel,
+                            frequency_hz=REFERENCE_PWM_FREQUENCY_HZ,
+                            duty_cycle_percent=pwm_duty,
+                        )
+                        reference_started_monotonic = (
+                            float(reference_activation_time)
+                            if isinstance(reference_activation_time, (int, float))
+                            else time.monotonic()
+                        )
+                        return self._capture_reference_reading(
                             device,
                             pwm_started_monotonic=reference_started_monotonic,
                             token=token,
                             push=push,
                             status_prefix="Reference unit",
+                            step_progress=lambda fraction: step_progress(
+                                2, "Reference check", fraction
+                            ),
+                        )
+
+                    def reference_gate_retry(attempt: int) -> None:
+                        push(lambda: self.set_measure_status(
+                            token,
+                            "Serial stream glitch during the reference check; "
+                            f"nothing was recorded — retrying ({attempt}/"
+                            f"{REFERENCE_READING_STREAM_RETRIES})…",
+                        ))
+
+                    try:
+                        reference_check_mv = call_with_stream_retries(
+                            reference_gate_capture, on_retry=reference_gate_retry
                         )
                     except ReferenceCaptureError as exc:
-                        reason = (
-                            f"Reference unit could not establish a stable five-cycle reading: {exc} "
-                            "No AIN0 reading was taken. Replace/check the emitter, then recalibrate "
-                            "the reference unit before testing."
-                        )
-                        invalidated = calibration.invalidated(reason)
-                        self.reference_calibration = invalidated
-                        try:
-                            save_reference_calibration(invalidated)
-                        except ReferenceCalibrationError as save_exc:
-                            self.reference_calibration_error = str(save_exc)
-                        raise ReferenceGateError(reason) from exc
+                        # Judged below, after the guaranteed PWM-off: a part whose
+                        # offset has drifted out of band mid-test can keep AIN1
+                        # from stabilizing, and that condemns the part, not the
+                        # fixture.
+                        reference_capture_error = exc
                 finally:
                     device.disable_emitter_pwm(pwm_channel)
 
-                self.last_reference_check_mv = reference_check_mv
-                reference_in_window = calibration.accepts(reference_check_mv)
-                if reference_in_window:
-                    push(lambda: self.set_measure_status(
-                        token,
-                        "Reference unit passed. Reading sensor offset…",
-                    ))
-                else:
-                    push(lambda: self.set_measure_status(
-                        token,
-                        "Reference unit is outside its window. Checking AIN0 for a high-offset sensor…",
-                    ))
+                def high_offset_recheck():
+                    """Re-read AIN0 after a failed reference gate.
 
-            offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
-            if REFERENCE_GATE_ENABLED and not reference_in_window:
-                if high_offset_dut_explains_reference_spike(
-                    reference_check_mv,
-                    calibration,
-                    offset_v,
-                ):
+                    The offset passed its own gate moments ago, but a part that
+                    has since drifted above the TP412 limit (or railed) explains
+                    the AIN1 failure: record the part as an immediate high-offset
+                    FAIL and leave the reference calibration intact - swapping in
+                    a good part restores the reference. Returns the fresh offset
+                    and the fail-fast result (None when the reference failure
+                    stands on its own).
+                    """
+                    recheck_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+                    if not high_offset_dut_explains_reference_failure(recheck_v):
+                        return recheck_v, None
+                    push(lambda v=recheck_v: self.on_offset_update(token, v))
                     push(lambda: self.set_measure_status(
                         token,
                         "High-offset sensor confirmed. Ignoring its AIN1 interference and recording the failure…",
                     ))
-                else:
+                    return recheck_v, offset_fail_fast(
+                        recheck_v,
+                        "high-offset sensor - noise and sensitivity skipped; "
+                        "its AIN1 reference interference was ignored",
+                    )
+
+                if reference_capture_error is not None:
+                    recheck_v, suppressed = high_offset_recheck()
+                    if suppressed is not None:
+                        return suppressed
+                    reason = (
+                        f"Reference unit could not establish a stable five-cycle reading: "
+                        f"{reference_capture_error} AIN0 was checked at {recheck_v:.3f} V, which is "
+                        f"not above the {OFFSET_MAX_V:.1f} V high-offset limit, so a high-offset "
+                        "sensor does not explain the reference failure. Replace/check the emitter, "
+                        "then recalibrate the reference unit before testing."
+                    )
+                    invalidated = calibration.invalidated(reason)
+                    self.reference_calibration = invalidated
+                    try:
+                        save_reference_calibration(invalidated)
+                    except ReferenceCalibrationError as save_exc:
+                        self.reference_calibration_error = str(save_exc)
+                    raise ReferenceGateError(reason) from reference_capture_error
+
+                self.last_reference_check_mv = reference_check_mv
+                if not calibration.accepts(reference_check_mv):
+                    push(lambda: self.set_measure_status(
+                        token,
+                        "Reference unit is outside its window. Re-checking AIN0 for a high-offset sensor…",
+                    ))
+                    recheck_v, suppressed = high_offset_recheck()
+                    if suppressed is not None:
+                        return suppressed
                     failure = ReferenceCheckFailedError(
                         reference_check_mv,
                         calibration,
-                        dut_offset_v=offset_v,
+                        dut_offset_v=recheck_v,
                     )
                     invalidated = calibration.invalidated(str(failure), reference_check_mv)
                     self.reference_calibration = invalidated
@@ -5165,17 +6714,180 @@ class EmitterTesterApp(tk.Tk):
                         self.reference_calibration_error = str(exc)
                     raise failure
 
-            # Pre-flight: a connected 406MCA presents its ~0.3-1.2 V DC offset
-            # through the buffer. A floating/railed AIN0 means no sensor (or no
-            # buffer) - abort before capturing anything.
-            if not (SENSOR_OFFSET_MIN_PLAUSIBLE_V <= offset_v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V):
-                raise NoSensorDetectedError(
-                    f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 406MCA "
-                    "sits near 0.3-1.2 V. Seat the sensor in the rig and check the buffer wiring, "
-                    "then press Measure again.",
-                    offset_v,
+                step_progress(2, "Reference check", 1.0)
+                push(lambda: self.set_measure_status(
+                    token,
+                    "Reference unit passed.",
+                ))
+            else:
+                push(lambda: self.set_measure_status(
+                    token,
+                    "Offset OK. Reference gate is disabled (op-amp crosstalk) — "
+                    "continuing without the emitter-health check.",
+                ))
+
+            def preview(waveform_preview: np.ndarray, sync_preview: np.ndarray) -> None:
+                # Keep the rolling preview current even while hidden so a
+                # technician can turn the live scope on mid-measurement.
+                push(lambda wf=waveform_preview, sy=sync_preview: self.on_preview_frame(token, wf, sy))
+
+            # TP412 noise test, now BEFORE the driven capture (the emitter has
+            # been off since the reference gate). A fixed quiet wait replaces
+            # the old settle detection - with the emitter off there is no
+            # signal to stabilize, only noise - and a noisy part is rejected
+            # here instead of first spending up to three 60 s stabilization
+            # attempts on the sensitivity capture.
+            if NOISE_TEST_ENABLED:
+                # Per-part extended soak: 3x the capture with the allowed
+                # over-window count held ABSOLUTE (see NOISE_SOAK_* constants)
+                # to catch intermittent burst noise like lot-500 part 44's.
+                noise_capture_seconds = (
+                    NOISE_SOAK_CAPTURE_SECONDS if noise_soak else NOISE_CAPTURE_SECONDS
                 )
-            push(lambda v=offset_v: self.on_offset_update(token, v))
+                noise_max_over_fraction = (
+                    NOISE_SOAK_MAX_OVER_FRACTION if noise_soak else NOISE_MAX_OVER_FRACTION
+                )
+                soak_text = " EXTENDED SOAK" if noise_soak else ""
+                push(lambda: self.set_measure_status(
+                    token,
+                    f"Measuring noise (emitter off{soak_text.lower()}): waiting for the offset "
+                    f"level to settle (min {NOISE_WAIT_BEFORE_CAPTURE_S:.0f} s)…",
+                ))
+                push(lambda: self.set_preview_display(token, noise=True))
+
+                def noise_progress(
+                    capturing: bool,
+                    elapsed_s: float,
+                    baseline_delta_mv: float | None = None,
+                ) -> None:
+                    if capturing:
+                        # elapsed includes the (variable) quiet wait; the
+                        # remaining stream is exactly the capture window.
+                        text = (
+                            f"Measuring noise (emitter off{soak_text.lower()}): capturing "
+                            f"the {noise_capture_seconds:.0f} s window… "
+                            f"{elapsed_s:.1f} s total"
+                        )
+                        fraction = 0.2 + 0.8 * min(
+                            1.0, elapsed_s / (NOISE_WAIT_BEFORE_CAPTURE_S + noise_capture_seconds)
+                        )
+                    else:
+                        delta_text = (
+                            ""
+                            if baseline_delta_mv is None
+                            else (
+                                f" (level moving {baseline_delta_mv * 1000.0:.0f} µV/s, "
+                                f"start at ≤{NOISE_BASELINE_SETTLE_DELTA_MV * 1000.0:.0f})"
+                            )
+                        )
+                        text = (
+                            "Measuring noise (emitter off): waiting for the "
+                            f"offset level to settle {elapsed_s:.1f}/"
+                            f"{NOISE_WAIT_MAX_S:.0f} s max{delta_text}…"
+                        )
+                        fraction = 0.2 * min(1.0, elapsed_s / NOISE_WAIT_MAX_S)
+                    push(lambda value=text: self.set_measure_status(token, value))
+                    step_progress(noise_step, "Noise (emitter off)", fraction)
+
+                def noise_capture(attempt: int):
+                    return device.read_noise_capture(
+                        sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+                        capture_seconds=noise_capture_seconds,
+                        progress=noise_progress,
+                        preview=preview,
+                        cancelled=lambda: token != self.measure_token,
+                    )
+
+                def noise_capture_retry(attempt: int) -> None:
+                    push(lambda: self.set_measure_status(
+                        token,
+                        "Serial stream glitch during the noise capture; "
+                        f"nothing was recorded — restarting the capture "
+                        f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…",
+                    ))
+
+                (
+                    noise_waveform,
+                    noise_rate,
+                    noise_wait_s,
+                    _noise_elapsed_s,
+                    noise_baseline_settled,
+                ) = call_with_stream_retries(
+                    noise_capture, on_retry=noise_capture_retry
+                )
+                # Retain the RAW capture for this part so the operator can
+                # opt in to saving it for spike-morphology analysis (rise
+                # times etc.) - the band-limited verdict trace cannot recover
+                # this. ~20k floats; freed when the next sensor is prepared.
+                self.last_noise_raw_waveform = np.asarray(
+                    noise_waveform, dtype=float
+                )
+                self.last_noise_raw_rate_hz = float(noise_rate)
+                push(lambda: self.set_preview_display(token, noise=False))
+                # Gate on the band-limited trace (see the NOISE_* constants:
+                # the 75 uV pin-level limit is unreadable at the raw 500 Hz
+                # bandwidth); clipping is still checked on the raw samples.
+                noise_analysis, noise_filtered, noise_filtered_rate = (
+                    analyze_noise_capture_band_limited(
+                        noise_waveform,
+                        noise_rate,
+                        decimation_factor=NOISE_DECIMATION_FACTOR,
+                        window_s=NOISE_WINDOW_S,
+                        threshold_mv=NOISE_PP_LIMIT_MV,
+                        max_over_fraction=noise_max_over_fraction,
+                        clip_limit_v=NOISE_CLIP_LIMIT_V,
+                    )
+                )
+                noise_report = NoiseCaptureReport.from_analysis(
+                    noise_analysis,
+                    settle_s=noise_wait_s,
+                    capture_s=len(noise_waveform) / noise_rate,
+                    analysis_rate_hz=noise_filtered_rate,
+                    baseline_settled=noise_baseline_settled,
+                )
+                self.last_noise_metrics = build_noise_waveform_metrics(
+                    np.asarray(noise_filtered, dtype=float),
+                    noise_filtered_rate,
+                    offset_v=offset_v,
+                    input_range_v=waveform_range_v,
+                )
+                if noise_report.windows_over:
+                    # Any over-limit window is evidence worth keeping (burst
+                    # episode or environmental transient): auto-save the raw
+                    # capture for the spike-morphology library, PASS or FAIL.
+                    push(lambda rep=noise_report: (
+                        self.auto_save_noise_capture(token, rep)
+                    ))
+                if noise_report.outcome == OUTCOME_FAIL:
+                    # Fail fast: sensitivity is not measured on a noisy part.
+                    # The offset has had the settle wait plus the 20 s noise
+                    # capture to stabilize - record the fresh value so the
+                    # noisy part's offset matches its settled level (same
+                    # policy as the post-sensitivity re-read below).
+                    offset_v = device.read_offset_voltage(
+                        waveform_range_v=waveform_range_v
+                    )
+                    push(lambda v=offset_v: self.on_offset_update(token, v))
+                    metrics, final = build_noise_failure_result(
+                        offset_v,
+                        noise_report,
+                        input_range_v=waveform_range_v,
+                    )
+                    self.last_capture_report = None
+                    self.last_noise_report = noise_report
+                    return metrics, final, offset_v
+                step_progress(noise_step, "Noise (emitter off)", 1.0)
+                worst_text = (
+                    ""
+                    if noise_report.worst_pp_mv is None
+                    else f" (worst window {noise_report.worst_pp_mv:.1f} mV pk-pk)"
+                )
+                push(lambda text=(
+                    f"Noise PASS{worst_text}. "
+                    "Driving emitter for the sensitivity capture…"
+                ): self.set_measure_status(token, text))
+            else:
+                noise_report = NoiseCaptureReport.skipped("noise test disabled")
 
             emitter_on_time: float | None = None
             emitter_off_time: float | None = None
@@ -5183,21 +6895,6 @@ class EmitterTesterApp(tk.Tk):
                 # The command may reach the ESP32 before its acknowledgement
                 # fails, so PWM shutdown must cover activation as well as the
                 # subsequent stream capture.
-                activation_time = device.configure_emitter_pwm(
-                    channel=pwm_channel,
-                    frequency_hz=pwm_hz,
-                    duty_cycle_percent=pwm_duty,
-                )
-                emitter_on_time = (
-                    float(activation_time)
-                    if isinstance(activation_time, (int, float))
-                    else time.monotonic()
-                )
-                push(lambda: self.set_measure_status(
-                    token,
-                    f"Emitter PWM on. Attempt 1/{MAX_MEASUREMENT_ATTEMPTS}: "
-                    f"stabilizing peak (0/{DUT_STABILITY_CONFIRMATION_DELTAS})...",
-                ))
 
                 def progress(current: StabilityAnalysis) -> None:
                     current_report = current.report
@@ -5207,6 +6904,11 @@ class EmitterTesterApp(tk.Tk):
                             f"stable at {current_report.stabilization_elapsed_s:.1f} s. "
                             f"Measuring sensitivity cycle {current_report.measurement_cycle_count}/"
                             f"{current_report.measurement_cycles_required}..."
+                        )
+                        fraction = 0.5 + 0.5 * min(
+                            1.0,
+                            current_report.measurement_cycle_count
+                            / max(1, current_report.measurement_cycles_required),
                         )
                     else:
                         latest = current.cycles[-1] if current.cycles else None
@@ -5223,22 +6925,55 @@ class EmitterTesterApp(tk.Tk):
                             f"{min(confirmation, current_report.active_confirmation_count)}/"
                             f"{current_report.active_confirmation_count} stable"
                         )
+                        fraction = 0.5 * min(
+                            1.0,
+                            confirmation
+                            / max(1, current_report.active_confirmation_count),
+                        )
                     push(lambda value=text: self.set_measure_status(token, value))
+                    step_progress(sensitivity_step, "Sensitivity", fraction)
 
-                def preview(waveform_preview: np.ndarray, sync_preview: np.ndarray) -> None:
-                    # Keep the rolling preview current even while hidden so a
-                    # technician can turn the live scope on mid-measurement.
-                    push(lambda wf=waveform_preview, sy=sync_preview: self.on_preview_frame(token, wf, sy))
+                def driven_capture(attempt: int):
+                    nonlocal emitter_on_time
+                    # (Re-)activating restarts the PWM phase, so a stream
+                    # retry gets a clean cycle boundary and a fresh anchor.
+                    activation_time = device.configure_emitter_pwm(
+                        channel=pwm_channel,
+                        frequency_hz=pwm_hz,
+                        duty_cycle_percent=pwm_duty,
+                    )
+                    emitter_on_time = (
+                        float(activation_time)
+                        if isinstance(activation_time, (int, float))
+                        else time.monotonic()
+                    )
+                    push(lambda: self.set_measure_status(
+                        token,
+                        f"Emitter PWM on. Attempt 1/{MAX_MEASUREMENT_ATTEMPTS}: "
+                        f"stabilizing peak (0/{DUT_STABILITY_CONFIRMATION_DELTAS})...",
+                    ))
+                    step_progress(sensitivity_step, "Sensitivity", 0.0)
+                    return device.read_waveform_until_stable(
+                        waveform_range_v=waveform_range_v,
+                        settings=settings,
+                        pwm_started_monotonic=emitter_on_time,
+                        sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+                        expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
+                        progress=progress,
+                        preview=preview,
+                        cancelled=lambda: token != self.measure_token,
+                    )
 
-                waveform, sync, actual_rate, stability_analysis = device.read_waveform_until_stable(
-                    waveform_range_v=waveform_range_v,
-                    settings=settings,
-                    pwm_started_monotonic=emitter_on_time,
-                    sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
-                    expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
-                    progress=progress,
-                    preview=preview,
-                    cancelled=lambda: token != self.measure_token,
+                def driven_capture_retry(attempt: int) -> None:
+                    push(lambda: self.set_measure_status(
+                        token,
+                        "Serial stream glitch during the sensor capture; "
+                        f"nothing was recorded — restarting the capture "
+                        f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…",
+                    ))
+
+                waveform, sync, actual_rate, stability_analysis = call_with_stream_retries(
+                    driven_capture, on_retry=driven_capture_retry
                 )
             finally:
                 deactivation_time = device.disable_emitter_pwm(pwm_channel)
@@ -5248,6 +6983,15 @@ class EmitterTesterApp(tk.Tk):
                     else time.monotonic()
                 )
 
+            # Settled-offset verification (2026-08-17): re-read AIN0 now that
+            # the part has been powered in the fixture through the noise wait
+            # plus both captures (~40 s minimum). The insertion-time read
+            # above chases a still-rising offset (lot 500: mean 0.29 V low),
+            # so the VERDICT and the CSV use this settled value; the early
+            # read is recorded separately as offset_initial_v.
+            offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+
+        push(lambda v=offset_v: self.on_offset_update(token, v))
         if stability_analysis.report.measurement_complete:
             metrics = analyze_v6_stable_measurement(
                 waveform,
@@ -5259,6 +7003,11 @@ class EmitterTesterApp(tk.Tk):
             )
             final = evaluate_result(offset_v, metrics, filter_setup)
             final = apply_signal_quality_gate(final, metrics)
+            # The noise test already ran (and passed) before this capture; a
+            # failed noise test never reaches this point. Applying the gate
+            # here keeps the verdict correct even if the fail-fast policy is
+            # ever relaxed.
+            final = apply_noise_gate(final, noise_report)
         elif stability_analysis.report.unstable:
             metrics, final = build_stability_timeout_result(
                 waveform,
@@ -5268,6 +7017,9 @@ class EmitterTesterApp(tk.Tk):
                 offset_v=offset_v,
                 input_range_v=waveform_range_v,
             )
+            # The emitter-off noise test ran before this driven capture, so
+            # its measured PASS report is recorded alongside the Unstable
+            # verdict instead of the old "skipped on unstable" placeholder.
         else:
             raise Esp32BackendError("Adaptive capture ended without a complete result.")
         host_pwm_on_seconds = None
@@ -5275,13 +7027,14 @@ class EmitterTesterApp(tk.Tk):
             host_pwm_on_seconds = emitter_off_time - emitter_on_time
         report = StabilityCaptureReport.from_analysis(
             stability_analysis,
-            data_source="esp32_v6_1",
+            data_source="esp32_405m22",
             pwm_on_seconds=host_pwm_on_seconds,
         )
         self.last_capture_report = report
+        self.last_noise_report = noise_report
         return metrics, final, offset_v
 
-    def _simulate_measurement(self, filter_setup, sim_case, sim_low_battery, waveform_range_v, show_live, token, push):
+    def _simulate_measurement(self, filter_setup, sim_case, sim_low_battery, waveform_range_v, show_live, token, push, *, noise_soak=False):
         # Mirror the hardware battery gate so the lockout is testable without
         # the ESP32 (inert while BATTERY_MONITORING_ENABLED is False, exactly
         # like the hardware path).
@@ -5293,20 +7046,127 @@ class EmitterTesterApp(tk.Tk):
         settings = self.stability_settings
         if settings is None:
             raise StabilitySettingsError("V6.1 stability settings are unavailable.")
-        self.last_reference_check_mv = 100.0
-        push(lambda: self.set_measure_status(
-            token,
-            "Reference unit passed (simulated). Reading sensor offset…",
-        ))
+        reference_steps = 1 if REFERENCE_GATE_ENABLED else 0
+        noise_step = 2 + reference_steps
+        total_steps = reference_steps + (3 if NOISE_TEST_ENABLED else 2)
+        sensitivity_step = total_steps
+
+        def step_progress(step: int, label: str, fraction: float) -> None:
+            push(
+                lambda: self.set_measure_progress(
+                    token, step, total_steps, label, fraction
+                )
+            )
+
         waveform, sync, actual_rate, offset_v = simulate_v6_startup_capture(
             filter_setup,
             sim_case,
         )
+        push(lambda v=offset_v: self.on_initial_offset(token, v))
         push(lambda v=offset_v: self.on_offset_update(token, v))
+        step_progress(1, "Offset", 1.0)
+
+        # Mirror the hardware fail-fast, which is HIGH-SIDE ONLY (2026-08-17):
+        # the "High offset" case rails at the ADC full scale like a real bad
+        # part and records the failure immediately, skipping the reference,
+        # noise and sensitivity steps. A low simulated offset (the "Low
+        # offset" case) flows through the whole sequence like real hardware
+        # and fails at the final settled-offset evaluation instead.
+        if offset_v > OFFSET_MAX_V:
+            push(lambda v=offset_v: self.set_measure_status(
+                token,
+                f"Offset {v:.3f} V is outside the {OFFSET_MIN_V:.1f}-"
+                f"{OFFSET_MAX_V:.1f} V band (simulated) — recording the failure…",
+            ))
+            metrics, final = build_offset_failure_result(
+                offset_v, input_range_v=waveform_range_v
+            )
+            self.last_capture_report = None
+            self.last_noise_report = NoiseCaptureReport.skipped(
+                "offset out of range - reference, noise and sensitivity skipped"
+            )
+            return metrics, final, offset_v
+
+        if REFERENCE_GATE_ENABLED:
+            self.last_reference_check_mv = 100.0
+            step_progress(2, "Reference check", 1.0)
+            push(lambda: self.set_measure_status(
+                token,
+                "Reference unit passed (simulated).",
+            ))
+
+        # Simulated emitter-off noise step, in the same order as hardware
+        # (noise before sensitivity). The SNR gate and the noise gate are
+        # intentionally NOT applied to synthetic data - the simulator is a
+        # training model - but a plausible passing report plus a matching
+        # synthetic trace exercise the UI/CSV plumbing and the relative
+        # noise-range display.
+        if NOISE_TEST_ENABLED:
+            push(lambda: self.set_measure_status(
+                token,
+                "Measuring noise (emitter off, simulated)…",
+            ))
+            push(lambda: self.set_preview_display(token, noise=True))
+            # A deterministic synthetic trace (~36 µV RMS raw, i.e. a healthy
+            # part comfortably inside the 75 µV pin-level limit) run through
+            # the SAME band-limited analysis as hardware, so the report, the
+            # µV noise scope, and the CSV plumbing are exercised end to end.
+            sim_capture_seconds = (
+                NOISE_SOAK_CAPTURE_SECONDS if noise_soak else NOISE_CAPTURE_SECONDS
+            )
+            sim_max_over_fraction = (
+                NOISE_SOAK_MAX_OVER_FRACTION if noise_soak else NOISE_MAX_OVER_FRACTION
+            )
+            sim_noise_rng = np.random.default_rng(2412)
+            sim_noise = offset_v + sim_noise_rng.normal(
+                0.0, 36e-6, int(sim_capture_seconds * actual_rate)
+            )
+            # Parity with hardware: the raw capture stays available so the
+            # "Save noise capture" button can be exercised in training mode.
+            self.last_noise_raw_waveform = np.asarray(sim_noise, dtype=float)
+            self.last_noise_raw_rate_hz = float(actual_rate)
+            sim_analysis, sim_filtered, sim_filtered_rate = (
+                analyze_noise_capture_band_limited(
+                    sim_noise,
+                    actual_rate,
+                    decimation_factor=NOISE_DECIMATION_FACTOR,
+                    window_s=NOISE_WINDOW_S,
+                    threshold_mv=NOISE_PP_LIMIT_MV,
+                    max_over_fraction=sim_max_over_fraction,
+                    clip_limit_v=NOISE_CLIP_LIMIT_V,
+                )
+            )
+            self.last_noise_report = NoiseCaptureReport.from_analysis(
+                sim_analysis,
+                settle_s=NOISE_WAIT_BEFORE_CAPTURE_S,
+                capture_s=sim_capture_seconds,
+                analysis_rate_hz=sim_filtered_rate,
+                baseline_settled=True,
+            )
+            self.last_noise_metrics = build_noise_waveform_metrics(
+                np.asarray(sim_filtered, dtype=float),
+                sim_filtered_rate,
+                offset_v=offset_v,
+                input_range_v=waveform_range_v,
+            )
+            if show_live:
+                noise_tail = sim_noise[-STREAM_PREVIEW_MAX_SAMPLES:].copy()
+                push(lambda wf=noise_tail: self.on_preview_frame(
+                    token, wf, np.zeros(len(wf), dtype=float)
+                ))
+            step_progress(noise_step, "Noise (emitter off)", 1.0)
+            push(lambda: self.set_preview_display(token, noise=False))
+        else:
+            self.last_noise_report = NoiseCaptureReport.skipped(
+                "noise test disabled"
+            )
+            self.last_noise_metrics = None
+
         push(lambda: self.set_measure_status(
             token,
             "Emitter PWM on (simulated). Evaluating startup peak drift...",
         ))
+        step_progress(sensitivity_step, "Sensitivity", 0.0)
         dut_settings = dut_stability_settings(settings)
         full_analysis = analyze_stability(
             waveform,
@@ -5363,7 +7223,9 @@ class EmitterTesterApp(tk.Tk):
             )
             final = evaluate_result(offset_v, metrics, filter_setup)
             # The SNR gate is intentionally NOT applied here: the simulator
-            # is a training model rather than calibrated hardware noise.
+            # is a training model rather than calibrated hardware noise. The
+            # simulated emitter-off noise step already ran (and passed)
+            # before this driven capture, matching the hardware order.
         elif stability_analysis.report.unstable:
             metrics, final = build_stability_timeout_result(
                 waveform,
@@ -5373,6 +7235,8 @@ class EmitterTesterApp(tk.Tk):
                 offset_v=offset_v,
                 input_range_v=waveform_range_v,
             )
+            # The simulated noise step already recorded its passing report
+            # before this capture; keep it, as the hardware path does.
         else:
             raise RuntimeError("Simulator capture did not reach a complete v6.1 decision.")
         report = StabilityCaptureReport.from_analysis(stability_analysis, data_source="simulator")
@@ -5383,14 +7247,106 @@ class EmitterTesterApp(tk.Tk):
         if token == self.measure_token:
             self.measure_status_var.set(text)
 
+    def set_measure_progress(
+        self, token: int, step: int, total: int, label: str, fraction: float
+    ) -> None:
+        """Advance the measuring screen's step ladder (never backward).
+
+        ``fraction`` is progress within the current step; within a step the
+        bar only ever moves forward (a restarted capture attempt keeps the
+        bar where it was while the status text explains the retry).
+        """
+        if token != self.measure_token:
+            return
+        fraction = max(0.0, min(1.0, float(fraction)))
+        if step < self.measure_progress_step:
+            return
+        if step > self.measure_progress_step:
+            self.measure_progress_step = step
+            self.measure_progress_fraction = 0.0
+        self.measure_progress_total = max(1, int(total))
+        self.measure_progress_fraction = max(
+            self.measure_progress_fraction, fraction
+        )
+        self.measure_step_var.set(
+            f"STEP {step}/{self.measure_progress_total} — {label.upper()}"
+        )
+        self._redraw_measure_progress()
+
+    def _reset_measure_progress(self) -> None:
+        self.measure_progress_step = 0
+        self.measure_progress_fraction = 0.0
+        self.measure_step_var.set("")
+        self.preview_noise_display = False
+
+    def set_preview_display(self, token: int, *, noise: bool) -> None:
+        """Switch the live scope between absolute volts and noise-range mode."""
+        if token != self.measure_token:
+            return
+        if self.preview_noise_display == bool(noise):
+            return
+        self.preview_noise_display = bool(noise)
+        self._apply_preview_display_mode()
+
+    def _apply_preview_display_mode(self) -> None:
+        noise = self.preview_noise_display
+        self.live_wave_header_var.set(
+            (
+                "LIVE NOISE (EMITTER OFF, BAND-LIMITED)  ·  RANGE AROUND MEAN — RED = "
+                f"±{format_noise_pp(NOISE_PP_LIMIT_MV / 2, decimals=1)} CUTOFF "
+                f"({format_noise_pp(NOISE_PP_LIMIT_MV)} PK-PK LIMIT)"
+            )
+            if noise
+            else "LIVE SIGNAL  ·  ADS AIN0 SENSOR + PWM SYNC OVERLAY (HIGH = EMITTER ON)"
+        )
+        canvas = self.wave_canvas
+        if canvas is None or not canvas.winfo_exists() or not self.measuring:
+            return
+        if noise:
+            canvas.set_display_mode(
+                relative_band_mv=NOISE_PP_LIMIT_MV,
+                min_span_v=2.0 * NOISE_PP_LIMIT_MV / 1000.0,
+                channel_label="AIN0 · NOISE RANGE (EMITTER OFF)",
+                sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ / NOISE_DECIMATION_FACTOR,
+            )
+        else:
+            canvas.set_display_mode(
+                relative_band_mv=None,
+                min_span_v=None,
+                channel_label="AIN0 · SENSOR",
+                sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+            )
+
+    def on_initial_offset(self, token: int, offset_v: float) -> None:
+        """Record the insertion-time offset read (diagnostic; see CSV column).
+
+        The verdict uses the settled re-read taken after the sensitivity
+        capture; keeping the first read alongside it makes the settling
+        behavior of each part visible in the batch data.
+        """
+        if token != self.measure_token:
+            return
+        self.last_offset_initial_v = offset_v
+
     def on_offset_update(self, token: int, offset_v: float) -> None:
         if token != self.measure_token:
             return
-        self.measure_status_var.set(f"DC offset: {offset_v:.3f} V. Driving emitter...")
+        self.measure_status_var.set(f"DC offset: {offset_v:.3f} V.")
 
     def on_preview_frame(self, token: int, waveform: np.ndarray, sync: np.ndarray) -> None:
         if token != self.measure_token:
             return
+        if self.preview_noise_display and waveform.size >= NOISE_DECIMATION_FACTOR:
+            # The live noise view shows the same band-limited trace the
+            # verdict is computed from; raw preview frames are decimated here
+            # (vectorized: trim to a block multiple, then per-block mean).
+            blocks = waveform.size // NOISE_DECIMATION_FACTOR
+            waveform = (
+                waveform[: blocks * NOISE_DECIMATION_FACTOR]
+                .reshape(blocks, NOISE_DECIMATION_FACTOR)
+                .mean(axis=1)
+            )
+            sync = np.zeros(len(waveform), dtype=float)
         self.preview_waveform = waveform
         self.preview_sync = sync
         self.redraw_waveform()
@@ -5400,10 +7356,10 @@ class EmitterTesterApp(tk.Tk):
             return
         self.measuring = False
         self.busy = False
+        self._reset_measure_progress()
         self.last_metrics = metrics
         self.last_result = final
         self.failure_mode_var.set(suggest_failure_mode(final))
-        self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
         outcome = result_outcome(final)
@@ -5429,12 +7385,13 @@ class EmitterTesterApp(tk.Tk):
         self.battery_v = battery_v
         self.battery_state = "low"
         self._refresh_battery_pill()
-        self.status_var.set(f"Battery too low ({battery_v:.2f} V). Recharge the 6 V SLA to continue.")
+        self.status_var.set(f"Battery too low ({battery_v:.2f} V). Recharge the sensor battery to continue.")
         self.measure_status_var.set("")
+        self._reset_measure_progress()
         self.render_step()
         messagebox.showwarning(
             "Recharge the battery",
-            f"The 6 V SLA is at {battery_v:.2f} V, at or below the {BATTERY_MIN_V:.1f} V minimum.\n\n"
+            f"The battery is at {battery_v:.2f} V, at or below the {BATTERY_MIN_V:.1f} V minimum.\n\n"
             "Recharge it, then press “Re-check battery” before testing again.",
         )
 
@@ -5447,39 +7404,9 @@ class EmitterTesterApp(tk.Tk):
         self.step = self.LOAD_STEP
         self.status_var.set("Reference-unit lockout — the sensor was not read.")
         self.measure_status_var.set("")
+        self._reset_measure_progress()
         self.render_step()
         messagebox.showwarning("Reference unit blocked the sensor test", str(exc))
-
-    def _confirm_sensor_loaded(self, exc: "NoSensorDetectedError") -> bool:
-        """An empty slot and a shorted part both float AIN0 - ask which it is."""
-        return bool(
-            messagebox.askyesno(
-                "Is a sensor loaded?",
-                f"AIN0 reads {exc.offset_v:.3f} V — the same as an empty slot.\n\n"
-                f"Is a sensor loaded in the rig?\n\n"
-                "Yes = record {self.current_sensor_id} as a bad (no-offset) sensor.\n"
-                "No = nothing is recorded; seat the sensor and measure again.",
-            )
-        )
-
-    def record_bad_sensor(self, offset_v: float) -> None:
-        """Technician confirmed a sensor IS loaded: it fails as a dead/shorted part."""
-        metrics, final = build_no_output_sensor_result(
-            offset_v, input_range_v=WAVEFORM_INPUT_RANGE_V
-        )
-        self.last_metrics = metrics
-        self.last_result = final
-        self.last_offset_initial_v = offset_v
-        self.preview_waveform = metrics.waveform_v
-        self.preview_sync = metrics.sync_v
-        self.failure_mode_var.set(BAD_SENSOR_FAILURE_MODE)
-        self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
-        self.status_var.set(
-            f"{self.current_sensor_id}: FAIL — no offset with a sensor loaded (bad part). Save the sensor."
-        )
-        self.measure_status_var.set("")
-        self.write_autosave("measurement_complete")
-        self.render_step()
 
     def on_hardware_not_ready(self, token: int, exc: HardwareNotReadyError) -> None:
         """A pre-flight check failed: nothing was measured or recorded."""
@@ -5487,11 +7414,10 @@ class EmitterTesterApp(tk.Tk):
             return
         self.measuring = False
         self.busy = False
-        if isinstance(exc, NoSensorDetectedError) and self._confirm_sensor_loaded(exc):
-            self.record_bad_sensor(exc.offset_v)
-            return
+        self.last_measure_error = str(exc)
         self.status_var.set("Rig not ready - nothing was recorded. Check the wiring and measure again.")
         self.measure_status_var.set("")
+        self._reset_measure_progress()
         self.render_step()
         messagebox.showwarning("Plug everything in first", str(exc))
 
@@ -5516,9 +7442,10 @@ class EmitterTesterApp(tk.Tk):
         self.measuring = False
         self.busy = False
         text = self._friendly_hardware_error(str(exc))
-        self._log_attempt(attempt_history.EVENT_MEASURE_ERROR, reason=text)
+        self.last_measure_error = text
         self.status_var.set(text)
         self.measure_status_var.set("")
+        self._reset_measure_progress()
         self.render_step()
         messagebox.showerror("Measurement problem", text)
 
@@ -5533,6 +7460,12 @@ class EmitterTesterApp(tk.Tk):
     def redraw_waveform(self) -> None:
         if self.wave_canvas is not None and self.wave_canvas.winfo_exists():
             self.wave_canvas.set_data(self.preview_waveform, self.preview_sync)
+        if self.noise_canvas is not None and self.noise_canvas.winfo_exists():
+            noise_metrics = self.last_noise_metrics
+            if noise_metrics is not None:
+                self.noise_canvas.set_data(
+                    noise_metrics.waveform_v, np.array([], dtype=float)
+                )
 
     # ----- comment / snapshot ----- #
     def open_comment_window(self) -> None:
@@ -5627,6 +7560,96 @@ class EmitterTesterApp(tk.Tk):
         self.stability_diagnostics_saved = self.last_capture_report is not None
         self.update_comment_snapshot_status()
         self.write_autosave("waveform_snapshot_saved")
+
+    def auto_save_noise_capture(self, token: int, report: "NoiseCaptureReport") -> None:
+        """Keep the raw capture automatically whenever any window went over.
+
+        An over-limit window is evidence either way - a burst episode from the
+        part or an environmental transient - and the 2026-08-18 re-run showed
+        both kinds are too rare to lose. Runs on the UI thread via push();
+        the report is passed in because self.last_noise_report is only
+        assigned once the whole measurement returns.
+        """
+        if token != self.measure_token or self.noise_raw_auto_saved:
+            return
+        waveform = self.last_noise_raw_waveform
+        rate = self.last_noise_raw_rate_hz
+        if waveform is None or rate is None or waveform.size == 0:
+            return
+        windows_over = report.windows_over
+        try:
+            paths = save_raw_noise_capture(
+                self.batch_number,
+                self.current_sensor_id,
+                waveform,
+                rate,
+                metadata={
+                    "operator_requested": (
+                        f"no (automatic: {windows_over} window(s) over limit)"
+                    ),
+                    "noise_outcome": report.outcome,
+                    "noise_windows_over": windows_over,
+                    "noise_windows_total": report.windows_total,
+                    "noise_worst_pp_mv": report.worst_pp_mv,
+                },
+            )
+        except Exception:
+            return  # never let diagnostics-keeping break the measurement
+        if paths:
+            self.snapshot_paths.extend(paths)
+            self.noise_raw_auto_saved = True
+            self.noise_capture_status_var.set(
+                f"Raw noise capture auto-saved ({windows_over} window(s) over): "
+                f"{paths[0].name} + .npz"
+            )
+
+    def save_noise_capture_for_analysis(self) -> None:
+        """Operator opt-in: keep this part's RAW noise capture on disk.
+
+        For offline spike-morphology work (rise times, widths, spike-to-spike
+        comparison) the full 1000 SPS record is required - the 50 SPS
+        band-limited trace the verdict uses cannot resolve it. Saved per part
+        on request; noise FAILURES are saved automatically at save time.
+        """
+        waveform = self.last_noise_raw_waveform
+        rate = self.last_noise_raw_rate_hz
+        if waveform is None or rate is None or waveform.size == 0:
+            messagebox.showinfo(
+                "No noise capture yet",
+                "Run the measurement first - the raw noise capture of the "
+                "current sensor is kept until the next sensor is loaded.",
+            )
+            return
+        report = self.last_noise_report
+        metadata: dict[str, object] = {"operator_requested": "yes"}
+        if report is not None and report.windows_total:
+            metadata.update(
+                noise_outcome=report.outcome,
+                noise_windows_over=report.windows_over,
+                noise_windows_total=report.windows_total,
+                noise_worst_pp_mv=report.worst_pp_mv,
+            )
+        try:
+            paths = save_raw_noise_capture(
+                self.batch_number,
+                self.current_sensor_id,
+                waveform,
+                rate,
+                metadata=metadata,
+            )
+        except Exception as exc:
+            messagebox.showerror("Could not save the noise capture", str(exc))
+            return
+        if not paths:
+            messagebox.showinfo("No noise capture", "The capture was empty.")
+            return
+        self.snapshot_paths.extend(paths)
+        seconds = waveform.size / max(rate, 1.0)
+        self.noise_capture_status_var.set(
+            f"Raw noise capture saved ({seconds:.0f} s @ {rate:.0f} SPS): "
+            f"{paths[0].name} + .npz"
+        )
+        self.write_autosave("noise_capture_saved")
         self.status_var.set(f"Saved waveform snapshot: {snapshot_paths[0]}")
 
     # ----- autosave ----- #
@@ -5643,9 +7666,6 @@ class EmitterTesterApp(tk.Tk):
             "sensor_number": self.current_sensor_number,
             "sensor_id": self.current_sensor_id,
             "filter_setup": self.filter_setup,
-            "resuming_skipped": self.resuming_skipped,
-            "measure_attempts": self.measure_attempts,
-            "skip_count": self.skip_count,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
             "sensitivity_raw_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
@@ -5680,6 +7700,25 @@ class EmitterTesterApp(tk.Tk):
             "reference_check_mv": self.last_reference_check_mv,
             "comment": self.notes_var.get(),
             "waveform_snapshot_paths": [str(path) for path in self.snapshot_paths],
+            # TP412 emitter-off noise test.
+            "noise_test_outcome": (
+                None if self.last_noise_report is None else self.last_noise_report.outcome
+            ),
+            "noise_windows_total": (
+                None if self.last_noise_report is None else self.last_noise_report.windows_total
+            ),
+            "noise_windows_over": (
+                None if self.last_noise_report is None else self.last_noise_report.windows_over
+            ),
+            "noise_worst_pp_mv": (
+                None if self.last_noise_report is None else self.last_noise_report.worst_pp_mv
+            ),
+            "noise_settle_s": (
+                None if self.last_noise_report is None else self.last_noise_report.settle_s
+            ),
+            "noise_pp_limit_mv": (
+                None if self.last_noise_report is None else self.last_noise_report.pp_limit_mv
+            ),
         }
         try:
             with autosave_path.open("w", encoding="utf-8") as autosave_file:
@@ -5703,11 +7742,13 @@ class EmitterTesterApp(tk.Tk):
         summary.configure(bg=PAGE_BG)
 
         rows = self._read_summary_rows(csv_path)
-        tested = len(rows)
-        passed = sum(1 for row in rows if row[-1] == OUTCOME_PASS)
-        retest = sum(1 for row in rows if row[-1] == OUTCOME_RETEST)
-        failed = tested - passed - retest
-        yield_pct = (100.0 * passed / tested) if tested else 0.0
+        counts = summarize_batch_outcomes([row[-1] for row in rows])
+        tested = counts["tested"]
+        passed = counts["passed"]
+        retest = counts["retest"]
+        failed = counts["failed"]
+        not_measured = counts["not_measured"]
+        yield_pct = counts["yield_pct"]
 
         head = tk.Frame(summary, bg=PAGE_BG)
         head.grid(row=0, column=0, sticky="ew", padx=20, pady=(16, 6))
@@ -5722,21 +7763,12 @@ class EmitterTesterApp(tk.Tk):
             (f"{failed} FAILED", FAIL_FG, FAIL_BG),
             (f"YIELD {yield_pct:.0f}%", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
         ]
+        if not_measured:
+            chip_specs.insert(
+                4, (f"{not_measured} NOT MEASURED", MUTED_FG, GHOST_BG)
+            )
         for chip_text, chip_fg, chip_bg in chip_specs:
             tk.Label(chips, text=chip_text, bg=chip_bg, fg=chip_fg, font=self.fm(10, "bold"), padx=12, pady=5).pack(side="left", padx=(0, 8))
-        waiting = attempt_history.skipped_queue(
-            attempt_history.attempts_path_for(csv_path), csv_path
-        )
-        if waiting:
-            tk.Label(
-                head,
-                text=f"Skipped, not measured yet ({len(waiting)}): {attempt_history.format_queue(waiting)}",
-                bg=PAGE_BG,
-                fg="#8a5a00",
-                font=self.fb(12, "bold"),
-                wraplength=S(860),
-                justify="left",
-            ).pack(anchor="w", pady=(10, 0))
 
         frame = tk.Frame(summary, bg=PAGE_BG)
         frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(8, 0))
@@ -5757,11 +7789,14 @@ class EmitterTesterApp(tk.Tk):
         tree.tag_configure("pass", background=PASS_BG)
         tree.tag_configure("retest", background=WARN_BG)
         tree.tag_configure("fail", background=FAIL_BG)
+        tree.tag_configure("skipped", background=GHOST_BG, foreground=MUTED_FG)
         for row in rows:
             if row[-1] == OUTCOME_PASS:
                 tag = "pass"
             elif row[-1] == OUTCOME_RETEST:
                 tag = "retest"
+            elif row[-1] == OUTCOME_NOT_MEASURED:
+                tag = "skipped"
             else:
                 tag = "fail"
             tree.insert("", "end", values=row, tags=(tag,))

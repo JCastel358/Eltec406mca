@@ -941,20 +941,6 @@ class MeasurementHarness:
 
 
 class HardwareWorkflowTests(unittest.TestCase):
-    """Full hardware sequence WITH the reference gate.
-
-    Production ships REFERENCE_GATE_ENABLED = False since 2026-08-24 (the
-    shared dual op-amp buffer lets the DUT couple into AIN1, exactly as on
-    the 405 M22 build), but the gate machinery must keep working for the
-    channel-isolated buffer board, so these tests force the gate on.
-    ReferenceGateDisabledTests covers the shipping default.
-    """
-
-    def setUp(self):
-        patcher = mock.patch.object(app, "REFERENCE_GATE_ENABLED", True)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
     def run_hardware(self, device, *, show_live=False):
         harness = MeasurementHarness(device)
         result = app.EmitterTesterApp._hardware_measurement(
@@ -1189,112 +1175,6 @@ class HardwareWorkflowTests(unittest.TestCase):
         self.assertEqual(harness.measure_token, 5)
 
 
-class ReferenceGateDisabledTests(unittest.TestCase):
-    """Shipping default: REFERENCE_GATE_ENABLED = False (op-amp crosstalk)."""
-
-    def run_hardware(self, device):
-        harness = MeasurementHarness(device)
-        result = app.EmitterTesterApp._hardware_measurement(
-            harness,
-            app.DEFAULT_FILTER_SETUP,
-            app.WAVEFORM_INPUT_RANGE_V,
-            app.EMITTER_PWM_CHANNEL,
-            app.EMITTER_PWM_FREQUENCY_HZ,
-            app.EMITTER_PWM_DUTY_CYCLE,
-            False,
-            harness.measure_token,
-            lambda callback: callback(),
-        )
-        return harness, result
-
-    def test_gate_is_off_and_never_reads_ain1(self):
-        self.assertFalse(app.REFERENCE_GATE_ENABLED)
-        device = FakeMeasurementDevice()
-        harness = MeasurementHarness(device)
-        harness.reference_calibration = None  # no calibration needed at all
-        with mock.patch.object(app.time, "sleep"):
-            harness, (metrics, final, offset) = self.run_hardware(device)
-        self.assertNotIn("reference", device.calls)
-        self.assertEqual(device.calls[:3], ["pwm_off", "offset", "pwm_on"])
-        self.assertTrue(final.passed)
-        self.assertIsNone(harness.last_reference_check_mv)
-        self.assertEqual(offset, 0.72)
-
-    def test_gate_ready_without_calibration(self):
-        harness = SimpleNamespace(
-            simulator_var=SimpleNamespace(get=lambda: False),
-            reference_calibration=None,
-        )
-        self.assertTrue(app.EmitterTesterApp.reference_gate_ready(harness))
-
-
-class NoSensorPromptTests(unittest.TestCase):
-    """A floating AIN0 asks whether a sensor is loaded; yes = bad part."""
-
-    def test_floating_ain0_raises_the_askable_error(self):
-        with mock.patch.object(app, "REFERENCE_GATE_ENABLED", False):
-            device = FakeMeasurementDevice(offset=0.0)
-            harness = MeasurementHarness(device)
-            with self.assertRaises(app.NoSensorDetectedError) as ctx:
-                app.EmitterTesterApp._hardware_measurement(
-                    harness, app.DEFAULT_FILTER_SETUP, app.WAVEFORM_INPUT_RANGE_V,
-                    app.EMITTER_PWM_CHANNEL, app.EMITTER_PWM_FREQUENCY_HZ,
-                    app.EMITTER_PWM_DUTY_CYCLE, False, harness.measure_token,
-                    lambda callback: callback(),
-                )
-        self.assertIsInstance(ctx.exception, app.HardwareNotReadyError)
-        self.assertEqual(ctx.exception.offset_v, 0.0)
-
-    def test_bad_sensor_result_fails_with_no_offset_and_no_readings(self):
-        metrics, final = app.build_no_output_sensor_result(0.012, input_range_v=app.WAVEFORM_INPUT_RANGE_V)
-        self.assertFalse(final.passed)
-        self.assertEqual(app.result_outcome(final), app.OUTCOME_FAIL)
-        self.assertAlmostEqual(final.offset_v, 0.012)
-        self.assertIsNone(final.sensitivity_mv)
-        self.assertIn("No offset", final.fail_reasons[0])
-        self.assertEqual(metrics.cycles_used, 0)
-        self.assertIn(app.BAD_SENSOR_FAILURE_MODE, app.FAILURE_MODE_CHOICES)
-
-    def _harness(self, answer):
-        events = []
-        h = SimpleNamespace(
-            measure_token=3, measuring=True, busy=True, current_sensor_id="B1-4",
-            last_metrics=None, last_result=None, last_offset_initial_v=None,
-            preview_waveform=None, preview_sync=None,
-            failure_mode_var=SimpleNamespace(set=lambda v: events.append(("mode", v))),
-            status_var=SimpleNamespace(set=lambda v: events.append(("status", v))),
-            measure_status_var=SimpleNamespace(set=lambda v: events.append(("mstatus", v))),
-            write_autosave=lambda stage: events.append(("autosave", stage)),
-            render_step=lambda: events.append(("render",)),
-            _log_attempt=lambda event, **kw: events.append(("log", event)),
-            _confirm_sensor_loaded=lambda exc: answer,
-            events=events,
-        )
-        h.record_bad_sensor = lambda v: app.EmitterTesterApp.record_bad_sensor(h, v)
-        return h
-
-    def test_yes_records_a_failed_sensor_instead_of_a_wiring_error(self):
-        h = self._harness(True)
-        exc = app.NoSensorDetectedError("No sensor detected", 0.01)
-        with mock.patch.object(app.messagebox, "showwarning") as warn:
-            app.EmitterTesterApp.on_hardware_not_ready(h, 3, exc)
-        warn.assert_not_called()
-        self.assertFalse(h.measuring); self.assertFalse(h.busy)
-        self.assertIsNotNone(h.last_result)
-        self.assertFalse(h.last_result.passed)
-        self.assertIn(("mode", app.BAD_SENSOR_FAILURE_MODE), h.events)
-        self.assertIn(("log", app.attempt_history.EVENT_MEASURED), h.events)
-        self.assertIn(("render",), h.events)
-
-    def test_no_keeps_the_wiring_warning(self):
-        h = self._harness(False)
-        exc = app.NoSensorDetectedError("No sensor detected", 0.01)
-        with mock.patch.object(app.messagebox, "showwarning") as warn:
-            app.EmitterTesterApp.on_hardware_not_ready(h, 3, exc)
-        warn.assert_called_once()
-        self.assertIsNone(h.last_result)
-
-
 class SimulatorAndGuiTests(unittest.TestCase):
     def test_live_toggle_rerenders_an_active_measurement(self):
         renders = []
@@ -1424,12 +1304,7 @@ class SimulatorAndGuiTests(unittest.TestCase):
                 root.withdraw()
                 root.update_idletasks()
                 setup_labels = label_texts(root.step_frame)
-                self.assertIn(
-                    "Reference unit calibrated"
-                    if app.REFERENCE_GATE_ENABLED
-                    else "Reference gate disabled (op-amp crosstalk)",
-                    setup_labels,
-                )
+                self.assertIn("Reference unit calibrated", setup_labels)
                 self.assertFalse(any("AIN1 reference calibrated" in text for text in setup_labels))
                 self.assertFalse(any("5.00 mV" in text for text in setup_labels))
 

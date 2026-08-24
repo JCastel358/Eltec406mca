@@ -41,9 +41,6 @@ from sensor_versions import (
 )
 
 APP_TITLE = "Eltec Test Rig"
-# 2.0 (2026-08-24): Skip part / Measure skipped queue, footer re-measure,
-# per-batch attempt history. Older standalone apps live in tech_app/deprecated.
-APP_VERSION = "2.0"
 STATE_DIR_NAME = "eltec-rig"
 STATE_FILE_NAME = "state.json"
 
@@ -159,7 +156,7 @@ class EltecRigSelector(tk.Tk):
         ).grid(row=0, column=0, sticky="w", **pad)
         tk.Label(
             self,
-            text=f"v{APP_VERSION} · ESP32/ADS1256 sensor test rig — choose the sensor version to test.",
+            text="ESP32/ADS1256 sensor test rig — choose the sensor version to test.",
             bg=PAGE_BG, fg=MUTED_FG, font=("TkDefaultFont", 11),
         ).grid(row=1, column=0, sticky="w", padx=24, pady=(2, 0))
 

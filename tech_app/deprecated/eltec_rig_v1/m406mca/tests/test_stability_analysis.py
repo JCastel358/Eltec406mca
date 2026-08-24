@@ -16,18 +16,11 @@ from stability_analysis import (  # noqa: E402
     StabilitySettings,
     StabilitySettingsError,
     SyncValidationError,
-    analyze_noise_capture,
-    analyze_noise_capture_band_limited,
     analyze_stability,
     complete_cycle_segments,
-    decimate_antialiased,
-    decimate_boxcar,
-    detrend_window_segments,
-    fixed_window_segments,
     load_stability_settings,
     robust_upper_peak_v,
     validate_rising_sync_cycles,
-    window_peak_to_peak_mv,
 )
 
 
@@ -56,7 +49,7 @@ class SettingsTests(unittest.TestCase):
     def test_tracked_settings_load_with_provisional_defaults(self):
         settings = load_stability_settings()
         self.assertEqual(DEFAULT_SETTINGS_PATH.name, "stability_settings.json")
-        self.assertEqual(settings.peak_delta_threshold_mv, 0.500)
+        self.assertEqual(settings.peak_delta_threshold_mv, 0.100)
         self.assertEqual(settings.consecutive_deltas_required, 5)
 
     def test_missing_and_invalid_settings_raise_clear_errors(self):
@@ -97,26 +90,24 @@ class PeakAndCycleTests(unittest.TestCase):
         sync = [1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0]
         self.assertEqual(complete_cycle_segments(sync), ((4, 8),))
 
-    def test_sync_validation_requires_three_complete_cycles_at_one_hz(self):
-        # 405 M22 cadence: 1 Hz at 1000 SPS -> 1000 samples per cycle.
-        sync = ([0.0] * 500 + [1.0] * 500) * 5
+    def test_sync_validation_requires_three_complete_cycles_at_ten_hz(self):
+        sync = ([0.0] * 50 + [1.0] * 50) * 5
         result = validate_rising_sync_cycles(sync, 1000.0)
         self.assertEqual(result.cycles_validated, 3)
-        self.assertAlmostEqual(result.measured_frequency_hz, 1.0)
+        self.assertAlmostEqual(result.measured_frequency_hz, 10.0)
 
-        lone_transition = [0.0] * 500 + [1.0] * 4500
+        lone_transition = [0.0] * 50 + [1.0] * 450
         with self.assertRaisesRegex(SyncValidationError, "complete rising-edge cycles"):
             validate_rising_sync_cycles(lone_transition, 1000.0)
 
-        # The 406MCA's 10 Hz drive must now be rejected as the wrong cadence.
-        ten_hz = ([0.0] * 50 + [1.0] * 50) * 5
-        with self.assertRaisesRegex(SyncValidationError, "frequency is 10.000 Hz"):
-            validate_rising_sync_cycles(ten_hz, 1000.0)
+        five_hz = ([0.0] * 100 + [1.0] * 100) * 5
+        with self.assertRaisesRegex(SyncValidationError, "frequency is 5.000 Hz"):
+            validate_rising_sync_cycles(five_hz, 1000.0)
 
-        irregular_edges = [500, 1000, 2000, 3500]
-        irregular = [0.0] * 4000
+        irregular_edges = [50, 100, 200, 350]
+        irregular = [0.0] * 400
         for edge in irregular_edges:
-            for index in range(edge, min(edge + 200, len(irregular))):
+            for index in range(edge, min(edge + 20, len(irregular))):
                 irregular[index] = 1.0
         with self.assertRaisesRegex(SyncValidationError, "validation cycles span"):
             validate_rising_sync_cycles(irregular, 1000.0)
@@ -346,230 +337,6 @@ class StrictRetryPolicyTests(unittest.TestCase):
         self.assertEqual(analysis.report.measurement_attempt, 2)
         self.assertEqual(analysis.report.active_confirmation_count, 10)
         self.assertIn("within 1.3 s", analysis.report.unstable_reason)
-
-
-def noise_windows(pp_per_window_v, *, offset_v=1.2, window_samples=100):
-    """Emitter-off waveform whose window pk-pk follows ``pp_per_window_v``."""
-
-    waveform: list[float] = []
-    for pp_v in pp_per_window_v:
-        amplitude = pp_v / 2.0
-        for index in range(window_samples):
-            waveform.append(offset_v + (amplitude if index % 2 == 0 else -amplitude))
-    return waveform
-
-
-class NoiseAnalysisTests(unittest.TestCase):
-    RATE = 100.0        # 100 samples per 1 s window keeps fixtures small
-    WINDOW_S = 1.0
-
-    def analyze(self, pp_per_window_v, **kwargs):
-        waveform = noise_windows(pp_per_window_v)
-        kwargs.setdefault("window_s", self.WINDOW_S)
-        kwargs.setdefault("threshold_mv", 300.0)
-        kwargs.setdefault("max_over_fraction", 0.20)
-        kwargs.setdefault("clip_limit_v", 4.9)
-        return analyze_noise_capture(waveform, self.RATE, **kwargs)
-
-    def test_fixed_windows_drop_the_partial_tail(self):
-        self.assertEqual(fixed_window_segments(10, 3), ((0, 3), (3, 6), (6, 9)))
-        self.assertEqual(fixed_window_segments(9, 3), ((0, 3), (3, 6), (6, 9)))
-        self.assertEqual(fixed_window_segments(2, 3), ())
-        with self.assertRaises(ValueError):
-            fixed_window_segments(10, 0)
-
-    def test_window_peak_to_peak_is_reported_in_millivolts(self):
-        waveform = noise_windows([0.100, 0.250], window_samples=100)
-        peaks = window_peak_to_peak_mv(waveform, fixed_window_segments(len(waveform), 100))
-        self.assertEqual(len(peaks), 2)
-        self.assertAlmostEqual(peaks[0], 100.0, places=6)
-        self.assertAlmostEqual(peaks[1], 250.0, places=6)
-
-    def test_exactly_twenty_percent_over_passes_and_one_more_fails(self):
-        # 4 of 20 windows over 300 mV = exactly the allowed 20%.
-        passing = self.analyze([0.400] * 4 + [0.050] * 16)
-        self.assertTrue(passing.passed)
-        self.assertEqual(passing.windows_total, 20)
-        self.assertEqual(passing.windows_over, 4)
-        self.assertAlmostEqual(passing.worst_pp_mv, 400.0, places=6)
-
-        failing = self.analyze([0.400] * 5 + [0.050] * 15)
-        self.assertFalse(failing.passed)
-        self.assertEqual(failing.windows_over, 5)
-
-    def test_pp_exactly_at_the_limit_is_not_over(self):
-        analysis = self.analyze([0.300] * 20)
-        self.assertTrue(analysis.passed)
-        self.assertEqual(analysis.windows_over, 0)
-
-    def test_clipped_window_counts_as_over_even_with_small_pp(self):
-        # One window rides at the positive rail: tiny pk-pk, but the true
-        # excursion is unknowable, so it must count against the sensor.
-        quiet = noise_windows([0.050] * 19)
-        clipped = [4.95] * 100
-        analysis = analyze_noise_capture(
-            clipped + quiet,
-            self.RATE,
-            window_s=self.WINDOW_S,
-            threshold_mv=300.0,
-            max_over_fraction=0.0,
-            clip_limit_v=4.9,
-        )
-        self.assertFalse(analysis.passed)
-        self.assertEqual(analysis.windows_over, 1)
-        self.assertEqual(analysis.clipped_windows, 1)
-
-    def test_zero_complete_windows_raises(self):
-        with self.assertRaisesRegex(ValueError, "no complete window"):
-            analyze_noise_capture([1.2] * 5, self.RATE, window_s=self.WINDOW_S)
-
-
-class BandLimitedNoiseAnalysisTests(unittest.TestCase):
-    """decimate_boxcar + the band-limited pk-pk rule with raw clip checks."""
-
-    def test_decimate_boxcar_averages_blocks_and_drops_the_tail(self):
-        waveform = [0.0, 2.0, 4.0, 6.0, 1.0, 3.0, 9.9]  # tail sample dropped
-        self.assertEqual(decimate_boxcar(waveform, 2), (1.0, 5.0, 2.0))
-        self.assertEqual(decimate_boxcar([1.5, 2.5], 1), (1.5, 2.5))
-        with self.assertRaises(ValueError):
-            decimate_boxcar([1.0], 0)
-
-    def test_high_frequency_noise_is_removed_low_frequency_kept(self):
-        # 1000 SPS, 20:1 decimation. A ±200 µV square alternating every
-        # sample (500 Hz) is deep in the FIR's stopband (>= 60 dB) and all
-        # but vanishes — only the odd-reflection edge padding leaves a small
-        # bounded artifact in the first/last windows, well under the limit.
-        # A ±200 µV window-centered slow square survives through decimation
-        # AND the per-window detrend; the FIR's flat passband keeps its
-        # in-band harmonics at full strength (the old boxcar drooped them),
-        # so with band-edge Gibbs ripple it reads slightly ABOVE its raw
-        # 0.400 mV pk-pk rather than exactly at it.
-        fast = [1.2 + (0.0002 if index % 2 == 0 else -0.0002) for index in range(4000)]
-        slow = [
-            1.2
-            + (
-                0.0002
-                if (index % 1000 < 250 or index % 1000 >= 750)
-                else -0.0002
-            )
-            for index in range(4000)
-        ]
-
-        fast_analysis, _filtered, rate = analyze_noise_capture_band_limited(
-            fast, 1000.0, decimation_factor=20, threshold_mv=0.075
-        )
-        slow_analysis, _filtered, _rate = analyze_noise_capture_band_limited(
-            slow, 1000.0, decimation_factor=20, threshold_mv=0.075
-        )
-
-        self.assertEqual(rate, 50.0)
-        self.assertTrue(fast_analysis.passed)
-        self.assertLess(fast_analysis.worst_pp_mv, 0.075)
-        self.assertFalse(slow_analysis.passed)
-        self.assertGreaterEqual(slow_analysis.worst_pp_mv, 0.400)
-        self.assertLess(slow_analysis.worst_pp_mv, 0.500)
-
-    def test_antialias_decimation_rejects_folding_frequencies(self):
-        # THE aliasing fix (2026-08-20). After 20:1 decimation the new
-        # Nyquist is 25 Hz; the old boxcar's -13 dB sidelobes let 60 Hz
-        # mains fold to 10 Hz at only -16 dB and read as part noise
-        # (measured at 41% of the in-band signal on an interference-heavy
-        # bench capture). The FIR must attenuate foldable tones >= 60 dB
-        # while passing the part's real 0.5-5 Hz noise band untouched, and
-        # a linear settling ramp must come through exactly (the odd-
-        # reflection padding) so the per-window detrend can remove it.
-        import math as m
-
-        rate, factor = 1000.0, 20
-        n = 20000
-
-        def tone_pp_after(freq_hz):
-            tone = [1.2 + 0.001 * m.sin(2 * m.pi * freq_hz * i / rate)
-                    for i in range(n)]
-            filtered = decimate_antialiased(tone, factor)
-            core = filtered[100:-100]  # steady state, away from edges
-            return max(core) - min(core)
-
-        # In-band tones pass at full amplitude (2 mV pk-pk in -> ~2 mV out).
-        for freq in (1.0, 3.0, 10.0):
-            self.assertAlmostEqual(tone_pp_after(freq), 0.002, delta=0.0001)
-        # Foldable tones (alias targets 10 Hz / 20 Hz) are crushed >= 60 dB:
-        # 2 mV in -> <= 2 µV out. Under the boxcar, 60 Hz kept ~16% (314 µV).
-        for freq in (40.0, 60.0, 120.0):
-            self.assertLess(tone_pp_after(freq), 0.000002)
-        # Unity DC gain and exact linear-ramp transparency at the edges.
-        ramp = [1.2 + 0.0005 * i / rate for i in range(n)]
-        filtered = decimate_antialiased(ramp, factor)
-        worst = max(
-            abs(value - (1.2 + 0.0005 * (k * factor + factor // 2) / rate))
-            for k, value in enumerate(filtered)
-        )
-        self.assertLess(worst, 1e-12)
-        # Same output timeline as the boxcar it replaced.
-        self.assertEqual(len(filtered), n // factor)
-
-    def test_detrend_removes_each_windows_own_line(self):
-        # A pure line becomes ~zero; a line plus a center-symmetric square
-        # keeps the square's full pk-pk (the fit sees zero extra slope).
-        line = [0.5 + 0.01 * index for index in range(100)]
-        segments = ((0, 50), (50, 100))
-        residual = detrend_window_segments(line, segments)
-        self.assertLess(max(abs(value) for value in residual), 1e-9)
-
-        square = [
-            value
-            + (0.001 if (index % 50 < 12 or index % 50 >= 38) else -0.001)
-            for index, value in enumerate(line)
-        ]
-        residual = detrend_window_segments(square, segments)
-        self.assertAlmostEqual(
-            max(residual) - min(residual), 0.002, delta=1e-6
-        )
-
-    def test_settling_drift_passes_only_with_window_detrending(self):
-        # 0.5 mV/s of residual DC settling and no real noise: the slope
-        # alone puts ~0.5 mV of pk-pk into every raw window. With each
-        # window judged against its own baseline the part passes; without
-        # detrending it would fail every window.
-        drift = [1.2 + 0.0005 * index / 1000.0 for index in range(20000)]
-        detrended, _trace, _rate = analyze_noise_capture_band_limited(
-            drift, 1000.0, decimation_factor=20, threshold_mv=300.0 / 700.0
-        )
-        raw_rule, _trace, _rate = analyze_noise_capture_band_limited(
-            drift,
-            1000.0,
-            decimation_factor=20,
-            threshold_mv=300.0 / 700.0,
-            detrend_windows=False,
-        )
-        self.assertTrue(detrended.passed)
-        self.assertLess(detrended.worst_pp_mv, 0.01)
-        self.assertFalse(raw_rule.passed)
-        self.assertGreater(raw_rule.worst_pp_mv, 0.4)
-
-    def test_raw_clipping_still_fails_a_window_the_average_would_hide(self):
-        # One window rides at the +4.95 V rail: the filtered trace is a
-        # quiet DC level there (tiny filtered pk-pk), but the raw samples
-        # prove the input railed, so the window must count as over-limit.
-        # The 3.75 V rail-to-quiet step also rings through the anti-alias
-        # FIR into the neighboring window (the transition spans ~0.3 s each
-        # side), so that window's filtered pk-pk is over as well — honest
-        # contamination from a railed input, and irrelevant in production
-        # because any clipped window already fails the capture on its own.
-        quiet = [1.2] * 19_000
-        clipped = [4.95] * 1000
-        analysis, filtered, _rate = analyze_noise_capture_band_limited(
-            clipped + quiet,
-            1000.0,
-            decimation_factor=20,
-            threshold_mv=0.075,
-            max_over_fraction=0.0,
-            clip_limit_v=4.9,
-        )
-        self.assertEqual(len(filtered), 1000)
-        self.assertFalse(analysis.passed)
-        self.assertEqual(analysis.clipped_windows, 1)
-        self.assertEqual(analysis.windows_over, 2)
 
 
 if __name__ == "__main__":

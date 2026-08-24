@@ -13,23 +13,21 @@ analysis** scripts.
 ## Repository layout
 
 ```
-tech_app/                         Technician data-collection app, by version
-├── v1_single_sensor/             Original single-sensor rig with the AM502 amplifier
-│   ├── eltec_406mca_tester.py        (also the shared signal-math + LabJack engine)
-│   └── Run 406MCA Tester.bat
-├── v2_scope_verification/        Older scope-verification rig (guided lot flow)
-│   ├── eltec_406mca_scope_verification_tester.py
-│   └── Run 406MCA Scope Verification Tester.bat
-├── v3_emitter/                   LabJack-driven emitter rig, no AM502 (unity-gain buffer)
-│   ├── eltec_406mca_emitter_tester.py
-│   ├── Run 406MCA Emitter Tester.bat
-│   ├── Create Desktop Shortcut.ps1
-│   └── assets/README.txt
-└── v4_emitter/   ← CURRENT       Same emitter rig + measurement engine as v3, with the
-    ├── eltec_406mca_emitter_tester.py   Eltec-branded animated UI (eltecinstruments.com look)
-    ├── Run 406MCA Emitter Tester.bat
-    ├── Create Desktop Shortcut.ps1
-    └── assets/README.txt         (optional brand fonts go in assets\fonts\)
+tech_app/                         Technician data-collection app
+├── eltec_rig/    ← CURRENT (v2.0) Unified Eltec Test Rig: sensor-version dropdown
+│   ├── eltec_rig_tester.py           (Model 405 M22 / Model 406 MCA), ESP32 rig,
+│   ├── m405m22/  m406mca/            skip / re-measure footer, per-batch attempt log
+│   ├── attempt_history.py            (see tech_app/eltec_rig/README.md)
+│   └── run_eltec_rig_tester.cmd|.sh
+└── deprecated/                   Frozen older apps, unchanged (reference only)
+    ├── eltec_rig_v1/                 the unified app before v2.0 (2026-08-24 snapshot)
+    ├── 405m22_esp32/  v6_1_esp32/    the qualified standalone ESP32 builds
+    ├── v6_esp32/  v5_esp32/  v6_1_failure_calibration/
+    ├── v1_single_sensor/             original LabJack single-sensor rig with the AM502
+    │                                 (still the shared signal-math engine imported by
+    │                                 engineer_tools and analysis/v1_single_sensor)
+    ├── v2_scope_verification/  v3_emitter/  v4_emitter/   LabJack emitter-rig apps
+    └── (each keeps its own README / launcher)
 
 engineer_tools/                   Engineer setup / bring-up tools (live signal monitor)
 ├── eltec_406mca_signal_monitor.py
@@ -46,10 +44,10 @@ analysis/                         Analysis, by app version
 assets/eltec_logo.png            Shared logo used by the apps
 ```
 
-`eltec_406mca_tester.py` (v1) doubles as the **single source of truth for the
-signal math and the LabJack device wrapper**; the v3/v4 emitter testers and both
-engineer tools import from it, so it is kept alongside the other versions rather
-than deprecated.
+`deprecated/v1_single_sensor/eltec_406mca_tester.py` (v1) doubles as the
+**single source of truth for the signal math and the LabJack device wrapper**;
+the v3/v4 emitter testers and both engineer tools import from it (the unified
+app carries its own vendored copy in `eltec_rig/v1_single_sensor/`).
 
 ## Where test data is saved
 

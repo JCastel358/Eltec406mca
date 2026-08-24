@@ -69,11 +69,6 @@ import numpy as np
 # is provided locally by esp32_backend.py.
 import sys
 
-_RIG_PACKAGE_DIR = Path(__file__).resolve().parents[1]
-if str(_RIG_PACKAGE_DIR) not in sys.path:
-    sys.path.insert(0, str(_RIG_PACKAGE_DIR))
-import attempt_history  # noqa: E402 - v2.0 per-batch attempt / skip log
-
 _V1_TESTER_DIR = Path(__file__).resolve().parents[1] / "v1_single_sensor"
 if str(_V1_TESTER_DIR) not in sys.path:
     sys.path.insert(0, str(_V1_TESTER_DIR))
@@ -199,15 +194,6 @@ BATTERY_REUSE_WINDOW_S = 30.0
 # technician what to plug in instead of recording bogus numbers.
 BATTERY_FAULT_MIN_V = 3.0    # below this: battery missing / AIN7 divider not wired
 BATTERY_FAULT_MAX_V = 7.5    # above this: not a plausible 6 V SLA reading
-# AIN1 emitter-health (reference) gate. Disabled 2026-08-24, exactly as on
-# the 405 M22 build: the shared dual op-amp buffer has no channel isolation,
-# so the sensor under test couples into AIN1 and the reference cannot be
-# calibrated reliably. When the channel-isolated op-amp board is installed,
-# set this back to True and run a fresh "Calibrate reference unit". All the
-# gate machinery is kept intact (and still unit-tested with the flag forced
-# on). Operator mitigation meanwhile: if several sensors in a row fail low
-# sensitivity, suspect the emitter before condemning the parts.
-REFERENCE_GATE_ENABLED = False
 SENSOR_OFFSET_MIN_PLAUSIBLE_V = 0.05   # connected 406MCA sits near 0.3-1.2 V;
 SENSOR_OFFSET_MAX_PLAUSIBLE_V = 2.5    # outside this band = no sensor / no buffer
 # Battery level as displayed by the header gauge: full at ~6.4 V.
@@ -633,11 +619,6 @@ CSV_FIELDS = [
     "active_measurement_cycles_required",
     "pwm_on_seconds",
     "data_source",
-    # v2.0 attempt history: how many measurement attempts this verdict
-    # took and how often the part was set aside (details per event in the
-    # batch's *_attempts.csv, see attempt_history.py).
-    "measure_attempts",
-    "skip_count",
 ]
 
 STABILITY_SAMPLE_DIAGNOSTIC_FIELDS = (
@@ -1078,8 +1059,6 @@ def append_result_csv(
     reference_calibration: "ReferenceCalibration | None" = None,
     reference_check_mv: float | None = None,
     failure_mode: str = "",
-    measure_attempts: int = 0,
-    skip_count: int = 0,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
@@ -1135,8 +1114,6 @@ def append_result_csv(
         "failure_mode_reason": failure_mode_reason,
         "operator_comments": comment.strip(),
         "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
-        "measure_attempts": str(measure_attempts),
-        "skip_count": str(skip_count),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
         "noise_rms_mv": _fmt_optional_float(metrics.noise_rms_mv if metrics else None, 4),
         "snr_db": _fmt_optional_float(metrics.signal_to_noise_db if metrics else None, 2),
@@ -1823,14 +1800,6 @@ class HardwareNotReadyError(RuntimeError):
     up (missing sensor, unwired battery divider, no PWM sync). Nothing is
     measured or recorded; the message tells the technician what to plug in."""
 
-class NoSensorDetectedError(HardwareNotReadyError):
-    """AIN0 floats like an empty slot. A shorted/dead part looks identical, so
-    the UI asks the technician whether a sensor is loaded before deciding."""
-
-    def __init__(self, message: str, offset_v: float) -> None:
-        super().__init__(message)
-        self.offset_v = offset_v
-
 
 class ReferenceGateError(HardwareNotReadyError):
     """AIN1 is uncalibrated, invalidated, or outside its calibrated window."""
@@ -2096,55 +2065,6 @@ def analyze_v6_stable_measurement(
     return metrics
 
 
-BAD_SENSOR_FAILURE_MODE = "SB - Sensor bad"
-
-
-def build_no_output_sensor_result(
-    offset_v: float,
-    *,
-    input_range_v: float,
-    sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
-) -> tuple[WaveformMetrics, FinalResult]:
-    """FAIL for a loaded sensor whose AIN0 floats like an empty slot.
-
-    A shorted or dead part and a missing part read the same (near 0 V); the
-    technician confirmed a part is in the rig, so it fails with no offset
-    instead of being reported as a wiring error. Nothing else is measured.
-    """
-    reason = (
-        f"No offset: AIN0 reads {offset_v:.3f} V with a sensor loaded "
-        f"(a connected 406MCA sits near 0.3-1.2 V) - shorted or dead part."
-    )
-    note = "Noise and sensitivity were not measured: the part presents no output."
-    metrics = WaveformMetrics(
-        sensitivity_mv=0.0,
-        sensitivity_amplified_mv=0.0,
-        polarity="NOT MEASURED",
-        measured_frequency_hz=None,
-        cycles_used=0,
-        offset_v=offset_v,
-        stabilized=False,
-        stabilization_cycle=None,
-        warnings=[reason, note],
-        edges=[],
-        waveform_v=np.asarray([], dtype=float),
-        sync_v=np.asarray([], dtype=float),
-        sample_rate_hz=sample_rate_hz,
-        ignored_initial_cycles=0,
-        input_range_v=input_range_v,
-    )
-    final = FinalResult(
-        passed=False,
-        offset_v=offset_v,
-        sensitivity_mv=None,
-        polarity="",
-        fail_reasons=[reason],
-        warnings=[note],
-        waveform_metrics=metrics,
-    )
-    return metrics, final
-
-
 def build_stability_timeout_result(
     waveform_v: np.ndarray,
     sync_v: np.ndarray,
@@ -2389,19 +2309,8 @@ class RoundButton(tk.Canvas):
             "fg": ELTEC_BLUE_DARK, "outline": "",
             "disabled_fill": PAGE_BG, "disabled_fg": "#aeb9c5", "disabled_outline": "",
         },
-        # v2.0 footer: green = save / move on, amber = set the part aside.
-        "success": {
-            "fill": "#1f8a4c", "hover": "#176d3c", "press": "#125630",
-            "fg": "#ffffff", "outline": "",
-            "disabled_fill": "#b9d8c5", "disabled_fg": "#f1f7f3", "disabled_outline": "",
-        },
-        "warn": {
-            "fill": "#fff4d6", "hover": "#ffe9b3", "press": "#ffd98a",
-            "fg": "#8a5a00", "outline": "#e8b94a",
-            "disabled_fill": PAGE_BG, "disabled_fg": "#c2b7a3", "disabled_outline": "#e6dccb",
-        },
     }
-    SIZE_PADS = {"xl": (34, 18), "lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
+    SIZE_PADS = {"lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
 
     def __init__(
         self,
@@ -3040,16 +2949,6 @@ class EmitterTesterApp(tk.Tk):
         self.current_sensor_number = 0
         self.current_sensor_id = ""
         self.result_saved = True
-        # v2.0 skip / attempt history (attempt_history.py). While
-        # ``resuming_skipped`` is set, "next" walks the skipped queue in
-        # first-skipped-first-measured order instead of handing out fresh
-        # sensor numbers.
-        self.resuming_skipped = False
-        self.measure_attempts = 0
-        self.skip_count = 0
-        self.skip_button: RoundButton | None = None
-        self.remeasure_button: RoundButton | None = None
-        self.skipped_button: RoundButton | None = None
 
         # Current-sensor measurement state.
         self.last_metrics: WaveformMetrics | None = None
@@ -3107,7 +3006,7 @@ class EmitterTesterApp(tk.Tk):
         return (self.FONT_MONO, size, weight)
 
     def btn(self, parent: tk.Widget, text: str, command, kind: str = "primary", size: str = "lg", parent_bg: str = PAGE_BG) -> RoundButton:
-        fonts = {"xl": self.fd(17), "lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
+        fonts = {"lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
         return RoundButton(parent, text=text, command=command, kind=kind, size=size, font=fonts[size], parent_bg=parent_bg)
 
     # ----- variables / style / logo ----- #
@@ -3612,8 +3511,6 @@ class EmitterTesterApp(tk.Tk):
         self.filter_hint_var.set(hint)
 
     def reference_gate_ready(self) -> bool:
-        if not REFERENCE_GATE_ENABLED:
-            return True
         if self.simulator_var.get():
             return True
         calibration = self.reference_calibration
@@ -3623,16 +3520,7 @@ class EmitterTesterApp(tk.Tk):
         calibration = self.reference_calibration
         simulator = self.simulator_var.get()
         ready = simulator or (calibration is not None and calibration.valid)
-        if not REFERENCE_GATE_ENABLED:
-            title = "Reference gate disabled (op-amp crosstalk)"
-            detail = (
-                "The shared dual op-amp buffer lets the sensor under test couple "
-                "into the AIN1 reference, so the emitter-health check is off until "
-                "the channel-isolated buffer board is installed. If several sensors "
-                "in a row fail low sensitivity, suspect the emitter first."
-            )
-            accent = WARN_ACCENT
-        elif simulator:
+        if simulator:
             title = "Reference unit simulated"
             detail = "Training mode uses a synthetic reference reading; hardware calibration is unchanged."
             accent = WARN_ACCENT
@@ -3688,7 +3576,7 @@ class EmitterTesterApp(tk.Tk):
             justify="left",
             **detail_options,
         ).grid(row=1, column=0, sticky="w", pady=(S(4), 0))
-        if not simulator and REFERENCE_GATE_ENABLED:
+        if not simulator:
             button_text = "Recalibrate reference unit" if ready else "Calibrate reference unit"
             button = self.btn(
                 inner,
@@ -3703,13 +3591,7 @@ class EmitterTesterApp(tk.Tk):
                 button.configure(state="disabled")
 
     def render_load_step(self) -> None:
-        self._step_heading(
-            0,
-            "02",
-            f"Load sensor {self.current_sensor_id}"
-            + ("  (skipped part)" if self.resuming_skipped else ""),
-            f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}",
-        )
+        self._step_heading(0, "02", f"Load sensor {self.current_sensor_id}", f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}")
 
         self._build_reference_calibration_card(row=1)
 
@@ -3994,6 +3876,7 @@ class EmitterTesterApp(tk.Tk):
         tools.grid(row=next_row, column=0, sticky="w", pady=(16, 0))
         self.btn(tools, "Comment", self.open_comment_window, kind="ghost", size="sm").grid(row=0, column=0, padx=(0, 10))
         self.btn(tools, "Capture waveform", self.capture_waveform_snapshot, kind="ghost", size="sm").grid(row=0, column=1, padx=(0, 10))
+        self.btn(tools, "Re-measure", self.run_measurement, kind="ghost", size="sm").grid(row=0, column=2, padx=(0, 14))
         ToggleSwitch(
             tools,
             "Show test details",
@@ -4119,54 +4002,22 @@ class EmitterTesterApp(tk.Tk):
         # The footer bar is a fixed row below the step frame (built once in
         # _build_layout), so the buttons can never be pushed off-screen by
         # tall step content. Rebuild its buttons for the current step.
-        #
-        # v2.0 layout, left -> right:
-        #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
-        #   Save + Exit Batch · Save + Next Sensor
-        # Colour carries the meaning: green = save and move on, amber = set
-        # the part aside for later, blue outline = run the test again.
         for child in self.footer_bar.winfo_children():
             child.destroy()
-        self.footer_bar.columnconfigure(0, weight=0)
-        self.footer_bar.columnconfigure(1, weight=1)
-        result_step = self.step == self.RESULT_STEP
         self.back_button = self.btn(self.footer_bar, "Back", self.go_back, kind="ghost", size="lg")
         self.back_button.grid(row=0, column=0, sticky="w")
-        self.skipped_button = self.btn(self.footer_bar, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
-        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(S(10), 0))
-        self.skip_button = self.btn(self.footer_bar, "Skip part", self.open_skip_window, kind="warn", size="xl")
-        self.skip_button.grid(row=0, column=2, sticky="e", padx=(0, S(10)))
-        self.remeasure_button = self.btn(self.footer_bar, "Re-measure", self.run_measurement, kind="outline", size="xl")
-        self.remeasure_button.grid(row=0, column=3, sticky="e", padx=(0, S(10)))
-        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
-        self.secondary_button.grid(row=0, column=4, sticky="e", padx=(0, S(10)))
-        self.primary_button = self.btn(
-            self.footer_bar, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
-        )
-        self.primary_button.grid(row=0, column=5, sticky="e")
+        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="lg")
+        self.secondary_button.grid(row=0, column=1, sticky="e", padx=(0, S(10)))
+        self.primary_button = self.btn(self.footer_bar, "Next", self.go_next, kind="primary", size="lg")
+        self.primary_button.grid(row=0, column=2, sticky="e")
 
     def update_navigation_state(self) -> None:
-        idle = not self.busy and not self.measuring
-        for button in (self.skipped_button, self.skip_button, self.remeasure_button, self.secondary_button):
-            if button is not None:
-                button.grid_remove()
+        self.secondary_button.grid_remove()
         if self.step == self.SETUP_STEP:
             self.back_button.configure(state="disabled")
             self.primary_button.configure(text="Start (Enter)", state="disabled" if self.busy else "normal")
-            return
-        # Skipped parts waiting to be measured (never the one on the bench).
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if waiting and not self.resuming_skipped:
-            self.skipped_button.grid()
-            self.skipped_button.configure(
-                text=f"Measure skipped ({len(waiting)})", state="normal" if idle else "disabled"
-            )
-        if self.step == self.LOAD_STEP:
+        elif self.step == self.LOAD_STEP:
             self.back_button.configure(state="disabled" if self.busy else "normal")
-            self.skip_button.grid()
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
             # Hard block: no measurement on a low battery or a wiring fault.
             # Inert while battery monitoring is disabled (nothing measurable
             # on AIN7 on this fixture - see BATTERY_MONITORING_ENABLED).
@@ -4192,17 +4043,10 @@ class EmitterTesterApp(tk.Tk):
                 measure_text = "Measure (Enter)"
             self.primary_button.configure(text=measure_text, state="disabled" if blocked else "normal")
         else:
-            self.skip_button.grid()
-            self.remeasure_button.grid()
             self.secondary_button.grid()
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
-            ready = idle and self.last_result is not None and not self.result_saved
+            ready = not self.busy and not self.measuring and self.last_result is not None and not self.result_saved
             retest = result_outcome(self.last_result) == OUTCOME_RETEST
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            self.remeasure_button.configure(
-                text="Re-measure" if self.last_result is not None else "Measure",
-                state="normal" if idle and not self.result_saved else "disabled",
-            )
             self.primary_button.configure(
                 text=(
                     "Save Quarantine + Next (Enter)"
@@ -4294,26 +4138,16 @@ class EmitterTesterApp(tk.Tk):
         self.tester_name = tester_name
         self.filter_setup = self.filter_var.get()
         csv_path = batch_results_path(batch_number)
-        self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        self.current_sensor_number = next_sensor_number_for_batch(csv_path)
         existing = count_existing_batch_rows(csv_path)
         position = "next" if existing else "first"
-        waiting = self.skipped_parts_queue()
-        status = f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}."
-        if waiting:
-            status += f"  {len(waiting)} skipped part(s) waiting: {attempt_history.format_queue(waiting)}."
-        self.status_var.set(status)
+        self.status_var.set(f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}.")
         self.prepare_current_sensor()
         self.show_step(self.LOAD_STEP)
 
     def prepare_current_sensor(self) -> None:
         self.current_sensor_id = f"{self.batch_number}-{self.current_sensor_number}"
         self.result_saved = False
-        # Earlier attempts on this id (a part coming back from the skipped
-        # pile keeps its history) so the verdict row reports the true count.
-        self.measure_attempts, self.skip_count = attempt_history.attempt_counts(
-            self._attempts_path(), self.current_sensor_id
-        )
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
@@ -4331,269 +4165,19 @@ class EmitterTesterApp(tk.Tk):
 
     def save_and_continue(self) -> None:
         if self.save_current_sensor():
-            self._advance_to_next_sensor()
+            self.current_sensor_number += 1
+            self.prepare_current_sensor()
+            self.show_step(self.LOAD_STEP)
 
     def save_and_end_batch(self) -> None:
         if self.save_current_sensor():
-            self._end_batch()
-
-    def _advance_to_next_sensor(self) -> None:
-        if self.resuming_skipped:
-            # Walk the skipped pile in the order it was built; once it is
-            # empty fall back to fresh numbers.
-            waiting = [
-                item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-            ]
-            if waiting:
-                self._load_skipped_part(*waiting[0])
-                return
-            self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
-        self.prepare_current_sensor()
-        self.show_step(self.LOAD_STEP)
-
-    def _end_batch(self) -> None:
-        saved_batch = self.batch_number
-        saved_csv = batch_results_path(saved_batch)
-        self.status_var.set(f"Batch {saved_batch} ended.")
-        self.step = self.SETUP_STEP
-        self.result_saved = True
-        self.show_batch_summary_window(saved_batch, saved_csv)
-        self.render_step()
-
-    # ----- v2.0: set a part aside and come back to it in skip order ----- #
-    def _attempts_path(self) -> Path:
-        return attempt_history.attempts_path_for(batch_results_path(self.batch_number))
-
-    def skipped_parts_queue(self) -> list[tuple[int, str]]:
-        """Skipped parts without a verdict yet, first skipped first."""
-        if not self.batch_number:
-            return []
-        return attempt_history.skipped_queue(
-            self._attempts_path(), batch_results_path(self.batch_number)
-        )
-
-    def _next_fresh_sensor_number(self) -> int:
-        """Next never-used number: above every saved AND every skipped id."""
-        csv_path = batch_results_path(self.batch_number)
-        return max(
-            next_sensor_number_for_batch(csv_path),
-            attempt_history.highest_sensor_number(self._attempts_path()) + 1,
-        )
-
-    def can_skip_part(self) -> bool:
-        return (
-            self.step in (self.LOAD_STEP, self.RESULT_STEP)
-            and not self.busy
-            and not self.measuring
-            and not self.result_saved
-            and bool(self.current_sensor_id)
-        )
-
-    def _log_attempt(
-        self,
-        event: str,
-        *,
-        result: FinalResult | None = None,
-        reason: str = "",
-        note: str = "",
-    ) -> None:
-        """Append one event to the batch's attempt log (never blocks a test)."""
-        if not self.batch_number or not self.current_sensor_id:
-            return
-        if event in (attempt_history.EVENT_MEASURED, attempt_history.EVENT_MEASURE_ERROR):
-            self.measure_attempts += 1
-        elif event == attempt_history.EVENT_SKIPPED:
-            self.skip_count += 1
-        try:
-            attempt_history.append_attempt(
-                self._attempts_path(),
-                batch_number=self.batch_number,
-                sensor_number=self.current_sensor_number,
-                sensor_id=self.current_sensor_id,
-                event=event,
-                attempt=self.measure_attempts,
-                outcome=result_outcome(result) if result is not None else "",
-                reason=reason,
-                note=note or self.notes_var.get(),
-                tester_name=self.tester_name,
-                offset_v=None if result is None else result.offset_v,
-                sensitivity_mv=None if result is None else result.sensitivity_mv,
-                polarity="" if result is None else result.polarity,
-                fail_reasons=None if result is None else result.fail_reasons,
-            )
-        except Exception:
-            if event == attempt_history.EVENT_SKIPPED:
-                raise
-
-    def open_skip_window(self) -> None:
-        if not self.can_skip_part():
-            return
-        dialog = tk.Toplevel(self)
-        dialog.title(f"Skip {self.current_sensor_id}")
-        dialog.minsize(S(560), S(320))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
-
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.rowconfigure(4, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIP PART —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"Set {self.current_sensor_id} aside",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-
-        # Just a comment box - no reason list to click through (2026-08-24:
-        # keep the skip to two clicks; the attempt log carries the numbers).
-        note_holder = tk.Frame(frame, bg=PAGE_BG)
-        note_holder.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
-        note_holder.rowconfigure(1, weight=1)
-        note_holder.columnconfigure(0, weight=1)
-        tk.Label(note_holder, text="COMMENT (OPTIONAL)", bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 4))
-        note = tk.Text(
-            note_holder, wrap="word", font=self.fb(13), undo=True, relief="flat", bd=0,
-            bg=CARD_BG, fg=TEXT_DARK, padx=12, pady=10, insertbackground=ELTEC_BLUE,
-            highlightbackground=CARD_BORDER, highlightcolor=ELTEC_BLUE, highlightthickness=1,
-            height=4,
-        )
-        note.grid(row=1, column=0, sticky="nsew")
-
-        tk.Label(
-            frame,
-            text=(
-                f"Put it on the skipped pile, in order. It comes back as "
-                f"{self.current_sensor_id} under “Measure skipped”."
-            ),
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(11),
-            wraplength=S(520),
-            justify="left",
-        ).grid(row=5, column=0, sticky="w", pady=(10, 0))
-
-        def commit(_event: tk.Event | None = None) -> str:
-            if self.skip_current_part("", note.get("1.0", "end-1c")):
-                dialog.destroy()
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=6, column=0, sticky="e", pady=(16, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, "Skip part", commit, kind="warn", size="md").grid(row=0, column=1)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        note.focus_set()
-
-    def skip_current_part(self, reason: str, note: str = "") -> bool:
-        """Record the skip and move on WITHOUT spending a sensor number."""
-        if not self.can_skip_part():
-            return False
-        skipped_id = self.current_sensor_id
-        try:
-            self._log_attempt(
-                attempt_history.EVENT_SKIPPED,
-                result=self.last_result,
-                reason=reason,
-                note=note,
-            )
-        except Exception as exc:
-            messagebox.showerror("Could not record the skip", str(exc))
-            return False
-        self.result_saved = True  # nothing left to save for this part now
-        self.delete_autosave()
-        self._advance_to_next_sensor()
-        waiting = len(self.skipped_parts_queue())
-        self.status_var.set(
-            f"{skipped_id} set aside ({waiting} skipped, waiting). Now loading {self.current_sensor_id}."
-        )
-        return True
-
-    def measure_skipped(self) -> None:
-        """Bring the skipped pile back, first skipped first."""
-        if self.busy or self.measuring:
-            return
-        if self.step == self.RESULT_STEP and self.last_result is not None and not self.result_saved:
-            messagebox.showinfo(
-                "Finish this part first",
-                f"Save, skip or re-measure {self.current_sensor_id} before loading a skipped part.",
-            )
-            return
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if not waiting:
-            return
-        first_number, first_id = waiting[0]
-        dialog = tk.Toplevel(self)
-        dialog.title("Skipped parts")
-        dialog.minsize(S(520), S(260))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIPPED PARTS —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"{len(waiting)} waiting, in skip order",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-        tk.Label(
-            frame,
-            text=attempt_history.format_queue(waiting),
-            bg=CARD_BG,
-            fg=ELTEC_BLUE_DARK,
-            font=self.fm(13, "bold"),
-            padx=12,
-            pady=10,
-            wraplength=S(480),
-            justify="left",
-            anchor="w",
-        ).grid(row=2, column=0, sticky="ew")
-        tk.Label(
-            frame,
-            text=f"Take the first part off the pile — it is {first_id}. The rest follow in this order.",
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(12),
-            wraplength=S(480),
-            justify="left",
-        ).grid(row=3, column=0, sticky="w", pady=(12, 0))
-
-        def load(_event: tk.Event | None = None) -> str:
-            dialog.destroy()
-            self._load_skipped_part(first_number, first_id)
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=4, column=0, sticky="e", pady=(18, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, f"Load {first_id} (Enter)", load, kind="primary", size="md").grid(row=0, column=1)
-        dialog.bind("<Return>", load)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        dialog.focus_set()
-
-    def _load_skipped_part(self, sensor_number: int, sensor_id: str) -> None:
-        self.resuming_skipped = True
-        self.current_sensor_number = sensor_number
-        self.prepare_current_sensor()
-        self._log_attempt(attempt_history.EVENT_RESUMED)
-        remaining = len(self.skipped_parts_queue()) - 1
-        self.status_var.set(
-            f"Skipped part {sensor_id} loaded — measure it now."
-            + (f"  {remaining} more waiting." if remaining > 0 else "  Last skipped part.")
-        )
-        self.show_step(self.LOAD_STEP)
+            saved_batch = self.batch_number
+            saved_csv = batch_results_path(saved_batch)
+            self.status_var.set(f"Batch {saved_batch} ended.")
+            self.step = self.SETUP_STEP
+            self.result_saved = True
+            self.show_batch_summary_window(saved_batch, saved_csv)
+            self.render_step()
 
     def save_current_sensor(self) -> bool:
         if self.last_result is None:
@@ -4659,15 +4243,12 @@ class EmitterTesterApp(tk.Tk):
                 reference_calibration=self.reference_calibration,
                 reference_check_mv=self.last_reference_check_mv,
                 failure_mode=failure_mode,
-                measure_attempts=self.measure_attempts,
-                skip_count=self.skip_count,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
             return False
         self.result_saved = True
         self.delete_autosave()
-        self._log_attempt(attempt_history.EVENT_SAVED, result=self.last_result)
         self.status_var.set(f"Saved {self.current_sensor_id}.")
         self.update_navigation_state()
         return True
@@ -4941,10 +4522,6 @@ class EmitterTesterApp(tk.Tk):
     def run_measurement(self, _event: tk.Event | None = None) -> None:
         if self.busy or self.measuring:
             return
-        if self.last_result is not None and not self.result_saved:
-            # The shown verdict is being discarded: keep it in the attempt
-            # log so a later review can see WHY the part was re-measured.
-            self._log_attempt(attempt_history.EVENT_REMEASURE, result=self.last_result)
         simulator = self.simulator_var.get()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
@@ -5048,7 +4625,7 @@ class EmitterTesterApp(tk.Tk):
         if settings is None:
             raise StabilitySettingsError("V6.1 stability settings are unavailable.")
         calibration = self.reference_calibration
-        if REFERENCE_GATE_ENABLED and (calibration is None or not calibration.valid):
+        if calibration is None or not calibration.valid:
             raise ReferenceGateError(
                 "The reference unit has no valid calibration. The sensor was not read. "
                 "Replace/check the emitter and recalibrate the reference unit before testing."
@@ -5076,72 +4653,64 @@ class EmitterTesterApp(tk.Tk):
                 if battery_v <= BATTERY_MIN_V:
                     raise BatteryTooLowError(battery_v)
 
-            reference_check_mv: float | None = None
-            reference_in_window = True
-            if not REFERENCE_GATE_ENABLED:
+            # The reference gate is deliberately first: start the emitter and
+            # immediately stream the fixed reference unit. The same 0.1 mV / 5
+            # consecutive-peak stability rule as AIN0 selects five fresh cycles;
+            # there is no fixed warm-up delay.
+            push(lambda: self.set_measure_status(
+                token,
+                "Checking reference unit first — watching peak stability…",
+            ))
+            try:
+                reference_activation_time = device.configure_emitter_pwm(
+                    channel=pwm_channel,
+                    frequency_hz=pwm_hz,
+                    duty_cycle_percent=pwm_duty,
+                )
+                reference_started_monotonic = (
+                    float(reference_activation_time)
+                    if isinstance(reference_activation_time, (int, float))
+                    else time.monotonic()
+                )
+                try:
+                    reference_check_mv = self._capture_reference_reading(
+                        device,
+                        pwm_started_monotonic=reference_started_monotonic,
+                        token=token,
+                        push=push,
+                        status_prefix="Reference unit",
+                    )
+                except ReferenceCaptureError as exc:
+                    reason = (
+                        f"Reference unit could not establish a stable five-cycle reading: {exc} "
+                        "No AIN0 reading was taken. Replace/check the emitter, then recalibrate "
+                        "the reference unit before testing."
+                    )
+                    invalidated = calibration.invalidated(reason)
+                    self.reference_calibration = invalidated
+                    try:
+                        save_reference_calibration(invalidated)
+                    except ReferenceCalibrationError as save_exc:
+                        self.reference_calibration_error = str(save_exc)
+                    raise ReferenceGateError(reason) from exc
+            finally:
+                device.disable_emitter_pwm(pwm_channel)
+
+            self.last_reference_check_mv = reference_check_mv
+            reference_in_window = calibration.accepts(reference_check_mv)
+            if reference_in_window:
                 push(lambda: self.set_measure_status(
                     token,
-                    "Reference gate disabled - reading sensor offset first…",
+                    "Reference unit passed. Reading sensor offset…",
                 ))
             else:
-                # The reference gate is deliberately first: start the emitter and
-                # immediately stream the fixed reference unit. The same 0.1 mV / 5
-                # consecutive-peak stability rule as AIN0 selects five fresh cycles;
-                # there is no fixed warm-up delay.
                 push(lambda: self.set_measure_status(
                     token,
-                    "Checking reference unit first — watching peak stability…",
+                    "Reference unit is outside its window. Checking AIN0 for a high-offset sensor…",
                 ))
-                try:
-                    reference_activation_time = device.configure_emitter_pwm(
-                        channel=pwm_channel,
-                        frequency_hz=pwm_hz,
-                        duty_cycle_percent=pwm_duty,
-                    )
-                    reference_started_monotonic = (
-                        float(reference_activation_time)
-                        if isinstance(reference_activation_time, (int, float))
-                        else time.monotonic()
-                    )
-                    try:
-                        reference_check_mv = self._capture_reference_reading(
-                            device,
-                            pwm_started_monotonic=reference_started_monotonic,
-                            token=token,
-                            push=push,
-                            status_prefix="Reference unit",
-                        )
-                    except ReferenceCaptureError as exc:
-                        reason = (
-                            f"Reference unit could not establish a stable five-cycle reading: {exc} "
-                            "No AIN0 reading was taken. Replace/check the emitter, then recalibrate "
-                            "the reference unit before testing."
-                        )
-                        invalidated = calibration.invalidated(reason)
-                        self.reference_calibration = invalidated
-                        try:
-                            save_reference_calibration(invalidated)
-                        except ReferenceCalibrationError as save_exc:
-                            self.reference_calibration_error = str(save_exc)
-                        raise ReferenceGateError(reason) from exc
-                finally:
-                    device.disable_emitter_pwm(pwm_channel)
-
-                self.last_reference_check_mv = reference_check_mv
-                reference_in_window = calibration.accepts(reference_check_mv)
-                if reference_in_window:
-                    push(lambda: self.set_measure_status(
-                        token,
-                        "Reference unit passed. Reading sensor offset…",
-                    ))
-                else:
-                    push(lambda: self.set_measure_status(
-                        token,
-                        "Reference unit is outside its window. Checking AIN0 for a high-offset sensor…",
-                    ))
 
             offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
-            if REFERENCE_GATE_ENABLED and not reference_in_window:
+            if not reference_in_window:
                 if high_offset_dut_explains_reference_spike(
                     reference_check_mv,
                     calibration,
@@ -5169,11 +4738,10 @@ class EmitterTesterApp(tk.Tk):
             # through the buffer. A floating/railed AIN0 means no sensor (or no
             # buffer) - abort before capturing anything.
             if not (SENSOR_OFFSET_MIN_PLAUSIBLE_V <= offset_v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V):
-                raise NoSensorDetectedError(
+                raise HardwareNotReadyError(
                     f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 406MCA "
                     "sits near 0.3-1.2 V. Seat the sensor in the rig and check the buffer wiring, "
-                    "then press Measure again.",
-                    offset_v,
+                    "then press Measure again."
                 )
             push(lambda v=offset_v: self.on_offset_update(token, v))
 
@@ -5403,7 +4971,6 @@ class EmitterTesterApp(tk.Tk):
         self.last_metrics = metrics
         self.last_result = final
         self.failure_mode_var.set(suggest_failure_mode(final))
-        self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
         outcome = result_outcome(final)
@@ -5450,46 +5017,12 @@ class EmitterTesterApp(tk.Tk):
         self.render_step()
         messagebox.showwarning("Reference unit blocked the sensor test", str(exc))
 
-    def _confirm_sensor_loaded(self, exc: "NoSensorDetectedError") -> bool:
-        """An empty slot and a shorted part both float AIN0 - ask which it is."""
-        return bool(
-            messagebox.askyesno(
-                "Is a sensor loaded?",
-                f"AIN0 reads {exc.offset_v:.3f} V — the same as an empty slot.\n\n"
-                f"Is a sensor loaded in the rig?\n\n"
-                "Yes = record {self.current_sensor_id} as a bad (no-offset) sensor.\n"
-                "No = nothing is recorded; seat the sensor and measure again.",
-            )
-        )
-
-    def record_bad_sensor(self, offset_v: float) -> None:
-        """Technician confirmed a sensor IS loaded: it fails as a dead/shorted part."""
-        metrics, final = build_no_output_sensor_result(
-            offset_v, input_range_v=WAVEFORM_INPUT_RANGE_V
-        )
-        self.last_metrics = metrics
-        self.last_result = final
-        self.last_offset_initial_v = offset_v
-        self.preview_waveform = metrics.waveform_v
-        self.preview_sync = metrics.sync_v
-        self.failure_mode_var.set(BAD_SENSOR_FAILURE_MODE)
-        self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
-        self.status_var.set(
-            f"{self.current_sensor_id}: FAIL — no offset with a sensor loaded (bad part). Save the sensor."
-        )
-        self.measure_status_var.set("")
-        self.write_autosave("measurement_complete")
-        self.render_step()
-
     def on_hardware_not_ready(self, token: int, exc: HardwareNotReadyError) -> None:
         """A pre-flight check failed: nothing was measured or recorded."""
         if token != self.measure_token:
             return
         self.measuring = False
         self.busy = False
-        if isinstance(exc, NoSensorDetectedError) and self._confirm_sensor_loaded(exc):
-            self.record_bad_sensor(exc.offset_v)
-            return
         self.status_var.set("Rig not ready - nothing was recorded. Check the wiring and measure again.")
         self.measure_status_var.set("")
         self.render_step()
@@ -5516,7 +5049,6 @@ class EmitterTesterApp(tk.Tk):
         self.measuring = False
         self.busy = False
         text = self._friendly_hardware_error(str(exc))
-        self._log_attempt(attempt_history.EVENT_MEASURE_ERROR, reason=text)
         self.status_var.set(text)
         self.measure_status_var.set("")
         self.render_step()
@@ -5643,9 +5175,6 @@ class EmitterTesterApp(tk.Tk):
             "sensor_number": self.current_sensor_number,
             "sensor_id": self.current_sensor_id,
             "filter_setup": self.filter_setup,
-            "resuming_skipped": self.resuming_skipped,
-            "measure_attempts": self.measure_attempts,
-            "skip_count": self.skip_count,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
             "sensitivity_raw_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
@@ -5724,19 +5253,6 @@ class EmitterTesterApp(tk.Tk):
         ]
         for chip_text, chip_fg, chip_bg in chip_specs:
             tk.Label(chips, text=chip_text, bg=chip_bg, fg=chip_fg, font=self.fm(10, "bold"), padx=12, pady=5).pack(side="left", padx=(0, 8))
-        waiting = attempt_history.skipped_queue(
-            attempt_history.attempts_path_for(csv_path), csv_path
-        )
-        if waiting:
-            tk.Label(
-                head,
-                text=f"Skipped, not measured yet ({len(waiting)}): {attempt_history.format_queue(waiting)}",
-                bg=PAGE_BG,
-                fg="#8a5a00",
-                font=self.fb(12, "bold"),
-                wraplength=S(860),
-                justify="left",
-            ).pack(anchor="w", pady=(10, 0))
 
         frame = tk.Frame(summary, bg=PAGE_BG)
         frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(8, 0))

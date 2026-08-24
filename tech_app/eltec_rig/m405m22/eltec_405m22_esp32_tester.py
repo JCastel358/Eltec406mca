@@ -38,8 +38,8 @@ Model 405 M22 notes (Data-Sheet-Model-405 + TP412):
       looser than TP412's zero-tolerance largest-excursion rule; the sensors
       are extremely sensitive and a few excursions are acceptable). TP412's
       300 mV was read behind the legacy x4000 bench amplifier, so the
-      pin-level limit is 75 uV pk-pk, gated on a band-limited (boxcar
-      1000 -> 50 SPS) trace - see the NOISE_* constants. Provisional until
+      pin-level limit is 75 uV pk-pk, gated on a band-limited (anti-alias
+      FIR, 1000 -> 50 SPS) trace - see the NOISE_* constants. Provisional until
       the comparison batch qualifies it. There is no settle detection: with
       the emitter off there is no signal to stabilize, only noise.
     - The AIN1 reference sensor baseline must be calibrated by THIS build at
@@ -86,6 +86,11 @@ import numpy as np
 # there is still a single source of truth for the production math. Hardware I/O
 # is provided locally by esp32_backend.py.
 import sys
+
+_RIG_PACKAGE_DIR = Path(__file__).resolve().parents[1]
+if str(_RIG_PACKAGE_DIR) not in sys.path:
+    sys.path.insert(0, str(_RIG_PACKAGE_DIR))
+import attempt_history  # noqa: E402 - v2.0 per-batch attempt / skip log
 
 _V1_TESTER_DIR = Path(__file__).resolve().parents[1] / "v1_single_sensor"
 if str(_V1_TESTER_DIR) not in sys.path:
@@ -365,10 +370,15 @@ MIN_SIGNAL_TO_NOISE_RATIO = 1.5   # ~3.5 dB
 # ~0.6 uV) is comfortable ONLY band-limited: at 1000 SPS the ADC's own
 # input noise is ~30-50 uV pk-pk per 1 s window and the raw ~500 Hz
 # bandwidth admits mains/EMI the legacy amplifier never saw. The capture is
-# therefore boxcar-decimated by NOISE_DECIMATION_FACTOR (1000 -> 50 SPS,
-# passband ~22 Hz, 60 Hz mains ~-16 dB; bench-verified floor 4.2 uV median
-# window pk-pk = ~1% of the limit) before the windowed pk-pk rule; the
-# 20 SPS result also matches the legacy scope's own roll-mode sample rate.
+# therefore decimated by NOISE_DECIMATION_FACTOR (1000 -> 50 SPS, passband
+# ~22 Hz) before the windowed pk-pk rule. Since 2026-08-20 the decimator is
+# a proper anti-alias FIR (stability_analysis.decimate_antialiased, Kaiser
+# windowed-sinc, >= 60 dB stopband): the original 20:1 boxcar's ~-13 dB
+# sidelobes let out-of-band interference FOLD into the judged band at the
+# rate drop (60 Hz mains landed at 10 Hz at only -16 dB; measured at 41% of
+# the in-band signal on an interference-heavy bench capture). Same passband
+# and output timeline, so quiet parts read the same (the lot-500 anchors
+# replay to identical verdicts) and the live-preview boxcar is display-only.
 # Clipping is still detected on the RAW samples.
 NOISE_TEST_ENABLED = True
 NOISE_WINDOW_S = 1.0
@@ -378,7 +388,7 @@ NOISE_LEGACY_PP_LIMIT_MV = 300.0      # TP412 scope limit through that chain
 # cross-measurement (range 620-830; refine with more parts).
 NOISE_EFFECTIVE_CHAIN_FACTOR = 700.0
 NOISE_PP_LIMIT_MV = NOISE_LEGACY_PP_LIMIT_MV / NOISE_EFFECTIVE_CHAIN_FACTOR
-NOISE_DECIMATION_FACTOR = 20          # 1000 SPS -> 50 SPS boxcar average
+NOISE_DECIMATION_FACTOR = 20          # 1000 SPS -> 50 SPS (anti-alias FIR)
 # <= 15% of windows may exceed the limit (3 of 20). Tightened from 20% on
 # 2026-08-17 using the lot-500 fixture comparison: the one part the legacy
 # fixture failed for noise (500-44, 496 mV on the old scope) measured 4/20
@@ -974,6 +984,11 @@ CSV_FIELDS = [
     "noise_pp_limit_mv",
     "noise_analysis_rate_hz",
     "noise_baseline_settled",
+    # v2.0 attempt history: how many measurement attempts this verdict
+    # took and how often the part was set aside (details per event in the
+    # batch's *_attempts.csv, see attempt_history.py).
+    "measure_attempts",
+    "skip_count",
 ]
 
 STABILITY_SAMPLE_DIAGNOSTIC_FIELDS = (
@@ -1427,6 +1442,8 @@ def append_result_csv(
     reference_check_mv: float | None = None,
     failure_mode: str = "",
     offset_initial_v: float | None = None,
+    measure_attempts: int = 0,
+    skip_count: int = 0,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
@@ -1486,6 +1503,8 @@ def append_result_csv(
         "failure_mode_reason": failure_mode_reason,
         "operator_comments": comment.strip(),
         "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
+        "measure_attempts": str(measure_attempts),
+        "skip_count": str(skip_count),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
         "noise_rms_mv": _fmt_optional_float(metrics.noise_rms_mv if metrics else None, 4),
         "snr_db": _fmt_optional_float(metrics.signal_to_noise_db if metrics else None, 2),
@@ -2632,6 +2651,14 @@ class HardwareNotReadyError(RuntimeError):
     up (missing sensor, unwired battery divider, no PWM sync). Nothing is
     measured or recorded; the message tells the technician what to plug in."""
 
+class NoSensorDetectedError(HardwareNotReadyError):
+    """AIN0 floats like an empty slot. A shorted/dead part looks identical, so
+    the UI asks the technician whether a sensor is loaded before deciding."""
+
+    def __init__(self, message: str, offset_v: float) -> None:
+        super().__init__(message)
+        self.offset_v = offset_v
+
 
 class ReferenceGateError(HardwareNotReadyError):
     """AIN1 is uncalibrated, invalidated, or outside its calibrated window."""
@@ -3127,6 +3154,55 @@ def build_offset_failure_result(
     return metrics, final
 
 
+BAD_SENSOR_FAILURE_MODE = "SB - Sensor bad"
+
+
+def build_no_output_sensor_result(
+    offset_v: float,
+    *,
+    input_range_v: float,
+    sample_rate_hz: float = DEFAULT_SAMPLE_RATE_HZ,
+) -> tuple[WaveformMetrics, FinalResult]:
+    """FAIL for a loaded sensor whose AIN0 floats like an empty slot.
+
+    A shorted or dead part and a missing part read the same (near 0 V); the
+    technician confirmed a part is in the rig, so it fails with no offset
+    instead of being reported as a wiring error. Nothing else is measured.
+    """
+    reason = (
+        f"No offset: AIN0 reads {offset_v:.3f} V with a sensor loaded "
+        f"(expected at least {SENSOR_OFFSET_MIN_PLAUSIBLE_V:.2f} V) - shorted or dead part."
+    )
+    note = "Noise and sensitivity were not measured: the part presents no output."
+    metrics = WaveformMetrics(
+        sensitivity_mv=0.0,
+        sensitivity_amplified_mv=0.0,
+        polarity="NOT MEASURED",
+        measured_frequency_hz=None,
+        cycles_used=0,
+        offset_v=offset_v,
+        stabilized=False,
+        stabilization_cycle=None,
+        warnings=[reason, note],
+        edges=[],
+        waveform_v=np.asarray([], dtype=float),
+        sync_v=np.asarray([], dtype=float),
+        sample_rate_hz=sample_rate_hz,
+        ignored_initial_cycles=0,
+        input_range_v=input_range_v,
+    )
+    final = FinalResult(
+        passed=False,
+        offset_v=offset_v,
+        sensitivity_mv=None,
+        polarity="",
+        fail_reasons=[reason],
+        warnings=[note],
+        waveform_metrics=metrics,
+    )
+    return metrics, final
+
+
 def build_noise_failure_result(
     offset_v: float,
     noise_report: "NoiseCaptureReport",
@@ -3387,8 +3463,19 @@ class RoundButton(tk.Canvas):
             "fg": ELTEC_BLUE_DARK, "outline": "",
             "disabled_fill": PAGE_BG, "disabled_fg": "#aeb9c5", "disabled_outline": "",
         },
+        # v2.0 footer: green = save / move on, amber = set the part aside.
+        "success": {
+            "fill": "#1f8a4c", "hover": "#176d3c", "press": "#125630",
+            "fg": "#ffffff", "outline": "",
+            "disabled_fill": "#b9d8c5", "disabled_fg": "#f1f7f3", "disabled_outline": "",
+        },
+        "warn": {
+            "fill": "#fff4d6", "hover": "#ffe9b3", "press": "#ffd98a",
+            "fg": "#8a5a00", "outline": "#e8b94a",
+            "disabled_fill": PAGE_BG, "disabled_fg": "#c2b7a3", "disabled_outline": "#e6dccb",
+        },
     }
-    SIZE_PADS = {"lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
+    SIZE_PADS = {"xl": (34, 18), "lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
 
     def __init__(
         self,
@@ -4225,6 +4312,16 @@ class EmitterTesterApp(tk.Tk):
         self.current_sensor_number = 0
         self.current_sensor_id = ""
         self.result_saved = True
+        # v2.0 skip / attempt history (attempt_history.py). While
+        # ``resuming_skipped`` is set, "next" walks the skipped queue in
+        # first-skipped-first-measured order instead of handing out fresh
+        # sensor numbers.
+        self.resuming_skipped = False
+        self.measure_attempts = 0
+        self.skip_count = 0
+        self.skip_button: RoundButton | None = None
+        self.remeasure_button: RoundButton | None = None
+        self.skipped_button: RoundButton | None = None
 
         # Current-sensor measurement state.
         self.last_metrics: WaveformMetrics | None = None
@@ -4307,7 +4404,7 @@ class EmitterTesterApp(tk.Tk):
         return (self.FONT_MONO, size, weight)
 
     def btn(self, parent: tk.Widget, text: str, command, kind: str = "primary", size: str = "lg", parent_bg: str = PAGE_BG) -> RoundButton:
-        fonts = {"lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
+        fonts = {"xl": self.fd(17), "lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
         return RoundButton(parent, text=text, command=command, kind=kind, size=size, font=fonts[size], parent_bg=parent_bg)
 
     # ----- variables / style / logo ----- #
@@ -4926,7 +5023,13 @@ class EmitterTesterApp(tk.Tk):
                 button.configure(state="disabled")
 
     def render_load_step(self) -> None:
-        self._step_heading(0, "02", f"Load sensor {self.current_sensor_id}", f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}")
+        self._step_heading(
+            0,
+            "02",
+            f"Load sensor {self.current_sensor_id}"
+            + ("  (skipped part)" if self.resuming_skipped else ""),
+            f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}",
+        )
 
         self._build_reference_calibration_card(row=1)
 
@@ -5016,7 +5119,7 @@ class EmitterTesterApp(tk.Tk):
             0,
             "03",
             f"{self.current_sensor_id}: nothing was recorded",
-            "Measure again, or skip this sensor and record why it was not measured.",
+            "Re-measure or Skip part below, or record this sensor as NOT MEASURED.",
         )
         card = Card(
             self.step_frame,
@@ -5050,19 +5153,19 @@ class EmitterTesterApp(tk.Tk):
 
         buttons = tk.Frame(self.step_frame, bg=PAGE_BG)
         buttons.grid(row=2, column=0, sticky="w", pady=(22, 0))
-        self.btn(buttons, "Measure again", self.run_measurement, kind="primary", size="lg").grid(row=0, column=0)
         self.btn(
             buttons,
-            "Skip sensor (not measured)",
+            "Record as NOT MEASURED",
             self.open_skip_sensor_window,
             kind="outline",
             size="lg",
-        ).grid(row=0, column=1, padx=(S(12), 0))
+        ).grid(row=0, column=0)
         tk.Label(
             self.step_frame,
             text=(
-                f"A skipped sensor is saved as {OUTCOME_NOT_MEASURED} with no offset, "
-                "sensitivity or polarity, and is left out of the batch yield."
+                f"{OUTCOME_NOT_MEASURED} writes a verdict row with no offset, sensitivity "
+                "or polarity and leaves the sensor out of the yield. Skip part keeps it "
+                "open to measure later instead."
             ),
             bg=PAGE_BG,
             fg=MUTED_FG,
@@ -5376,7 +5479,6 @@ class EmitterTesterApp(tk.Tk):
         noise_capture_button.grid(row=0, column=2, padx=(0, 10))
         if self.last_noise_raw_waveform is None:
             noise_capture_button.configure(state="disabled")
-        self.btn(tools, "Re-measure", self.run_measurement, kind="ghost", size="sm").grid(row=0, column=3, padx=(0, 14))
         ToggleSwitch(
             tools,
             "Show test details",
@@ -5560,22 +5662,54 @@ class EmitterTesterApp(tk.Tk):
         # The footer bar is a fixed row below the step frame (built once in
         # _build_layout), so the buttons can never be pushed off-screen by
         # tall step content. Rebuild its buttons for the current step.
+        #
+        # v2.0 layout, left -> right:
+        #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
+        #   Save + Exit Batch · Save + Next Sensor
+        # Colour carries the meaning: green = save and move on, amber = set
+        # the part aside for later, blue outline = run the test again.
         for child in self.footer_bar.winfo_children():
             child.destroy()
+        self.footer_bar.columnconfigure(0, weight=0)
+        self.footer_bar.columnconfigure(1, weight=1)
+        result_step = self.step == self.RESULT_STEP
         self.back_button = self.btn(self.footer_bar, "Back", self.go_back, kind="ghost", size="lg")
         self.back_button.grid(row=0, column=0, sticky="w")
-        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="lg")
-        self.secondary_button.grid(row=0, column=1, sticky="e", padx=(0, S(10)))
-        self.primary_button = self.btn(self.footer_bar, "Next", self.go_next, kind="primary", size="lg")
-        self.primary_button.grid(row=0, column=2, sticky="e")
+        self.skipped_button = self.btn(self.footer_bar, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
+        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(S(10), 0))
+        self.skip_button = self.btn(self.footer_bar, "Skip part", self.open_skip_window, kind="warn", size="xl")
+        self.skip_button.grid(row=0, column=2, sticky="e", padx=(0, S(10)))
+        self.remeasure_button = self.btn(self.footer_bar, "Re-measure", self.run_measurement, kind="outline", size="xl")
+        self.remeasure_button.grid(row=0, column=3, sticky="e", padx=(0, S(10)))
+        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
+        self.secondary_button.grid(row=0, column=4, sticky="e", padx=(0, S(10)))
+        self.primary_button = self.btn(
+            self.footer_bar, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
+        )
+        self.primary_button.grid(row=0, column=5, sticky="e")
 
     def update_navigation_state(self) -> None:
-        self.secondary_button.grid_remove()
+        idle = not self.busy and not self.measuring
+        for button in (self.skipped_button, self.skip_button, self.remeasure_button, self.secondary_button):
+            if button is not None:
+                button.grid_remove()
         if self.step == self.SETUP_STEP:
             self.back_button.configure(state="disabled")
             self.primary_button.configure(text="Start (Enter)", state="disabled" if self.busy else "normal")
-        elif self.step == self.LOAD_STEP:
+            return
+        # Skipped parts waiting to be measured (never the one on the bench).
+        waiting = [
+            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
+        ]
+        if waiting and not self.resuming_skipped:
+            self.skipped_button.grid()
+            self.skipped_button.configure(
+                text=f"Measure skipped ({len(waiting)})", state="normal" if idle else "disabled"
+            )
+        if self.step == self.LOAD_STEP:
             self.back_button.configure(state="disabled" if self.busy else "normal")
+            self.skip_button.grid()
+            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
             # Hard block: no measurement on a low battery or a wiring fault
             # (battery branches are inert while monitoring is disabled).
             battery_blocking = (
@@ -5599,10 +5733,17 @@ class EmitterTesterApp(tk.Tk):
                 measure_text = "Measure (Enter)"
             self.primary_button.configure(text=measure_text, state="disabled" if blocked else "normal")
         else:
+            self.skip_button.grid()
+            self.remeasure_button.grid()
             self.secondary_button.grid()
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
-            ready = not self.busy and not self.measuring and self.last_result is not None and not self.result_saved
+            ready = idle and self.last_result is not None and not self.result_saved
             retest = result_outcome(self.last_result) == OUTCOME_RETEST
+            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
+            self.remeasure_button.configure(
+                text="Re-measure" if self.last_result is not None or self.last_measure_error else "Measure",
+                state="normal" if idle and not self.result_saved else "disabled",
+            )
             self.primary_button.configure(
                 text=(
                     "Save Quarantine + Next (Enter)"
@@ -5694,16 +5835,26 @@ class EmitterTesterApp(tk.Tk):
         self.tester_name = tester_name
         self.filter_setup = self.filter_var.get()
         csv_path = batch_results_path(batch_number)
-        self.current_sensor_number = next_sensor_number_for_batch(csv_path)
+        self.resuming_skipped = False
+        self.current_sensor_number = self._next_fresh_sensor_number()
         existing = count_existing_batch_rows(csv_path)
         position = "next" if existing else "first"
-        self.status_var.set(f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}.")
+        waiting = self.skipped_parts_queue()
+        status = f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}."
+        if waiting:
+            status += f"  {len(waiting)} skipped part(s) waiting: {attempt_history.format_queue(waiting)}."
+        self.status_var.set(status)
         self.prepare_current_sensor()
         self.show_step(self.LOAD_STEP)
 
     def prepare_current_sensor(self) -> None:
         self.current_sensor_id = f"{self.batch_number}-{self.current_sensor_number}"
         self.result_saved = False
+        # Earlier attempts on this id (a part coming back from the skipped
+        # pile keeps its history) so the verdict row reports the true count.
+        self.measure_attempts, self.skip_count = attempt_history.attempt_counts(
+            self._attempts_path(), self.current_sensor_id
+        )
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
@@ -5739,7 +5890,17 @@ class EmitterTesterApp(tk.Tk):
             self._end_batch()
 
     def _advance_to_next_sensor(self) -> None:
-        self.current_sensor_number += 1
+        if self.resuming_skipped:
+            # Walk the skipped pile in the order it was built; once it is
+            # empty fall back to fresh numbers.
+            waiting = [
+                item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
+            ]
+            if waiting:
+                self._load_skipped_part(*waiting[0])
+                return
+            self.resuming_skipped = False
+        self.current_sensor_number = self._next_fresh_sensor_number()
         self.prepare_current_sensor()
         self.show_step(self.LOAD_STEP)
 
@@ -5751,6 +5912,242 @@ class EmitterTesterApp(tk.Tk):
         self.result_saved = True
         self.show_batch_summary_window(saved_batch, saved_csv)
         self.render_step()
+
+    # ----- v2.0: set a part aside and come back to it in skip order ----- #
+    def _attempts_path(self) -> Path:
+        return attempt_history.attempts_path_for(batch_results_path(self.batch_number))
+
+    def skipped_parts_queue(self) -> list[tuple[int, str]]:
+        """Skipped parts without a verdict yet, first skipped first."""
+        if not self.batch_number:
+            return []
+        return attempt_history.skipped_queue(
+            self._attempts_path(), batch_results_path(self.batch_number)
+        )
+
+    def _next_fresh_sensor_number(self) -> int:
+        """Next never-used number: above every saved AND every skipped id."""
+        csv_path = batch_results_path(self.batch_number)
+        return max(
+            next_sensor_number_for_batch(csv_path),
+            attempt_history.highest_sensor_number(self._attempts_path()) + 1,
+        )
+
+    def can_skip_part(self) -> bool:
+        return (
+            self.step in (self.LOAD_STEP, self.RESULT_STEP)
+            and not self.busy
+            and not self.measuring
+            and not self.result_saved
+            and bool(self.current_sensor_id)
+        )
+
+    def _log_attempt(
+        self,
+        event: str,
+        *,
+        result: FinalResult | None = None,
+        reason: str = "",
+        note: str = "",
+    ) -> None:
+        """Append one event to the batch's attempt log (never blocks a test)."""
+        if not self.batch_number or not self.current_sensor_id:
+            return
+        if event in (attempt_history.EVENT_MEASURED, attempt_history.EVENT_MEASURE_ERROR):
+            self.measure_attempts += 1
+        elif event == attempt_history.EVENT_SKIPPED:
+            self.skip_count += 1
+        noise_report = getattr(self, "last_noise_report", None)
+        try:
+            attempt_history.append_attempt(
+                self._attempts_path(),
+                batch_number=self.batch_number,
+                sensor_number=self.current_sensor_number,
+                sensor_id=self.current_sensor_id,
+                event=event,
+                attempt=self.measure_attempts,
+                outcome=result_outcome(result) if result is not None else "",
+                reason=reason,
+                note=note or self.notes_var.get(),
+                tester_name=self.tester_name,
+                offset_v=None if result is None else result.offset_v,
+                sensitivity_mv=None if result is None else result.sensitivity_mv,
+                polarity="" if result is None else result.polarity,
+                noise_worst_pp_mv=None if noise_report is None else noise_report.worst_pp_mv,
+                fail_reasons=None if result is None else result.fail_reasons,
+            )
+        except Exception:
+            if event == attempt_history.EVENT_SKIPPED:
+                raise
+
+    def open_skip_window(self) -> None:
+        if not self.can_skip_part():
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title(f"Skip {self.current_sensor_id}")
+        dialog.minsize(S(560), S(320))
+        dialog.configure(bg=PAGE_BG)
+        dialog.transient(self)
+
+        frame = tk.Frame(dialog, bg=PAGE_BG)
+        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
+        dialog.rowconfigure(0, weight=1)
+        dialog.columnconfigure(0, weight=1)
+        frame.rowconfigure(4, weight=1)
+        frame.columnconfigure(0, weight=1)
+        tk.Label(frame, text="SKIP PART —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            frame,
+            text=f"Set {self.current_sensor_id} aside",
+            bg=PAGE_BG,
+            fg=TEXT_DARK,
+            font=self.fd(19),
+        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
+
+        # Just a comment box - no reason list to click through (2026-08-24:
+        # keep the skip to two clicks; the attempt log carries the numbers).
+        note_holder = tk.Frame(frame, bg=PAGE_BG)
+        note_holder.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
+        note_holder.rowconfigure(1, weight=1)
+        note_holder.columnconfigure(0, weight=1)
+        tk.Label(note_holder, text="COMMENT (OPTIONAL)", bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 4))
+        note = tk.Text(
+            note_holder, wrap="word", font=self.fb(13), undo=True, relief="flat", bd=0,
+            bg=CARD_BG, fg=TEXT_DARK, padx=12, pady=10, insertbackground=ELTEC_BLUE,
+            highlightbackground=CARD_BORDER, highlightcolor=ELTEC_BLUE, highlightthickness=1,
+            height=4,
+        )
+        note.grid(row=1, column=0, sticky="nsew")
+
+        tk.Label(
+            frame,
+            text=(
+                f"Put it on the skipped pile, in order. It comes back as "
+                f"{self.current_sensor_id} under “Measure skipped”."
+            ),
+            bg=PAGE_BG,
+            fg=MUTED_FG,
+            font=self.fb(11),
+            wraplength=S(520),
+            justify="left",
+        ).grid(row=5, column=0, sticky="w", pady=(10, 0))
+
+        def commit(_event: tk.Event | None = None) -> str:
+            if self.skip_current_part("", note.get("1.0", "end-1c")):
+                dialog.destroy()
+            return "break"
+
+        buttons = tk.Frame(frame, bg=PAGE_BG)
+        buttons.grid(row=6, column=0, sticky="e", pady=(16, 0))
+        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
+        self.btn(buttons, "Skip part", commit, kind="warn", size="md").grid(row=0, column=1)
+        dialog.bind("<Escape>", lambda _e: dialog.destroy())
+        note.focus_set()
+
+    def skip_current_part(self, reason: str, note: str = "") -> bool:
+        """Record the skip and move on WITHOUT spending a sensor number."""
+        if not self.can_skip_part():
+            return False
+        skipped_id = self.current_sensor_id
+        try:
+            self._log_attempt(
+                attempt_history.EVENT_SKIPPED,
+                result=self.last_result,
+                reason=reason,
+                note=note,
+            )
+        except Exception as exc:
+            messagebox.showerror("Could not record the skip", str(exc))
+            return False
+        self.result_saved = True  # nothing left to save for this part now
+        self.delete_autosave()
+        self._advance_to_next_sensor()
+        waiting = len(self.skipped_parts_queue())
+        self.status_var.set(
+            f"{skipped_id} set aside ({waiting} skipped, waiting). Now loading {self.current_sensor_id}."
+        )
+        return True
+
+    def measure_skipped(self) -> None:
+        """Bring the skipped pile back, first skipped first."""
+        if self.busy or self.measuring:
+            return
+        if self.step == self.RESULT_STEP and self.last_result is not None and not self.result_saved:
+            messagebox.showinfo(
+                "Finish this part first",
+                f"Save, skip or re-measure {self.current_sensor_id} before loading a skipped part.",
+            )
+            return
+        waiting = [
+            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
+        ]
+        if not waiting:
+            return
+        first_number, first_id = waiting[0]
+        dialog = tk.Toplevel(self)
+        dialog.title("Skipped parts")
+        dialog.minsize(S(520), S(260))
+        dialog.configure(bg=PAGE_BG)
+        dialog.transient(self)
+        frame = tk.Frame(dialog, bg=PAGE_BG)
+        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
+        dialog.rowconfigure(0, weight=1)
+        dialog.columnconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+        tk.Label(frame, text="SKIPPED PARTS —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            frame,
+            text=f"{len(waiting)} waiting, in skip order",
+            bg=PAGE_BG,
+            fg=TEXT_DARK,
+            font=self.fd(19),
+        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
+        tk.Label(
+            frame,
+            text=attempt_history.format_queue(waiting),
+            bg=CARD_BG,
+            fg=ELTEC_BLUE_DARK,
+            font=self.fm(13, "bold"),
+            padx=12,
+            pady=10,
+            wraplength=S(480),
+            justify="left",
+            anchor="w",
+        ).grid(row=2, column=0, sticky="ew")
+        tk.Label(
+            frame,
+            text=f"Take the first part off the pile — it is {first_id}. The rest follow in this order.",
+            bg=PAGE_BG,
+            fg=MUTED_FG,
+            font=self.fb(12),
+            wraplength=S(480),
+            justify="left",
+        ).grid(row=3, column=0, sticky="w", pady=(12, 0))
+
+        def load(_event: tk.Event | None = None) -> str:
+            dialog.destroy()
+            self._load_skipped_part(first_number, first_id)
+            return "break"
+
+        buttons = tk.Frame(frame, bg=PAGE_BG)
+        buttons.grid(row=4, column=0, sticky="e", pady=(18, 0))
+        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
+        self.btn(buttons, f"Load {first_id} (Enter)", load, kind="primary", size="md").grid(row=0, column=1)
+        dialog.bind("<Return>", load)
+        dialog.bind("<Escape>", lambda _e: dialog.destroy())
+        dialog.focus_set()
+
+    def _load_skipped_part(self, sensor_number: int, sensor_id: str) -> None:
+        self.resuming_skipped = True
+        self.current_sensor_number = sensor_number
+        self.prepare_current_sensor()
+        self._log_attempt(attempt_history.EVENT_RESUMED)
+        remaining = len(self.skipped_parts_queue()) - 1
+        self.status_var.set(
+            f"Skipped part {sensor_id} loaded — measure it now."
+            + (f"  {remaining} more waiting." if remaining > 0 else "  Last skipped part.")
+        )
+        self.show_step(self.LOAD_STEP)
 
     # ----- skip a sensor that could not be measured ----- #
     def can_skip_sensor(self) -> bool:
@@ -5994,12 +6391,15 @@ class EmitterTesterApp(tk.Tk):
                 reference_check_mv=self.last_reference_check_mv,
                 failure_mode=failure_mode,
                 offset_initial_v=self.last_offset_initial_v,
+                measure_attempts=self.measure_attempts,
+                skip_count=self.skip_count,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
             return False
         self.result_saved = True
         self.delete_autosave()
+        self._log_attempt(attempt_history.EVENT_SAVED, result=self.last_result)
         self.status_var.set(f"Saved {self.current_sensor_id}.")
         self.update_navigation_state()
         return True
@@ -6337,6 +6737,10 @@ class EmitterTesterApp(tk.Tk):
     def run_measurement(self, _event: tk.Event | None = None) -> None:
         if self.busy or self.measuring:
             return
+        if self.last_result is not None and not self.result_saved:
+            # The shown verdict is being discarded: keep it in the attempt
+            # log so a later review can see WHY the part was re-measured.
+            self._log_attempt(attempt_history.EVENT_REMEASURE, result=self.last_result)
         simulator = self.simulator_var.get()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
@@ -6546,10 +6950,11 @@ class EmitterTesterApp(tk.Tk):
                 time.sleep(OFFSET_WAKE_POLL_S)
                 offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
             if offset_v < SENSOR_OFFSET_MIN_PLAUSIBLE_V:
-                raise HardwareNotReadyError(
+                raise NoSensorDetectedError(
                     f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 405 M22 "
                     f"presents at least {SENSOR_OFFSET_MIN_PLAUSIBLE_V:.2f} V. "
-                    "Seat the sensor in the rig and check the buffer wiring, then press Measure again."
+                    "Seat the sensor in the rig and check the buffer wiring, then press Measure again.",
+                    offset_v,
                 )
             push(lambda v=offset_v: self.on_initial_offset(token, v))
             push(lambda v=offset_v: self.on_offset_update(token, v))
@@ -7355,6 +7760,7 @@ class EmitterTesterApp(tk.Tk):
         self.last_metrics = metrics
         self.last_result = final
         self.failure_mode_var.set(suggest_failure_mode(final))
+        self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
         outcome = result_outcome(final)
@@ -7403,13 +7809,51 @@ class EmitterTesterApp(tk.Tk):
         self.render_step()
         messagebox.showwarning("Reference unit blocked the sensor test", str(exc))
 
+    def _confirm_sensor_loaded(self, exc: "NoSensorDetectedError") -> bool:
+        """An empty slot and a shorted part both float AIN0 - ask which it is."""
+        return bool(
+            messagebox.askyesno(
+                "Is a sensor loaded?",
+                f"AIN0 reads {exc.offset_v:.3f} V — the same as an empty slot.\n\n"
+                f"Is a sensor loaded in the rig?\n\n"
+                "Yes = record {self.current_sensor_id} as a bad (no-offset) sensor.\n"
+                "No = nothing is recorded; seat the sensor and measure again.",
+            )
+        )
+
+    def record_bad_sensor(self, offset_v: float) -> None:
+        """Technician confirmed a sensor IS loaded: it fails as a dead/shorted part."""
+        metrics, final = build_no_output_sensor_result(
+            offset_v, input_range_v=WAVEFORM_INPUT_RANGE_V
+        )
+        self.last_measure_error = None
+        self.last_metrics = metrics
+        self.last_result = final
+        self.last_offset_initial_v = offset_v
+        self.last_noise_report = None
+        self.last_noise_metrics = None
+        self.preview_waveform = metrics.waveform_v
+        self.preview_sync = metrics.sync_v
+        self.failure_mode_var.set(BAD_SENSOR_FAILURE_MODE)
+        self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
+        self.status_var.set(
+            f"{self.current_sensor_id}: FAIL — no offset with a sensor loaded (bad part). Save the sensor."
+        )
+        self.measure_status_var.set("")
+        self.write_autosave("measurement_complete")
+        self.render_step()
+
     def on_hardware_not_ready(self, token: int, exc: HardwareNotReadyError) -> None:
         """A pre-flight check failed: nothing was measured or recorded."""
         if token != self.measure_token:
             return
         self.measuring = False
         self.busy = False
+        if isinstance(exc, NoSensorDetectedError) and self._confirm_sensor_loaded(exc):
+            self.record_bad_sensor(exc.offset_v)
+            return
         self.last_measure_error = str(exc)
+        self._log_attempt(attempt_history.EVENT_MEASURE_ERROR, reason=str(exc))
         self.status_var.set("Rig not ready - nothing was recorded. Check the wiring and measure again.")
         self.measure_status_var.set("")
         self._reset_measure_progress()
@@ -7438,6 +7882,7 @@ class EmitterTesterApp(tk.Tk):
         self.busy = False
         text = self._friendly_hardware_error(str(exc))
         self.last_measure_error = text
+        self._log_attempt(attempt_history.EVENT_MEASURE_ERROR, reason=text)
         self.status_var.set(text)
         self.measure_status_var.set("")
         self._reset_measure_progress()
@@ -7661,6 +8106,9 @@ class EmitterTesterApp(tk.Tk):
             "sensor_number": self.current_sensor_number,
             "sensor_id": self.current_sensor_id,
             "filter_setup": self.filter_setup,
+            "resuming_skipped": self.resuming_skipped,
+            "measure_attempts": self.measure_attempts,
+            "skip_count": self.skip_count,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
             "sensitivity_raw_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
@@ -7764,6 +8212,19 @@ class EmitterTesterApp(tk.Tk):
             )
         for chip_text, chip_fg, chip_bg in chip_specs:
             tk.Label(chips, text=chip_text, bg=chip_bg, fg=chip_fg, font=self.fm(10, "bold"), padx=12, pady=5).pack(side="left", padx=(0, 8))
+        waiting = attempt_history.skipped_queue(
+            attempt_history.attempts_path_for(csv_path), csv_path
+        )
+        if waiting:
+            tk.Label(
+                head,
+                text=f"Skipped, not measured yet ({len(waiting)}): {attempt_history.format_queue(waiting)}",
+                bg=PAGE_BG,
+                fg="#8a5a00",
+                font=self.fb(12, "bold"),
+                wraplength=S(860),
+                justify="left",
+            ).pack(anchor="w", pady=(10, 0))
 
         frame = tk.Frame(summary, bg=PAGE_BG)
         frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(8, 0))

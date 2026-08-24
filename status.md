@@ -1,6 +1,122 @@
 # Eltec Test Rig (ESP32) status
 
-Last updated: 2026-08-18
+Last updated: 2026-08-24
+
+## Eltec Test Rig v2.0: Skip part, footer Re-measure, attempt history (2026-08-24)
+
+Technician-UI update to `tech_app/eltec_rig/` (both models, same code in
+`m405m22/` and `m406mca/`), plus a repository tidy-up:
+
+- **Footer is now the action bar**: Back · Measure skipped (N) │ Skip part
+  (amber) · Re-measure (blue outline, moved out of the small tools row) ·
+  Save + Exit Batch · **Save + Next Sensor (green)**. Buttons are one size
+  larger (`xl`); `RoundButton` gained `success` / `warn` palettes.
+- **Skip part** (load or result step): reason dropdown + optional note, then
+  the next fresh number loads. The skipped id is NOT spent — the next fresh
+  number is derived from the batch CSV AND the attempt log, so a part can
+  never be counted twice. Skipped parts form a first-skipped-first-measured
+  pile: **Measure skipped (N)** lists the ids in order and loads the first;
+  after each save the next skipped id loads automatically until the pile is
+  empty, then fresh numbering resumes. Re-skipping sends a part to the back.
+  The batch summary and the batch-start status line show what is still
+  skipped. The rig-fault view keeps "Record as NOT MEASURED".
+- **Same-day follow-ups**: (a) the skip dialog is comment-only (no reason
+  dropdown); (b) **406 MCA reference gate disabled** (`REFERENCE_GATE_ENABLED
+  = False`, same mechanism/card text as the 405 M22 build) because the
+  op-amp crosstalk made the reference uncalibratable — flip back to True and
+  recalibrate once the channel-isolated op-amp board is in; the gate code is
+  kept and tested with the flag forced on; (c) **shorted/dead sensor**: a
+  floating AIN0 now raises `NoSensorDetectedError` and the app asks "Is a
+  sensor loaded?" — Yes records a FAIL (no offset, failure mode preset to
+  "SB - Sensor bad") that the technician saves normally; No keeps the old
+  "nothing recorded" path. Both models.
+- **Attempt history**: new shared `eltec_rig/attempt_history.py` writes
+  `<lot>_attempts.csv` next to each batch CSV — one row per `measured` /
+  `measure_error` / `remeasure` / `skipped` / `resumed` / `saved` event with
+  the verdict, offset, sensitivity, polarity, noise worst pk-pk, fail
+  reasons, reason and note. Verdict rows gain trailing `measure_attempts`
+  and `skip_count` columns (older batch files keep their header).
+- **Deprecated folder**: `tech_app/405m22_esp32`, `v6_1_esp32`, `v6_esp32`,
+  `v5_esp32`, `v1_single_sensor`, `v2_scope_verification`, `v3_emitter`,
+  `v4_emitter`, `v6_1_failure_calibration` moved (git mv, contents unchanged)
+  to `tech_app/deprecated/`, plus `deprecated/eltec_rig_v1/` = snapshot of
+  the unified app before this change. `engineer_tools/eltec_406mca_signal_monitor*.py`
+  and `analysis/v1_single_sensor/test_406mca_analysis.py` repointed at the
+  new v1 path; firmware `versions/README.md` paths updated.
+- **Tests**: `eltec_rig/tests` 31 (17 glue + 14 new attempt-history / skip
+  flow for both models); `m405m22` 166 OK (4 skipped); `m406mca` 99 with the
+  same two Windows environment-only failures as before. Both real Tk apps
+  were driven through skip → measure → re-measure → save → measure skipped
+  in simulator mode without error.
+
+## 405 M22 noise verdict: anti-alias FIR replaces the boxcar (2026-08-20)
+
+The noise gate's band-limiting step had a real aliasing defect, found while
+characterizing the pipeline's effective passband (the verdict is judged over
+~0.85–22 Hz: the per-window detrend is a high-pass with −3 dB at 0.85 Hz,
+the 20:1 decimation a low-pass at 22.17 Hz). After decimation to 50 SPS the
+Nyquist is 25 Hz, and the boxcar's ~−13 dB sidelobes let everything above
+fold into the judged band: 60 Hz mains landed at 10 Hz attenuated only
+16 dB, and on the interference-heavy `test-22` bench capture the folded-in
+content measured **62 µV RMS = 41% of the honest in-band signal** (quiet
+lot-500 parts: ~2%, harmless). Phantom energy the legacy AC-coupled amp
+chain never displayed was being counted as part noise.
+
+- **Fix (unified app only, `eltec_rig/m405m22/stability_analysis.py`):**
+  `analyze_noise_capture_band_limited` now decimates through a new
+  `decimate_antialiased` — a Kaiser windowed-sinc FIR (621 taps, pure
+  stdlib, cached; `math.sumprod` fast path ≈ 12 ms per 20 s capture) with
+  the SAME passband (flat to 22 Hz, matching the boxcar's −3 dB corner) and
+  the same output timeline (one sample per 20-raw-sample block, so all
+  window/clip index math is unchanged), but ≥ 60 dB stopband from 28 Hz
+  (60 Hz mains: −84 dB vs the boxcar's −16 dB). Edges use odd-reflection
+  padding, which passes a linear settling ramp through EXACTLY (machine
+  precision), so the adaptive quiet-start/per-window-detrend behavior for
+  still-settling captures is preserved. `decimate_boxcar` stays for the
+  live preview (display-only) and for A/B comparisons.
+- **Calibration continuity PROVEN by replaying every saved raw capture**
+  (`noise_captures/`, old vs new at the production 15% allowance): all nine
+  verdicts identical, including the lot-500 anchors — 500-44 reads 502 µV
+  worst / 1/20 over (was 501 µV) and stays PASS; 500-27 stays 18/20 FAIL;
+  quiet parts move 1–7%. `test-22` (the 41% case) drops 729 → 689 µV worst
+  and still fails 20/20 — honestly now: its ~9.7/19.4 Hz spike-train
+  components are genuinely inside the declared 22 Hz band (the flat
+  passband counts 19.4 Hz at 1.0 where the boxcar drooped it to 0.75).
+  Whether 10–22 Hz interference SHOULD count against a part is the separate
+  open legacy-amp-passband question below.
+- **Squares read slightly higher through the flat passband** (in-band
+  harmonics no longer drooped + band-edge Gibbs): the synthetic test
+  fixtures' 2 mV square reads 2.356 mV (was exactly 2.000). Window-over
+  counts — the thing the verdict uses — are unchanged on every fixture and
+  every real capture. A raw-clip rail now also condemns its ringing
+  neighbor window (windows_over 2 with 1 clipped window in the unit test);
+  production-irrelevant since any clipped window already fails the capture.
+- **Tests: 166 discovered (was 165; 4 skipped as before)** — new
+  `test_antialias_decimation_rejects_folding_frequencies` (in-band tones
+  unity, 40/60/120 Hz crushed ≥ 60 dB, ramp transparency, boxcar-identical
+  timeline) plus four updated pinned values with comments explaining the
+  physics. Unified glue 17/17. The frozen standalone `405m22_esp32/` build
+  keeps the boxcar untouched, per the originals-frozen rule.
+- **Engineer tools (new, repo `engineer_tools/`):**
+  `replot_noise_capture.py` replays any saved `*_noise_raw.npz/.csv`
+  through the exact production pipeline plus arbitrary zero-phase band-pass
+  / low-pass / boxcar variants (PNG per capture: raw trace, judged traces
+  vs the red limit, raw spectrum; verdict-comparison table; `--boxcar 20`
+  reproduces the historical pipeline). `filter_response_analysis.py`
+  measures the pipeline's passband/aliasing and tests legacy-amp passband
+  hypotheses against a measured capture spectrum.
+- **Legacy-amp findings from the same analysis:** no physically sensible
+  1 Hz-centered band-pass explains the ~700x effective chain factor from a
+  4000x nameplate (best achievable ratio 0.235 vs the required 0.175, and
+  only at a degenerate 12 Hz notch) — the 700-vs-4000 gap is a REAL GAIN
+  difference (10:1 probe setting, amp range switch, or wrong nameplate),
+  not a bandwidth effect. Asking the amp builder for the passband corners
+  (input coupling C + feedback C) and the true midband gain / probe setting
+  remains the open action; a known passband would let the rig replicate the
+  amp's response digitally instead of scaling through one factor.
+- Also noticed: `500-27_noise_raw.npz` and `_2` hold byte-identical
+  waveforms (duplicate save, both 09:39) — check whether re-measure can
+  save a stale buffer.
 
 ## Unified test rig: one app for every sensor version (2026-08-18)
 
