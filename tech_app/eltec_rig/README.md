@@ -8,9 +8,9 @@ this app as it was before v2.0 (`deprecated/eltec_rig_v1/`). See
 [What changed in v2.0](#what-changed-in-v20) below.
 
 One desktop application for every sensor model the ESP32/ADS1256 rig can
-test. On start it shows a **sensor version dropdown**; picking a version and
-pressing **Start tester** runs that model's qualified tester application
-unchanged — same test flow, thresholds, per-batch filter-setup dropdowns, CSV
+test. It opens **maximized** and shows a **sensor version dropdown**; picking a
+version and pressing **Start tester** runs that model's qualified tester
+application unchanged — same test flow, thresholds, per-batch filter-setup dropdowns, CSV
 format, and results folders as before. The selection is remembered between
 sessions.
 
@@ -117,7 +117,25 @@ part, laid out left → right:
 
 Buttons are one size larger than before; the tools row under the verdict
 keeps only Comment / Capture waveform / Save noise capture and the two
-toggles. The "nothing was recorded" view keeps its **Record as NOT
+toggles.
+
+**The bar always fits the window** (`_fit_footer`, both models). At full size
+the six buttons need more width than the content column has on a maximized
+1366-wide screen or at 150% Windows scaling, which used to clip *Save + Next
+Sensor* off the right edge. The bar now measures what the visible buttons
+need and takes the first `FOOTER_VARIANTS` step that fits, preferring big
+buttons over spelled-out labels:
+
+1. full labels, one row;
+2. drop the `(Enter)` / `(Esc)` hints (the shortcuts still work);
+3. compact wording — *Save + Next*, *Save + Exit*, *Skipped (3)*;
+4. wrap the action buttons onto their own row, still full size;
+5. only then step the buttons down a size.
+
+It is bound to the footer's `<Configure>`, so it re-fits when the window is
+maximized or resized — including growing back to full labels — and it works
+the same on Windows and Xubuntu (the fit is measured from the actual font
+metrics, not a hardcoded width). The "nothing was recorded" view keeps its **Record as NOT
 MEASURED** option (writes the NOT MEASURED verdict row) next to the new Skip.
 
 ### Skip part → Measure skipped
@@ -168,6 +186,16 @@ says "Reference gate disabled (op-amp crosstalk)"; `reference_*` CSV columns
 stay blank. All gate code is intact and unit-tested with the flag forced on —
 set it back to `True` and run a fresh "Calibrate reference unit" once the
 channel-isolated op-amp board is installed.
+
+### Selector opens full screen (2026-08-25)
+
+`eltec_rig_tester.py` starts maximized like each model's tester (Windows
+`state("zoomed")`, X11 `-zoomed` applied once mapped, screen-sized geometry
+as a last resort), and re-applies it when a tester closes and the selector
+un-minimizes. The window is resizable now (a fixed-size window cannot be
+maximized) with a 640×520 floor, and its one content block is centered by
+weighted spacer rows/columns so a wide monitor grows the margins, not the
+card. Type is a step larger to stay readable full screen.
 
 ### Tests
 

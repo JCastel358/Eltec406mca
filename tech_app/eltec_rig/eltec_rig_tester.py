@@ -53,6 +53,21 @@ ACCENT = "#1f6f43"
 MUTED_FG = "#5a6570"
 TEXT_FG = "#1c2430"
 
+# The rig PC runs everything full screen, so the selector starts maximized
+# (like each model's tester) and its one content block is centered rather
+# than stretched: type stays this size at any screen size, the surrounding
+# space just grows. CONTENT_WRAP caps the text column so a wide monitor does
+# not produce line-long paragraphs.
+FONT_TITLE = ("TkDefaultFont", 26, "bold")
+FONT_SUBTITLE = ("TkDefaultFont", 13)
+FONT_SECTION = ("TkDefaultFont", 13, "bold")
+FONT_INPUT = ("TkDefaultFont", 14)
+FONT_BODY = ("TkDefaultFont", 12)
+FONT_SMALL = ("TkDefaultFont", 11)
+FONT_BUTTON = ("TkDefaultFont", 15, "bold")
+CONTENT_WRAP = 640
+MIN_WINDOW = (640, 520)
+
 
 # ----------------------------------------------------------------------
 # Selection persistence (which sensor version was used last)
@@ -128,7 +143,10 @@ class EltecRigSelector(tk.Tk):
         super().__init__()
         self.title(APP_TITLE)
         self.configure(bg=PAGE_BG)
-        self.resizable(False, False)
+        # Resizable (a fixed-size window cannot be maximized by the window
+        # manager) with a floor that keeps the whole block reachable.
+        self.resizable(True, True)
+        self.minsize(*MIN_WINDOW)
         self._apply_window_icon()
 
         self.child: subprocess.Popen | None = None
@@ -140,6 +158,40 @@ class EltecRigSelector(tk.Tk):
         self._build_widgets()
         self._on_version_selected()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.start_maximized()
+
+    # ----- window state ----- #
+    def start_maximized(self) -> None:
+        """Open full screen — technicians should never have to maximize it.
+
+        Same approach as each model's tester: Windows uses the ``zoomed``
+        window state, XFCE/X11 the EWMH ``-zoomed`` attribute (applied after
+        the window is mapped so xfwm honors it). If a window manager supports
+        neither, fall back to sizing the window to the screen.
+        """
+        try:
+            windowing = self.tk.call("tk", "windowingsystem")
+        except tk.TclError:
+            windowing = ""
+        if windowing == "x11":
+            self.after(0, self._zoom_x11)
+            return
+        try:
+            self.state("zoomed")
+        except tk.TclError:
+            self._fill_screen()
+
+    def _zoom_x11(self) -> None:
+        try:
+            self.attributes("-zoomed", True)
+        except tk.TclError:
+            self._fill_screen()
+
+    def _fill_screen(self) -> None:
+        try:
+            self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
+        except tk.TclError:
+            pass  # cosmetic only; never block startup on window geometry
 
     # ----- construction ----- #
     def _apply_window_icon(self) -> None:
@@ -151,72 +203,86 @@ class EltecRigSelector(tk.Tk):
             pass  # icon is cosmetic; never block startup on it
 
     def _build_widgets(self) -> None:
+        # One content block, centered in the window: with the selector
+        # maximized, empty grid rows/columns absorb the extra space instead
+        # of the card stretching across the whole screen.
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=0)
+        self.columnconfigure(2, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=0)
+        self.rowconfigure(2, weight=1)
+        content = tk.Frame(self, bg=PAGE_BG)
+        content.grid(row=1, column=1, sticky="n", pady=(24, 24))
+        content.columnconfigure(0, weight=1)
+        self.content = content
+
         pad = dict(padx=24, pady=(18, 0))
 
         tk.Label(
-            self, text=APP_TITLE, bg=PAGE_BG, fg=TEXT_FG,
-            font=("TkDefaultFont", 20, "bold"),
+            content, text=APP_TITLE, bg=PAGE_BG, fg=TEXT_FG, font=FONT_TITLE,
         ).grid(row=0, column=0, sticky="w", **pad)
         tk.Label(
-            self,
+            content,
             text=f"v{APP_VERSION} · ESP32/ADS1256 sensor test rig — choose the sensor version to test.",
-            bg=PAGE_BG, fg=MUTED_FG, font=("TkDefaultFont", 11),
-        ).grid(row=1, column=0, sticky="w", padx=24, pady=(2, 0))
+            bg=PAGE_BG, fg=MUTED_FG, font=FONT_SUBTITLE,
+            wraplength=CONTENT_WRAP, justify="left",
+        ).grid(row=1, column=0, sticky="w", padx=24, pady=(4, 0))
 
-        card = tk.Frame(self, bg=CARD_BG, highlightbackground="#d5dbe1",
+        card = tk.Frame(content, bg=CARD_BG, highlightbackground="#d5dbe1",
                         highlightthickness=1)
-        card.grid(row=2, column=0, sticky="ew", padx=24, pady=(14, 0))
+        card.grid(row=2, column=0, sticky="ew", padx=24, pady=(16, 0))
         card.columnconfigure(0, weight=1)
 
         tk.Label(
-            card, text="Sensor version", bg=CARD_BG, fg=TEXT_FG,
-            font=("TkDefaultFont", 12, "bold"),
-        ).grid(row=0, column=0, sticky="w", padx=16, pady=(14, 4))
+            card, text="Sensor version", bg=CARD_BG, fg=TEXT_FG, font=FONT_SECTION,
+        ).grid(row=0, column=0, sticky="w", padx=18, pady=(16, 6))
 
         self.version_combo = ttk.Combobox(
             card,
             textvariable=self.version_var,
             values=[version.display_name for version in SENSOR_VERSIONS],
             state="readonly",
-            font=("TkDefaultFont", 12),
+            font=FONT_INPUT,
             width=34,
         )
-        self.version_combo.grid(row=1, column=0, sticky="ew", padx=16)
+        self.version_combo.grid(row=1, column=0, sticky="ew", padx=18)
         self.version_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_version_selected())
 
         self.summary_label = tk.Label(
             card, text="", bg=CARD_BG, fg=TEXT_FG,
-            font=("TkDefaultFont", 11), wraplength=460, justify="left",
+            font=FONT_BODY, wraplength=CONTENT_WRAP - 60, justify="left",
         )
-        self.summary_label.grid(row=2, column=0, sticky="w", padx=16, pady=(10, 0))
+        self.summary_label.grid(row=2, column=0, sticky="w", padx=18, pady=(12, 0))
 
         self.details_label = tk.Label(
             card, text="", bg=CARD_BG, fg=MUTED_FG,
-            font=("TkDefaultFont", 10), wraplength=460, justify="left",
+            font=FONT_SMALL, wraplength=CONTENT_WRAP - 60, justify="left",
         )
-        self.details_label.grid(row=3, column=0, sticky="w", padx=16, pady=(6, 0))
+        self.details_label.grid(row=3, column=0, sticky="w", padx=18, pady=(8, 0))
 
         self.results_label = tk.Label(
             card, text="", bg=CARD_BG, fg=MUTED_FG,
-            font=("TkDefaultFont", 10, "italic"), wraplength=460, justify="left",
+            font=(FONT_SMALL[0], FONT_SMALL[1], "italic"),
+            wraplength=CONTENT_WRAP - 60, justify="left",
         )
-        self.results_label.grid(row=4, column=0, sticky="w", padx=16, pady=(8, 14))
+        self.results_label.grid(row=4, column=0, sticky="w", padx=18, pady=(10, 16))
 
         self.start_button = tk.Button(
-            self, text="Start tester", command=self.start_selected,
+            content, text="Start tester", command=self.start_selected,
             bg=ACCENT, fg="#ffffff", activebackground="#2c8d59",
             activeforeground="#ffffff", relief="flat",
-            font=("TkDefaultFont", 13, "bold"), padx=26, pady=8, cursor="hand2",
+            font=FONT_BUTTON, padx=32, pady=12, cursor="hand2",
         )
-        self.start_button.grid(row=3, column=0, sticky="w", padx=24, pady=(16, 0))
+        self.start_button.grid(row=3, column=0, sticky="w", padx=24, pady=(18, 0))
 
         self.status_var = tk.StringVar(
             value=f"Rig firmware: {REQUIRED_FIRMWARE}"
         )
         tk.Label(
-            self, textvariable=self.status_var, bg=PAGE_BG, fg=MUTED_FG,
-            font=("TkDefaultFont", 10), wraplength=500, justify="left",
-        ).grid(row=4, column=0, sticky="w", padx=24, pady=(10, 18))
+            content, textvariable=self.status_var, bg=PAGE_BG, fg=MUTED_FG,
+            font=FONT_SMALL, wraplength=CONTENT_WRAP, justify="left",
+        ).grid(row=4, column=0, sticky="w", padx=24, pady=(12, 0))
 
     # ----- behavior ----- #
     def selected_version(self) -> SensorVersion:
@@ -271,6 +337,8 @@ class EltecRigSelector(tk.Tk):
         self.child_version = None
         self.start_button.configure(state="normal")
         self.deiconify()
+        # Un-minimizing can drop the zoomed state on some window managers.
+        self.start_maximized()
         self.lift()
         if status == 0 or version is None:
             self.status_var.set(f"Rig firmware: {REQUIRED_FIRMWARE}")

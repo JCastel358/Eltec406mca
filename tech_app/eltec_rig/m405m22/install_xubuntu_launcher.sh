@@ -82,7 +82,7 @@ trap 'rm -f -- "$TMP_ENTRY"' EXIT
     printf '%s\n' 'Version=1.0'
     printf '%s\n' 'Type=Application'
     printf '%s\n' 'Name=Eltec 405 M22 ESP32 Tester'
-    printf '%s\n' 'GenericName=405 M22 Adaptive Emitter Tester (1 Hz)'
+    printf '%s\n' 'GenericName=405 M22 Adaptive Sensor Tester (1 Hz)'
     printf '%s\n' 'Comment=Test Eltec 405 M22 sensors with a 1 Hz chop and adaptive peak stabilization'
     printf 'Exec=%s\n' "$EXEC_VALUE"
     printf 'Icon=%s\n' "$ICON_VALUE"

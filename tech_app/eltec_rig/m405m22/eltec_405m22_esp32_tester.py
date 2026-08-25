@@ -209,7 +209,6 @@ DEFAULT_FILTER_SETUP = "-625 filter"
 # Standard production failure taxonomy. This is the same set used by the
 # scope-verification workflow, minus its non-failure GOOD entry.
 FAILURE_MODE_CHOICES = (
-    "RETEST - Sensitivity guard band",
     "SB - Sensor bad",
     "GO/D - Good offset/no signal",
     "O - No sensitivity",
@@ -235,7 +234,6 @@ FAILURE_MODE_CHOICES = (
     "Drop - Dropped",
 )
 UNSTABLE_FAILURE_MODE = "Unstable - Unstable"
-SENSITIVITY_RETEST_FAILURE_MODE = "RETEST - Sensitivity guard band"
 
 # A sensor can also leave the fixture without any verdict: the rig or the
 # serial stream failed and nothing was recorded, so there is no offset,
@@ -255,7 +253,6 @@ DEFAULT_NOT_MEASURED_REASON = NOT_MEASURED_REASON_CHOICES[0]
 
 OUTCOME_PASS = "PASS"
 OUTCOME_FAIL = "FAIL"
-OUTCOME_RETEST = "RETEST"
 OUTCOME_NOT_MEASURED = "NOT MEASURED"
 
 # Fixed ESP32 rig settings. Technicians never change these in production.
@@ -455,9 +452,13 @@ def format_noise_pp(value_mv: float, *, decimals: int = 0) -> str:
 SENSITIVITY_LEGACY_EQUIVALENT_FACTOR = 4.30
 # +/-0.10 mV raw around the limit (~7% of the -625 raw center 1.393 mV,
 # i.e. +/-0.43 mV legacy-equivalent). No lot-500 part fell inside it.
-SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV = 0.10
+# A reading inside this band is within the margin of error of the conversion
+# factor: the sensor still PASSES, but the technician is warned and advised
+# to re-measure. It is never a failure mode and never a quarantine record.
+SENSITIVITY_RAW_NEAR_LIMIT_HALF_WIDTH_MV = 0.10
 SENSITIVITY_CALIBRATION_ID = "405m22_tp412_lot500_pairwise_v1"
-SENSITIVITY_RETEST_REASON_PREFIX = "Sensitivity requires retest/quarantine:"
+SENSITIVITY_NEAR_LIMIT = "NEAR LIMIT"
+SENSITIVITY_NEAR_LIMIT_WARNING_PREFIX = "Sensitivity near limit:"
 LOW_SENSITIVITY_FAILURE_ENABLED = True
 # 405 M22 capture policy: same structure as v6, retimed for 1-second cycles.
 # Qualification (5 deltas -> 6+ cycles) plus 10 measurement cycles needs at
@@ -616,13 +617,15 @@ def evaluate_result(
                 f"{fail_below_mv:.2f} mV; legacy-equivalent {equivalent_mv:.3f} mV "
                 f"using factor {SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}."
             )
-        elif disposition == OUTCOME_RETEST:
-            final.fail_reasons.append(
-                f"{SENSITIVITY_RETEST_REASON_PREFIX} raw {raw_sensitivity_mv:.3f} mV "
+        elif disposition == SENSITIVITY_NEAR_LIMIT:
+            # Still a PASS: the reading is within the conversion factor's
+            # margin of error, so warn and suggest a re-measure only.
+            final.warnings.append(
+                f"{SENSITIVITY_NEAR_LIMIT_WARNING_PREFIX} raw {raw_sensitivity_mv:.3f} mV "
                 f"is inside the inclusive {fail_below_mv:.2f}-{pass_above_mv:.2f} mV "
-                f"guard band; legacy-equivalent {equivalent_mv:.3f} mV using factor "
-                f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}. Re-measure or quarantine "
-                "this sensor."
+                f"band around the limit; legacy-equivalent {equivalent_mv:.3f} mV using "
+                f"factor {SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}. Within the margin "
+                "of error of the conversion factor - re-measure advised, sensor passes."
             )
         else:
             # TP412 also sets an upper sensitivity limit per filter. A max-side
@@ -646,11 +649,11 @@ def legacy_equivalent_sensitivity_mv(raw_sensitivity_mv: float) -> float:
 
 
 def sensitivity_raw_limits_mv(filter_setup: str) -> tuple[float, float]:
-    """Return rounded raw FAIL/RETEST/PASS boundaries for one filter setup.
+    """Return rounded raw FAIL / NEAR LIMIT / PASS boundaries for one filter.
 
     The established legacy filter minimum remains at the center of a +/-0.10
-    mV raw guard band. For the production default (-625, 5.99 mV legacy) this
-    is 1.29-1.49 mV raw around 5.99 / 4.30.
+    mV raw near-limit band. For the production default (-625, 5.99 mV legacy)
+    this is 1.29-1.49 mV raw around 5.99 / 4.30.
     """
     try:
         legacy_min_mv = FILTER_SPECS_MV[filter_setup]
@@ -658,13 +661,13 @@ def sensitivity_raw_limits_mv(filter_setup: str) -> tuple[float, float]:
         raise ValueError(f"Unknown filter/setup for sensitivity policy: {filter_setup}") from exc
     raw_center_mv = legacy_min_mv / SENSITIVITY_LEGACY_EQUIVALENT_FACTOR
     return (
-        round(raw_center_mv - SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV, 2),
-        round(raw_center_mv + SENSITIVITY_RAW_RETEST_HALF_WIDTH_MV, 2),
+        round(raw_center_mv - SENSITIVITY_RAW_NEAR_LIMIT_HALF_WIDTH_MV, 2),
+        round(raw_center_mv + SENSITIVITY_RAW_NEAR_LIMIT_HALF_WIDTH_MV, 2),
     )
 
 
 def sensitivity_gate_outcome(raw_sensitivity_mv: float, filter_setup: str) -> str:
-    """Classify raw sensitivity; guard-band endpoints require a retest."""
+    """Classify raw sensitivity; the near-limit band is a PASS with a warning."""
     raw_mv = float(raw_sensitivity_mv)
     if not math.isfinite(raw_mv):
         return OUTCOME_FAIL
@@ -673,11 +676,17 @@ def sensitivity_gate_outcome(raw_sensitivity_mv: float, filter_setup: str) -> st
         return OUTCOME_FAIL
     if raw_mv > pass_above_mv:
         return OUTCOME_PASS
-    return OUTCOME_RETEST
+    return SENSITIVITY_NEAR_LIMIT
 
 
-def is_sensitivity_retest_reason(reason: str) -> bool:
-    return str(reason).startswith(SENSITIVITY_RETEST_REASON_PREFIX)
+def is_sensitivity_near_limit(final_result: FinalResult | None) -> bool:
+    """True when a passing sensor's sensitivity sits in the near-limit band."""
+    if final_result is None:
+        return False
+    return any(
+        str(warning).startswith(SENSITIVITY_NEAR_LIMIT_WARNING_PREFIX)
+        for warning in final_result.warnings
+    )
 
 
 def is_not_measured(final_result: FinalResult | None) -> bool:
@@ -721,36 +730,26 @@ def summarize_batch_outcomes(outcomes: list[str]) -> dict[str, float]:
     """
     recorded = len(outcomes)
     passed = sum(1 for outcome in outcomes if outcome == OUTCOME_PASS)
-    retest = sum(1 for outcome in outcomes if outcome == OUTCOME_RETEST)
     not_measured = sum(1 for outcome in outcomes if outcome == OUTCOME_NOT_MEASURED)
     tested = recorded - not_measured
     return {
         "recorded": recorded,
         "tested": tested,
         "passed": passed,
-        "retest": retest,
-        "failed": tested - passed - retest,
+        "failed": tested - passed,
         "not_measured": not_measured,
         "yield_pct": (100.0 * passed / tested) if tested else 0.0,
     }
 
 
 def result_outcome(final_result: FinalResult | None) -> str:
-    """Return PASS, FAIL, RETEST, or NOT MEASURED without weakening .passed."""
+    """Return PASS, FAIL, or NOT MEASURED without weakening .passed."""
     if final_result is None:
         return ""
     if final_result.passed:
         return OUTCOME_PASS
     if is_not_measured(final_result):
         return OUTCOME_NOT_MEASURED
-    retest_reasons = [
-        reason for reason in final_result.fail_reasons if is_sensitivity_retest_reason(reason)
-    ]
-    definitive_reasons = [
-        reason for reason in final_result.fail_reasons if not is_sensitivity_retest_reason(reason)
-    ]
-    if retest_reasons and not definitive_reasons:
-        return OUTCOME_RETEST
     return OUTCOME_FAIL
 
 # --------------------------------------------------------------------------- #
@@ -1387,8 +1386,6 @@ def suggest_failure_mode(final_result: FinalResult | None) -> str:
 
     if "unstable" in reason_text or "stabiliz" in reason_text:
         return UNSTABLE_FAILURE_MODE
-    if result_outcome(final_result) == OUTCOME_RETEST:
-        return SENSITIVITY_RETEST_FAILURE_MODE
     if "sensitivity too low" in reason_text:
         no_coherent_response = (
             "signal-to-noise too low" in reason_text
@@ -3444,6 +3441,21 @@ def draw_horizontal_gradient(canvas: tk.Canvas, x0: int, y0: int, x1: int, y1: i
 # --------------------------------------------------------------------------- #
 # v6 UI toolkit - custom widgets
 # --------------------------------------------------------------------------- #
+# How the action bar gives up width, in order: it drops the keyboard
+# hints first (the shortcuts keep working), then switches to compact
+# wording, and only then makes the buttons smaller. Keeping the buttons
+# big matters more on the rig than spelling every label out in full.
+FOOTER_KEY_HINTS = (" (Enter)", " (Esc)")
+FOOTER_SHORT_LABELS = {
+    "Save + Next Sensor": "Save + Next",
+    "Save + Exit Batch": "Save + Exit",
+    "Calibrate reference unit to test": "Calibrate reference first",
+    "Recharge battery to test": "Recharge battery",
+    "Check wiring to test": "Check wiring",
+    "Fix stability settings": "Fix settings",
+}
+
+
 class RoundButton(tk.Canvas):
     """Rounded, hover-animated button (site-style primary / outline / ghost)."""
 
@@ -3538,6 +3550,26 @@ class RoundButton(tk.Canvas):
         return None
 
     config = configure
+
+    def restyle(self, *, size: str, font, text: str | None = None) -> None:
+        """Re-size and/or re-label in place.
+
+        The navigation footer shrinks its buttons to fit narrow screens
+        (see EmitterTesterApp._fit_footer), which means changing the pad,
+        the font and the corner radius after construction.
+        """
+        base_padx, base_pady = self.SIZE_PADS[size]
+        self._padx, self._pady = S(base_padx), S(base_pady)
+        self._font = tkfont.Font(font=font)
+        self._font_spec = font
+        if text is not None:
+            self._text = text
+        height = self._font.metrics("linespace") + 2 * self._pady
+        self._radius = min(Sf(12.0), height / 2.0)
+        super().configure(
+            width=self._font.measure(self._text) + 2 * self._padx, height=height
+        )
+        self._redraw()
 
     def _current_colors(self) -> tuple[str, str, str]:
         palette = self._palette
@@ -4233,7 +4265,7 @@ class ScopeView(tk.Canvas):
 
 
 # --------------------------------------------------------------------------- #
-# Guided ESP32 emitter tester UI (v6.1)
+# Guided ESP32 sensor tester UI (v6.1)
 # --------------------------------------------------------------------------- #
 class EmitterTesterApp(tk.Tk):
     SETUP_STEP = "setup"
@@ -4322,6 +4354,12 @@ class EmitterTesterApp(tk.Tk):
         self.skip_button: RoundButton | None = None
         self.remeasure_button: RoundButton | None = None
         self.skipped_button: RoundButton | None = None
+        # Action-bar fitting (see _fit_footer): the chosen size/label
+        # variant and a measuring-font cache.
+        self.footer_nav_buttons: tuple = ()
+        self.footer_action_buttons: tuple = ()
+        self._footer_fit: tuple | None = None
+        self._footer_fonts: dict = {}
 
         # Current-sensor measurement state.
         self.last_metrics: WaveformMetrics | None = None
@@ -4403,9 +4441,14 @@ class EmitterTesterApp(tk.Tk):
     def fm(self, size: int, weight: str = "normal") -> tuple:
         return (self.FONT_MONO, size, weight)
 
+    def _button_fonts(self) -> dict:
+        return {"xl": self.fd(17), "lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
+
     def btn(self, parent: tk.Widget, text: str, command, kind: str = "primary", size: str = "lg", parent_bg: str = PAGE_BG) -> RoundButton:
-        fonts = {"xl": self.fd(17), "lg": self.fd(15), "md": self.fd(13), "sm": self.fb(12, "bold")}
-        return RoundButton(parent, text=text, command=command, kind=kind, size=size, font=fonts[size], parent_bg=parent_bg)
+        return RoundButton(
+            parent, text=text, command=command, kind=kind, size=size,
+            font=self._button_fonts()[size], parent_bg=parent_bg,
+        )
 
     # ----- variables / style / logo ----- #
     def _build_variables(self) -> None:
@@ -4557,6 +4600,10 @@ class EmitterTesterApp(tk.Tk):
         self.footer_bar = tk.Frame(self.content, bg=PAGE_BG)
         self.footer_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(S(12), 0))
         self.footer_bar.columnconfigure(0, weight=1)
+        # Re-fit the action bar whenever the content column changes width:
+        # the window is maximized after the first render, and the rig PCs
+        # run different resolutions and UI scalings.
+        self.footer_bar.bind("<Configure>", self._fit_footer)
 
     def _on_step_scroll_set(self, first: str, last: str) -> None:
         self.step_vbar.set(first, last)
@@ -4629,8 +4676,8 @@ class EmitterTesterApp(tk.Tk):
             self.header.create_text(badge_cx, badge_cy, text="ELTEC", fill=ELTEC_RED, font=(self.FONT_DISPLAY, 22, "bold italic"), tags="static")
 
         title_x = badge_x1 + S(26)
-        self.header.create_text(title_x, S(26), anchor="w", text="405 M22 EMITTER TESTER", fill=HEADER_FG, font=self.fd(21), tags="static")
-        title_width = tkfont.Font(font=self.fd(21)).measure("405 M22 EMITTER TESTER")
+        self.header.create_text(title_x, S(26), anchor="w", text="405 M22 SENSOR TESTER", fill=HEADER_FG, font=self.fd(21), tags="static")
+        title_width = tkfont.Font(font=self.fd(21)).measure("405 M22 SENSOR TESTER")
         chip_x = title_x + title_width + S(14)
         draw_round_rect(self.header, chip_x, S(15), chip_x + S(40), S(37), Sf(8), fill=ELTEC_RED, outline="", tags="static")
         self.header.create_text(chip_x + S(20), S(26), text="V6.1", fill="#ffffff", font=self.fm(10, "bold"), tags="static")
@@ -4912,7 +4959,7 @@ class EmitterTesterApp(tk.Tk):
             else:
                 hint = (
                     f"RAW SENSITIVITY: < {fail_below_mv:.2f} mV FAIL  ·  "
-                    f"{fail_below_mv:.2f}-{pass_above_mv:.2f} mV RETEST  ·  "
+                    f"{fail_below_mv:.2f}-{pass_above_mv:.2f} mV PASS + RE-TEST ADVISED  ·  "
                     f"> {pass_above_mv:.2f} mV PASS  ·  DISPLAY ×"
                     f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}"
                 )
@@ -5268,13 +5315,45 @@ class EmitterTesterApp(tk.Tk):
         result = self.last_result
         outcome = result_outcome(result)
         passed = outcome == OUTCOME_PASS
-        retest = outcome == OUTCOME_RETEST
-        self._build_result_banner(row=0, outcome=outcome)
+        near_limit = passed and is_sensitivity_near_limit(result)
+        self._build_result_banner(row=0, outcome=outcome, near_limit=near_limit)
         next_row = 1
+        if near_limit:
+            # The sensor passed. Its sensitivity is inside the margin of error
+            # of the conversion factor, so tell the technician and suggest a
+            # re-measure - saving it as-is records a normal PASS.
+            warn_card = Card(
+                self.step_frame,
+                card_bg=WARN_BG,
+                border=mix_color(WARN_ACCENT, WARN_BG, 0.45),
+                accent_stops=[WARN_ACCENT, WARN_ACCENT],
+                pad=(18, 14),
+            )
+            warn_card.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
+            warn_inner = warn_card.inner
+            warn_inner.columnconfigure(0, weight=1)
+            tk.Label(
+                warn_inner,
+                text="PASSED - SENSITIVITY NEAR THE LIMIT",
+                bg=WARN_BG,
+                fg=WARN_FG,
+                font=self.fm(10, "bold"),
+            ).grid(row=0, column=0, sticky="w", pady=(0, 5))
+            tk.Label(
+                warn_inner,
+                text=self._near_limit_message(result),
+                bg=WARN_BG,
+                fg=WARN_FG,
+                font=self.fb(11),
+                justify="left",
+                anchor="w",
+                wraplength=S(900),
+            ).grid(row=1, column=0, sticky="ew")
+            next_row += 1
         if not passed:
-            card_bg = WARN_BG if retest else FAIL_BG
-            card_fg = WARN_FG if retest else FAIL_FG
-            card_accent = WARN_ACCENT if retest else FAIL_ACCENT
+            card_bg = FAIL_BG
+            card_fg = FAIL_FG
+            card_accent = FAIL_ACCENT
             failure_card = Card(
                 self.step_frame,
                 card_bg=card_bg,
@@ -5287,7 +5366,7 @@ class EmitterTesterApp(tk.Tk):
             failure_inner.columnconfigure(0, weight=1)
             tk.Label(
                 failure_inner,
-                text="RETEST / QUARANTINE" if retest else "FAILURE MODE",
+                text="FAILURE MODE",
                 bg=card_bg,
                 fg=card_fg,
                 font=self.fm(10, "bold"),
@@ -5307,11 +5386,7 @@ class EmitterTesterApp(tk.Tk):
             )
             tk.Label(
                 failure_inner,
-                text=(
-                    "Re-measure now, or save this sensor as a quarantine record."
-                    if retest
-                    else "Confirm or change the failure mode, then save the sensor."
-                ),
+                text="Confirm or change the failure mode, then save the sensor.",
                 bg=card_bg,
                 fg=card_fg,
                 font=self.fb(10),
@@ -5345,7 +5420,7 @@ class EmitterTesterApp(tk.Tk):
                 unit=" mV",
                 decimals=2,
                 accent_override=(
-                    WARN_ACCENT if sensitivity_outcome == OUTCOME_RETEST else None
+                    WARN_ACCENT if sensitivity_outcome == SENSITIVITY_NEAR_LIMIT else None
                 ),
             )
             self._result_tile(tiles, 2, "Polarity", pol_verdict or None, pol_verdict == "GOOD")
@@ -5378,7 +5453,7 @@ class EmitterTesterApp(tk.Tk):
                 )
                 detail_bits.append(
                     f"raw gate <{fail_below_mv:.2f} fail / "
-                    f"{fail_below_mv:.2f}-{pass_above_mv:.2f} retest / "
+                    f"{fail_below_mv:.2f}-{pass_above_mv:.2f} pass, re-test advised / "
                     f">{pass_above_mv:.2f} pass"
                 )
                 detail_bits.append(
@@ -5501,13 +5576,30 @@ class EmitterTesterApp(tk.Tk):
             self._build_wave_canvas(row=next_row + 1, live=False)
             self.redraw_waveform()
 
-    def _build_result_banner(self, row: int, outcome: str) -> None:
-        if outcome == OUTCOME_PASS:
+    def _near_limit_message(self, result: FinalResult) -> str:
+        fail_below_mv, pass_above_mv = sensitivity_raw_limits_mv(self.filter_setup)
+        raw_mv = result.sensitivity_mv
+        reading = (
+            f"Raw {raw_mv:.3f} mV (≈{legacy_equivalent_sensitivity_mv(raw_mv):.2f} mV "
+            f"legacy-equivalent) is inside the {fail_below_mv:.2f}-{pass_above_mv:.2f} mV "
+            "band around the limit"
+            if raw_mv is not None and math.isfinite(raw_mv)
+            else "The sensitivity reading is inside the band around the limit"
+        )
+        return (
+            f"{reading}, within the margin of error of the ×"
+            f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.2f} conversion factor. "
+            "Suggestion: Re-measure to confirm. No quarantine is needed - "
+            "if you move on, this sensor is saved as a PASS."
+        )
+
+    def _build_result_banner(self, row: int, outcome: str, near_limit: bool = False) -> None:
+        if outcome == OUTCOME_PASS and near_limit:
+            accent, banner_bg, banner_fg = PASS_ACCENT, PASS_BG, PASS_FG
+            glyph, verdict = "✓", "PASS · NEAR LIMIT"
+        elif outcome == OUTCOME_PASS:
             accent, banner_bg, banner_fg = PASS_ACCENT, PASS_BG, PASS_FG
             glyph, verdict = "✓", OUTCOME_PASS
-        elif outcome == OUTCOME_RETEST:
-            accent, banner_bg, banner_fg = WARN_ACCENT, WARN_BG, WARN_FG
-            glyph, verdict = "!", "RETEST / QUARANTINE"
         else:
             accent, banner_bg, banner_fg = FAIL_ACCENT, FAIL_BG, FAIL_FG
             glyph, verdict = "✕", OUTCOME_FAIL
@@ -5658,35 +5750,163 @@ class EmitterTesterApp(tk.Tk):
             )
 
     # ----- navigation ----- #
+    #
+    # v2.0 action bar, left -> right:
+    #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
+    #   Save + Exit Batch · Save + Next Sensor
+    # Colour carries the meaning: green = save and move on, amber = set the
+    # part aside for later, blue outline = run the test again.
+    #
+    # The buttons sit in two groups (navigation left, actions right) so
+    # _fit_footer can shrink or wrap the bar on a narrow screen instead of
+    # letting the rightmost button run off the edge.
+    FOOTER_GAP = 10
+    # Tried in order: (action size, nav size, label tier, rows). Label
+    # tiers: "full" -> "nohint" (no "(Enter)"/"(Esc)") -> "short"
+    # (compact wording). Full-size buttons on two rows beat small
+    # buttons on one, so wrapping comes before shrinking.
+    FOOTER_VARIANTS = (
+        ("xl", "lg", "full", 1),
+        ("xl", "lg", "nohint", 1),
+        ("xl", "lg", "short", 1),
+        ("xl", "lg", "short", 2),
+        ("lg", "md", "short", 2),
+        ("md", "sm", "short", 2),
+    )
+
     def render_navigation(self) -> None:
         # The footer bar is a fixed row below the step frame (built once in
         # _build_layout), so the buttons can never be pushed off-screen by
         # tall step content. Rebuild its buttons for the current step.
-        #
-        # v2.0 layout, left -> right:
-        #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
-        #   Save + Exit Batch · Save + Next Sensor
-        # Colour carries the meaning: green = save and move on, amber = set
-        # the part aside for later, blue outline = run the test again.
         for child in self.footer_bar.winfo_children():
             child.destroy()
-        self.footer_bar.columnconfigure(0, weight=0)
-        self.footer_bar.columnconfigure(1, weight=1)
+        self.footer_bar.columnconfigure(0, weight=1)
+        self.footer_bar.columnconfigure(1, weight=0)
+        self.footer_left = tk.Frame(self.footer_bar, bg=PAGE_BG)
+        self.footer_right = tk.Frame(self.footer_bar, bg=PAGE_BG)
         result_step = self.step == self.RESULT_STEP
-        self.back_button = self.btn(self.footer_bar, "Back", self.go_back, kind="ghost", size="lg")
+        gap = S(self.FOOTER_GAP)
+
+        self.back_button = self.btn(self.footer_left, "Back", self.go_back, kind="ghost", size="lg")
         self.back_button.grid(row=0, column=0, sticky="w")
-        self.skipped_button = self.btn(self.footer_bar, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
-        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(S(10), 0))
-        self.skip_button = self.btn(self.footer_bar, "Skip part", self.open_skip_window, kind="warn", size="xl")
-        self.skip_button.grid(row=0, column=2, sticky="e", padx=(0, S(10)))
-        self.remeasure_button = self.btn(self.footer_bar, "Re-measure", self.run_measurement, kind="outline", size="xl")
-        self.remeasure_button.grid(row=0, column=3, sticky="e", padx=(0, S(10)))
-        self.secondary_button = self.btn(self.footer_bar, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
-        self.secondary_button.grid(row=0, column=4, sticky="e", padx=(0, S(10)))
+        self.skipped_button = self.btn(self.footer_left, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
+        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(gap, 0))
+
+        self.skip_button = self.btn(self.footer_right, "Skip part", self.open_skip_window, kind="warn", size="xl")
+        self.skip_button.grid(row=0, column=0, sticky="e", padx=(0, gap))
+        self.remeasure_button = self.btn(self.footer_right, "Re-measure", self.run_measurement, kind="outline", size="xl")
+        self.remeasure_button.grid(row=0, column=1, sticky="e", padx=(0, gap))
+        self.secondary_button = self.btn(self.footer_right, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
+        self.secondary_button.grid(row=0, column=2, sticky="e", padx=(0, gap))
         self.primary_button = self.btn(
-            self.footer_bar, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
+            self.footer_right, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
         )
-        self.primary_button.grid(row=0, column=5, sticky="e")
+        self.primary_button.grid(row=0, column=3, sticky="e")
+
+        self.footer_nav_buttons = (self.back_button, self.skipped_button)
+        self.footer_action_buttons = (
+            self.skip_button,
+            self.remeasure_button,
+            self.secondary_button,
+            self.primary_button,
+        )
+        for button in self.footer_nav_buttons + self.footer_action_buttons:
+            button._footer_full_text = button._text
+        self._footer_fit = None  # brand-new widgets: force a fresh fit
+        self._apply_footer_rows(1)
+
+    def _apply_footer_rows(self, rows: int) -> None:
+        """One row (nav left, actions right) or actions wrapped onto row 2."""
+        self.footer_left.grid(row=0, column=0, sticky="w")
+        if rows == 1:
+            self.footer_right.grid(row=0, column=1, sticky="e", pady=0)
+        else:
+            self.footer_right.grid(row=1, column=0, columnspan=2, sticky="e", pady=(S(8), 0))
+
+    def _set_footer_text(self, button: RoundButton, text: str) -> None:
+        """Set a footer label, keeping the full wording for _fit_footer."""
+        button._footer_full_text = text
+        fit = getattr(self, "_footer_fit", None)
+        button.configure(text=self._footer_label(button, "full" if fit is None else fit[2]))
+
+    @staticmethod
+    def _footer_label(button: RoundButton, tier: str) -> str:
+        """The button's wording at one of the tiers above."""
+        text = getattr(button, "_footer_full_text", button._text)
+        if tier == "full":
+            return text
+        for hint in FOOTER_KEY_HINTS:
+            if text.endswith(hint):
+                text = text[: -len(hint)]
+                break
+        if tier == "short":
+            # "Measure skipped (3)" carries a count, so match its prefix.
+            if text.startswith("Measure skipped"):
+                text = "Skipped" + text[len("Measure skipped"):]
+            else:
+                text = FOOTER_SHORT_LABELS.get(text, text)
+        return text
+
+    def _footer_font(self, size: str) -> tkfont.Font:
+        cache = self._footer_fonts
+        if size not in cache:
+            cache[size] = tkfont.Font(font=self._button_fonts()[size])
+        return cache[size]
+
+    def _footer_group_width(self, buttons: list, size: str, tier: str) -> int:
+        if not buttons:
+            return 0
+        font = self._footer_font(size)
+        pad = 2 * S(RoundButton.SIZE_PADS[size][0])
+        total = S(self.FOOTER_GAP) * (len(buttons) - 1)
+        for button in buttons:
+            total += font.measure(self._footer_label(button, tier)) + pad
+        return total
+
+    def _fit_footer(self, _event: tk.Event | None = None) -> None:
+        """Keep every footer button inside the window.
+
+        The action bar carries up to six buttons, and at full size they need
+        more width than the content column has on a 1366-wide rig screen or
+        at 150% Windows scaling - which clipped the rightmost button, Save +
+        Next Sensor, off the edge. Measure what the visible buttons actually
+        need and pick the first FOOTER_VARIANTS entry that fits: it drops the
+        key hints, then switches to compact wording, then wraps the actions
+        onto their own row, and only shrinks the buttons as a last resort.
+        Bound to the footer's <Configure>, so it also re-fits when the window
+        is maximized or resized.
+        """
+        bar = getattr(self, "footer_bar", None)
+        if bar is None or not bar.winfo_exists() or not self.footer_action_buttons:
+            return
+        available = bar.winfo_width()
+        if available <= 1:
+            return  # not laid out yet; the <Configure> binding calls back
+        # grid_remove()d buttons report no manager and must not be measured.
+        nav = [button for button in self.footer_nav_buttons if button.winfo_manager()]
+        actions = [button for button in self.footer_action_buttons if button.winfo_manager()]
+        chosen = self.FOOTER_VARIANTS[-1]
+        for variant in self.FOOTER_VARIANTS:
+            action_size, nav_size, tier, rows = variant
+            nav_width = self._footer_group_width(nav, nav_size, tier)
+            action_width = self._footer_group_width(actions, action_size, tier)
+            if rows == 1:
+                needed = nav_width + action_width + (S(self.FOOTER_GAP) if nav and actions else 0)
+            else:
+                needed = max(nav_width, action_width)
+            if needed <= available:
+                chosen = variant
+                break
+        if chosen == self._footer_fit:
+            return
+        self._footer_fit = chosen
+        action_size, nav_size, tier, rows = chosen
+        fonts = self._button_fonts()
+        for button in self.footer_nav_buttons:
+            button.restyle(size=nav_size, font=fonts[nav_size], text=self._footer_label(button, tier))
+        for button in self.footer_action_buttons:
+            button.restyle(size=action_size, font=fonts[action_size], text=self._footer_label(button, tier))
+        self._apply_footer_rows(rows)
 
     def update_navigation_state(self) -> None:
         idle = not self.busy and not self.measuring
@@ -5695,7 +5915,9 @@ class EmitterTesterApp(tk.Tk):
                 button.grid_remove()
         if self.step == self.SETUP_STEP:
             self.back_button.configure(state="disabled")
-            self.primary_button.configure(text="Start (Enter)", state="disabled" if self.busy else "normal")
+            self._set_footer_text(self.primary_button, "Start (Enter)")
+            self.primary_button.configure(state="disabled" if self.busy else "normal")
+            self._fit_footer()
             return
         # Skipped parts waiting to be measured (never the one on the bench).
         waiting = [
@@ -5703,9 +5925,8 @@ class EmitterTesterApp(tk.Tk):
         ]
         if waiting and not self.resuming_skipped:
             self.skipped_button.grid()
-            self.skipped_button.configure(
-                text=f"Measure skipped ({len(waiting)})", state="normal" if idle else "disabled"
-            )
+            self._set_footer_text(self.skipped_button, f"Measure skipped ({len(waiting)})")
+            self.skipped_button.configure(state="normal" if idle else "disabled")
         if self.step == self.LOAD_STEP:
             self.back_button.configure(state="disabled" if self.busy else "normal")
             self.skip_button.grid()
@@ -5731,35 +5952,31 @@ class EmitterTesterApp(tk.Tk):
                 measure_text = "Calibrate reference unit to test"
             else:
                 measure_text = "Measure (Enter)"
-            self.primary_button.configure(text=measure_text, state="disabled" if blocked else "normal")
+            self._set_footer_text(self.primary_button, measure_text)
+            self.primary_button.configure(state="disabled" if blocked else "normal")
         else:
             self.skip_button.grid()
             self.remeasure_button.grid()
             self.secondary_button.grid()
             self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
             ready = idle and self.last_result is not None and not self.result_saved
-            retest = result_outcome(self.last_result) == OUTCOME_RETEST
             self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            self.remeasure_button.configure(
-                text="Re-measure" if self.last_result is not None or self.last_measure_error else "Measure",
-                state="normal" if idle and not self.result_saved else "disabled",
+            self._set_footer_text(
+                self.remeasure_button,
+                "Re-measure" if self.last_result is not None or self.last_measure_error else "Measure",
             )
-            self.primary_button.configure(
-                text=(
-                    "Save Quarantine + Next (Enter)"
-                    if retest
-                    else "Save + Next Sensor (Enter)"
-                ),
-                state="normal" if ready else "disabled",
+            self.remeasure_button.configure(state="normal" if idle and not self.result_saved else "disabled")
+            self._set_footer_text(
+                self.primary_button,
+                "Save + Next Sensor (Enter)",
             )
-            self.secondary_button.configure(
-                text=(
-                    "Save Quarantine + Exit (Esc)"
-                    if retest
-                    else "Save + Exit Batch (Esc)"
-                ),
-                state="normal" if ready else "disabled",
+            self.primary_button.configure(state="normal" if ready else "disabled")
+            self._set_footer_text(
+                self.secondary_button,
+                "Save + Exit Batch (Esc)",
             )
+            self.secondary_button.configure(state="normal" if ready else "disabled")
+        self._fit_footer()
 
     def go_next(self) -> None:
         if self.busy:
@@ -7764,13 +7981,13 @@ class EmitterTesterApp(tk.Tk):
         self.preview_waveform = metrics.waveform_v
         self.preview_sync = metrics.sync_v
         outcome = result_outcome(final)
-        if outcome == OUTCOME_PASS:
-            self.status_var.set(f"{self.current_sensor_id}: {OUTCOME_PASS}.")
-        elif outcome == OUTCOME_RETEST:
+        if outcome == OUTCOME_PASS and is_sensitivity_near_limit(final):
             self.status_var.set(
-                f"{self.current_sensor_id}: RETEST / QUARANTINE — re-measure now or save "
-                "the quarantine record."
+                f"{self.current_sensor_id}: PASS — sensitivity is near the limit (within the "
+                "conversion-factor margin). Re-measure is suggested; saving records a PASS."
             )
+        elif outcome == OUTCOME_PASS:
+            self.status_var.set(f"{self.current_sensor_id}: {OUTCOME_PASS}.")
         else:
             self.status_var.set(
                 f"{self.current_sensor_id}: FAIL — confirm the failure mode, then save the sensor."
@@ -8188,7 +8405,6 @@ class EmitterTesterApp(tk.Tk):
         counts = summarize_batch_outcomes([row[-1] for row in rows])
         tested = counts["tested"]
         passed = counts["passed"]
-        retest = counts["retest"]
         failed = counts["failed"]
         not_measured = counts["not_measured"]
         yield_pct = counts["yield_pct"]
@@ -8202,7 +8418,6 @@ class EmitterTesterApp(tk.Tk):
         chip_specs = [
             (f"{tested} TESTED", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
             (f"{passed} PASSED", PASS_FG, PASS_BG),
-            (f"{retest} RETEST", WARN_FG, WARN_BG),
             (f"{failed} FAILED", FAIL_FG, FAIL_BG),
             (f"YIELD {yield_pct:.0f}%", ELTEC_BLUE_DARK, ELTEC_BLUE_LIGHT),
         ]
@@ -8243,14 +8458,11 @@ class EmitterTesterApp(tk.Tk):
             tree.heading(column, text=headings[column])
             tree.column(column, width=150, anchor="center", stretch=True)
         tree.tag_configure("pass", background=PASS_BG)
-        tree.tag_configure("retest", background=WARN_BG)
         tree.tag_configure("fail", background=FAIL_BG)
         tree.tag_configure("skipped", background=GHOST_BG, foreground=MUTED_FG)
         for row in rows:
             if row[-1] == OUTCOME_PASS:
                 tag = "pass"
-            elif row[-1] == OUTCOME_RETEST:
-                tag = "retest"
             elif row[-1] == OUTCOME_NOT_MEASURED:
                 tag = "skipped"
             else:

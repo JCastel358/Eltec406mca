@@ -1,6 +1,30 @@
 # Eltec Test Rig (ESP32) status
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
+
+## Near-limit sensitivity is a PASS with a warning, both models (2026-08-25)
+
+The `+/-0.10 mV` raw band around the sensitivity limit (405 M22: `1.29-1.49
+mV` raw on -625, `~5.99 mV` legacy; 406 MCA: `2.43-2.63 mV` raw, `~4.0 mV`
+legacy) used to produce a `RETEST / QUARANTINE`
+verdict with its own failure mode and *Save Quarantine* buttons. A reading in
+that band is within the margin of error of the `x4.30` conversion factor, so
+the app now treats it the way production wants: **the sensor passes**, the
+result page shows the green `PASS · NEAR LIMIT` banner plus an amber card
+("Passed - sensitivity near the limit ... Suggestion: Re-measure to confirm.
+No quarantine is needed - if you move on, this sensor is saved as a PASS"),
+the status line says the same, and the normal *Save + Next Sensor* / *Save +
+Exit Batch* buttons record a plain `PASS` row. Re-measure stays one click
+away in the footer. Code-wise the band is `SENSITIVITY_NEAR_LIMIT`
+(`sensitivity_gate_outcome`, still written to the `sensitivity_gate_outcome`
+CSV column so the record shows which passes were near the limit); the note
+goes to `FinalResult.warnings` instead of `fail_reasons`; `OUTCOME_RETEST`,
+the `RETEST - Sensitivity guard band` failure mode, the RETEST summary chip
+and the quarantine footer labels are gone. Older batch CSVs that still carry
+`RETEST` rows are shown as failures in the summary (they were quarantine
+records, not passes). Same change in `m405m22/` and `m406mca/`. 405 M22: 174
+tests OK; 406 MCA: 78 with the three long-standing Windows-only environment
+errors; unified app: 33 OK.
 
 ## Eltec Test Rig v2.0: Skip part, footer Re-measure, attempt history (2026-08-24)
 
@@ -20,6 +44,36 @@ Technician-UI update to `tech_app/eltec_rig/` (both models, same code in
   empty, then fresh numbering resumes. Re-skipping sends a part to the back.
   The batch summary and the batch-start status line show what is still
   skipped. The rig-fault view keeps "Record as NOT MEASURED".
+- **App renamed "sensor tester" (2026-08-25)**: the header now reads
+  `405 M22 SENSOR TESTER` / `406MCA SENSOR TESTER`, the 406 window title is
+  "Eltec 406MCA ESP32 Sensor Tester v6.1", and both Xubuntu desktop entries
+  say "Adaptive Sensor Tester" (the 406 `Comment=` also said it tests
+  "emitters" - now "sensors", matching the 405 entry). Hardware references
+  are untouched on purpose: `EMITTER_PWM_*`, the emitter-off noise test, the
+  emitter-health/reference wording and the header's "EMITTER RIG" subtitle
+  all still describe the fixture's chop source. The internal class name
+  `EmitterTesterApp` is unchanged (code only, never displayed).
+- **Footer never clips again (2026-08-25)**: full screen on Windows, the
+  v2.0 action bar's rightmost button (*Save + Next Sensor*) ran past the edge
+  of the content column - it needs ~1715 px where a maximized 1920 screen
+  leaves 1490 (the step rail, divider and padding take the rest; a 1366
+  screen or 150% scaling is worse). The bar is now two groups (nav left,
+  actions right) and `_fit_footer` measures the visible buttons against the
+  real width, then takes the first `FOOTER_VARIANTS` step that fits: full
+  labels -> drop the `(Enter)`/`(Esc)` hints -> compact wording (*Save +
+  Next*, *Save + Exit*, *Skipped (3)*) -> wrap the actions onto a
+  second row at full size -> shrink the buttons. Bound to the footer's
+  `<Configure>`, so it re-fits (and recovers) on maximize/resize and adapts
+  to Xubuntu's font metrics without a hardcoded width. `RoundButton.restyle()`
+  re-sizes a button in place. Both models; 6 new tests each (405 M22: 174 OK,
+  406 MCA: 109 with the two long-standing Windows-only environment failures).
+- **Selector opens maximized (2026-08-25)**: `eltec_rig_tester.py` now
+  starts full screen the same way the model testers do (`zoomed` on Windows,
+  `-zoomed` after mapping on X11, screen-sized geometry as a fallback) and
+  re-applies it when a tester exits and the selector un-minimizes. It had to
+  become resizable for that (a fixed-size window cannot be maximized), so
+  the content block is centered by weighted spacer rows/columns and its type
+  is one step larger; 640x520 minimum. Selector suite 33 tests OK.
 - **Same-day follow-ups**: (a) the skip dialog is comment-only (no reason
   dropdown); (b) **406 MCA reference gate disabled** (`REFERENCE_GATE_ENABLED
   = False`, same mechanism/card text as the 405 M22 build) because the
@@ -960,10 +1014,11 @@ production qualification with representative known-good and known-bad parts.
 V6.1 now preserves the raw new-fixture sensitivity and also reports a
 legacy-equivalent value using the provisional paired-fixture factor `1.582`.
 For the default `-284 filter + extra -6 + blackened tube` setup, raw sensitivity
-below `2.43 mV` fails, `2.43-2.63 mV` inclusive is recorded as
-`RETEST / QUARANTINE`, and above `2.63 mV` passes the sensitivity gate. The
-legacy filter-specific minimum remains the center of the same `+/-0.10 mV` raw
-guard-band policy for the other selectable setups. Offset is not scaled, and
+below `2.43 mV` fails, `2.43-2.63 mV` inclusive passes with a near-limit
+re-measure warning (superseded 2026-08-25: it was a `RETEST / QUARANTINE`
+verdict until then), and above `2.63 mV` passes the sensitivity gate cleanly.
+The legacy filter-specific minimum remains the center of the same `+/-0.10 mV`
+raw near-limit band for the other selectable setups. Offset is not scaled, and
 all other gates remain active and unchanged. The sensitivity policy remains
 provisional pending repeated known-low and borderline sensor evidence.
 

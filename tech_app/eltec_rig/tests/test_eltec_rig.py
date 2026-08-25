@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 RIG_DIR = Path(__file__).resolve().parents[1]
@@ -214,6 +215,54 @@ class SelectorGuiSmokeTests(unittest.TestCase):
             app._on_version_selected()
             self.assertEqual(app.selected_version().key, first.key)
             app.update_idletasks()
+        finally:
+            app.destroy()
+
+    def test_selector_opens_maximized(self):
+        # The rig PC runs full screen; the technician should never have to
+        # maximize the chooser by hand.
+        try:
+            app = rig.EltecRigSelector()
+        except Exception as exc:  # e.g. no display on a headless CI host
+            self.skipTest(f"Tk unavailable: {exc}")
+        try:
+            app.update_idletasks()
+            # A fixed-size window cannot be maximized by the window manager.
+            self.assertEqual(app.wm_resizable(), (True, True))
+            if app.tk.call("tk", "windowingsystem") == "x11":
+                app.update()  # the -zoomed request is applied once mapped
+                self.assertTrue(app.attributes("-zoomed"))
+            else:
+                self.assertEqual(app.state(), "zoomed")
+            # Screen-sized fallback for a window manager that supports neither.
+            with unittest.mock.patch.object(
+                rig.EltecRigSelector, "state", side_effect=rig.tk.TclError("no zoom")
+            ), unittest.mock.patch.object(
+                rig.EltecRigSelector, "_fill_screen"
+            ) as fill, unittest.mock.patch.object(
+                app, "tk", unittest.mock.Mock(call=lambda *a: "win32")
+            ):
+                rig.EltecRigSelector.start_maximized(app)
+            fill.assert_called_once()
+        finally:
+            app.destroy()
+
+    def test_content_block_is_centered_by_weighted_spacers(self):
+        try:
+            app = rig.EltecRigSelector()
+        except Exception as exc:
+            self.skipTest(f"Tk unavailable: {exc}")
+        try:
+            app.update_idletasks()
+            info = app.content.grid_info()
+            self.assertEqual((int(info["row"]), int(info["column"])), (1, 1))
+            # Spacer rows/columns take the extra space, so the block stays put
+            # instead of the card stretching across a wide monitor.
+            for index in (0, 2):
+                self.assertEqual(app.grid_rowconfigure(index)["weight"], 1)
+                self.assertEqual(app.grid_columnconfigure(index)["weight"], 1)
+            self.assertEqual(app.grid_rowconfigure(1)["weight"], 0)
+            self.assertEqual(app.grid_columnconfigure(1)["weight"], 0)
         finally:
             app.destroy()
 

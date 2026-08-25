@@ -82,8 +82,8 @@ trap 'rm -f -- "$TMP_ENTRY"' EXIT
     printf '%s\n' 'Version=1.0'
     printf '%s\n' 'Type=Application'
     printf '%s\n' 'Name=Eltec 406MCA ESP32 Tester v6.1'
-    printf '%s\n' 'GenericName=406MCA Adaptive Emitter Tester'
-    printf '%s\n' 'Comment=Test Eltec 406MCA emitters with adaptive peak stabilization'
+    printf '%s\n' 'GenericName=406MCA Adaptive Sensor Tester'
+    printf '%s\n' 'Comment=Test Eltec 406MCA sensors with adaptive peak stabilization'
     printf 'Exec=%s\n' "$EXEC_VALUE"
     printf 'Icon=%s\n' "$ICON_VALUE"
     printf '%s\n' 'Terminal=false'

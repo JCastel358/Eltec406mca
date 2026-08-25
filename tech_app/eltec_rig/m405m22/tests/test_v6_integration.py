@@ -298,7 +298,10 @@ class IdentityAndCsvTests(unittest.TestCase):
         ):
             self.assertIn(noise_column, app.CSV_FIELDS)
         self.assertIn(app.UNSTABLE_FAILURE_MODE, app.FAILURE_MODE_CHOICES)
-        self.assertIn(app.SENSITIVITY_RETEST_FAILURE_MODE, app.FAILURE_MODE_CHOICES)
+        # A near-limit sensitivity is a PASS with a warning, never a failure mode.
+        self.assertFalse(
+            any("RETEST" in choice or "guard band" in choice for choice in app.FAILURE_MODE_CHOICES)
+        )
         self.assertEqual(app.MAX_MEASUREMENT_ATTEMPTS, 3)
         # 405 M22 screening policy: 5-delta qualification and 10 measurement
         # cycles keep a 1 Hz test near half a minute instead of over one.
@@ -685,20 +688,36 @@ class IdentityAndCsvTests(unittest.TestCase):
         )
 
         # Anchor cases from the comparison batch: 500-10 (raw 0.938, the old
-        # fixture's low-sensitivity failure at 4.08 mV) must FAIL; a guard-band
-        # reading must RETEST; a typical passer (raw ~2.0) must PASS; a raw
-        # reading whose legacy equivalent tops the TP412 max must FAIL high.
+        # fixture's low-sensitivity failure at 4.08 mV) must FAIL; a near-limit
+        # reading still PASSES (it is inside the conversion factor's margin of
+        # error) but carries a re-measure warning; a typical passer (raw ~2.0)
+        # must PASS cleanly; a raw reading whose legacy equivalent tops the
+        # TP412 max must FAIL high.
         cases = {
-            0.938: app.OUTCOME_FAIL,
-            1.39: app.OUTCOME_RETEST,
-            2.06: app.OUTCOME_PASS,
-            3.10: app.OUTCOME_FAIL,  # 13.33 mV legacy > 11.98 TP412 max
+            0.938: (app.OUTCOME_FAIL, False),
+            1.39: (app.OUTCOME_PASS, True),
+            2.06: (app.OUTCOME_PASS, False),
+            3.10: (app.OUTCOME_FAIL, False),  # 13.33 mV legacy > 11.98 TP412 max
         }
-        for raw_mv, expected in cases.items():
+        for raw_mv, (expected, near_limit) in cases.items():
             with self.subTest(raw_mv=raw_mv):
                 metrics = metrics_for_sensitivity(raw_mv)
                 final = app.evaluate_result(1.2, metrics, app.DEFAULT_FILTER_SETUP)
                 self.assertEqual(app.result_outcome(final), expected)
+                self.assertEqual(app.is_sensitivity_near_limit(final), near_limit)
+        near = app.evaluate_result(
+            1.2, metrics_for_sensitivity(1.39), app.DEFAULT_FILTER_SETUP
+        )
+        self.assertTrue(near.passed)
+        self.assertEqual(near.fail_reasons, [])
+        self.assertEqual(
+            app.sensitivity_gate_outcome(1.39, app.DEFAULT_FILTER_SETUP),
+            app.SENSITIVITY_NEAR_LIMIT,
+        )
+        self.assertTrue(
+            any(w.startswith(app.SENSITIVITY_NEAR_LIMIT_WARNING_PREFIX) for w in near.warnings)
+        )
+        self.assertEqual(app.suggest_failure_mode(near), "")
         low = app.evaluate_result(
             1.2, metrics_for_sensitivity(0.938), app.DEFAULT_FILTER_SETUP
         )
@@ -2474,11 +2493,11 @@ class SimulatorAndGuiTests(unittest.TestCase):
     def test_simulator_exercises_enabled_gate_and_wrong_polarity(self):
         # With the lot-500 calibration the sensitivity gate is live: the low
         # case fails, the borderline case (exactly the legacy minimum) lands
-        # in the raw guard band and quarantines, and wrong polarity still
-        # fails on its own gate.
+        # in the near-limit band and passes with a re-measure warning, and
+        # wrong polarity still fails on its own gate.
         expected_outcomes = {
             "Low sensitivity": app.OUTCOME_FAIL,
-            "Borderline sensitivity": app.OUTCOME_RETEST,
+            "Borderline sensitivity": app.OUTCOME_PASS,
             "Wrong polarity": app.OUTCOME_FAIL,
         }
         for case_name, expected_outcome in expected_outcomes.items():
@@ -2842,23 +2861,167 @@ class NotMeasuredSkipTests(unittest.TestCase):
             [
                 app.OUTCOME_PASS,
                 app.OUTCOME_FAIL,
-                app.OUTCOME_RETEST,
+                app.OUTCOME_PASS,
                 app.OUTCOME_NOT_MEASURED,
             ]
         )
         self.assertEqual(counts["recorded"], 4)
         self.assertEqual(counts["tested"], 3)
-        self.assertEqual(counts["passed"], 1)
-        self.assertEqual(counts["retest"], 1)
+        self.assertEqual(counts["passed"], 2)
+        self.assertNotIn("retest", counts)
         self.assertEqual(counts["failed"], 1)
         self.assertEqual(counts["not_measured"], 1)
-        self.assertAlmostEqual(counts["yield_pct"], 100.0 / 3)
+        self.assertAlmostEqual(counts["yield_pct"], 200.0 / 3)
         # A batch where nothing could be measured reports no yield at all
         # instead of a 0% that reads like every sensor failed.
         blocked = app.summarize_batch_outcomes([app.OUTCOME_NOT_MEASURED] * 2)
         self.assertEqual(blocked["tested"], 0)
         self.assertEqual(blocked["failed"], 0)
         self.assertEqual(blocked["yield_pct"], 0.0)
+
+
+
+class FooterFitTests(unittest.TestCase):
+    """The action bar must never run past the edge of the window.
+
+    Regression: with the v2.0 six-button footer at full size, "Save + Next
+    Sensor (Enter)" needed more width than the content column has once the
+    window was maximized, and was clipped off the right edge.
+    """
+
+    class FakeButton:
+        def __init__(self, text):
+            self._text = text
+            self._footer_full_text = text
+
+    def test_label_tiers_shorten_in_the_documented_order(self):
+        label = app.EmitterTesterApp._footer_label
+        save = self.FakeButton("Save + Next Sensor (Enter)")
+        self.assertEqual(label(save, "full"), "Save + Next Sensor (Enter)")
+        self.assertEqual(label(save, "nohint"), "Save + Next Sensor")
+        self.assertEqual(label(save, "short"), "Save + Next")
+        exit_batch = self.FakeButton("Save + Exit Batch (Esc)")
+        self.assertEqual(label(exit_batch, "nohint"), "Save + Exit Batch")
+        self.assertEqual(label(exit_batch, "short"), "Save + Exit")
+        # The skipped counter has to survive the compact wording.
+        skipped = self.FakeButton("Measure skipped (3)")
+        self.assertEqual(label(skipped, "short"), "Skipped (3)")
+        # A label with no hint and no compact form is left alone at every tier.
+        plain = self.FakeButton("Skip part")
+        for tier in ("full", "nohint", "short"):
+            self.assertEqual(label(plain, tier), "Skip part")
+
+    def test_variant_ladder_keeps_the_buttons_big_before_shrinking(self):
+        variants = app.EmitterTesterApp.FOOTER_VARIANTS
+        self.assertEqual(variants[0], ("xl", "lg", "full", 1))
+        # Wrapping onto a second row at full size beats shrinking the buttons:
+        # the technician asked for big, readable controls.
+        first_wrap = next(i for i, v in enumerate(variants) if v[3] == 2)
+        first_shrink = next(i for i, v in enumerate(variants) if v[0] != "xl")
+        self.assertLess(first_wrap, first_shrink)
+        # Labels only ever get shorter as the bar gets tighter.
+        rank = {"full": 0, "nohint": 1, "short": 2}
+        tiers = [rank[v[2]] for v in variants]
+        self.assertEqual(tiers, sorted(tiers))
+
+    # ----- live layout ----- #
+    def _footer_overflow(self, root):
+        """Pixels by which the worst-placed visible button overruns the bar."""
+        bar = root.footer_bar
+        worst = 0
+        for group in (root.footer_left, root.footer_right):
+            for button in group.winfo_children():
+                if not button.winfo_manager():  # grid_remove()d
+                    continue
+                right = (button.winfo_rootx() - bar.winfo_rootx()) + button.winfo_reqwidth()
+                worst = max(worst, right - bar.winfo_width())
+        return worst
+
+    def _drive_to_result(self, root):
+        """Reach a result step with an unsaved verdict (all six buttons)."""
+        root.batch_var.set("FIT")
+        root.tester_var.set("tester")
+        root.start_batch()
+        root.show_step(root.RESULT_STEP)
+        final = app.FinalResult(
+            passed=True, fail_reasons=[], warnings=[], offset_v=1.2,
+            sensitivity_mv=40.0, polarity="POSITIVE",
+        )
+        metrics = SimpleNamespace(
+            waveform_v=np.zeros(8), sync_v=np.zeros(8),
+            noise_rms_mv=None, signal_to_noise_db=None,
+        )
+        root.measuring = True
+        root.busy = True
+        root.on_measure_done(root.measure_token, metrics, final)
+        root.update_idletasks()
+
+    def _tester(self):
+        results = tempfile.TemporaryDirectory()
+        self.addCleanup(results.cleanup)
+        patches = [
+            mock.patch.object(app, "results_root_dir", lambda: Path(results.name)),
+            mock.patch.object(app.EmitterTesterApp, "startup_probe", lambda self: None),
+        ]
+        for patcher in patches:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        try:
+            root = app.EmitterTesterApp()
+        except Exception as exc:  # headless host without Tk
+            self.skipTest(f"Tk unavailable: {exc}")
+
+        def close():
+            root.measure_token += 1
+            root.animator.cancel_all()
+            root.destroy()
+
+        self.addCleanup(close)
+        # Withdrawn windows still report real geometry once idle tasks run, so
+        # the layout can be measured without flashing a window on the rig PC.
+        root.withdraw()
+        root.state("normal")
+        return root
+
+    def test_no_footer_button_is_clipped_at_any_window_width(self):
+        root = self._tester()
+        self._drive_to_result(root)
+        narrow_variant = None
+        for width in (1920, 1600, 1440, 1366, 1280):
+            root.geometry(f"{width}x820")
+            root.update_idletasks()
+            root.update_navigation_state()
+            root.update_idletasks()
+            with self.subTest(width=width):
+                self.assertLessEqual(self._footer_overflow(root), 0)
+            narrow_variant = root._footer_fit
+        # ...and the bar recovers its full size when the window grows again
+        # (the tester maximizes itself after the first render).
+        root.geometry("1920x820")
+        root.update_idletasks()
+        root.update_navigation_state()
+        root.update_idletasks()
+        variants = app.EmitterTesterApp.FOOTER_VARIANTS
+        self.assertLessEqual(
+            variants.index(root._footer_fit), variants.index(narrow_variant)
+        )
+        self.assertLessEqual(self._footer_overflow(root), 0)
+
+    def test_every_step_fits_and_hidden_buttons_are_not_measured(self):
+        root = self._tester()
+        root.geometry("1366x820")
+        root.update_idletasks()
+        with self.subTest(step="setup"):
+            self.assertLessEqual(self._footer_overflow(root), 0)
+            # Only Back + the primary action exist on the setup step.
+            self.assertFalse(root.skip_button.winfo_manager())
+            self.assertFalse(root.remeasure_button.winfo_manager())
+        self._drive_to_result(root)
+        for step in ("load", "result"):
+            root.show_step(root.LOAD_STEP if step == "load" else root.RESULT_STEP)
+            root.update_idletasks()
+            with self.subTest(step=step):
+                self.assertLessEqual(self._footer_overflow(root), 0)
 
 
 if __name__ == "__main__":
