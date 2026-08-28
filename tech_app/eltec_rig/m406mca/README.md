@@ -153,7 +153,7 @@ Remove only the v6.1 launcher with:
 The tester requires `Arduino/Eltec/Eltec.ino` v1.7 or newer and the current
 fixture wiring in `Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md`:
 
-- GPIO25: fixed 10 Hz / 50 percent emitter PWM;
+- GPIO33: fixed 10 Hz / 50 percent emitter PWM;
 - ADS1256 AIN0: DUT sensor;
 - ADS1256 AIN1: permanently mounted reference sensor;
 - ADS1256 AIN7: 6 V SLA battery through the measured 99.7k/99.6k divider

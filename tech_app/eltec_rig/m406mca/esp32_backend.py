@@ -39,7 +39,9 @@ SAMPLE_RATE_HZ = 1_000.0
 STREAM_READ_BLOCK_BYTES = 1_024
 PWM_FREQUENCY_HZ = 10.0
 PWM_DUTY_CYCLE_PERCENT = 50.0
-PWM_GPIO = 25
+# Emitter gate. Moved D25 -> D33 on 2026-08-25 (firmware v3.1 boots on 33 too;
+# the backend sends PIN,<n> after connect either way).
+PWM_GPIO = 33
 MINIMUM_FIRMWARE_VERSION = (1, 7, 0)
 EXPECTED_FIRMWARE_PREFIX = "ELTEC-ESP32-ADS1256,v"
 

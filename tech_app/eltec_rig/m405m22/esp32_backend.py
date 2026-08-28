@@ -66,7 +66,9 @@ _CE_OVERRUN = 0x0002
 PWM_FREQUENCY_HZ = 1.0
 REFERENCE_PWM_FREQUENCY_HZ = 10.0
 PWM_DUTY_CYCLE_PERCENT = 50.0
-PWM_GPIO = 25
+# Emitter gate. Moved D25 -> D33 on 2026-08-25 (firmware v3.1 boots on 33 too;
+# the backend sends PIN,<n> after connect either way).
+PWM_GPIO = 33
 # v2.0 = ADS1256 at PGA gain 1 with the input buffer off (0.8-3.0 V TP412
 # offset band reads linearly) plus the v1.9 PWM,FREQ command.
 MINIMUM_FIRMWARE_VERSION = (2, 0, 0)

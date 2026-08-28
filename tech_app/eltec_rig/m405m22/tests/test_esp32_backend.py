@@ -350,7 +350,7 @@ class ScalarAndPwmTests(unittest.TestCase):
                 "IDN?": ["ELTEC-ESP32-ADS1256,v2.0"],
                 "BAT?": ["BAT,6.1110"],
                 "OFFSET?": ["OFFSET,0.71825"],
-                "PIN,25": ["OK,PIN,25"],
+                "PIN,33": ["OK,PIN,33"],
                 "PWM,FREQ,1": ["OK,PWM,FREQ,1.000"],
                 "PWM,FREQ,10": ["OK,PWM,FREQ,10.000"],
                 "PWM,ON": ["OK,PWM,ON"],
@@ -384,7 +384,7 @@ class ScalarAndPwmTests(unittest.TestCase):
             self.rig.last_pwm_activation_monotonic,
         )
         self.assertEqual(
-            self.serial_port.writes[-3:], ["PIN,25", "PWM,FREQ,1", "PWM,ON"]
+            self.serial_port.writes[-3:], ["PIN,33", "PWM,FREQ,1", "PWM,ON"]
         )
 
         deactivation_time = self.rig.disable_emitter_pwm("DIO0")
@@ -418,7 +418,7 @@ class ScalarAndPwmTests(unittest.TestCase):
         )
         self.assertTrue(self.rig.pwm_enabled)
         self.assertEqual(
-            self.serial_port.writes[-3:], ["PIN,25", "PWM,FREQ,10", "PWM,ON"]
+            self.serial_port.writes[-3:], ["PIN,33", "PWM,FREQ,10", "PWM,ON"]
         )
         self.rig.disable_emitter_pwm()
 

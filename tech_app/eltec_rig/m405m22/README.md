@@ -388,7 +388,7 @@ per-sample `timestamp_us` to rebuild missing slots (linear-interpolated
 volts; a sync transition swallowed by a gap lands at the gap midpoint).
 Without this, index-based math saw a shortened timeline — a 2-sample gap in
 one 100-sample 10 Hz reference cycle read as 1000/98 = 10.204 Hz and failed
-the ±0.1 Hz PWM sync validation as a fake "check firmware and GPIO25" rig
+the ±0.1 Hz PWM sync validation as a fake "check firmware and GPIO33" rig
 error (seen especially with a laptop charger's EMI raising the USB drop
 rate). If sync validation still fails while any gap was seen (edge
 swallowed, or a gap beyond the fill budget), it is reclassified as a
