@@ -1,10 +1,12 @@
 # Eltec ESP32 + ADS1256 wiring (firmware v2.0 — 405 M22 / TP412 fixture)
 
-This is the wiring reference for the 405 M22 fixture running firmware
-**v2.0** (ADS1256 sensor channels at PGA gain 1 with the input buffer OFF, so
-the TP412 0.8-3.0 V offset band reads linearly). Rigs running the 406MCA
-v6/v6.1 applications stay on firmware v1.9 and the older
-`ESP32_ADS1256_Wiring_v1_7.md`. The historical `ESP32_ADS1256_Wiring.docx`
+This is the wiring reference for the **unified bench rig** — every model in
+`tech_app/eltec_rig` — on firmware v2.0 and later (v3.2 today: ADS1256 sensor
+channels boot at PGA gain 1 with the input buffer OFF, so the TP412 0.8-3.0 V
+offset band reads linearly; the 406 MCA mode switches the front end at runtime
+with `FE,V19`). A legacy standalone rig still running the retired 406MCA
+v6/v6.1 applications stays on firmware v1.9 and
+`ESP32_ADS1256_Wiring_legacy_v1_9.md`. The historical `ESP32_ADS1256_Wiring.docx`
 (9 V/AIN1/bare-MOSFET arrangement) must not be used; it was removed from the
 repository on 2026-08-28 and is preserved at git tag `archive/pre-cleanup-2026-08-28`.
 

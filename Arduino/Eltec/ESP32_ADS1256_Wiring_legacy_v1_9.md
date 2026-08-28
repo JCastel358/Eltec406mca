@@ -1,9 +1,17 @@
-# Eltec ESP32 + ADS1256 wiring (firmware v1.7)
+# Eltec ESP32 + ADS1256 wiring — LEGACY standalone 406MCA rig (firmware v1.9)
 
-This is the current wiring reference for the 6 V SLA/Xubuntu rig. The older
-`ESP32_ADS1256_Wiring.docx` described the historical 9 V/AIN1/bare-MOSFET
-arrangement, must not be used to wire this version, and was removed from the
-repository on 2026-08-28 (preserved at git tag `archive/pre-cleanup-2026-08-28`).
+**This is not the unified bench rig.** It documents the original single-battery
+fixture — 6 V SLA on the AIN7 divider, emitter gate on **GPIO25** — that the
+retired standalone 406MCA v6/v6.1 applications ran on, with firmware **v1.9**
+(this wiring was first written at firmware v1.7 and is unchanged through v1.9).
+Keep it only for a legacy rig that still runs those applications (preserved at
+git tag `archive/pre-cleanup-2026-08-28`); such a rig must stay on v1.9. The
+unified rig (`tech_app/eltec_rig`, all models) uses
+`ESP32_ADS1256_Wiring_v2_0.md` and firmware v3.x.
+
+The older `ESP32_ADS1256_Wiring.docx` described the historical 9 V/AIN1/bare-MOSFET
+arrangement, must not be used, and was removed from the repository on 2026-08-28
+(preserved at the same tag).
 
 ## ESP32 to ADS1256
 
