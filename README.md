@@ -1,390 +1,122 @@
-# Eltec 406MCA Tester
+# Eltec sensor test rig (ESP32 + ADS1256)
 
-Code for the 406MCA sensitivity, polarity, offset, noise, and SNR test process.
-The tester apps use the LabJack T7-Pro through the `labjack.ljm` Python package
-and include a simulator mode, so the operator flow and analysis can be exercised
-without hardware connected.
+Bench rig and software that qualify Eltec pyroelectric IR sensors. An ESP32
+chops an IR emitter and streams a 24-bit ADS1256 ADC to a laptop; **one
+Python desktop application** (`tech_app/eltec_rig`) runs the test procedure
+for the sensor model chosen in a dropdown, judges each part, and writes a CSV
+row per sensor. Windows 11 and Xubuntu are both supported.
 
-The repo holds **four versions of the same technician data-collection app** (one
-per physical test setup, plus the v4 visual refresh of the emitter rig app), the
-**engineer tools** used to bring up and validate new setups, and **per-version
-analysis** scripts.
-
-## Repository layout
-
-```
-tech_app/                         Technician data-collection app
-├── eltec_rig/    ← CURRENT (v2.0) Unified Eltec Test Rig: sensor-version dropdown
-│   ├── eltec_rig_tester.py           (Model 405 M22 / Model 406 MCA), ESP32 rig,
-│   ├── m405m22/  m406mca/            skip / re-measure footer, per-batch attempt log
-│   ├── attempt_history.py            (see tech_app/eltec_rig/README.md)
-│   └── run_eltec_rig_tester.cmd|.sh
-└── deprecated/                   Frozen older apps, unchanged (reference only)
-    ├── eltec_rig_v1/                 the unified app before v2.0 (2026-08-24 snapshot)
-    ├── 405m22_esp32/  v6_1_esp32/    the qualified standalone ESP32 builds
-    ├── v6_esp32/  v5_esp32/  v6_1_failure_calibration/
-    ├── v1_single_sensor/             original LabJack single-sensor rig with the AM502
-    │                                 (still the shared signal-math engine imported by
-    │                                 engineer_tools and analysis/v1_single_sensor)
-    ├── v2_scope_verification/  v3_emitter/  v4_emitter/   LabJack emitter-rig apps
-    └── (each keeps its own README / launcher)
-
-engineer_tools/                   Engineer setup / bring-up tools (live signal monitor)
-├── eltec_406mca_signal_monitor.py
-├── eltec_406mca_signal_monitor_ui.py
-└── Run 406MCA Signal Monitor UI.bat
-
-analysis/                         Analysis, by app version
-├── v1_single_sensor/            analyze_406mca_snr_results.py, test_406mca_analysis.py
-├── v2_scope_verification/       dataAnalysis.py, disagreementAnalysis.py
-├── v3_emitter/                  analyze_emitter_results.py + Run Emitter Analysis.bat
-├── v4_emitter/                  analyze_emitter_results.py + Run Emitter Analysis.bat (v4 data)
-└── reports/                     Reference / generated documents (buffer + SNR write-ups)
-
-assets/eltec_logo.png            Shared logo used by the apps
-```
-
-`deprecated/v1_single_sensor/eltec_406mca_tester.py` (v1) doubles as the
-**single source of truth for the signal math and the LabJack device wrapper**;
-the v3/v4 emitter testers and both engineer tools import from it (the unified
-app carries its own vendored copy in `eltec_rig/v1_single_sensor/`).
-
-## Where test data is saved
-
-Each version writes into its **own subfolder** of the results root so data can be
-tracked and analyzed per version:
-
-```
-C:\Users\<user>\Documents\Eltec_406MCA_Test_Results\
-├── v1_single_sensor\   406mca_results.csv
-├── v2_scope_verification\
-│   ├── 406mca_scope_verification_lot_<lot>.csv
-│   ├── autosave\  waveform_snapshots\  analysis\
-├── v3_emitter\
-│   ├── 406mca_emitter_lot_<batch>.csv
-│   ├── autosave\  waveform_snapshots\  analysis\
-└── v4_emitter\
-    ├── 406mca_emitter_lot_<batch>.csv
-    ├── autosave\  waveform_snapshots\  analysis\
-```
-
-Each app creates its subfolder automatically on first save.
+| Sensor model | Procedure | Status (2026-08-28) | Results folder (`Documents\…`) |
+| --- | --- | --- | --- |
+| **405 M22** (1 Hz) | TP412 — offset, emitter-off noise, sensitivity/polarity | production; sensitivity factor 4.30 from lot 500 | `Eltec_405M22_Test_Results\405m22_esp32` |
+| **406 MCA** (10 Hz) | offset, sensitivity/polarity, v6.1 stability policy | production; factor 1.582 from lot 520 | `Eltec_406MCA_Test_Results\v6_1_esp32` |
+| **449 M18** (5 + 18 Hz) | TP443 frequency tracking | **calibration pending** (K_5 / K_18 not derived; needs firmware v3.2, not yet flashed) | `Eltec_449M18_Test_Results\449m18_esp32` |
 
 ---
 
-## v4 – Emitter Tester (current, visual refresh)
+## I'm a technician — run a batch
 
-`tech_app/v4_emitter/eltec_406mca_emitter_tester.py` is the **same rig, wiring,
-guided flow, measurement engine, and CSV schema as v3** with a complete visual
-overhaul styled after [eltecinstruments.com](https://eltecinstruments.com/):
+1. Laptop on AC power, ESP32 USB cable in, both batteries connected, no fans near the fixture.
+2. Double-click the **Eltec Test Rig** desktop icon (or `tech_app\eltec_rig\run_eltec_rig_tester.cmd` / `.sh`).
+3. Pick the sensor model → **Start tester** → batch number, your name, filter setup → load a part → **Enter**.
+4. Read the banner (PASS / PASS · NEAR LIMIT / FAIL) → **Save + Next Sensor (Enter)**.
 
-- Eltec-blue gradient app bar with the logo badge, an animated signal-trace
-  line, and a live battery gauge pill (click it to re-check the 9V supply).
-- Numbered step rail (`01 / 02 / 03`) with animated check-offs and connectors.
-- Rounded soft-shadow cards with the Eltec technical-gradient accent strip,
-  hover-animated rounded buttons, and an animated waveform toggle switch.
-- Animated PASS/FAIL banner, count-up result tiles, and a scanning progress
-  bar while a measurement runs.
-- Dark navy oscilloscope panel (grid + glow traces + sweep beam) for the live
-  AIN0/AIN2 view, with monospace technical readouts.
+Everything else — verdicts, the Skip / Re-measure buttons, where files go,
+what to do when something fails — is in
+**[docs/TECHNICIAN_RUNBOOK.md](docs/TECHNICIAN_RUNBOOK.md)**.
 
-Optional: drop `Poppins`/`Manrope`/`JetBrains Mono` `.ttf` files into
-`tech_app\v4_emitter\assets\fonts\` and the app loads them privately at startup
-for an even closer match to the website type; otherwise it falls back to
-Segoe UI / Consolas automatically (see `assets\README.txt`).
+## I'm the engineer taking over
 
-### Capture modes (v4 speed-up)
+Start with **[docs/ENGINEER_HANDOVER.md](docs/ENGINEER_HANDOVER.md)** (what
+you are inheriting, architecture, the copy-per-model rule, firmware lifecycle,
+open work). Then **[docs/CALIBRATION_RECORD.md](docs/CALIBRATION_RECORD.md)**
+before touching any limit.
 
-v3 needs 45-80 chopping cycles (4.5-8 s) per sensor because its stability rule
-compares two 20-cycle averages. v4 adds a margin-based early exit plus shorter
-DC reads (offset 24x3 ms instead of 80x10 ms; the battery check is reused when
-under 30 s old). The **Capture mode** selector under *Advanced options* picks:
+## Repository map
 
-- **Fast (early exit)** — stops as soon as the waveform is stable over two
-  6-cycle windows AND every metric is decisively clear of its limit
-  (sensitivity ≥1.5x/≤0.5x the minimum, polarity confidence ≥1.5x threshold,
-  SNR ≥2x/≤0.5x the gate), confirmed on two consecutive cycles. Clear sensors
-  decide in ~1.5-2 s; marginal ones keep capturing up to a 30-cycle cap.
-- **Validation (default)** — runs the full v3-length capture AND logs what
-  Fast would have decided to the `fast_*` CSV columns plus a `fast_match`
-  YES/NO. Run production batches in this mode first; the batch summary shows
-  a "FAST PATH n/m MATCH" chip. Switch to Fast only after mismatch-free runs.
-- **Full (v3 timing)** — exact v3 behavior.
-
-The `FAST_*` constants at the top of the tester set the windows and decision
-margins; tune them from validation-mode data. New CSV columns: `capture_mode,
-capture_cycles, capture_seconds, fast_stop_cycle, fast_sensitivity_mv,
-fast_polarity, fast_pass_fail, fast_match, data_source` (older batch CSVs keep
-their original columns automatically).
-
-### "Is everything plugged in?" guards (v4)
-
-v3 silently switched to simulator mode when no T7 was found, so a technician
-could unknowingly record synthetic numbers (battery pinned at 8.8 V). v4:
-
-- **Simulator is explicit opt-in** (Advanced options), shows an amber
-  **SIMULATOR** badge in the header, marks the result detail line
-  "SIMULATED DATA", and tags CSV rows `data_source=simulator`.
-- **No T7 detected** — battery shows `--` and Measure explains to plug in the
-  LabJack instead of running.
-- **Battery/AIN1 wiring fault** — readings outside 3.0-10.5 V (floating input,
-  missing battery clip) show a red "CHECK WIRING" pill, a red banner, and
-  block the Measure button.
-- **Sensor pre-flight** — before capturing, the DC offset must be in the
-  0.05-2.5 V plausible band; otherwise the test aborts with "No sensor
-  detected - seat the sensor in the rig" and nothing is recorded.
-- **PWM sync pre-flight** — a ~0.3 s peek at AIN2 after the PWM starts must
-  see a square wave; otherwise the test aborts naming the DIO0/AIN2 wiring.
-
-Results are logged to `…\v4_emitter\406mca_emitter_lot_<batch>.csv` (v3
-columns + the capture telemetry above). Run it with
-`Run 406MCA Emitter Tester.bat` or:
-
-```powershell
-cd C:\Users\vma\Documents\Eltec406MCATester\tech_app\v4_emitter
-python eltec_406mca_emitter_tester.py
+```
+README.md                    this file — the index
+CHANGELOG.md                 dated history, newest first (one entry per behavioural change)
+CLAUDE.md                    ground rules for AI-assisted sessions
+run_all_tests.py|.cmd|.sh    runs all four test suites, prints a summary
+docs/
+  TECHNICIAN_RUNBOOK.md      operator instructions
+  ENGINEER_HANDOVER.md       engineering manual + open work
+  CALIBRATION_RECORD.md      every limit/factor/gate state with provenance  ← source of truth for numbers
+  DATA_MAP.md                where results & evidence live (outside the repo) + backup routine
+tech_app/eltec_rig/          THE application — selector + one directory per sensor model
+  eltec_rig_tester.py        selector GUI (dropdown → launches the model app)
+  sensor_versions.py         model registry + required firmware
+  attempt_history.py         per-batch attempt log + skipped-parts queue (shared)
+  v1_single_sensor/          vendored signal-math engine (shared, frozen)
+  m405m22/ m406mca/ m449m18/ one qualified tester each: GUI, backend, analysis, tests, launchers, README
+  run_eltec_rig_tester.*     launchers; install_*_launcher.* = optional desktop icon
+Arduino/Eltec/               firmware
+  Eltec.ino                  live sketch (v3.2)        README.md = protocol, flashing, troubleshooting
+  versions/                  frozen copy of every build + which firmware belongs on which rig
+  flash_firmware.py          one-command compile/upload/verify (+ run_flash_firmware.cmd/.sh)
+  esp32_rig_readout.py, live_waveform.py   bench tools
+  ESP32_ADS1256_Wiring_v2_0.md             current wiring (…_legacy_v1_9.md = retired standalone 406 rigs)
+engineer_tools/              replot_noise_capture.py (replay raw noise captures), filter_response_analysis.py
+analysis/
+  405M22_Data/               lot-500 paired-fixture data behind the 4.30 factor
+  reports/                   noise-filtering explainer, historical buffer/SNR write-ups
+assets/eltec_logo.png        logo loaded by the apps
 ```
 
-`Create Desktop Shortcut.ps1` works the same as v3's and names the shortcut
-"Eltec 406MCA Emitter Tester v4".
+Retired applications (LabJack-era v1–v4, ESP32 v5/v6/v6.1, the standalone
+405m22 build, the pre-v2.0 unified app) were removed from the tree on
+2026-08-28 and are preserved at git tag **`archive/pre-cleanup-2026-08-28`**:
+`git show archive/pre-cleanup-2026-08-28:<path>`.
 
----
+## Firmware
 
-## v3 – Emitter Tester (previous, technician-friendly)
+The bench board must run `Arduino/Eltec/Eltec.ino` **v3.2** for all three
+models (it currently runs v3.1; the 405 M22 and 406 MCA modes work on
+v2.1–v3.2, the 449 M18 mode needs v3.2). Flash and verify with one command:
 
-`tech_app/v3_emitter/eltec_406mca_emitter_tester.py` is the step-by-step app for
-the rig where the **LabJack drives the emitter itself** and the sensor is read
-**without the AM502 amplifier**. A unity-gain (voltage-follower) op-amp buffer
-feeds the LabJack a low-impedance signal while preserving the ~0.667 V DC offset
-and the small AC waveform, so the external gain is always `1x`.
-
-### Wiring for this rig
-
-- `AIN0`: buffered sensor signal — carries BOTH the DC offset and the AC signal.
-- `AIN2`: PWM / MOSFET-gate drive, looped back as the polarity/sync reference.
-- `DIO0`: PWM output to the MOSFET gate that switches the emitter. Use a common
-  ground with the emitter supply.
-
-The LabJack generates a 10 Hz PWM (default `DIO0`, 50% duty) to switch the MOSFET
-that drives the emitter. Because the PWM is also wired into `AIN2`, the rising-edge
-polarity check works unchanged. Use the `+/-1 V (x10)` AIN0 range so the ~0.667 V
-offset plus the small AC signal fit with good resolution.
-
-### Guided flow
-
-1. Enter the **batch number**, **tester name**, and **filter/setup**, then press
-   `Enter` (the batch field is focused on launch, so you can type immediately).
-2. **Place the sensor in the rig** and press `Enter`.
-3. The app reads the DC offset (emitter off), turns the PWM emitter on, measures
-   sensitivity and polarity, and shows the offset, sensitivity, and a `GOOD`/`BAD`
-   polarity verdict. The screen turns **green for PASS** or **red for FAIL**.
-   - `Comment` records a note for the sensor.
-   - `Capture waveform` saves a PNG of the AIN0/AIN2 traces under the version's
-     `waveform_snapshots\` folder.
-   - `Show waveform` reveals the live AIN0 + AIN2 traces while it reads.
-4. `Save + Next Sensor` (Enter) auto-increments the sensor number; `Save + Exit
-   Batch` (Esc) saves and shows a batch summary.
-
-Results are logged per batch to
-`…\v3_emitter\406mca_emitter_lot_<batch>.csv` with columns: `timestamp,
-batch_number, sensor_number, sensor_id, tester_name, model, filter_setup,
-pwm_channel, pwm_hz, pwm_duty, offset_v, sensitivity_mv, polarity,
-polarity_good_bad, pass_fail, fail_reasons, operator_comments,
-waveform_snapshot_paths, battery_v, noise_rms_mv, snr_db`.
-
-If no T7 is detected the app drops into simulator mode so the full flow can be
-walked through without hardware.
-
-### Run it / make a desktop icon
-
-```powershell
-cd C:\Users\vma\Documents\Eltec406MCATester\tech_app\v3_emitter
-python eltec_406mca_emitter_tester.py
+```
+python Arduino/Eltec/flash_firmware.py          # --check to only ask what the board runs
 ```
 
-Or double-click `Run 406MCA Emitter Tester.bat`. To put a clickable ELTEC-logo
-icon on the desktop, run once:
+Firmware guide: [Arduino/Eltec/README.md](Arduino/Eltec/README.md). Which
+build belongs on which rig (legacy 406 rigs stay on v1.9):
+[Arduino/Eltec/versions/README.md](Arduino/Eltec/versions/README.md).
 
-```powershell
-cd C:\Users\vma\Documents\Eltec406MCATester\tech_app\v3_emitter
-powershell -ExecutionPolicy Bypass -File ".\Create Desktop Shortcut.ps1"
+## Tests
+
+```
+python run_all_tests.py
 ```
 
-It builds a multi-size `eltec_logo.ico` from `assets\eltec_logo.png` using
-built-in Windows imaging (no Pillow needed) and points the shortcut at it.
-Re-run it if the app folder moves or the logo changes.
+Four `unittest` suites, ~431 tests, no hardware needed. On Windows the 406 MCA
+suite reports two known environment-only cases (they pass on Xubuntu) — see
+the handover doc §7.
 
-The logo loads from `tech_app\v3_emitter\assets\eltec_logo.png` or the shared
-repo-root `assets\eltec_logo.png`; if neither is present a drawn ELTEC logo is used.
+## Where the data is
 
----
+Results, attempt logs, waveform snapshots, raw noise captures and calibration
+files are written **outside this repository** under
+`Documents\Eltec_<model>_Test_Results\`. They are the only copy of the evidence
+behind the production constants — the backup routine is in
+[docs/DATA_MAP.md](docs/DATA_MAP.md).
 
-## v2 – Scope Verification Tester
+## Documentation index
 
-`tech_app/v2_scope_verification/eltec_406mca_scope_verification_tester.py` is the
-guided lot-based app used on the older scope-verification rig. It logs per lot to
-`…\v2_scope_verification\406mca_scope_verification_lot_<lot>.csv`.
+| Document | Audience | Contents |
+| --- | --- | --- |
+| [docs/TECHNICIAN_RUNBOOK.md](docs/TECHNICIAN_RUNBOOK.md) | technician | start, run a batch, read verdicts, troubleshoot |
+| [docs/ENGINEER_HANDOVER.md](docs/ENGINEER_HANDOVER.md) | engineer | architecture, policies, procedures, open work, conventions |
+| [docs/CALIBRATION_RECORD.md](docs/CALIBRATION_RECORD.md) | engineer | constants + provenance + gate states per model |
+| [docs/DATA_MAP.md](docs/DATA_MAP.md) | engineer | results layout, evidence, backup |
+| [tech_app/eltec_rig/README.md](tech_app/eltec_rig/README.md) | engineer | the selector app, launchers, v2.0 skip/attempt features |
+| [m405m22/README.md](tech_app/eltec_rig/m405m22/README.md) · [m406mca/README.md](tech_app/eltec_rig/m406mca/README.md) · [m449m18/README.md](tech_app/eltec_rig/m449m18/README.md) | engineer | per-model test mechanics |
+| [Arduino/Eltec/README.md](Arduino/Eltec/README.md) · [versions/README.md](Arduino/Eltec/versions/README.md) | engineer | firmware, protocol, flashing, version archive |
+| [CHANGELOG.md](CHANGELOG.md) | both | what changed, when, why |
 
-```powershell
-cd C:\Users\vma\Documents\Eltec406MCATester\tech_app\v2_scope_verification
-python eltec_406mca_scope_verification_tester.py
-```
+## Dependencies
 
----
-
-## v1 – Single-Sensor Tester (original, AM502)
-
-`tech_app/v1_single_sensor/eltec_406mca_tester.py` is the first single-sensor
-program, reading the sensor through the AM502 amplifier. It also provides the
-`Distance cm` / `Input voltage V` sweep fields used for the SNR study. It logs to
-`…\v1_single_sensor\406mca_results.csv`.
-
-```powershell
-cd C:\Users\vma\Documents\Eltec406MCATester\tech_app\v1_single_sensor
-python eltec_406mca_tester.py
-```
-
-### Default wiring
-
-- `AIN0`: sensor output or conditioned waveform signal.
-- `AIN2`: blade sync signal.
-
-The procedure uses the rising edge of `AIN2` as the polarity reference. The tester
-does not offer falling-edge polarity testing in the operator UI. Close LabJack
-programs such as LJStreamM or Kipling before using hardware mode — only one process
-can claim the T7 USB connection at a time.
-
----
-
-## Engineer tools
-
-`engineer_tools/eltec_406mca_signal_monitor.py` (CLI) and
-`eltec_406mca_signal_monitor_ui.py` (Tkinter) watch the incoming LabJack signal
-continuously instead of taking one pass/fail snapshot. They record a baseline and
-report whether the current AIN0 waveform has changed enough to confirm the setup is
-responding — useful when bringing up or debugging a new emitter/sensor rig. Both
-reuse the signal math from the v1 tester.
-
-```powershell
-cd C:\Users\vma\Documents\Eltec406MCATester\engineer_tools
-python eltec_406mca_signal_monitor_ui.py          # or: Run 406MCA Signal Monitor UI.bat
-python eltec_406mca_signal_monitor.py --simulator  # CLI, no hardware
-```
-
----
-
-## Analysis
-
-Each analyzer defaults to its version's results subfolder and writes reports into
-an `analysis\` folder there (CSV exports + a self-contained HTML report).
-
-```powershell
-# v4 emitter (current): per-lot yield, offset/sensitivity/SNR stats, failure reasons, outliers
-cd C:\Users\vma\Documents\Eltec406MCATester\analysis\v4_emitter
-python analyze_emitter_results.py                 # or: Run Emitter Analysis.bat
-
-# v3 emitter: same analysis over the v3 results folder
-cd C:\Users\vma\Documents\Eltec406MCATester\analysis\v3_emitter
-python analyze_emitter_results.py                 # or: Run Emitter Analysis.bat
-
-# v2 scope verification: lot summaries, program-vs-operator disagreements, outliers
-cd C:\Users\vma\Documents\Eltec406MCATester\analysis\v2_scope_verification
-python dataAnalysis.py
-python disagreementAnalysis.py
-
-# v1 single-sensor: SNR distance/voltage sweep report (+ Word .docx) and math self-tests
-cd C:\Users\vma\Documents\Eltec406MCATester\analysis\v1_single_sensor
-python analyze_406mca_snr_results.py
-python test_406mca_analysis.py
-```
-
-All analysis scripts use only the Python standard library so they run on the tester
-PC without extra packages. Pass `--results-dir` / `--output-dir` to override the
-defaults.
-
----
-
-## Current 406MCA limits
-
-- Frequency setup: `10 Hz +/- 0.1 Hz`.
-- Offset: `0.3 Vdc` minimum, `1.2 Vdc` maximum.
-- Polarity: positive for a positive change.
-- Sensitivity minimum:
-  - `-3 filter`: `25 mV`
-  - `-27 filter`: `25 mV`
-  - `-266 filter`: `30.9 mV`
-  - `-273 filter + blackened tube`: `2.3 mV`
-  - `-284 filter + extra -6 + blackened tube`: `4.0 mV`
-
-## Measurement notes
-
-The offset is estimated from the average voltage of the `AIN0` waveform during the
-same stable, complete blade-sync cycles used for the sensitivity reading. The
-waveform is expected to be triangular. The program segments the signal by blade-sync
-cycles and watches the cycle peak-to-peak readings until the rolling average is
-stable within 10%, then uses the median peak-to-peak voltage from the stable cycles.
-The signal gain defaults to `1x` for direct sensor readings; if an amplifier is used,
-enter its gain so the program divides the measured waveform before comparing against
-the sensitivity limit.
-
-The LabJack AIN range setting is an input range, not an external gain correction.
-LJM returns calibrated volts, so leave external gain at `1x` when reading the sensor
-directly even if AIN0 is set to the `+/-1 V (x10)` range. During stream, the app
-samples `AIN0` multiple times after the sync channel and keeps the final reading to
-reduce settling error from high-impedance sensor outputs.
-
-Polarity is measured against the rising blade-sync edge. The estimator searches the
-early rising-edge response region for the strongest signed waveform change and
-reports the response phase window and confidence as a percentage of the cycle
-peak-to-peak value.
-
-Noise is estimated from the same stable blade-sync cycles used for sensitivity. The
-app aligns the stable cycles by phase, subtracts the average cycle shape, and reports
-the residual RMS as gain-corrected noise in millivolts. SNR is reported in dB from
-signal RMS divided by noise RMS.
-
-If the measured `AIN0` average is near `0 V`, the waveform output is not carrying the
-detector offset. Check that the waveform output path is DC-coupled and referenced to
-the same ground. Frequency, clipping, and stability issues are shown as warnings; the
-pass/fail decision is based on sensitivity, polarity, offset, and whether the waveform
-stabilized before the capture limit.
-
-## Finding the best input voltage for SNR (v1 sweep study)
-
-Use the same sensor, filter/setup, gain, LabJack range, wiring, emitter drive method,
-and fixture alignment for the whole comparison. For each distance, sweep the same
-voltage points, and enter each run's `Distance cm` and `Input voltage V` so the CSV
-can be grouped later.
-
-1. Choose a safe voltage sweep before starting. Stay within the sensor, emitter,
-   fixture, and LabJack input limits. If the safe range is unknown, start low and
-   increase in small steps.
-2. Pick 5 to 10 voltage points across the range. Smaller steps near the expected best
-   voltage are useful.
-3. Pick the distances to test (such as `45 cm`, `55 cm`, `65 cm`) and use the same
-   voltage list at every distance.
-4. Set the first distance, enter it in `Distance cm`, then run the full voltage sweep.
-5. At each voltage, wait for the fixture and waveform to settle before `Start Test`.
-6. Run at least 3 tests per voltage/distance (5 if readings vary a lot).
-7. Move to the next distance and repeat the same voltage sweep.
-8. Watch for clipping, unstable-waveform, offset, or polarity warnings. Do not treat a
-   voltage as best if it only looks good because the waveform is clipping or unstable.
-9. After the first sweep, repeat the best few combinations in reverse order to catch
-   drift from warm-up, sensor heating, or setup changes.
-10. Compare each combination by average `snr_db` (higher is better); also check
-    `noise_rms_mv`, `sensitivity_mv`, pass/fail, and warnings.
-11. If two settings are within ~1–2 dB, prefer the lower, safer voltage and easier
-    fixture distance unless production requires otherwise.
-
-`analysis/v1_single_sensor/analyze_406mca_snr_results.py` groups these sweep rows and
-writes a console summary, a group-summary CSV, and a Word `.docx` report. Useful
-columns: `distance_cm`, `input_voltage_v`, `sensor_id`, `filter_setup`,
-`sensitivity_mv`, `noise_rms_mv`, `snr_db`, `pass_fail`, `fail_reasons`.
-
-## Safety notes
-
-- Keep the AIN0 signal within the LabJack analog input range.
-- Ensure the fixture, sensor/LabJack input, and sync signal share a valid common
-  ground.
-- If the T7 is claimed by another program, close LJStreamM/Kipling and press
-  `Connect` again.
+Python 3 with `tkinter`, `numpy`, `pyserial`, `matplotlib` (optional, nicer
+snapshots). Xubuntu: `sudo apt install python3 python3-tk python3-numpy
+python3-serial python3-matplotlib`, user in `dialout`. Flashing needs the
+Arduino IDE 2.x installed (its bundled `arduino-cli` is used).
