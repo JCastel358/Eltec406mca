@@ -5,10 +5,10 @@ This build adapts the 406MCA v6.1 ESP32 tester to the Model 405 M22 high-gain
 thermally compensated pyroelectric detector, following document TP412. The
 405 M22's responsivity is specified at 1 Hz, so the emitter chop is 1 Hz / 50%
 (the backend programs PWM,FREQ before every PWM,ON) and every timing constant
-is retimed for 1-second PWM cycles. Sensitivity PASS/FAIL limits are NOT yet
-qualified on this fixture - the sensitivity gate is disabled until a
-comparison batch (~50 sensors measured on the legacy fixture and on this rig
-in the same order) yields the fixture calibration factor. A TP412-style
+is retimed for 1-second PWM cycles. The sensitivity gate is live with the
+lot-500 pairwise fixture calibration (2026-08-17: ~50 sensors measured on the
+legacy fixture and on this rig in the same order, factor 4.30 - see
+docs/CALIBRATION_RECORD.md). A TP412-style
 emitter-off NOISE test runs after the offset gate and BEFORE the driven
 sensitivity capture, so a noisy part is rejected early.
 
@@ -20,7 +20,7 @@ Wiring / power (batteries isolated 2026-08-12 to fix the emitter spike):
     ADS AIN0 = buffered DUT sensor (DC offset + AC waveform), +/-5 V range
     ADS AIN1 = permanently-mounted reference sensor (required emitter-health gate)
     ADS AIN7 = legacy battery divider tap - NOT MONITORED anymore (see below)
-    GPIO25   = PWM output to the MOSFET module
+    GPIO33   = PWM output to the MOSFET module (D25 until 2026-08-25)
     sync     = the ESP32 PWM state included with every streamed sample
     6.5 V battery -> emitters ONLY (via the MOSFET module)
     9 V battery   -> sensors (DUT + AIN1 reference buffer supplies)
@@ -32,16 +32,18 @@ Model 405 M22 notes (Data-Sheet-Model-405 + TP412):
     - Thermal breakpoint is ~0.2 Hz and responsivity is specified at 1 Hz,
       hence the 1 Hz chop. Cycles last a full second: reference readings and
       DUT captures take roughly ten times longer than on the 406MCA build.
-    - TP412 noise: emitter off, a fixed 3 s quiet wait, then a 20 s capture.
-      This build cuts the 20 s capture into 1 s windows and fails the part
-      when more than 20% of the windows exceed the pk-pk limit (deliberately
-      looser than TP412's zero-tolerance largest-excursion rule; the sensors
-      are extremely sensitive and a few excursions are acceptable). TP412's
-      300 mV was read behind the legacy x4000 bench amplifier, so the
-      pin-level limit is 75 uV pk-pk, gated on a band-limited (anti-alias
-      FIR, 1000 -> 50 SPS) trace - see the NOISE_* constants. Provisional until
-      the comparison batch qualifies it. There is no settle detection: with
-      the emitter off there is no signal to stabilize, only noise.
+    - TP412 noise: emitter off, an adaptive 3-20 s quiet wait, then a 20 s
+      capture (60 s soak on request). This build cuts the capture into 1 s
+      windows and fails the part when more than 15% of the windows exceed
+      the pk-pk limit (deliberately looser than TP412's zero-tolerance
+      largest-excursion rule; the sensors are extremely sensitive and a few
+      excursions are acceptable). TP412's 300 mV was read behind the legacy
+      bench amplifier whose EFFECTIVE gain measured ~700x (not the nominal
+      x4000), so the pin-level limit is ~429 uV pk-pk, gated on a
+      band-limited (anti-alias FIR, 1000 -> 50 SPS) trace - see the NOISE_*
+      constants and docs/CALIBRATION_RECORD.md. There is no settle
+      detection: with the emitter off there is no signal to stabilize, only
+      noise.
     - The AIN1 reference sensor baseline must be calibrated by THIS build at
       1 Hz; 406MCA baselines (10 Hz chop) are deliberately not read, and any
       baseline recorded before firmware v2.0 is rejected by schema version.
@@ -263,7 +265,7 @@ OUTCOME_NOT_MEASURED = "NOT MEASURED"
 # the emitter at that model's qualified 10 Hz instead — its baseline is then
 # directly comparable to the sensor's historical 10 Hz characterization, and
 # the ~10x shorter reference captures also reduce serial-stream exposure.
-EMITTER_PWM_CHANNEL = "GPIO25"
+EMITTER_PWM_CHANNEL = "GPIO33"  # D25 until 2026-08-25; the backend sends PIN,33
 EMITTER_PWM_FREQUENCY_HZ = 1.0
 REFERENCE_PWM_FREQUENCY_HZ = 10.0
 EMITTER_PWM_DUTY_CYCLE = 50.0

@@ -17,8 +17,11 @@ Adding a new sensor version later
 3. If the model needs new firmware behavior (another PWM frequency, another
    ADS1256 front end, a new channel), extend ``Arduino/Eltec/Eltec.ino`` with
    a runtime command the app sends after connect - do NOT fork the firmware:
-   the whole point of the v3.0 baseline is that ONE build serves every model
-   (the 405 M22 uses the boot defaults; the 406 MCA sends ``FE,V19``).
+   the whole point of the unified v3.x baseline is that ONE build serves
+   every model (the 405 M22 uses the boot defaults; the 406 MCA sends
+   ``FE,V19``; the 449 M18 sends ``PWM,DUTY``). Bump ``REQUIRED_FIRMWARE``
+   below and the model's ``MINIMUM_FIRMWARE_VERSION`` when a new command is
+   required.
 """
 
 from __future__ import annotations

@@ -13,7 +13,8 @@ but the hardware backend is the ESP32 + ADS1256 rig used on Xubuntu:
       look), with a clean monospace face for technical readouts
 
 This app drives the test rig itself: the ESP32 generates a 10 Hz / 50% PWM
-signal on GPIO25 that switches a MOSFET module to drive the black-body emitter.
+signal on GPIO33 (D25 until 2026-08-25) that switches a MOSFET module to drive
+the black-body emitter.
 An ADS1256 reads the 406MCA through a unity-gain voltage-follower buffer,
 preserving the ~0.667 V DC offset and the small AC waveform.
 
@@ -22,7 +23,7 @@ Wiring:
     ADS AIN1 = permanently-mounted reference sensor (required emitter-health gate)
     ADS AIN7 = 6 V SLA battery through the measured 99.7k/99.6k divider
                with 100 nF filtering across the lower resistor
-    GPIO25   = PWM output to the MOSFET module
+    GPIO33   = PWM output to the MOSFET module (D25 until 2026-08-25)
     sync     = the ESP32 PWM state included with every streamed sample
 
 The emitter is always driven with a fixed 50% duty-cycle square wave, so the
@@ -163,7 +164,7 @@ OUTCOME_PASS = "PASS"
 OUTCOME_FAIL = "FAIL"
 
 # Fixed ESP32 rig settings. Technicians never change these in production.
-EMITTER_PWM_CHANNEL = "GPIO25"
+EMITTER_PWM_CHANNEL = "GPIO33"  # D25 until 2026-08-25; the backend sends PIN,33
 EMITTER_PWM_FREQUENCY_HZ = DEFAULT_EMITTER_PWM_FREQUENCY_HZ
 EMITTER_PWM_DUTY_CYCLE = 50.0
 WAVEFORM_INPUT_RANGE_V = 2.5  # ADS1256 PGA x2 with 2.5 V reference => +/-2.5 V

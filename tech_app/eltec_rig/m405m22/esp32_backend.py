@@ -1136,13 +1136,15 @@ class Esp32Rig:
         frequency_hz: float,
         duty_cycle_percent: float,
     ) -> None:
-        accepted_channels = {None, 25, "25", "GPIO25", "D25", "DIO0", "FIO0"}
+        accepted_channels = {
+            None, 25, "25", "GPIO25", "D25", 33, "33", "GPIO33", "D33", "DIO0", "FIO0",
+        }
         normalized: str | int | None = channel
         if isinstance(channel, str):
             normalized = channel.strip().upper()
         if normalized not in accepted_channels:
             raise ValueError(
-                "The ESP32 rig has a fixed emitter output on GPIO25 "
+                f"The ESP32 rig has a fixed emitter output on GPIO{PWM_GPIO} "
                 "(the GUI's legacy DIO0 name is also accepted)."
             )
         allowed_frequencies = (PWM_FREQUENCY_HZ, REFERENCE_PWM_FREQUENCY_HZ)
@@ -1166,7 +1168,7 @@ class Esp32Rig:
         frequency_hz: float = PWM_FREQUENCY_HZ,
         duty_cycle_percent: float = PWM_DUTY_CYCLE_PERCENT,
     ) -> float:
-        """Select GPIO25 and enable the 50% drive at a qualified frequency.
+        """Select the gate pin (PWM_GPIO) and enable the 50% drive at a qualified frequency.
 
         1 Hz (default) drives the 405 M22 DUT per TP412; 10 Hz drives the
         permanently mounted 406MCA reference unit at its qualified frequency.

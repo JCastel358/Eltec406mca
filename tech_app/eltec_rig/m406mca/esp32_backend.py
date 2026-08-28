@@ -855,13 +855,15 @@ class Esp32Rig:
         frequency_hz: float,
         duty_cycle_percent: float,
     ) -> None:
-        accepted_channels = {None, 25, "25", "GPIO25", "D25", "DIO0", "FIO0"}
+        accepted_channels = {
+            None, 25, "25", "GPIO25", "D25", 33, "33", "GPIO33", "D33", "DIO0", "FIO0",
+        }
         normalized: str | int | None = channel
         if isinstance(channel, str):
             normalized = channel.strip().upper()
         if normalized not in accepted_channels:
             raise ValueError(
-                "The ESP32 rig has a fixed emitter output on GPIO25 "
+                f"The ESP32 rig has a fixed emitter output on GPIO{PWM_GPIO} "
                 "(the GUI's legacy DIO0 name is also accepted)."
             )
         if not math.isclose(float(frequency_hz), PWM_FREQUENCY_HZ, abs_tol=1e-6):
@@ -877,7 +879,7 @@ class Esp32Rig:
         frequency_hz: float = PWM_FREQUENCY_HZ,
         duty_cycle_percent: float = PWM_DUTY_CYCLE_PERCENT,
     ) -> float:
-        """Select GPIO25 and enable the fixed 10 Hz / 50% emitter drive."""
+        """Select the gate pin (PWM_GPIO) and enable the fixed 10 Hz / 50% emitter drive."""
 
         self._validate_fixed_pwm(channel, frequency_hz, duty_cycle_percent)
         self._command(f"PIN,{PWM_GPIO}", f"OK,PIN,{PWM_GPIO}")

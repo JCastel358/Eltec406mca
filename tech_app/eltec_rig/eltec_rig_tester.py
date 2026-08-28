@@ -13,8 +13,10 @@ They are launched as independent subprocesses so a crash in one model's app
 can never corrupt another's, and so this selector stays trivially small.
 
 Firmware: the shared bench board runs the unified ``Arduino/Eltec/Eltec.ino``
-v3.0 baseline. Model-specific needs are selected at runtime over serial by
-each app (PWM frequency via ``PWM,FREQ``; ADS1256 front end via ``FE,...``).
+v3.x baseline (``sensor_versions.REQUIRED_FIRMWARE`` names the exact build).
+Model-specific needs are selected at runtime over serial by each app (PWM
+frequency and duty via ``PWM,FREQ`` / ``PWM,DUTY``; ADS1256 front end via
+``FE,...``; gate pin via ``PIN,<n>``).
 
 Runs on Windows and Xubuntu. Launchers/installers:
     run_eltec_rig_tester.cmd / run_eltec_rig_tester.sh
