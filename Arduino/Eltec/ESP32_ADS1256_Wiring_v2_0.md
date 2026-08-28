@@ -5,7 +5,8 @@ This is the wiring reference for the 405 M22 fixture running firmware
 the TP412 0.8-3.0 V offset band reads linearly). Rigs running the 406MCA
 v6/v6.1 applications stay on firmware v1.9 and the older
 `ESP32_ADS1256_Wiring_v1_7.md`. The historical `ESP32_ADS1256_Wiring.docx`
-(9 V/AIN1/bare-MOSFET arrangement) must not be used.
+(9 V/AIN1/bare-MOSFET arrangement) must not be used; it was removed from the
+repository on 2026-08-28 and is preserved at git tag `archive/pre-cleanup-2026-08-28`.
 
 ## Power (batteries isolated 2026-08-12 — this fixed the emitter spike)
 

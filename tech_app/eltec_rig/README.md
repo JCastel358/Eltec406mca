@@ -2,10 +2,12 @@
 
 **v2.0 (2026-08-24) — Skip part, footer Re-measure, attempt history.** Every
 older app (`405m22_esp32`, `v6_1_esp32`, `v6_esp32`, `v5_esp32`, the v1–v4
-LabJack apps, `v6_1_failure_calibration`) now lives in
-[`tech_app/deprecated/`](../deprecated/), together with a frozen snapshot of
-this app as it was before v2.0 (`deprecated/eltec_rig_v1/`). See
-[What changed in v2.0](#what-changed-in-v20) below.
+LabJack apps, `v6_1_failure_calibration`) and a frozen snapshot of this app
+as it was before v2.0 (`eltec_rig_v1`) were removed from the working tree on
+2026-08-28; they are preserved in full at git tag
+`archive/pre-cleanup-2026-08-28`
+(`git show archive/pre-cleanup-2026-08-28:tech_app/deprecated/<app>/<file>`).
+See [What changed in v2.0](#what-changed-in-v20) below.
 
 One desktop application for every sensor model the ESP32/ADS1256 rig can
 test. It opens **maximized** and shows a **sensor version dropdown**; picking a
@@ -256,11 +258,12 @@ the v3.0 baseline cannot already select over serial.
 ## History
 
 Created 2026-08-18 by unifying `tech_app/405m22_esp32` and
-`tech_app/v6_1_esp32` behind one selector. Those original directories remain
-in the repository untouched as the qualified standalone builds (moved to
-`tech_app/deprecated/` with v2.0 on 2026-08-24, contents unchanged); new work
-on either model happens **here**. The changes made to the bundled copies relative
-to the originals:
+`tech_app/v6_1_esp32` behind one selector. Those original directories were
+kept untouched as the qualified standalone builds (moved to
+`tech_app/deprecated/` with v2.0 on 2026-08-24) until 2026-08-28, when the
+whole deprecated tree was removed from the working tree — it is preserved at
+git tag `archive/pre-cleanup-2026-08-28`. New work on every model happens
+**here**. The changes made to the bundled copies relative to the originals:
 
 - `m406mca/esp32_backend.py`: selects the qualified front end (`FE,V19` +
   `FE?` verification) on firmware ≥ v2.1.

@@ -42,7 +42,8 @@ from sensor_versions import (
 
 APP_TITLE = "Eltec Test Rig"
 # 2.0 (2026-08-24): Skip part / Measure skipped queue, footer re-measure,
-# per-batch attempt history. Older standalone apps live in tech_app/deprecated.
+# per-batch attempt history. The retired standalone apps are preserved at git
+# tag archive/pre-cleanup-2026-08-28.
 APP_VERSION = "2.0"
 STATE_DIR_NAME = "eltec-rig"
 STATE_FILE_NAME = "state.json"

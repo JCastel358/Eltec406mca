@@ -32,8 +32,9 @@ Arduino IDE and `arduino-cli` can open/compile it directly with no renaming.
   path needs the `FE,...` commands, so v2.0 and older are not enough). The app's 405 M22 mode uses the boot-default gain-1 unbuffered
   front end; its 406MCA mode sends `FE,V19` after every connect to restore
   the gain-2 buffered front end that model was qualified on.
-- **Legacy standalone 406MCA rigs running `tech_app/deprecated/v6_esp32` or
-  `tech_app/deprecated/v6_1_esp32`: v1.9.** Those apps never send `FE` commands, so on a
+- **Legacy standalone 406MCA rigs running the retired `v6_esp32` or
+  `v6_1_esp32` apps (git tag `archive/pre-cleanup-2026-08-28`): v1.9.** Those
+  apps never send `FE` commands, so on a
   v2.x/v3.x board they would measure on the wrong front end; v2.0 also halves
   the ADC resolution (LSB 298 nV -> 596 nV) and changes the noise floor.
 - **IR telescope: v2.2**, now maintained in the separate
@@ -42,8 +43,9 @@ Arduino IDE and `arduino-cli` can open/compile it directly with no renaming.
   otherwise identical to v2.1/v3.0, so the same board can run the 405 M22
   app without reflashing — but 406MCA testing on v2.2 still requires an app
   that sends `FE,V19` (i.e. the unified app, not legacy v6/v6.1).
-- **Legacy standalone 405 M22 rig running `tech_app/deprecated/405m22_esp32`: v2.0
-  through v3.0.** That app refuses to talk to a v1.9 board — the TP412 offset
+- **Legacy standalone 405 M22 rig running the retired `405m22_esp32` app (git
+  tag `archive/pre-cleanup-2026-08-28`): v2.0 through v3.0.** That app refuses
+  to talk to a v1.9 board — the TP412 offset
   band goes to 3.0 V and the old buffered input hard-clipped at 2.5 V. It
   never sends `FE` commands, and opening the port resets the board to the
   v2.0 front end, so every v2.x/v3.x build behaves identically for it.

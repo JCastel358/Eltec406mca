@@ -1,8 +1,9 @@
 # Eltec ESP32 + ADS1256 wiring (firmware v1.7)
 
 This is the current wiring reference for the 6 V SLA/Xubuntu rig. The older
-`ESP32_ADS1256_Wiring.docx` describes the historical 9 V/AIN1/bare-MOSFET
-arrangement and must not be used to wire this version.
+`ESP32_ADS1256_Wiring.docx` described the historical 9 V/AIN1/bare-MOSFET
+arrangement, must not be used to wire this version, and was removed from the
+repository on 2026-08-28 (preserved at git tag `archive/pre-cleanup-2026-08-28`).
 
 ## ESP32 to ADS1256
 
