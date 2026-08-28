@@ -53,19 +53,8 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v3.2
-                        (v3.2 = runtime-selectable emitter duty cycle via
-                         PWM,DUTY,<percent> (1-99 %, boot default 50 %) plus
-                         pwm_duty=<%> in STATUS?. Added for the 449 M18
-                         frequency-tracking test (TP443), whose legacy
-                         fixture chops the source with a 20/80 blade: the
-                         unified app drives 5 Hz and 18 Hz at 20 % duty for
-                         that model. Every other model keeps the 50 %
-                         default because PWM,DUTY is never sent for them and
-                         a port open resets the board. Purely additive -
-                         PWM,ON/OFF/FREQ behave exactly as in v3.1 at the
-                         default duty.
-                         v3.1 = emitter gate moved from D25 to D33
+    IDN?             -> ELTEC-ESP32-ADS1256,v3.1
+                        (v3.1 = emitter gate moved from D25 to D33
                          (GPIO33). Boot default only - everything else is
                          identical to v3.0, and PIN,<n> still retargets at
                          runtime, so a board wired to D25 works on v3.1 by
@@ -127,7 +116,7 @@
     PIN,<n>          -> OK,PIN,<n>       (retarget gate pin at runtime;
                                           allowed: 2/12/13/14/25/26/27/32/33;
                                           2 = onboard LED, visual gate test)
-    STATUS?          -> STATUS,pwm=<0|1>,streaming=<0|1>,vref=<V>,rate=<SPS>,pwm_hz=<Hz>,pwm_duty=<%>
+    STATUS?          -> STATUS,pwm=<0|1>,streaming=<0|1>,vref=<V>,rate=<SPS>,pwm_hz=<Hz>
     FE?              -> FE,gain=<1|2>,buf=<0|1>,fs=<V>
                         (current sensor front end; fs = full-scale volts)
     FE,V20           -> OK,FE,gain=1,buf=0  (gain 1, buffer OFF - the v2.0
@@ -149,19 +138,11 @@
                                           current frequency; 10 Hz unless
                                           changed with PWM,FREQ)
     PWM,OFF          -> OK,PWM,OFF
-    PWM,FREQ,<hz>    -> OK,PWM,FREQ,<hz> (set drive frequency, 0.1-20 Hz, at
-                                          the current duty cycle. Takes effect
-                                          immediately; if the PWM is running
-                                          its phase is restarted. Not
-                                          persisted - boots back to 10 Hz.)
-    PWM,DUTY,<pct>   -> OK,PWM,DUTY,<pct> (v3.2: set the ON fraction of each
-                                          period, 1-99 %. Same immediate
-                                          effect/phase restart as PWM,FREQ.
-                                          Not persisted - boots back to 50 %.
-                                          The sync bit streamed with every
-                                          sample follows the actual ON/OFF
-                                          state, so a 20 % drive shows a
-                                          20 % high sync.)
+    PWM,FREQ,<hz>    -> OK,PWM,FREQ,<hz> (set drive frequency, 0.1-20 Hz,
+                                          50% duty. Takes effect immediately;
+                                          if the PWM is running its phase is
+                                          restarted. Not persisted - boots
+                                          back to 10 Hz.)
     GATE,ON          -> OK,GATE,ON      (hold gate steady HIGH - bring-up/debug)
     GATE,OFF         -> OK,GATE,OFF
     GATE?            -> GATE,pin=<n>,drive=<0|1>,read=<0|1>
@@ -221,12 +202,6 @@ static int pinGate = 33;
 static const float PWM_DEFAULT_FREQUENCY_HZ = 10.0f;  // DEFAULT_EMITTER_PWM_FREQUENCY_HZ
 static const float PWM_MIN_FREQUENCY_HZ = 0.1f;
 static const float PWM_MAX_FREQUENCY_HZ = 20.0f;
-// v3.2: duty cycle (ON fraction of each period). Boot default 50 % - the
-// historical fixed drive. Changeable at runtime with PWM,DUTY,<pct> (the 449
-// M18 test uses 20 % to mimic its legacy fixture's 20/80 chopper blade).
-static const float PWM_DEFAULT_DUTY_PERCENT = 50.0f;
-static const float PWM_MIN_DUTY_PERCENT = 1.0f;
-static const float PWM_MAX_DUTY_PERCENT = 99.0f;
 static const float SAMPLE_RATE_HZ = 1000.0f;   // DEFAULT_SAMPLE_RATE_HZ
 static const int OFFSET_READ_SAMPLES = 24;     // OFFSET_READ_SAMPLES
 static const int OFFSET_READ_DELAY_MS = 3;     // OFFSET_READ_DELAY_S
@@ -273,12 +248,9 @@ static bool pwmOn = false;
 static bool pwmLevel = false;
 static uint32_t pwmNextToggleUs = 0;
 static float pwmFrequencyHz = PWM_DEFAULT_FREQUENCY_HZ;
-static float pwmDutyPercent = PWM_DEFAULT_DUTY_PERCENT;
-// ON and OFF durations of one period in us, derived from frequency and duty
-// (50 ms / 50 ms at 10 Hz 50 %; 40 ms / 160 ms at 5 Hz 20 %). Recomputed by
-// pwmRecomputeTimings() whenever either setting changes.
-static uint32_t pwmOnUs = (uint32_t)(500000.0f / PWM_DEFAULT_FREQUENCY_HZ);
-static uint32_t pwmOffUs = (uint32_t)(500000.0f / PWM_DEFAULT_FREQUENCY_HZ);
+// 50% duty: half period in us (50 ms at 10 Hz, 500 ms at 1 Hz).
+static uint32_t pwmHalfPeriodUs =
+    (uint32_t)(500000.0f / PWM_DEFAULT_FREQUENCY_HZ);
 
 static volatile bool streaming = false;
 static uint32_t streamCount = 0;
@@ -472,54 +444,31 @@ static void gateAttach(int pin) {
   gateWrite(false);
 }
 
-// Software-timed rectangular wave: the loop() turnaround (<<1 ms) gives far
-// less than 1% period jitter at any allowed frequency (0.1-20 Hz), and the
-// drive level doubles as the sync bit. Each period is ON for pwmOnUs, then
-// OFF for pwmOffUs (equal halves at the 50 % boot default).
+// Software-timed square wave: the loop() turnaround (<<1 ms) gives far less
+// than 1% period jitter at any allowed frequency (0.1-20 Hz), and the drive
+// level doubles as the sync bit.
 static void pwmService() {
   if (!pwmOn) return;
   uint32_t now = micros();
   if ((int32_t)(now - pwmNextToggleUs) >= 0) {
     pwmLevel = !pwmLevel;
     gateWrite(pwmLevel);
-    // The level just written decides how long it is held.
-    pwmNextToggleUs += pwmLevel ? pwmOnUs : pwmOffUs;
+    pwmNextToggleUs += pwmHalfPeriodUs;
   }
 }
 
-// Every drive starts LOW and goes HIGH after one OFF interval, so the first
-// rising sync edge is a clean cycle boundary regardless of duty.
 static void pwmSet(bool on) {
   pwmOn = on;
   pwmLevel = false;
   gateWrite(false);
-  if (on) pwmNextToggleUs = micros() + pwmOffUs;
-}
-
-// Derive the ON/OFF durations from frequency + duty. Both are clamped to at
-// least 1 us so a rounding edge case can never produce a zero-length phase
-// (which would make pwmService toggle twice in one loop turn).
-static void pwmRecomputeTimings() {
-  float periodUs = 1000000.0f / pwmFrequencyHz;
-  float onUs = periodUs * (pwmDutyPercent / 100.0f);
-  if (onUs < 1.0f) onUs = 1.0f;
-  if (onUs > periodUs - 1.0f) onUs = periodUs - 1.0f;
-  pwmOnUs = (uint32_t)onUs;
-  pwmOffUs = (uint32_t)(periodUs - onUs);
+  if (on) pwmNextToggleUs = micros() + pwmHalfPeriodUs;
 }
 
 // Change the drive frequency. If the PWM is running, restart its phase so the
-// first full cycle after the change is clean (no torn period).
+// first full cycle after the change is clean (no torn half-period).
 static void pwmSetFrequency(float hz) {
   pwmFrequencyHz = hz;
-  pwmRecomputeTimings();
-  if (pwmOn) pwmSet(true);
-}
-
-// v3.2: change the duty cycle (ON fraction). Same phase restart as above.
-static void pwmSetDuty(float percent) {
-  pwmDutyPercent = percent;
-  pwmRecomputeTimings();
+  pwmHalfPeriodUs = (uint32_t)(500000.0f / hz);
   if (pwmOn) pwmSet(true);
 }
 
@@ -537,12 +486,12 @@ static void IRAM_ATTR onAdsDrdyFalling() {
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v3.2");
+    Serial.println("ELTEC-ESP32-ADS1256,v3.1");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
-    Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f,pwm_duty=%.1f\n",
+    Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f\n",
                   pwmOn ? 1 : 0, streaming ? 1 : 0, ADS_VREF,
-                  (int)SAMPLE_RATE_HZ, pwmFrequencyHz, pwmDutyPercent);
+                  (int)SAMPLE_RATE_HZ, pwmFrequencyHz);
 
   // FE? / FE,...: v2.1 runtime front-end selection (A/B noise comparison
   // between the v1.9 and v2.0 qualified configurations - see header).
@@ -606,18 +555,6 @@ static void handleCommand(char *cmd) {
     } else {
       pwmSetFrequency(hz);
       Serial.printf("OK,PWM,FREQ,%.3f\n", hz);
-    }
-
-  // PWM,DUTY,<pct>: v3.2 runtime ON fraction (449 M18 = 20 %, everything
-  // else stays at the 50 % boot default). Not persisted.
-  } else if (strncmp(cmd, "PWM,DUTY,", 9) == 0) {
-    float pct = atof(cmd + 9);
-    if (!(pct >= PWM_MIN_DUTY_PERCENT && pct <= PWM_MAX_DUTY_PERCENT)) {
-      Serial.printf("ERR,duty %.1f out of range (%.0f-%.0f %%)\n",
-                    pct, PWM_MIN_DUTY_PERCENT, PWM_MAX_DUTY_PERCENT);
-    } else {
-      pwmSetDuty(pct);
-      Serial.printf("OK,PWM,DUTY,%.1f\n", pct);
     }
 
   // Hardware bring-up helpers: hold the emitter gate steady so the drive path

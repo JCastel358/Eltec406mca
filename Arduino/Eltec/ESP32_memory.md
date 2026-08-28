@@ -66,7 +66,8 @@ in `tech_app/v5_esp32`.
 - ⚠ **AIN1 reference sensor is still floating/not wired.** `REF?` and the CLI
   reference-emitter-health workflow remain unusable until it is connected and a
   6 V baseline is recorded. The v5 production GUI does not require AIN1.
-- ✅ GPIO25 remains the confirmed emitter-gate pin. Opening or closing the CP210x
+- ✅ GPIO33 is the emitter-gate pin (moved from GPIO25 on 2026-08-25, firmware
+  v3.1; `PIN,<n>` still retargets at runtime). Opening or closing the CP210x
   serial port resets the board, so the CLI's `gate on`/`pwm on` commands keep the
   port open while a manual observation is made.
 
@@ -119,14 +120,16 @@ in `tech_app/v5_esp32`.
   Fresh ~6.4 V → ~3.2 V at AIN7. ⚠ Emitter runs dimmer at 6 V than 9 V, so
   sensitivity numbers are NOT comparable with 9 V-era (LabJack) measurements —
   reference baseline and any healthy bands must be established at 6 V.
-- **D25 (GPIO25)** → PWM/TRIG input of a **dual-MOSFET driver module** ("Dual
+- **D33 (GPIO33)** → PWM/TRIG input of a **dual-MOSFET driver module** ("Dual
   High-Power MOSFET Trigger Switch Drive Module", DC 5–36 V, 15 A, trigger accepts
   3.3–20 V logic), **direct wire — no series resistor** (the module has onboard
   input conditioning; the 100 Ω/10 kΩ from the original bare-MOSFET plan are not
   used). Module DC+/DC− ← 6 V battery, OUT± → emitter, trigger GND common with
   ESP32 GND. (History: the plan said D25; a 2026-07-09 note claimed the perf
-  board was soldered to D26 — that was wrong. It is on **D25**, confirmed
-  2026-07-13; firmware + docs re-aligned.)
+  board was soldered to D26 — that was wrong at the time, and it ran on **D25**
+  from 2026-07-13. The gate was deliberately moved to **D33** on 2026-08-25
+  with firmware v3.1; the troubleshooting notes further down still describe the
+  D25 era.)
   **Trigger input internals** (ProtoSupplies teardown of this module family:
   two paralleled AOD4184A FETs, no optocoupler): TRIG → 100 Ω series → both
   gates, with a 10 kΩ pulldown and an indicator LED + 1.8 kΩ on the trigger
@@ -176,7 +179,7 @@ in `tech_app/v5_esp32`.
 - **Boot heartbeat:** repeats `READY,...` (or `ERR,...`) every 2 s until the first
   command arrives, then goes quiet. This was added because the original one-shot
   banner was missed by a late-attaching serial monitor (looked dead but wasn't).
-- PWM: software-timed 10 Hz / 50% on D25 via `micros()` in `loop()`. Drive level
+- PWM: software-timed 10 Hz / 50% on D33 via `micros()` in `loop()`. Drive level
   doubles as the sync bit.
 - ADS1256: streams one channel at **1000 SPS** (chip's own clock, `DRATE=0xA1`) —
   AIN0 (DUT) by default, AIN1 (reference) via `STREAM,START,REF`. Mux constants:
@@ -218,6 +221,8 @@ in `tech_app/v5_esp32`.
 | `IDN?` | `ELTEC-ESP32-ADS1256,v1.7` |
 | `STATUS?` | `STATUS,pwm=<0\|1>,streaming=<0\|1>,vref=<V>,rate=<SPS>` |
 | `PWM,ON` / `PWM,OFF` | `OK,PWM,ON` / `OK,PWM,OFF` |
+| `PWM,FREQ,<hz>` | **v1.9+.** `OK,PWM,FREQ,<hz>` — drive frequency 0.1–20 Hz, immediate (phase restarts if running), not persisted (boots 10 Hz). `STATUS?` gains `pwm_hz=`. |
+| `PWM,DUTY,<pct>` | **v3.2+.** `OK,PWM,DUTY,<pct>` — ON fraction 1–99 %, same immediate effect, not persisted (boots 50 %). `STATUS?` gains `pwm_duty=`. Added for the 449 M18 TP443 test (5 Hz and 18 Hz at 20 % = the legacy fixture's 20/80 blade); no other host sends it. |
 | `GATE,ON` / `GATE,OFF` | hold the gate steady HIGH/LOW (bring-up/debug) |
 | `GATE?` | `GATE,pin=<n>,drive=<0\|1>,read=<0\|1>` — pad readback; drive=1/read=0 ⇒ pin held low externally (short/overload/blown driver) |
 | `PIN,<n>` | `OK,PIN,<n>` — retarget gate pin at runtime (2/12/13/14/25/26/27/32/33; 2 = onboard blue LED for visual tests), not persisted |

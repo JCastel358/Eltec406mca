@@ -19,12 +19,17 @@ Arduino IDE and `arduino-cli` can open/compile it directly with no renaming.
 | `Eltec_v2_1` | `...,v2.1` | working tree, 2026-08-12 | **PGA 1, buffer OFF at boot; runtime-switchable** | Adds `FE,V19`/`FE,V20`/`FE,GAIN`/`FE,BUF`/`FE?` so the v1.9 and v2.0 front ends can be A/B-compared (noise) without reflashing. Boots identical to v2.0; every reset (incl. port open) reverts to v2.0 behavior. |
 | `Eltec_v2_2` | `...,v2.2` | working tree, 2026-08-17 | same as v2.1 | Adds `STREAM,START,BOTH`: AIN0+AIN1 interleaved by mux cycling, `P,<t0>,<v0>,<t1>,<v1>,<sync>` lines at **379 SPS per channel measured** (424 nominal). For the two-detector IR telescope, which now lives in its own workspace (`C:\Users\JoseCastelblanco\Documents\Eltec_IR_Telescope` — that workspace carries its own copy of this sketch). Purely additive — single-channel streaming is byte-identical, so it is a drop-in replacement for v2.1. **Flashed and verified on the bench rig 2026-08-17.** Reads each conversion before touching the mux; see the mux-cycling warning in `ESP32_memory.md` before changing that order. |
 | `Eltec_v3_0` | `...,v3.0` | working tree, 2026-08-18 | same as v2.1 | **The unified test-rig baseline** — the firmware for `tech_app/eltec_rig` (one app, sensor version chosen in a dropdown). Functionally identical to v2.1: single-channel streaming, `PWM,FREQ`, runtime `FE,...` front-end switch; the telescope's dual-channel code is NOT in it. 405 M22 testing uses the boot-default v2.0 front end; 406MCA testing sends `FE,V19` after connect to restore the qualified gain-2 buffered front end. |
+| `Eltec_v3_1` | `...,v3.1` | working tree, 2026-08-25 | same as v2.1 | v3.0 with the emitter gate moved from **D25 to D33** (`pinGate = 33`); the perf-board wire moved with it. Nothing else changed — `PIN,<n>` still retargets at runtime, so a board still wired to D25 runs this build if the host sends `PIN,25`. The unified app sends `PIN,33`. |
+| `Eltec_v3_2` | `...,v3.2` | working tree, 2026-08-26 | same as v2.1 | **Current rig baseline.** v3.1 plus a runtime **duty cycle**: `PWM,DUTY,<pct>` (1–99 %, boot default 50 %) and `pwm_duty=<%>` in `STATUS?`. Added for the **449 M18 frequency-tracking test (TP443)**, whose legacy fixture chops with a 20/80 blade — the unified app's 449 M18 mode drives 5 Hz and 18 Hz at 20 % duty. Purely additive: nothing is sent for the other models, and a port open resets the board to 50 %, so 405 M22 / 406MCA behaviour is byte-identical to v3.1. Compiled 2026-08-26 (290 KB); **not yet flashed/verified on the bench**. |
 
 ## Which firmware belongs on which rig
 
-- **The unified test rig running `tech_app/eltec_rig`: v3.0** (v2.1/v2.2 also
-  work — the 406MCA path needs the `FE,...` commands, so v2.0 and older are
-  not enough). The app's 405 M22 mode uses the boot-default gain-1 unbuffered
+- **The unified test rig running `tech_app/eltec_rig`: v3.2** (required by the
+  449 M18 mode for `PWM,DUTY`; the 405 M22 and 406MCA modes also run on v3.1 —
+  the emitter gate
+  is on **D33** from 2026-08-25 — v3.0/v2.1/v2.2 also work because the app
+  sends `PIN,33` itself after connect, but they boot driving D25; the 406MCA
+  path needs the `FE,...` commands, so v2.0 and older are not enough). The app's 405 M22 mode uses the boot-default gain-1 unbuffered
   front end; its 406MCA mode sends `FE,V19` after every connect to restore
   the gain-2 buffered front end that model was qualified on.
 - **Legacy standalone 406MCA rigs running `tech_app/deprecated/v6_esp32` or
@@ -74,8 +79,14 @@ v1.9; the code is byte-equivalent to v1.8 + the PWM,FREQ feature.
 
 Board: **DOIT ESP32 DEVKIT V1** (`esp32:esp32:esp32doit-devkit-v1`).
 
+Easiest: `python3 Arduino/Eltec/flash_firmware.py --sketch versions/Eltec_v1_9`
+(add `--list` to see the ports, `--check` to ask a board what it is running).
+It finds `arduino-cli` and the port itself and confirms `IDN?` afterwards.
+
 Arduino IDE: `File > Open` the folder's `.ino`, pick the board, pick the port,
-upload.
+upload. Note the board is a plain CP210x, so the IDE cannot identify it - the
+port shows with no board name and **Tools > Board > esp32 > DOIT ESP32 DEVKIT
+V1** has to be picked by hand.
 
 `arduino-cli` (the Arduino IDE 2.x bundle ships one — on this Windows host it
 is at `%LOCALAPPDATA%\Programs\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe`):

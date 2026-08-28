@@ -49,12 +49,14 @@ Firmware target: `esp32:esp32:esp32doit-devkit-v1`.
 | Buffered DUT 405 M22 output | ADS1256 AIN0, ground beside AIN0 | Offset, driven waveform, and emitter-off noise; PGA x1 (±5 V), buffer off |
 | Fixed reference sensor | ADS1256 AIN1, ground beside AIN1 | `REF?` and `STREAM,START,REF`, PGA x1 |
 | (legacy) 99.7k/99.6k divider tap | ADS1256 AIN7 | `BAT?` still answers but is inaccurate and unused on this fixture |
-| ESP32 D25 | Dual-MOSFET module PWM/TRIG | 1 Hz, 50% emitter drive (`PWM,FREQ,1` sent by the 405 M22 app) |
+| ESP32 D33 | Dual-MOSFET module PWM/TRIG | 1 Hz, 50% emitter drive (`PWM,FREQ,1` sent by the 405 M22 app) |
 | 6.5 V battery | MOSFET module DC+/DC- | Emitter power (emitters only) |
 | Emitter | MOSFET module OUT+/OUT- | Chopped IR source |
 
-GPIO25 connects directly to the installed dual-MOSFET trigger module because
-that module has its own input conditioning.
+GPIO33 connects directly to the installed dual-MOSFET trigger module because
+that module has its own input conditioning. The gate moved D25 -> D33 on
+2026-08-25 (firmware v3.1 boots on GPIO33); a board still wired to D25 works
+if the host sends `PIN,25` after connect.
 
 All grounds must be common: ESP32, ADS1256, sensor buffers (9 V side), and
 MOSFET module (6.5 V side).
