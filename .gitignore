@@ -16,3 +16,17 @@ htmlcov/
 *.log
 *.tmp
 *.bak
+
+# Rig outputs never belong in the repository - the apps write them to
+# Documents/Eltec_<model>_Test_Results (see docs/DATA_MAP.md). These rules
+# stop a copied results folder or a saved capture from being committed.
+Eltec_*_Test_Results/
+noise_captures/
+waveform_snapshots/
+autosave/
+*.npz
+
+# Office lock files and Explorer droppings
+~$*
+Thumbs.db
+desktop.ini

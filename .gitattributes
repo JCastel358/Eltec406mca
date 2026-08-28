@@ -1,0 +1,15 @@
+# Line endings: LF in the repository, the platform's native ending on checkout.
+# Windows batch/PowerShell scripts must stay CRLF everywhere (cmd.exe parses
+# labels and continuations unreliably with LF); shell scripts must stay LF.
+* text=auto
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Never touch these.
+*.png binary
+*.ico binary
+*.docx binary
+*.xlsx binary
+*.npz binary
