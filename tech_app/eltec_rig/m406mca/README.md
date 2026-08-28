@@ -10,7 +10,10 @@ below. Raw sensitivity is always preserved, while the UI and CSV also report a
 legacy-equivalent value. Offset, polarity, stability, signal-quality, battery,
 reference-unit, and hardware-integrity gates remain unchanged.
 
-V6 remains available and unchanged in `tech_app/v6_esp32/`.
+This directory is the live **406 MCA model of the unified rig app**
+(`tech_app/eltec_rig`, normally launched from its selector). The standalone
+v6 and v6.1 builds it descends from were retired on 2026-08-28 and are
+preserved at git tag `archive/pre-cleanup-2026-08-28`.
 
 ## V6.1 DUT stability policy
 
@@ -63,17 +66,21 @@ The legacy filter-specific sensitivity minimum remains the center of a raw
 | Raw sensitivity | Outcome |
 | ---: | --- |
 | `< 2.43 mV` | `FAIL` — low sensitivity |
-| `2.43-2.63 mV` inclusive | `RETEST / QUARANTINE` |
+| `2.43-2.63 mV` inclusive | `PASS · NEAR LIMIT` — passes, with a re-measure suggestion |
 | `> 2.63 mV` | `PASS` for the sensitivity gate |
 
-`RETEST` remains non-passing internally, receives an amber result screen, and
-can be re-measured or saved as a quarantine record. Another definitive failure
-(for example offset, polarity, SNR, or stability) makes the overall outcome
-`FAIL`, even when sensitivity is also inside the retest band.
+Since 2026-08-25 a reading inside the band is a plain **PASS** (it is within
+the conversion factor's margin of error): the result page shows the green
+banner plus an amber "near the limit — suggestion: re-measure" card, the CSV
+records `sensitivity_gate_outcome = NEAR LIMIT`, and no quarantine record
+exists any more (older CSVs with `RETEST` rows are shown as failures in the
+summary — they were quarantine records, not passes). Another definitive
+failure (offset, polarity, SNR, stability) still makes the overall outcome
+`FAIL`.
 
 This calibration is provisional. Continue collecting repeated known-low and
-borderline parts before narrowing/removing the guard band. The simulator has a
-`Borderline sensitivity` case for exercising the quarantine workflow.
+borderline parts before narrowing/removing the band. The simulator has a
+`Borderline sensitivity` case for exercising the near-limit path.
 
 ## Reference gate
 
@@ -123,10 +130,11 @@ schemas or batches.
 
 ## Run
 
-From the repository root:
+Normally: start the unified selector (`tech_app/eltec_rig/run_eltec_rig_tester.cmd`
+/ `.sh`) and pick **Model 406 MCA**. Standalone, from the repository root:
 
 ```bash
-./tech_app/v6_1_esp32/run_eltec_406mca_esp32_tester.sh
+./tech_app/eltec_rig/m406mca/run_eltec_406mca_esp32_tester.sh
 ```
 
 Or from this directory:
@@ -139,25 +147,30 @@ The optional Xubuntu desktop/menu launcher is installed only when explicitly
 requested:
 
 ```bash
-./tech_app/v6_1_esp32/install_xubuntu_launcher.sh
+./tech_app/eltec_rig/m406mca/install_xubuntu_launcher.sh
 ```
 
 Remove only the v6.1 launcher with:
 
 ```bash
-./tech_app/v6_1_esp32/install_xubuntu_launcher.sh --uninstall
+./tech_app/eltec_rig/m406mca/install_xubuntu_launcher.sh --uninstall
 ```
 
 ## Hardware and dependencies
 
-The tester requires `Arduino/Eltec/Eltec.ino` v1.7 or newer and the current
-fixture wiring in `Arduino/Eltec/ESP32_ADS1256_Wiring_v1_7.md`:
+The tester requires `Arduino/Eltec/Eltec.ino` v1.7 or newer. On the unified
+bench rig (firmware v2.1+, wiring in `Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md`)
+the backend sends `FE,V19` after connect to restore the qualified gain-2
+buffered front end; a legacy standalone rig on firmware v1.9 uses
+`Arduino/Eltec/ESP32_ADS1256_Wiring_legacy_v1_9.md`. Signals:
 
-- GPIO33: fixed 10 Hz / 50 percent emitter PWM;
+- GPIO33 (GPIO25 on a legacy v1.9 rig): fixed 10 Hz / 50 percent emitter PWM;
 - ADS1256 AIN0: DUT sensor;
-- ADS1256 AIN1: permanently mounted reference sensor;
-- ADS1256 AIN7: 6 V SLA battery through the measured 99.7k/99.6k divider
-  (2.001004 ratio), with a 100 nF capacitor across the lower resistor.
+- ADS1256 AIN1: permanently mounted reference sensor (gate currently disabled);
+- ADS1256 AIN7: on a legacy rig only, the 6 V SLA battery through the measured
+  99.7k/99.6k divider (2.001004 ratio) with a 100 nF capacitor across the
+  lower resistor — the unified fixture has no battery on AIN7 and the gate is
+  off.
 
 Required packages are Python 3, Tkinter, NumPy, and pyserial. Matplotlib is
 optional for higher-quality waveform snapshots.
@@ -176,10 +189,10 @@ The calibration CLI remains an evidence tool; it does not issue part verdicts
 or edit `stability_settings.json`.
 
 ```bash
-python3 tech_app/v6_1_esp32/stability_calibration.py capture \
+python3 tech_app/eltec_rig/m406mca/stability_calibration.py capture \
   --sensor-id KNOWN_GOOD_01
 
-python3 tech_app/v6_1_esp32/stability_calibration.py summarize \
+python3 tech_app/eltec_rig/m406mca/stability_calibration.py summarize \
   ~/Documents/Eltec_406MCA_Test_Results/v6_1_esp32/calibration/*_cycles.csv
 ```
 
@@ -188,7 +201,7 @@ python3 tech_app/v6_1_esp32/stability_calibration.py summarize \
 Run the isolated v6.1 suite from the repository root:
 
 ```bash
-python3 -m unittest discover -s tech_app/v6_1_esp32/tests -v
+python3 -m unittest discover -s tech_app/eltec_rig/m406mca/tests -v
 ```
 
 The suite covers the three-attempt state machine, identical 10/20 windows,

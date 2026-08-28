@@ -20,7 +20,7 @@ sessions.
 tech_app/eltec_rig/
 ├── eltec_rig_tester.py          # the selector GUI (this app's entry point)
 ├── sensor_versions.py           # registry: one entry per testable model
-├── attempt_history.py           # v2.0: per-batch *_attempts.csv log + skipped-parts queue (shared by both models)
+├── attempt_history.py           # v2.0: per-batch *_attempts.csv log + skipped-parts queue (shared by all models)
 ├── m405m22/                     # Model 405 M22 (1 Hz, TP412) tester + its 165-test suite
 ├── m406mca/                     # Model 406 MCA (10 Hz, v6.1 policy) tester + its 99-test suite
 ├── m449m18/                     # Model 449 M18 (5 Hz + 18 Hz, TP443 frequency tracking) tester + suite
@@ -253,7 +253,9 @@ assertion); both pass on Xubuntu.
 See the docstring at the top of `sensor_versions.py`. Short version: add an
 app directory (copy the closest model), append one `SensorVersion` entry, and
 extend the firmware with runtime commands only if the model needs behavior
-the v3.0 baseline cannot already select over serial.
+the unified v3.x firmware cannot already select over serial. Also register the
+suite in `run_all_tests.py` and add the model to `docs/CALIBRATION_RECORD.md`
+and `docs/DATA_MAP.md`.
 
 ## History
 

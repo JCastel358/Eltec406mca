@@ -1,14 +1,17 @@
 # Eltec 405 M22 ESP32 Tester (1 Hz TP412 evaluation build)
 
-This is an isolated build of the ESP32/ADS1256 tester (derived from the
-406MCA v6.1 application) for the **Model 405 M22** high-gain thermally
-compensated pyroelectric IR detector, following document **TP412** (offset,
-sensitivity/polarity at 1 Hz, and noise). Sensitivity PASS/FAIL is still
-**not** a qualified production gate: the limits wait for the comparison-batch
-calibration factor (see below).
+This directory is the **405 M22 model of the unified rig app**
+(`tech_app/eltec_rig`, normally launched from its selector): the ESP32/ADS1256
+tester (derived from the 406MCA v6.1 application) for the **Model 405 M22**
+high-gain thermally compensated pyroelectric IR detector, following document
+**TP412** (offset, sensitivity/polarity at 1 Hz, and noise). The sensitivity
+gate is **live** with the lot-500 pairwise calibration (factor 4.30, see
+below); the authoritative list of every limit and its provenance is
+[`docs/CALIBRATION_RECORD.md`](../../../docs/CALIBRATION_RECORD.md).
 
-The 406MCA v6 and v6.1 applications remain available and unchanged in
-`tech_app/v6_esp32/` and `tech_app/v6_1_esp32/`.
+The 406MCA v6/v6.1 standalone applications this build was derived from were
+retired on 2026-08-28 (git tag `archive/pre-cleanup-2026-08-28`); the live
+406 MCA model is [`../m406mca/`](../m406mca/README.md).
 
 ## What is different from the 406MCA builds
 
@@ -22,8 +25,8 @@ The 406MCA v6 and v6.1 applications remain available and unchanged in
 | Measurement window | 10 (v6) / 20 (v6.1) cycles | 10 cycles, 3 attempts (v6.1-style kick/retry) |
 | Healthy DC offset | 0.3–1.2 V | **0.8–3.0 V** (full TP412 band; needs firmware v2.0) |
 | Filter setups | 406MCA filters | **TP412: -625 / -628 / -629** (see ranges below) |
-| Sensitivity gate | calibrated raw guard band | **disabled** until the comparison-batch factor exists |
-| Sensitivity factor | 1.582 legacy-equivalent | 1.0 (raw values reported unscaled) |
+| Sensitivity gate | calibrated, ±0.10 mV raw near-limit band | calibrated (lot 500, live since 2026-08-17), same ±0.10 mV raw near-limit band |
+| Sensitivity factor | 1.582 legacy-equivalent | **4.30** legacy-equivalent (`405m22_tp412_lot500_pairwise_v1`) |
 | Noise test | none | **TP412 emitter-off noise test** after the offset gate, BEFORE the sensitivity capture |
 | Test order / UI | offset → sensitivity | offset (fail-fast) → noise → sensitivity, with a **step progress bar** |
 | Battery gate | 6 V SLA on AIN7 | **disabled — not monitored** (batteries isolated, see below) |
@@ -51,8 +54,10 @@ the lot-500 pairwise fixture calibration
   per-part legacy/raw ratio has median **4.2973** and
   regression-through-origin slope 4.2853 (agreement within 0.3%, spread
   4.4% sd), so `SENSITIVITY_LEGACY_EQUIVALENT_FACTOR = 4.30`.
-* Raw guard band for -625: FAIL below **1.29 mV**, PASS above **1.49 mV**,
-  RETEST/quarantine between (5.99 / 4.30 = 1.393 center ± 0.10 raw).
+* Raw near-limit band for -625: FAIL below **1.29 mV**, clean PASS above
+  **1.49 mV**, and **PASS · NEAR LIMIT** (passes, with a re-measure
+  suggestion; no quarantine since 2026-08-25) between (5.99 / 4.30 = 1.393
+  center ± 0.10 raw).
 * Validation on the same lot: the old fixture's one low-sensitivity failure
   (500-10) computes to 4.03 mV legacy-equivalent vs its old reading of
   4.08 and fails; the closest passer (500-15) computes to 6.52 — the exact
@@ -228,15 +233,15 @@ downsampling.
 **Noise displays are relative (2026-08-12 rework):** during the noise step
 the live scope — and the result screen's dedicated noise scope — plot the
 **band-limited** trace as its **range around the mean, in µV** (not
-absolute volts), with **solid red cutoff lines at ±37.5 µV** (half the
-75 µV pk-pk limit) and the numeric pk-pk range in the corner, so "is it
-crossing the red lines" is the whole reading. The y-axis stays symmetric
-around 0 and never spans less than 150 µV (2x the pk-pk limit) so ordinary
+absolute volts), with **solid red cutoff lines at ± half the pk-pk limit**
+(±214 µV for the 429 µV limit) and the numeric pk-pk range in the corner, so
+"is it crossing the red lines" is the whole reading. The y-axis stays
+symmetric around 0 and never spans less than 2x the pk-pk limit so ordinary
 noise cannot be auto-zoomed into looking large, and the time axis follows
 the decimated 50 SPS rate.
 
 TP412 itself allows **no** excursion over the limit (largest excursion
-rule); the 20% allowance is a deliberate engineering relaxation because
+rule); the 15% window allowance is a deliberate engineering relaxation because
 these sensors are extremely sensitive and a few excursions are expected.
 All noise metrics go to the batch CSV (`noise_*` columns, mV units), and a
 failing noise capture is preserved as a PNG snapshot automatically.
@@ -302,18 +307,22 @@ The application runs on **both Xubuntu and Windows** from the same checkout —
 same code, same CSV format, same results folder layout. Only the launcher
 differs. Batch CSVs written on one host are readable on the other.
 
+Normally: start the unified selector (`tech_app/eltec_rig/run_eltec_rig_tester.cmd`
+/ `.sh`) and pick **Model 405 M22**. The model app can also be started
+standalone:
+
 ### Xubuntu
 
 From the repository root:
 
 ```bash
-./tech_app/405m22_esp32/run_eltec_405m22_esp32_tester.sh
+./tech_app/eltec_rig/m405m22/run_eltec_405m22_esp32_tester.sh
 ```
 
 The optional Xubuntu launcher installer creates only 405 M22 identities:
 
 ```bash
-./tech_app/405m22_esp32/install_xubuntu_launcher.sh
+./tech_app/eltec_rig/m405m22/install_xubuntu_launcher.sh
 ```
 
 - display name: `Eltec 405 M22 ESP32 Tester`;
@@ -327,7 +336,7 @@ The optional Xubuntu launcher installer creates only 405 M22 identities:
 Double-click `run_eltec_405m22_esp32_tester.cmd`, or from a terminal:
 
 ```bat
-tech_app\405m22_esp32\run_eltec_405m22_esp32_tester.cmd
+tech_app\eltec_rig\m405m22\run_eltec_405m22_esp32_tester.cmd
 ```
 
 It runs the GUI under `pythonw.exe` (no console window), logs to the file
@@ -338,7 +347,7 @@ The optional shortcut installer adds a Desktop and a Start Menu entry
 (per-user, no admin rights, `-Uninstall` removes both):
 
 ```bat
-powershell -ExecutionPolicy Bypass -File tech_app\405m22_esp32\install_windows_launcher.ps1
+powershell -ExecutionPolicy Bypass -File tech_app\eltec_rig\m405m22\install_windows_launcher.ps1
 ```
 
 - display name: `Eltec 405 M22 ESP32 Tester`;
@@ -513,7 +522,7 @@ for nicer snapshots).
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tech_app/405m22_esp32/tests -v
+python3 -m unittest discover -s tech_app/eltec_rig/m405m22/tests -v
 ```
 
 The suite mirrors the v6.1 coverage retimed for 1 Hz and adds the TP412
@@ -543,9 +552,11 @@ installer test and (headless) the display-only GUI tests.
    part (500-44) — refine both when more failing parts are available.
 2. The sensitivity gate is ON with the lot-500 pairwise calibration
    (`405m22_tp412_lot500_pairwise_v1`); it fails over-max as well as
-   under-min, and quarantines the ±0.10 mV raw guard band.
+   under-min, and a reading inside the ±0.10 mV raw near-limit band passes
+   with a re-measure warning (no quarantine since 2026-08-25).
 3. With the ±5 V unbuffered front end, a floating AIN0 no longer reads as an
-   obvious ~2.5 V rail; the 0.05–3.5 V plausibility band is the only
-   no-sensor guard.
+   obvious ~2.5 V rail; the 0.05 V plausibility floor (with the 5 s wake-up
+   poll) is the only no-sensor guard — a railed ~5 V input is a genuine
+   high-offset failure, not a missing part.
 4. No battery is monitored until the AIN6 hardware exists (divider + firmware
    channel + thresholds).
