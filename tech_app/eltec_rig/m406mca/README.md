@@ -156,6 +156,21 @@ Remove only the v6.1 launcher with:
 ./tech_app/eltec_rig/m406mca/install_xubuntu_launcher.sh --uninstall
 ```
 
+### Windows
+
+Double-click `run_eltec_406mca_esp32_tester.cmd` (runs the GUI under
+`pythonw.exe`, logs to `%LOCALAPPDATA%\eltec-406mca-esp32-v6-1\launcher.log`,
+pops an error dialog if the app cannot start — `ELTEC_LAUNCHER_NO_DIALOG=1`
+suppresses it). Optional Desktop + Start Menu shortcut, per-user, no admin
+rights (`-Uninstall` removes it):
+
+```bat
+powershell -ExecutionPolicy Bypass -File tech_app\eltec_rig\m406mca\install_windows_launcher.ps1
+```
+
+Results on Windows: `%USERPROFILE%\Documents\Eltec_406MCA_Test_Results\v6_1_esp32\`.
+Port discovery is by USB VID/PID on both hosts.
+
 ## Hardware and dependencies
 
 The tester requires `Arduino/Eltec/Eltec.ino` v1.7 or newer. On the unified
