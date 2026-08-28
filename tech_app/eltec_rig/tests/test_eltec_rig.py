@@ -55,6 +55,22 @@ class RegistryTests(unittest.TestCase):
         # models extend this set (update this test when adding one).
         self.assertIn("405m22", sensor_versions.version_keys())
         self.assertIn("406mca", sensor_versions.version_keys())
+        self.assertIn("449m18", sensor_versions.version_keys())
+
+    def test_449m18_entry_describes_the_two_frequency_test(self):
+        version = sensor_versions.get_version("449m18")
+        self.assertIn("5 Hz", version.display_name)
+        self.assertIn("18 Hz", version.display_name)
+        self.assertIn("TP443", version.display_name)
+        details = " ".join(version.details)
+        self.assertIn("PWM,DUTY", details)
+        self.assertIn("v3.2", details)
+        self.assertEqual(version.app_dir, "m449m18")
+        self.assertTrue(version.app_script_path.is_file())
+        # The firmware note must call out the duty-cycle command the new
+        # model depends on.
+        self.assertIn("PWM,DUTY", sensor_versions.REQUIRED_FIRMWARE)
+        self.assertIn("v3.2", sensor_versions.REQUIRED_FIRMWARE)
 
     def test_each_app_suite_exists(self):
         # Every bundled model keeps its own full test suite.

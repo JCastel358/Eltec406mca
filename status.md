@@ -1,6 +1,79 @@
 # Eltec Test Rig (ESP32) status
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
+
+## 449 M18 frequency-tracking tester + firmware v3.2 `PWM,DUTY` (2026-08-26)
+
+New sensor version in the unified app: **Model 449 M18 (5 Hz + 18 Hz,
+TP443)** — `tech_app/eltec_rig/m449m18/`, selectable from the dropdown.
+
+- **Test**: TP443 "449M18 Frequency Tracking" — sensitivity at 5 Hz and at
+  18 Hz, both with the legacy fixture's 20/80 blade duty, then the 18/5
+  ratio (specs 1–3) and the spec-4 "measure the tray 100 %" flag (ratio
+  ≤ 0.72 or a sampled failure). Both drives run back to back per part.
+- **Calibration pending**: an electrically pulsed emitter does not modulate
+  equally at 5 and 18 Hz, so each frequency needs its own fixture factor
+  (`K_5`, `K_18`, paired comparison like the 405's lot-500). Until then
+  `SENSITIVITY_GATE_ENABLED = False`: every reading + the raw ratio is
+  recorded, the limits are not enforced, and every verdict is stamped
+  CALIBRATION PENDING. The offset band is also not gated (TP443 offset page
+  not available; placeholder 0.3–3.0 V behind `OFFSET_GATE_ENABLED`).
+- **18 Hz sampling**: 55.56 samples per cycle at 1000 SPS — sync validation
+  judges the mean cadence (single cycles get a one-sample allowance) and
+  stability is judged on blocks of 9 cycles (= 500 samples exactly) so the
+  robust peak is repeatable; the 36-cycle window is 4 blocks.
+- **Firmware v3.2** (`Arduino/Eltec/Eltec.ino`, archived as
+  `versions/Eltec_v3_2/`): `PWM,DUTY,<pct>` (1–99 %, boot default 50 %,
+  not persisted) + `pwm_duty` in `STATUS?`. Compiles (290 KB / 22 %).
+  **Not yet flashed or bench-verified** — the 449 backend refuses < v3.2,
+  the other two models keep working on v3.1. Flash with
+  `python Arduino/Eltec/flash_firmware.py`, then confirm `IDN? -> v3.2`
+  and `PWM,DUTY,20` -> `OK,PWM,DUTY,20.0`.
+- **Tests**: `m449m18/tests` (integration, backend, stability, calibration
+  CLI) plus the rig glue/attempt-history suites now cover three models; the
+  405/406 suites are untouched.
+- **Open**: derive `K_5`/`K_18` (30–50 parts, both fixtures), fill the TP443
+  offset band, confirm the 449's polarity convention on the bench (the
+  POSITIVE gate is applied at both frequencies, `POLARITY_GATE_ENABLED`),
+  and revisit the 0.100 mV peak-delta threshold once real raw amplitudes
+  are known.
+
+## Emitter gate moved to GPIO33, firmware v3.1 (2026-08-25)
+
+The emitter PWM/gate output moved from **D25 (GPIO25)** to **D33 (GPIO33)**.
+The perf-board wire to the dual-MOSFET module's PWM/TRIG input must move with
+it - a board still wired to D25 drives nothing until the wire is moved (or the
+host sends `PIN,25`, which the firmware still accepts).
+
+- **Firmware** `Arduino/Eltec/Eltec.ino`: `pinGate = 33`, IDN bumped
+  `v3.0 -> v3.1` per the sketch's own rule that every flash-relevant change is
+  detectable over serial. Nothing else changed - `PIN,<n>` (2/12/13/14/25/26/
+  27/32/33) still retargets at runtime and is not persisted, and GPIO33 gets
+  the same RTC-hold release at attach that GPIO25 did. GPIO33 is RTC-capable
+  but is NOT a DAC pin (only 25/26 are), so there is no DAC path to detach.
+  Archived as `versions/Eltec_v3_1/`.
+- **Both host backends**: `PWM_GPIO = 25 -> 33` in `m405m22/esp32_backend.py`
+  and `m406mca/esp32_backend.py`. Because each backend already sends
+  `PIN,{PWM_GPIO}` after connect, the app - not the boot default - is what
+  actually selects the pin; the two now agree. Tests updated to expect
+  `PIN,33`.
+- **Docs**: `ESP32_ADS1256_Wiring_v2_0.md` (the current guide) and the live
+  statements in `ESP32_memory.md` now say D33; the D25-era troubleshooting
+  history in that file is left intact and labelled as history.
+  `ESP32_ADS1256_Wiring_v1_7.md` is unchanged - it documents the v1.9 legacy
+  406MCA rigs, which still gate on D25.
+- **Verified on the bench**: flashed COM3, `IDN? -> ELTEC-ESP32-ADS1256,v3.1`,
+  `GATE? -> pin=33,drive=0,read=0` at boot, `GATE,ON -> drive=1,read=1` (pad
+  readback confirms the pin really drives), `PIN,33` + `PWM,FREQ,1` + `PWM,ON`
+  -> `STATUS,pwm=1,pwm_hz=1.000`.
+- **`flash_firmware.py`**: new one-command flasher so the sketch can be
+  uploaded without the Arduino IDE - it finds the IDE's bundled `arduino-cli`,
+  auto-detects the CP210x port, compiles, uploads, then confirms `IDN?` and
+  `GATE?` over serial. `--sketch versions/Eltec_v2_2` puts the board back on
+  any archived build.
+- **Not changed**: the frozen apps under `tech_app/deprecated/` still send
+  `PIN,25` and are pinned to older firmware, so a legacy rig keeps its own
+  wiring.
 
 ## Near-limit sensitivity is a PASS with a warning, both models (2026-08-25)
 

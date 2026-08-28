@@ -139,7 +139,12 @@ class FakeVar:
 # (stability_analysis, esp32_backend, the vendored eltec_406mca_tester), so
 # loading the second model must drop the first model's copies first.
 _SHARED_MODULE_NAMES = ("stability_analysis", "esp32_backend", "eltec_406mca_tester")
-_MODEL_DIRS = ("m405m22", "m406mca")
+_MODEL_DIRS = ("m405m22", "m406mca", "m449m18")
+_MODEL_MODULES = (
+    ("m405m22", "eltec_405m22_esp32_tester"),
+    ("m406mca", "eltec_406mca_esp32_tester"),
+    ("m449m18", "eltec_449m18_esp32_tester"),
+)
 
 
 def _load_app(module_dir: str, module_name: str):
@@ -147,7 +152,7 @@ def _load_app(module_dir: str, module_name: str):
         other_dir = str(RIG_DIR / other)
         while other_dir in sys.path:
             sys.path.remove(other_dir)
-    for name in _SHARED_MODULE_NAMES + ("eltec_405m22_esp32_tester", "eltec_406mca_esp32_tester"):
+    for name in _SHARED_MODULE_NAMES + tuple(module for _dir, module in _MODEL_MODULES):
         sys.modules.pop(name, None)
     sys.path.insert(0, str(RIG_DIR / module_dir))
     return importlib.import_module(module_name)
@@ -365,11 +370,16 @@ class SkipFlow406MCATests(_SkipFlowMixin, unittest.TestCase):
     MODULE_NAME = "eltec_406mca_esp32_tester"
 
 
+class SkipFlow449M18Tests(_SkipFlowMixin, unittest.TestCase):
+    MODULE_DIR = "m449m18"
+    MODULE_NAME = "eltec_449m18_esp32_tester"
+
+
 class FooterButtonTests(unittest.TestCase):
-    """The v2.0 footer palette exists in both models."""
+    """The v2.0 footer palette exists in every model."""
 
     def test_success_and_warn_palettes_and_xl_size(self):
-        for module_dir, module_name in (("m405m22", "eltec_405m22_esp32_tester"), ("m406mca", "eltec_406mca_esp32_tester")):
+        for module_dir, module_name in _MODEL_MODULES:
             with self.subTest(model=module_dir):
                 app = _load_app(module_dir, module_name)
                 self.assertIn("success", app.RoundButton.PALETTES)

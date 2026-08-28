@@ -30,7 +30,10 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 
 # The firmware the shared bench board should run for this app. Every entry
 # below works on it; per-model needs are selected at runtime over serial.
-REQUIRED_FIRMWARE = "v3.0 (v2.1/v2.2 also work; v2.0 and older lack the FE commands the 406 MCA path needs)"
+REQUIRED_FIRMWARE = (
+    "v3.2 (PWM,DUTY for the 449 M18's 20/80 drive; the 405 M22 and 406 MCA "
+    "modes also run on v2.1-v3.1, the app sends PIN,<n> itself)"
+)
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,27 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
         app_dir="m406mca",
         app_script="eltec_406mca_esp32_tester.py",
         results_note="Documents/Eltec_406MCA_Test_Results/v6_1_esp32",
+    ),
+    SensorVersion(
+        key="449m18",
+        display_name="Model 449 M18 (5 Hz + 18 Hz, TP443)",
+        summary=(
+            "449M18 frequency tracking per TP443: sensitivity at 5 Hz and at 18 Hz, "
+            "then the 18/5 ratio."
+        ),
+        details=(
+            "Emitter: 5 Hz then 18 Hz, both 20% ON / 80% OFF (the legacy fixture's 20/80 "
+            "blade); the app sends PWM,FREQ + PWM,DUTY (firmware v3.2 required).",
+            "Flow: offset read → 5 Hz capture → 18 Hz capture → ratio 18/5 → TP443 specs 1-4.",
+            "Limits: ≥ 1.2 V at 5 Hz, ≥ 0.72 V at 18 Hz, ratio 0.70-1.30, ratio ≤ 0.72 flags",
+            "the tray for 100% measurement — applied on legacy-equivalent values (raw × a",
+            "per-frequency fixture factor). CALIBRATION PENDING: factors not derived yet, so",
+            "verdicts record raw readings + raw ratio and the limits are not enforced.",
+            "ADS1256 front end: firmware boot default (gain 1, buffer off).",
+        ),
+        app_dir="m449m18",
+        app_script="eltec_449m18_esp32_tester.py",
+        results_note="Documents/Eltec_449M18_Test_Results/449m18_esp32",
     ),
 )
 

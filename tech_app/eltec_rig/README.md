@@ -21,6 +21,7 @@ tech_app/eltec_rig/
 ├── attempt_history.py           # v2.0: per-batch *_attempts.csv log + skipped-parts queue (shared by both models)
 ├── m405m22/                     # Model 405 M22 (1 Hz, TP412) tester + its 165-test suite
 ├── m406mca/                     # Model 406 MCA (10 Hz, v6.1 policy) tester + its 99-test suite
+├── m449m18/                     # Model 449 M18 (5 Hz + 18 Hz, TP443 frequency tracking) tester + suite
 ├── v1_single_sensor/            # shared 406MCA analysis/pass-fail engine (vendored)
 ├── assets/                      # desktop icon (.png for Linux, .ico for Windows)
 ├── run_eltec_rig_tester.sh      # Xubuntu launcher        ┐ double-click either
@@ -36,6 +37,14 @@ tech_app/eltec_rig/
 | --- | --- | --- | --- | --- |
 | Model 405 M22 (1 Hz, TP412) | `m405m22/` | DUT 1 Hz, reference phases 10 Hz | firmware boot default (gain 1, buffer off) | `Documents/Eltec_405M22_Test_Results/405m22_esp32` |
 | Model 406 MCA (10 Hz) | `m406mca/` | 10 Hz (boot default) | app sends `FE,V19` after connect → gain 2, buffer on (the qualified v1.9 front end) | `Documents/Eltec_406MCA_Test_Results/v6_1_esp32` |
+| Model 449 M18 (5 Hz + 18 Hz, TP443) | `m449m18/` | DUT 5 Hz then 18 Hz, **20 % ON / 80 % OFF** (`PWM,DUTY`, firmware **v3.2**); reference phases 10 Hz / 50 % | firmware boot default (gain 1, buffer off) | `Documents/Eltec_449M18_Test_Results/449m18_esp32` |
+
+The 449 M18 entry (added 2026-08-26) runs TP443 "449M18 Frequency Tracking":
+sensitivity at 5 Hz, sensitivity at 18 Hz, and the 18/5 ratio, with the
+spec-4 "measure the tray 100 %" flag. It is **calibration pending** — the
+per-frequency fixture factors have not been derived yet, so it records raw
+readings and the raw ratio and does not enforce the TP443 limits. See
+[`m449m18/README.md`](m449m18/README.md).
 
 Model-specific dropdowns (filter cap / filter setup, simulator cases, etc.)
 live **inside** each model's app, exactly where they were before — choose the
@@ -44,15 +53,22 @@ screen.
 
 ## Firmware
 
-The bench board runs the unified **`Arduino/Eltec/Eltec.ino` v3.0** baseline
-(single-channel streaming, `PWM,FREQ`, runtime `FE,...` front-end switch; the
-IR telescope's dual-channel code is *not* in it — that lives in the separate
-`Eltec_IR_Telescope` workspace on firmware v2.2, which is also a drop-in for
-this app). Model differences are selected at runtime over serial:
+The bench board runs the unified **`Arduino/Eltec/Eltec.ino` v3.2** baseline
+(single-channel streaming, `PWM,FREQ`, `PWM,DUTY` (v3.2), runtime `FE,...`
+front-end switch; the IR telescope's dual-channel code is *not* in it — that
+lives in the separate `Eltec_IR_Telescope` workspace on firmware v2.2). The
+405 M22 and 406 MCA modes also run on v2.1–v3.1; the 449 M18 mode refuses
+anything older than v3.2 because it needs the duty-cycle command. Model
+differences are selected at runtime over serial:
 
 - **405 M22**: never sends `FE`; every port open resets the board to the
   boot-default gain-1 unbuffered front end, and the app programs `PWM,FREQ,1`
   for the DUT phases.
+- **449 M18**: never sends `FE` either; programs `PWM,FREQ,5` + `PWM,DUTY,20`
+  and then `PWM,FREQ,18` + `PWM,DUTY,20` for the two TP443 drives (the legacy
+  fixture's 20/80 blade), `PWM,FREQ,10` + `PWM,DUTY,50` for the reference
+  phases. A port open resets the board to 50 %, so the other models never
+  see the changed duty.
 - **406 MCA**: sends `FE,V19` right after the `IDN?` handshake on any
   firmware ≥ v2.1 and hard-verifies the `FE?` read-back — measuring a 406MCA
   on the wrong front end would invalidate every qualified threshold, so a
@@ -60,12 +76,24 @@ this app). Model differences are selected at runtime over serial:
   with v1.9, no `FE` command is sent (that firmware is natively the
   qualified front end).
 
-Flash/verify:
+Flash/verify - one command, no Arduino IDE needed (it finds the IDE's bundled
+`arduino-cli`, auto-detects the board's port, compiles, uploads, then confirms
+`IDN?`/`GATE?` over serial):
+
+```bash
+python3 Arduino/Eltec/flash_firmware.py
+```
+
+Windows: double-click `Arduino\Eltec\run_flash_firmware.cmd`. Xubuntu:
+`Arduino/Eltec/run_flash_firmware.sh`. Useful flags: `--list` (show serial
+ports), `--check` (report what the board runs, flash nothing), `--port COM7`,
+`--sketch versions/Eltec_v2_2` (put the board on an archived build). The
+equivalent by hand:
 
 ```bash
 arduino-cli compile --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
 arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
-# then confirm: IDN? -> ELTEC-ESP32-ADS1256,v3.0
+# then confirm: IDN? -> ELTEC-ESP32-ADS1256,v3.1
 ```
 
 ## Fixture notes (2026-08-18)
@@ -211,6 +239,7 @@ thresholds and calibrations are untouched.
 python3 -m unittest discover -s tech_app/eltec_rig/tests            # selector glue
 python3 -m unittest discover -s tech_app/eltec_rig/m405m22/tests    # run from the repo root
 python3 -m unittest discover -s tech_app/eltec_rig/m406mca/tests    # run from the repo root
+python3 -m unittest discover -s tech_app/eltec_rig/m449m18/tests    # run from the repo root
 ```
 
 On Windows the m406mca suite reports the two long-standing environment-only
