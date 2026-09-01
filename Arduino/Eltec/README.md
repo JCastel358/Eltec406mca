@@ -15,7 +15,7 @@ sensor model; the host application selects what it needs at runtime.
 | `flash_firmware.py` | One-command compile + upload + verify. Finds the Arduino IDE's bundled `arduino-cli`, auto-detects the CP210x port, confirms `IDN?` and `GATE?` afterwards. |
 | `run_flash_firmware.cmd` / `.sh` | Double-click wrappers for the flasher (Windows / Xubuntu). |
 | `esp32_rig_readout.py` | Host-side serial wrapper (`Esp32Rig`) + CLI for bench checks (`ports`, `offset`, `ref`, `pwm`, `gate`, `stream`, `test`, `noisecmp`). |
-| `live_waveform.py` | Rolling matplotlib scope of one ADC channel with the sync bit, link-health stats and an emitter toggle. |
+| `live_waveform.py` | Rolling matplotlib scope of one ADC channel with the sync bit, link-health stats, an emitter toggle (SPACE), a live time window (`]` / `[`, 0.25–60 s, ceiling set by `--max-window`) and `--freq` / `--duty` drive selection (`--duty` needs v3.2). |
 | `ESP32_ADS1256_Wiring_v2_0.md` | **Current wiring** of the unified bench rig (two isolated batteries, GPIO33 gate). |
 | `ESP32_ADS1256_Wiring_legacy_v1_9.md` | Wiring of the retired standalone 406MCA rigs (single 6 V SLA on AIN7, GPIO25 gate, firmware v1.9). Keep only for such a rig. Firmware header comments up to v3.2 still call it by its old name `ESP32_ADS1256_Wiring_v1_7.md` (renamed 2026-08-28; snapshots are never edited). |
 

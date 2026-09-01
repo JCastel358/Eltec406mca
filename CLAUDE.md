@@ -25,9 +25,9 @@ numbers live in `docs/CALIBRATION_RECORD.md`, the history in `CHANGELOG.md`.
    author, never commit `.npz`/result CSVs, never delete or rename files
    there — they are evidence.
 6. **Run `python run_all_tests.py` before claiming anything is done.**
-   Baseline: glue 38, 405 174 (4 skipped), 406 109 (on Windows exactly two
+   Baseline: glue 38, 405 175 (4 skipped), 406 109 (on Windows exactly two
    known environment-only cases: `test_launcher_installation_uses_only_v6_1_identities`
-   and `test_auto_connect_validates_candidates_and_is_idempotent`), 449 110.
+   and `test_auto_connect_validates_candidates_and_is_idempotent`), 449 111.
    Any other failure is yours.
 7. **Commit and push before restructuring; tag before deleting.** Retired
    code is at `archive/pre-cleanup-2026-08-28` — recover with

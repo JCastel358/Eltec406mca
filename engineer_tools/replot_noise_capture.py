@@ -72,6 +72,18 @@ def load_capture(path: Path) -> dict:
             "waveform_v": np.asarray(data["waveform_v"], dtype=float),
             "rate_hz": float(data["sample_rate_hz"]),
             "meta": meta,
+            # 2026-08-31+ captures archive the FIR's edge context so a
+            # replay seats the filter exactly like the live verdict did.
+            "left_context_v": (
+                np.asarray(data["left_context_v"], dtype=float)
+                if "left_context_v" in data.files
+                else None
+            ),
+            "right_context_v": (
+                np.asarray(data["right_context_v"], dtype=float)
+                if "right_context_v" in data.files
+                else None
+            ),
         }
     # CSV: "# key=value; key=value; ..." header, then sample,t_s,volts rows.
     with path.open("r", encoding="utf-8") as handle:
@@ -87,6 +99,8 @@ def load_capture(path: Path) -> dict:
         "waveform_v": np.asarray(volts, dtype=float),
         "rate_hz": float(meta.get("sample_rate_hz", 1000.0)),
         "meta": meta,
+        "left_context_v": None,
+        "right_context_v": None,
     }
 
 
@@ -211,6 +225,8 @@ def analyze_file(path: Path, variants, limit_override, allow_fraction, detrend):
                 max_over_fraction=allow_fraction,
                 clip_limit_v=CLIP_LIMIT_V,
                 detrend_windows=detrend,
+                left_context_v=capture.get("left_context_v"),
+                right_context_v=capture.get("right_context_v"),
             )
             judged = np.asarray(judged)
             label = (

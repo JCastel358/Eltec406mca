@@ -861,7 +861,11 @@ def design_antialias_lowpass_fir(
 
 
 def decimate_antialiased(
-    waveform_v: Sequence[float], factor: int
+    waveform_v: Sequence[float],
+    factor: int,
+    *,
+    left_context_v: Sequence[float] | None = None,
+    right_context_v: Sequence[float] | None = None,
 ) -> tuple[float, ...]:
     """Anti-alias low-pass + decimate: the verdict's band-limiting step.
 
@@ -870,18 +874,48 @@ def decimate_antialiased(
     the block), so window/clip index math is unchanged — but content above
     the post-decimation Nyquist is attenuated >= 60 dB before the rate drop
     instead of the boxcar's ~13 dB, so mains/EMI can no longer fold into the
-    analysis band and read as part noise. Edges are padded by odd reflection
+    analysis band and read as part noise.
+
+    The FIR needs (taps-1)/2 samples of history beyond each end of the
+    record. By default that history is synthesized by odd reflection
     (2*x[edge] - x[i]), which continues a linear trend exactly: residual DC
     settling passes through undistorted for the per-window detrend to
-    remove, instead of curling at the capture edges. ``factor`` 1 is a
-    pass-through.
+    remove, instead of curling at the capture edges. Reflection is wrong
+    for OSCILLATORY content though, so out-of-band interference is only
+    attenuated ~11-21 dB (not >= 60 dB) within the outermost (taps-1)/2
+    raw samples — up to ~27% of a 1 mV interferer leaking into the first
+    and last judged window (2026-08-31 audit). ``left_context_v`` /
+    ``right_context_v`` close that hole: pass the REAL samples adjacent to
+    the record (the tail of the discarded quiet wait, extra streamed
+    samples) and the filter seats on them instead of the reflection,
+    restoring full stopband attenuation at the edges. Only the innermost
+    ``antialias_edge_context_samples(factor)`` samples of each context are
+    used; a shorter (or absent) context falls back to reflection for the
+    remainder, so calls without context reproduce the pre-2026-08-31
+    output bit-for-bit and every archived capture replays unchanged. The
+    contexts are filter history only — never part of the returned trace.
+    ``factor`` 1 is a pass-through.
     """
 
     if isinstance(factor, bool) or not isinstance(factor, int) or factor < 1:
         raise ValueError("factor must be a positive integer")
     waveform = [float(value) for value in waveform_v]
+    left = (
+        []
+        if left_context_v is None
+        else [float(value) for value in left_context_v]
+    )
+    right = (
+        []
+        if right_context_v is None
+        else [float(value) for value in right_context_v]
+    )
     if not all(math.isfinite(value) for value in waveform):
         raise ValueError("waveform samples must all be finite")
+    if not all(math.isfinite(value) for value in left) or not all(
+        math.isfinite(value) for value in right
+    ):
+        raise ValueError("context samples must all be finite")
     if factor == 1:
         return tuple(waveform)
     blocks = len(waveform) // factor
@@ -891,11 +925,20 @@ def decimate_antialiased(
         factor, max_taps=2 * len(waveform) - 1
     )
     half = (len(taps) - 1) // 2
-    first, last = waveform[0], waveform[-1]
+    # Seat the filter on real neighbour samples where provided (innermost
+    # `half` of each context); odd-reflect the extended record for whatever
+    # history is still missing. Empty contexts reduce exactly to the
+    # historical all-reflection padding, so replays are bit-identical.
+    used_left = left[max(0, len(left) - half):]
+    used_right = right[:half]
+    core = used_left + waveform + used_right
+    need_left = half - len(used_left)
+    need_right = half - len(used_right)
+    first, last = core[0], core[-1]
     padded = (
-        [2.0 * first - value for value in waveform[half:0:-1]]
-        + waveform
-        + [2.0 * last - value for value in waveform[-2 : -half - 2 : -1]]
+        [2.0 * first - value for value in core[need_left:0:-1]]
+        + core
+        + [2.0 * last - value for value in core[-2 : -need_right - 2 : -1]]
     )
     sumprod = getattr(math, "sumprod", None)
     if sumprod is None:  # Python < 3.12
@@ -907,6 +950,20 @@ def decimate_antialiased(
         sumprod(taps, padded[k * factor + factor // 2 : k * factor + factor // 2 + len(taps)])
         for k in range(blocks)
     )
+
+
+def antialias_edge_context_samples(factor: int) -> int:
+    """Raw samples of real history that fully seat the anti-alias FIR.
+
+    (taps - 1) / 2 for the uncapped decimation-by-``factor`` design: the
+    number of samples beyond each end of a capture that
+    ``decimate_antialiased`` needs so its first and last outputs are
+    computed from real signal instead of reflection padding (the
+    production factor 20 designs 621 taps -> 310 raw samples = 0.31 s at
+    1000 SPS).
+    """
+
+    return (len(design_antialias_lowpass_fir(factor)) - 1) // 2
 
 
 @dataclass(frozen=True)
@@ -1047,10 +1104,17 @@ def analyze_noise_capture_band_limited(
     *,
     decimation_factor: int,
     window_s: float = 1.0,
-    threshold_mv: float = 0.075,
-    max_over_fraction: float = 0.20,
+    # threshold_mv / max_over_fraction are REQUIRED on purpose (2026-08-31):
+    # they are per-model calibration decisions (docs/CALIBRATION_RECORD.md)
+    # and the old defaults were the withdrawn 75 uV / 20% limits — a new
+    # caller that omitted them silently got a retired gate. Production
+    # passes the NOISE_* constants explicitly.
+    threshold_mv: float,
+    max_over_fraction: float,
     clip_limit_v: float = 4.9,
     detrend_windows: bool = True,
+    left_context_v: Sequence[float] | None = None,
+    right_context_v: Sequence[float] | None = None,
 ) -> tuple[NoiseAnalysis, tuple[float, ...], float]:
     """Windowed pk-pk noise verdict on an anti-alias-decimated capture.
 
@@ -1074,6 +1138,14 @@ def analyze_noise_capture_band_limited(
     readings are unchanged (the lot-500 anchor captures replay to the same
     verdicts); only captures with real >25 Hz content read differently, and
     lower, because the phantom fold-down is gone.
+
+    2026-08-31: ``left_context_v``/``right_context_v`` (real samples
+    adjacent to the capture) seat the FIR at the capture edges — see
+    ``decimate_antialiased``. Without them the first/last judged window
+    only rejects out-of-band interference ~11-21 dB instead of >= 60 dB.
+    Contexts are filter history only: windows, clip checks and the verdict
+    still cover exactly ``waveform_v``. Omitting them reproduces the
+    historical output bit-for-bit (archived replays are unchanged).
     """
 
     if (
@@ -1092,7 +1164,12 @@ def analyze_noise_capture_band_limited(
     raw = [float(value) for value in waveform_v]
     if not all(math.isfinite(value) for value in raw):
         raise ValueError("waveform samples must all be finite")
-    filtered = decimate_antialiased(raw, decimation_factor)
+    filtered = decimate_antialiased(
+        raw,
+        decimation_factor,
+        left_context_v=left_context_v,
+        right_context_v=right_context_v,
+    )
     filtered_rate = rate / decimation_factor
     window_samples = int(round(float(window_s) * filtered_rate))
     if window_samples < 1:
@@ -1163,6 +1240,7 @@ __all__ = [
     "analyze_noise_capture",
     "analyze_noise_capture_band_limited",
     "analyze_stability",
+    "antialias_edge_context_samples",
     "complete_cycle_segments",
     "decimate_antialiased",
     "decimate_boxcar",

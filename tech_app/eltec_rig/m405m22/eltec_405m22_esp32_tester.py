@@ -55,10 +55,11 @@ Guided flow:
     3. The app checks the AIN1 reference against its calibration before it
        reads AIN0, then runs the per-part steps in TP412 order with a step
        progress bar: (a) DUT DC offset, PWM off - an out-of-band offset fails
-       the part immediately; (b) emitter-off noise - 3 s quiet wait plus the
-       20 s windowed capture, shown band-limited as range-around-mean with
-       red ±37.5 µV cutoff lines (the 75 µV pk-pk pin-level limit), and a
-       noisy part fails without a sensitivity capture;
+       the part immediately; (b) emitter-off noise - adaptive 3-20 s quiet
+       wait plus the 20 s windowed capture (60 s soak selectable), shown
+       band-limited as range-around-mean with red ±214 µV cutoff lines
+       (the ~429 µV pk-pk pin-level limit), and a noisy part fails without
+       a sensitivity capture;
        (c) sensitivity - 1 Hz emitter drive, peak stability, then the
        10-cycle chopped-response measurement.
 
@@ -195,6 +196,7 @@ from stability_analysis import (
     SyncValidationError,
     analyze_noise_capture_band_limited,
     analyze_stability,
+    antialias_edge_context_samples,
     load_stability_settings,
     rising_edge_indices,
     validate_rising_sync_cycles,
@@ -388,6 +390,17 @@ NOISE_LEGACY_PP_LIMIT_MV = 300.0      # TP412 scope limit through that chain
 NOISE_EFFECTIVE_CHAIN_FACTOR = 700.0
 NOISE_PP_LIMIT_MV = NOISE_LEGACY_PP_LIMIT_MV / NOISE_EFFECTIVE_CHAIN_FACTOR
 NOISE_DECIMATION_FACTOR = 20          # 1000 SPS -> 50 SPS (anti-alias FIR)
+# Real filter history captured on each side of the noise window
+# (2026-08-31): the anti-alias FIR seats on the tail of the discarded
+# quiet wait (left) and on extra streamed samples (right) instead of
+# synthetic reflection padding, which only attenuated out-of-band
+# interference ~11-21 dB inside the first/last judged window (>= 60 dB
+# everywhere else). 310 raw samples = 0.31 s per side at 1000 SPS; both
+# slices are archived with saved raw captures so replays reproduce the
+# live verdict exactly.
+NOISE_EDGE_CONTEXT_SAMPLES = antialias_edge_context_samples(
+    NOISE_DECIMATION_FACTOR
+)
 # <= 15% of windows may exceed the limit (3 of 20). Tightened from 20% on
 # 2026-08-17 using the lot-500 fixture comparison: the one part the legacy
 # fixture failed for noise (500-44, 496 mV on the old scope) measured 4/20
@@ -1820,6 +1833,8 @@ def save_raw_noise_capture(
     sample_rate_hz: float,
     *,
     metadata: dict[str, object] | None = None,
+    left_context_v: np.ndarray | None = None,
+    right_context_v: np.ndarray | None = None,
 ) -> list[Path]:
     """Persist one part's RAW emitter-off noise capture for offline analysis.
 
@@ -1830,7 +1845,10 @@ def save_raw_noise_capture(
     from this raw record, but not the other way around). Two files per
     capture with the same stem: a plain CSV (sample,t_s,volts with one
     leading '#' metadata line) and an NPZ carrying the same array plus
-    metadata for numpy work.
+    metadata for numpy work. Since 2026-08-31 the NPZ also carries the
+    edge-context slices (``left_context_v``/``right_context_v``) when the
+    caller has them, so an offline replay can seat the anti-alias FIR
+    exactly like the live verdict did; the CSV stays capture-only.
     """
     waveform = np.asarray(waveform_v, dtype=float)
     if waveform.size == 0:
@@ -1866,10 +1884,21 @@ def save_raw_noise_capture(
         for index, volts in enumerate(waveform):
             writer.writerow([index, f"{index / rate:.6f}", f"{volts:.7f}"])
     npz_path = capture_dir / f"{stem}.npz"
+    context_arrays: dict[str, np.ndarray] = {}
+    for key, values in (
+        ("left_context_v", left_context_v),
+        ("right_context_v", right_context_v),
+    ):
+        if values is None:
+            continue
+        array = np.asarray(values, dtype=float)
+        if array.size:
+            context_arrays[key] = array
     np.savez_compressed(
         npz_path,
         waveform_v=waveform,
         sample_rate_hz=float(sample_rate_hz),
+        **context_arrays,
         **{key: np.asarray(str(value)) for key, value in meta.items() if key != "sample_rate_hz"},
     )
     return [csv_path, npz_path]
@@ -2489,8 +2518,14 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         where ``capturing`` is False during the wait and ``baseline_delta_mv``
         is the latest per-second mean movement (None until two blocks exist).
 
-        Returns ``(noise_waveform, actual_rate, wait_s, elapsed_s,
-        baseline_settled)``.
+        Returns ``(noise_waveform, left_context, right_context, actual_rate,
+        wait_s, elapsed_s, baseline_settled)``. The contexts are the
+        NOISE_EDGE_CONTEXT_SAMPLES raw samples immediately before/after the
+        capture window (2026-08-31): the quiet wait always covers the left
+        side (min 3 s >> 0.31 s) and the stream runs 0.31 s past the window
+        for the right side. They seat the verdict's anti-alias FIR on real
+        history instead of reflection padding; they are never part of the
+        judged window itself.
         """
         self.connect()
         samples = []
@@ -2532,7 +2567,8 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         try:
             while (
                 capture_start is None
-                or len(samples) < capture_start + capture_samples
+                or len(samples)
+                < capture_start + capture_samples + NOISE_EDGE_CONTEXT_SAMPLES
             ):
                 if cancelled is not None and cancelled():
                     raise Esp32BackendError("Measurement was cancelled.")
@@ -2544,7 +2580,11 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                         (len(block_means) + 1) * block_samples,
                     )
                 else:
-                    target = capture_start + capture_samples
+                    target = (
+                        capture_start
+                        + capture_samples
+                        + NOISE_EDGE_CONTEXT_SAMPLES
+                    )
                 read_count = min(
                     self.STREAM_CHUNK_SAMPLES, max(1, target - len(samples))
                 )
@@ -2591,7 +2631,10 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     len(samples) - samples_reported >= update_stride
                     or (
                         capture_start is not None
-                        and len(samples) >= capture_start + capture_samples
+                        and len(samples)
+                        >= capture_start
+                        + capture_samples
+                        + NOISE_EDGE_CONTEXT_SAMPLES
                     )
                 ):
                     continue
@@ -2625,8 +2668,17 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         waveform_np, _sync_np = self._sample_arrays(samples)
         elapsed_s = len(samples) / actual_scan_rate
         noise_waveform = waveform_np[capture_start : capture_start + capture_samples]
+        capture_end = capture_start + capture_samples
+        left_context = waveform_np[
+            max(0, capture_start - NOISE_EDGE_CONTEXT_SAMPLES) : capture_start
+        ]
+        right_context = waveform_np[
+            capture_end : capture_end + NOISE_EDGE_CONTEXT_SAMPLES
+        ]
         return (
             noise_waveform,
+            left_context,
+            right_context,
             actual_scan_rate,
             capture_start / actual_scan_rate,
             elapsed_s,
@@ -2788,6 +2840,9 @@ class NoiseCaptureReport:
     settle_s: float | None = None
     capture_s: float | None = None
     pp_limit_mv: float = NOISE_PP_LIMIT_MV
+    # Allowance the verdict was actually judged with, as a percent of
+    # windows (2026-08-31: the soak records its absolute-3 equivalent 5%
+    # here instead of this default 15% - it was previously hard-wired).
     max_over_percent: float = NOISE_MAX_OVER_FRACTION * 100.0
     # Sample rate of the band-limited trace the pk-pk rule ran on; documents
     # the analysis bandwidth alongside the recorded numbers.
@@ -2811,6 +2866,7 @@ class NoiseCaptureReport:
         capture_s: float,
         analysis_rate_hz: float | None = None,
         baseline_settled: bool | None = None,
+        max_over_fraction: float | None = None,
     ) -> "NoiseCaptureReport":
         return cls(
             outcome=OUTCOME_PASS if analysis.passed else OUTCOME_FAIL,
@@ -2827,6 +2883,11 @@ class NoiseCaptureReport:
             ),
             baseline_settled=(
                 None if baseline_settled is None else bool(baseline_settled)
+            ),
+            max_over_percent=(
+                NOISE_MAX_OVER_FRACTION * 100.0
+                if max_over_fraction is None
+                else float(max_over_fraction) * 100.0
             ),
         )
 
@@ -2864,7 +2925,10 @@ def apply_noise_gate(
     if noise_report is None or noise_report.outcome != OUTCOME_FAIL:
         return final
     total = noise_report.windows_total or 0
-    allowed = int(total * NOISE_MAX_OVER_FRACTION + 1e-9)
+    # 2026-08-31 fix: use the allowance the capture was actually judged
+    # with. The old fixed NOISE_MAX_OVER_FRACTION told a 60 s soak FAIL
+    # "allowed 9" while the soak rule correctly allowed the absolute 3.
+    allowed = int(total * noise_report.max_over_percent / 100.0 + 1e-9)
     clipped = noise_report.clipped_windows or 0
     clip_text = (
         f" ({clipped} window(s) clipped at the ADC rail)" if clipped else ""
@@ -4159,7 +4223,7 @@ class ScopeView(tk.Canvas):
 
         # --- relative (noise-range) mode: deviation from the mean --- #
         # Units auto-select: µV when the acceptance band is below 1 mV (the
-        # 75 µV pin-level TP412 limit), mV otherwise.
+        # ~429 µV pin-level TP412 limit), mV otherwise.
         relative = self._relative_band_mv is not None
         if relative:
             band_in_uv = self._relative_band_mv < 1.0
@@ -4374,6 +4438,8 @@ class EmitterTesterApp(tk.Tk):
         # analysis; the band-limited verdict trace cannot recover it.
         self.last_noise_raw_waveform: np.ndarray | None = None
         self.last_noise_raw_rate_hz: float | None = None
+        self.last_noise_raw_left_context: np.ndarray | None = None
+        self.last_noise_raw_right_context: np.ndarray | None = None
         # True once this part's raw capture was auto-saved (any window over).
         self.noise_raw_auto_saved = False
         # Insertion-time offset read (the settled re-read carries the verdict).
@@ -4897,11 +4963,11 @@ class EmitterTesterApp(tk.Tk):
                   f"{EMITTER_PWM_DUTY_CYCLE:g}% duty (fixed). "
                   f"ADS sensor range is ±{WAVEFORM_INPUT_RANGE_V:g} V (PGA ×1, input buffer off) "
                   f"through a unity-gain buffer. "
-                  f"AIN1 is checked before AIN0 and must remain within "
-                  f"+/-{REFERENCE_TOLERANCE_PERCENT:g}% of its calibration, except that a high "
-                  f"AIN1 spike is ignored when AIN0 confirms a high-offset DUT. "
-                  f"After the driven capture, the emitter turns off and a "
-                  f"{NOISE_CAPTURE_SECONDS:g} s noise capture runs once the level settles: at most "
+                  f"AIN1 reference checks are DISABLED by decision (op-amp "
+                  f"crosstalk; docs/CALIBRATION_RECORD.md 2.4) - when enabled they must stay "
+                  f"within +/-{REFERENCE_TOLERANCE_PERCENT:g}% of calibration. "
+                  f"The emitter-off noise test runs BEFORE the driven sensitivity capture "
+                  f"(fail-fast): {NOISE_CAPTURE_SECONDS:g} s once the level settles; at most "
                   f"{NOISE_MAX_OVER_FRACTION:.0%} of its {NOISE_WINDOW_S:g} s windows may exceed "
                   f"{NOISE_PP_LIMIT_MV:g} mV pk-pk (provisional TP412 limit). "
                   f"Power: the 6.5 V battery drives the emitters ONLY and the 9 V battery drives "
@@ -5717,7 +5783,7 @@ class EmitterTesterApp(tk.Tk):
         # Result view: also show the emitter-off noise capture so the noise
         # verdict can be verified visually. The noise scope uses the RELATIVE
         # range display: deviation from the capture mean (µV at the current
-        # 75 µV pin-level limit) with solid red cutoff lines at ±limit/2, so
+        # ~429 µV pin-level limit) with solid red cutoff lines at ±limit/2, so
         # "does it cross the lines" is the whole reading. min_span_v (2x the
         # limit) keeps the y-axis from zooming into the noise, so a passing
         # part's noise looks small. The stored trace is the band-limited one
@@ -6081,6 +6147,8 @@ class EmitterTesterApp(tk.Tk):
         self.last_noise_metrics = None
         self.last_noise_raw_waveform = None
         self.last_noise_raw_rate_hz = None
+        self.last_noise_raw_left_context = None
+        self.last_noise_raw_right_context = None
         self.noise_raw_auto_saved = False
         self.noise_soak_var.set(False)
         self.last_reference_check_mv = None
@@ -6580,6 +6648,12 @@ class EmitterTesterApp(tk.Tk):
                             self.current_sensor_id,
                             self.last_noise_raw_waveform,
                             self.last_noise_raw_rate_hz,
+                            left_context_v=getattr(
+                                self, "last_noise_raw_left_context", None
+                            ),
+                            right_context_v=getattr(
+                                self, "last_noise_raw_right_context", None
+                            ),
                             metadata={
                                 "operator_requested": "no (automatic on noise FAIL)",
                                 "noise_outcome": self.last_noise_report.outcome,
@@ -7014,6 +7088,8 @@ class EmitterTesterApp(tk.Tk):
         self.last_noise_metrics = None
         self.last_noise_raw_waveform = None
         self.last_noise_raw_rate_hz = None
+        self.last_noise_raw_left_context = None
+        self.last_noise_raw_right_context = None
         self.noise_raw_auto_saved = False
         self.last_reference_check_mv = None
         self.last_offset_initial_v = None
@@ -7427,6 +7503,8 @@ class EmitterTesterApp(tk.Tk):
 
                 (
                     noise_waveform,
+                    noise_left_context,
+                    noise_right_context,
                     noise_rate,
                     noise_wait_s,
                     _noise_elapsed_s,
@@ -7442,9 +7520,15 @@ class EmitterTesterApp(tk.Tk):
                     noise_waveform, dtype=float
                 )
                 self.last_noise_raw_rate_hz = float(noise_rate)
+                self.last_noise_raw_left_context = np.asarray(
+                    noise_left_context, dtype=float
+                )
+                self.last_noise_raw_right_context = np.asarray(
+                    noise_right_context, dtype=float
+                )
                 push(lambda: self.set_preview_display(token, noise=False))
                 # Gate on the band-limited trace (see the NOISE_* constants:
-                # the 75 uV pin-level limit is unreadable at the raw 500 Hz
+                # the ~429 uV pin-level limit is unreadable at the raw 500 Hz
                 # bandwidth); clipping is still checked on the raw samples.
                 noise_analysis, noise_filtered, noise_filtered_rate = (
                     analyze_noise_capture_band_limited(
@@ -7455,10 +7539,13 @@ class EmitterTesterApp(tk.Tk):
                         threshold_mv=NOISE_PP_LIMIT_MV,
                         max_over_fraction=noise_max_over_fraction,
                         clip_limit_v=NOISE_CLIP_LIMIT_V,
+                        left_context_v=noise_left_context,
+                        right_context_v=noise_right_context,
                     )
                 )
                 noise_report = NoiseCaptureReport.from_analysis(
                     noise_analysis,
+                    max_over_fraction=noise_max_over_fraction,
                     settle_s=noise_wait_s,
                     capture_s=len(noise_waveform) / noise_rate,
                     analysis_rate_hz=noise_filtered_rate,
@@ -7727,7 +7814,7 @@ class EmitterTesterApp(tk.Tk):
             ))
             push(lambda: self.set_preview_display(token, noise=True))
             # A deterministic synthetic trace (~36 µV RMS raw, i.e. a healthy
-            # part comfortably inside the 75 µV pin-level limit) run through
+            # part comfortably inside the ~429 µV pin-level limit) run through
             # the SAME band-limited analysis as hardware, so the report, the
             # µV noise scope, and the CSV plumbing are exercised end to end.
             sim_capture_seconds = (
@@ -7740,10 +7827,24 @@ class EmitterTesterApp(tk.Tk):
             sim_noise = offset_v + sim_noise_rng.normal(
                 0.0, 36e-6, int(sim_capture_seconds * actual_rate)
             )
+            # Edge context drawn AFTER the capture so the seeded capture
+            # samples stay identical to the pre-2026-08-31 simulator.
+            sim_left_context = offset_v + sim_noise_rng.normal(
+                0.0, 36e-6, NOISE_EDGE_CONTEXT_SAMPLES
+            )
+            sim_right_context = offset_v + sim_noise_rng.normal(
+                0.0, 36e-6, NOISE_EDGE_CONTEXT_SAMPLES
+            )
             # Parity with hardware: the raw capture stays available so the
             # "Save noise capture" button can be exercised in training mode.
             self.last_noise_raw_waveform = np.asarray(sim_noise, dtype=float)
             self.last_noise_raw_rate_hz = float(actual_rate)
+            self.last_noise_raw_left_context = np.asarray(
+                sim_left_context, dtype=float
+            )
+            self.last_noise_raw_right_context = np.asarray(
+                sim_right_context, dtype=float
+            )
             sim_analysis, sim_filtered, sim_filtered_rate = (
                 analyze_noise_capture_band_limited(
                     sim_noise,
@@ -7753,10 +7854,13 @@ class EmitterTesterApp(tk.Tk):
                     threshold_mv=NOISE_PP_LIMIT_MV,
                     max_over_fraction=sim_max_over_fraction,
                     clip_limit_v=NOISE_CLIP_LIMIT_V,
+                    left_context_v=sim_left_context,
+                    right_context_v=sim_right_context,
                 )
             )
             self.last_noise_report = NoiseCaptureReport.from_analysis(
                 sim_analysis,
+                max_over_fraction=sim_max_over_fraction,
                 settle_s=NOISE_WAIT_BEFORE_CAPTURE_S,
                 capture_s=sim_capture_seconds,
                 analysis_rate_hz=sim_filtered_rate,
@@ -7956,9 +8060,11 @@ class EmitterTesterApp(tk.Tk):
         if token != self.measure_token:
             return
         if self.preview_noise_display and waveform.size >= NOISE_DECIMATION_FACTOR:
-            # The live noise view shows the same band-limited trace the
-            # verdict is computed from; raw preview frames are decimated here
-            # (vectorized: trim to a block multiple, then per-block mean).
+            # The live noise view decimates preview frames with a plain
+            # per-block mean (boxcar) - a DISPLAY approximation of the
+            # verdict trace, which is computed offline over the full capture
+            # by the Kaiser anti-alias FIR (up to ~3 dB apart at 10-22 Hz).
+            # Read verdicts from the result screen, not off this preview.
             blocks = waveform.size // NOISE_DECIMATION_FACTOR
             waveform = (
                 waveform[: blocks * NOISE_DECIMATION_FACTOR]
@@ -8242,6 +8348,12 @@ class EmitterTesterApp(tk.Tk):
                 self.current_sensor_id,
                 waveform,
                 rate,
+                left_context_v=getattr(
+                    self, "last_noise_raw_left_context", None
+                ),
+                right_context_v=getattr(
+                    self, "last_noise_raw_right_context", None
+                ),
                 metadata={
                     "operator_requested": (
                         f"no (automatic: {windows_over} window(s) over limit)"
@@ -8294,6 +8406,12 @@ class EmitterTesterApp(tk.Tk):
                 self.current_sensor_id,
                 waveform,
                 rate,
+                left_context_v=getattr(
+                    self, "last_noise_raw_left_context", None
+                ),
+                right_context_v=getattr(
+                    self, "last_noise_raw_right_context", None
+                ),
                 metadata=metadata,
             )
         except Exception as exc:

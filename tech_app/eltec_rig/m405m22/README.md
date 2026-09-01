@@ -206,9 +206,11 @@ signals at this scale:
   1 s window raw, and the raw ~500 Hz bandwidth also admits mains/EMI the
   band-limited legacy chain never saw.
 - **Band-limiting fixes it.** The 20:1 decimation (`NOISE_DECIMATION_FACTOR`;
-  an anti-alias FIR since 2026-08-20 — same ~22 Hz passband as the original
-  boxcar but ≥ 60 dB of stopband so out-of-band mains/EMI can no longer
-  fold into the judged band) cuts the floor to a bench-measured **4.2 µV
+  an anti-alias FIR since 2026-08-20 — flat to the boxcar's old 22 Hz corner
+  (its own −3 dB point is 24.4 Hz) with ≥ 60 dB of stopband so out-of-band
+  mains/EMI can no longer fold into the judged band; seated on 0.31 s of
+  real edge context per side since 2026-08-31) cuts the floor to a
+  bench-measured **4.2 µV
   median window pk-pk (~1% of the 429 µV limit)**, and the resulting 50 SPS
   view closely matches the legacy scope's own roll-mode 20 Sa/s
   acquisition. A pk-pk noise spec is only meaningful in the bandwidth it

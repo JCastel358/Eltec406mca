@@ -94,6 +94,16 @@ PWM_FREQUENCY_HZ = 10.0               # firmware boot default (406MCA drive)
 PWM_FREQ_FIRMWARE_VERSION = (1, 9)
 PWM_MIN_FREQUENCY_HZ = 0.1
 PWM_MAX_FREQUENCY_HZ = 20.0
+# Runtime-selectable duty cycle (firmware v3.2+): the ON fraction of each
+# period. The board boots at 50 % - the historical drive for the 405 M22 and
+# 406MCA models, which is what they are calibrated on. The 449 M18 app drives
+# 20 % to imitate the TP443 fixture's 20/80 chopper blade, so a bench session
+# reproducing that drive needs the same 20 %. Not persisted: any reset
+# (including opening the port) returns the board to 50 %.
+PWM_DUTY_FIRMWARE_VERSION = (3, 2)
+PWM_DEFAULT_DUTY_PERCENT = 50.0
+PWM_MIN_DUTY_PERCENT = 1.0
+PWM_MAX_DUTY_PERCENT = 99.0
 # Runtime-selectable ADS1256 front end (firmware v2.1+): lets the v2.0
 # (gain 1, buffer OFF) and v1.9 (gain 2, buffer ON) configurations be
 # A/B-compared on the same board without reflashing - e.g. to check whether
@@ -189,6 +199,7 @@ class Esp32Rig:
         self.ser: serial.Serial | None = None
         self.firmware_version: tuple[int, int] | None = None
         self.pwm_frequency_hz = PWM_FREQUENCY_HZ   # firmware boot default
+        self.pwm_duty_percent = PWM_DEFAULT_DUTY_PERCENT      # ditto, 50 %
 
     # -- lifecycle -------------------------------------------------------- #
     def connect(self) -> None:
@@ -308,6 +319,30 @@ class Esp32Rig:
             )
         self._command(f"PWM,FREQ,{hz:g}", "OK,PWM,FREQ")
         self.pwm_frequency_hz = hz
+
+    def set_pwm_duty(self, percent: float) -> None:
+        """Set the emitter drive duty cycle in percent ON (firmware v3.2+).
+
+        50 % is the boot default and the drive the 405 M22 and 406MCA models
+        are calibrated on; 20 % is the 449 M18's TP443 20/80 blade equivalent.
+        The firmware restarts the PWM phase, so the change is clean even
+        mid-drive. Not persisted on the board.
+        """
+        if not (PWM_MIN_DUTY_PERCENT <= percent <= PWM_MAX_DUTY_PERCENT):
+            raise ValueError(
+                f"PWM duty {percent:g}% out of range "
+                f"({PWM_MIN_DUTY_PERCENT:g}-{PWM_MAX_DUTY_PERCENT:g} %)"
+            )
+        if (self.firmware_version is not None
+                and self.firmware_version < PWM_DUTY_FIRMWARE_VERSION):
+            raise RuntimeError(
+                "PWM,DUTY needs firmware v3.2 or newer - re-flash Eltec.ino "
+                "with 'python Arduino/Eltec/flash_firmware.py' (the installed "
+                f"build v{self.firmware_version[0]}.{self.firmware_version[1]} "
+                "drives a fixed 50 % duty)."
+            )
+        self._command(f"PWM,DUTY,{percent:g}", "OK,PWM,DUTY")
+        self.pwm_duty_percent = percent
 
     def set_front_end(self, preset: str) -> str:
         """Switch the ADS1256 analog front end (firmware v2.1+).

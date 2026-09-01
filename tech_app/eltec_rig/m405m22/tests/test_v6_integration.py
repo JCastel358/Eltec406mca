@@ -1093,7 +1093,8 @@ class ContinuousCaptureTests(unittest.TestCase):
         rig = FakeLowLevelRig()
         rig._samples = self.flat_noise_bank(30000)
         progress_flags: list[tuple[bool, float]] = []
-        noise, rate, wait_s, elapsed_s, settled = rig.read_noise_capture(
+        (noise, left_context, right_context, rate, wait_s, elapsed_s,
+         settled) = rig.read_noise_capture(
             progress=lambda capturing, elapsed, delta=None: progress_flags.append(
                 (capturing, elapsed)
             ),
@@ -1116,6 +1117,22 @@ class ContinuousCaptureTests(unittest.TestCase):
             ]
         )
         np.testing.assert_array_equal(np.asarray(noise), expected)
+        # 2026-08-31: the FIR's edge context comes back alongside - the
+        # quiet-wait tail on the left, extra streamed samples on the right.
+        self.assertEqual(len(left_context), app.NOISE_EDGE_CONTEXT_SAMPLES)
+        self.assertEqual(len(right_context), app.NOISE_EDGE_CONTEXT_SAMPLES)
+        np.testing.assert_array_equal(
+            np.asarray(left_context),
+            np.asarray(
+                [
+                    sample.volts
+                    for sample in rig._samples[
+                        wait_samples
+                        - app.NOISE_EDGE_CONTEXT_SAMPLES : wait_samples
+                    ]
+                ]
+            ),
+        )
         # Progress reports the quiet wait first, then the capture phase.
         self.assertFalse(progress_flags[0][0])
         self.assertTrue(progress_flags[-1][0])
@@ -1132,7 +1149,8 @@ class ContinuousCaptureTests(unittest.TestCase):
                 volts=1.2 + 0.002 * (4000 - index) / 1000.0, sync=0
             )
         rig._samples = bank
-        noise, _rate, wait_s, _elapsed_s, settled = rig.read_noise_capture()
+        (noise, _left, _right, _rate, wait_s, _elapsed_s,
+         settled) = rig.read_noise_capture()
         self.assertTrue(settled)
         self.assertGreater(wait_s, app.NOISE_WAIT_BEFORE_CAPTURE_S)
         self.assertLess(wait_s, app.NOISE_WAIT_MAX_S)
@@ -1149,7 +1167,8 @@ class ContinuousCaptureTests(unittest.TestCase):
             SimpleNamespace(volts=1.2 + 0.001 * index / 1000.0, sync=0)
             for index in range(45000)
         ]
-        noise, _rate, wait_s, _elapsed_s, settled = rig.read_noise_capture()
+        (noise, _left, _right, _rate, wait_s, _elapsed_s,
+         settled) = rig.read_noise_capture()
         self.assertFalse(settled)
         self.assertEqual(wait_s, app.NOISE_WAIT_MAX_S)
         self.assertEqual(len(noise), int(app.NOISE_CAPTURE_SECONDS * 1000))
@@ -1476,7 +1495,22 @@ class FakeMeasurementDevice:
         )
         if kwargs.get("preview"):
             kwargs["preview"](waveform[-500:], np.zeros(500))
-        return waveform, rate, wait_s, wait_s + len(waveform) / rate, True
+        # Edge context: one quiet window continues the synthetic pattern on
+        # both sides (period 1000 samples), like the real rig's quiet-wait
+        # tail and post-capture stream (2026-08-31).
+        edge = app.NOISE_EDGE_CONTEXT_SAMPLES
+        quiet = synthetic_noise_waveform(
+            offset_v=self.offset, windows=1, noisy_windows=0
+        )
+        return (
+            waveform,
+            quiet[-edge:],
+            quiet[:edge],
+            rate,
+            wait_s,
+            wait_s + len(waveform) / rate,
+            True,
+        )
 
 
 class MeasurementHarness:
@@ -2177,6 +2211,15 @@ class NoiseSoakTests(unittest.TestCase):
         self.assertEqual(harness.last_noise_report.windows_total, 60)
         self.assertFalse(final.passed)
         self.assertEqual(harness.last_noise_report.outcome, app.OUTCOME_FAIL)
+        # 2026-08-31: the report records the allowance actually judged with
+        # and the FAIL reason quotes it (the old message said "allowed 9").
+        self.assertAlmostEqual(
+            harness.last_noise_report.max_over_percent, 5.0, places=9
+        )
+        self.assertTrue(
+            any("(allowed 3)" in reason for reason in final.fail_reasons),
+            final.fail_reasons,
+        )
 
     def test_soak_still_tolerates_a_single_transient(self):
         device = FakeMeasurementDevice(noisy_windows=3)

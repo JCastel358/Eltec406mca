@@ -13,6 +13,166 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Live viewer: sync-locked cycle-average panel (2026-08-31)
+
+`Arduino/Eltec/live_waveform.py` — the 449 M18 detector's ~20 mV response at
+18 Hz / 20 % sits under a ~50 mV broadband white noise floor (measured by
+spectrum on the day's captures: flat ~1 mV/√Hz to ~50 Hz, no mains lines),
+so the rolling trace shows hash and the response is invisible live. For
+white noise the optimal viewer is averaging, so the viewer now has an
+oscilloscope-style average acquisition mode:
+
+- A third panel folds the last N drive cycles (default 64, `--fold-cycles`,
+  0 hides the panel) on the firmware sync bit's rising edges and draws the
+  mean cycle ±1σ, with the mean-cycle pk-pk in the title. Noise on the
+  average falls with √N (64 cycles ≈ 8×; ~3.5 s of history at 18 Hz).
+  Cycles are resampled between their own edges, and timestamps are
+  modularly unwrapped, so PWM phase restarts and the uint32 micros()
+  rollover cannot smear the fold. Needs the ESP32 drive (sync edges); with
+  an external drive the panel shows a hint instead.
+- The fold uses the whole `--max-window` history buffer, not just the
+  displayed window; the rolling trace and sync strip are unchanged (their
+  x-axes are now linked explicitly rather than via sharex).
+- Viewer-only change - no firmware, threshold or measurement behaviour
+  touched. Verified offline (Agg): fold recovers a 12.8 mV synthetic
+  18 Hz / 20 % response from 25 mV rms noise, is bit-identical across a
+  uint32 timestamp wrap, returns None with no edges; a scripted-stream
+  headless run exercises update() in both the 3-panel and `--fold-cycles 0`
+  legacy layouts.
+
+## Bench tools: `--duty` on the live viewer, `set_pwm_duty` on the wrapper (2026-08-31)
+
+`Arduino/Eltec/live_waveform.py --duty <percent>` — the bench scope could set
+the drive frequency but not the duty cycle, so the 449 M18's 20/80 drive
+(TP443 blade equivalent) could not be watched live; only the production app
+issued `PWM,DUTY`. Looking at an 18 Hz / 20 % waveform meant running a test.
+
+- `Esp32Rig.set_pwm_duty(percent)` added to `Arduino/Eltec/esp32_rig_readout.py`
+  (1–99 %, firmware v3.2+, refuses older builds with a re-flash instruction and
+  reports the version found). It mirrors `set_pwm_frequency`: range-checked
+  host-side, `PWM,DUTY,<pct>` on the wire, `pwm_duty_percent` tracked on the
+  object. Duty survives a later `PWM,FREQ`, and the firmware restarts the PWM
+  phase, so the change is clean even mid-drive.
+- The viewer applies `--duty` whether or not it starts driving (like `--freq`),
+  so a later SPACE toggle uses it, and shows the drive in the plot title and
+  the stats box. Out-of-range values and pre-v3.2 boards exit with the message
+  instead of a traceback, after the port is closed cleanly.
+- The board boots at 50 % and nothing persists, so the 405 M22 and 406MCA
+  drives are untouched unless `--duty` is passed. No firmware, threshold or
+  measurement behaviour changed — bench viewing only.
+- Verified offline against a scripted v3.2 board emulator: `PWM,FREQ,18` then
+  `PWM,DUTY,20` then `PWM,ON`, title reads "18 Hz / 20% duty"; a v3.1 board
+  exits with the flash instruction; `--duty 0` is rejected host-side before any
+  serial IO. The bench board may still be on v3.1 — flash with
+  `python Arduino/Eltec/flash_firmware.py` before using the flag.
+
+## Live waveform viewer: the time window is now adjustable while watching (2026-08-31)
+
+`Arduino/Eltec/live_waveform.py` — the rolling window was fixed at launch by
+`-w`, so seeing more (or less) time meant closing the plot, restarting the
+stream and losing the trace under inspection. It can now be changed live:
+
+- `]` / `+` widens, `[` / `-` narrows, and the new **Window** button next to
+  the Emitter button steps up and wraps. Rungs are 0.25, 0.5, 1, 2, 4, 6, 8,
+  10, 15, 20, 30, 45, 60 s, plus whatever `-w` was launched with, clamped to
+  `--max-window`. The current setting shows in the button and the plot title.
+  The sub-second rungs are for the fast drives — 0.25 s is ~4 cycles of an
+  18 Hz signal, where the 4 s default packed in 72 and showed only a band.
+- The reader's history buffer is now sized from `--max-window` (default 60 s)
+  instead of the starting window, so widening shows real samples. It cannot
+  invent history: samples older than the window in force were never buffered,
+  so a freshly widened plot fills in from the left over the next seconds.
+- `-w` is unchanged as the STARTING window (still auto-widened to ~6 cycles
+  for a drive below 2 Hz); `--max-window` raises the ceiling and the memory
+  the buffer holds (60 s ≈ 75 k samples at 1 kS/s).
+
+No firmware, threshold or measurement behaviour changed — this is a viewer
+control only. Verified offline against a synthetic 1 kS/s stream (Agg
+backend): each key press moves one rung, clamps at both ends, and the plotted
+span and x-limits follow it.
+
+## New engineer tool: legacy-chopper vs rig-emitter waveform comparison (2026-08-31)
+
+`engineer_tools/emitter_waveform_comparison.py` — pre-qualification check
+for the 449 M18 app's 18 Hz drive: can the rig's miniature blackbody
+emitter (a resistor that must heat/cool every cycle) reproduce the detector
+waveform shape the legacy fixture's blackbody + 20/80 chopper blade
+produces, or does its thermal time constant round it off?
+
+- `capture --setup legacy` streams AIN0 with the rig PWM forced OFF while
+  the LEGACY fixture drives the detector (rig used purely as a recorder;
+  detector signal -> AIN0, detector ground -> rig AGND is the one required
+  common-ground connection). `capture --setup rig` drives the qualified
+  18 Hz (or 5 Hz) / 20 % emitter PWM via the production m449m18 backend,
+  waits a thermal warm-up, then streams; the per-sample sync bit gives
+  exact cycle edges and the PWM-ON -> detector-peak thermal lag.
+- `compare` folds each capture cycle-by-cycle on its own boundaries (sync
+  edges when present, fundamental zero-crossings otherwise — a chopper
+  motor drifts), normalises the mean cycle to unit pk-pk (amplitude is
+  deliberately ignored) and reports 10-90 % rise / 90-10 % fall, width at
+  50 %, H2..H5/H1 harmonic ratios, and shape correlation / RMS residual
+  against the reference capture, plus an overlay plot.
+- Captures land in `~/Documents/Eltec_EmitterComparison` — a new
+  engineering-experiment folder, never the `Eltec_*_Test_Results`
+  evidence folders. Analysis verified end-to-end on synthetic data (sharp
+  25 % trapezoid vs 12 ms-tau first-order lag: rise 1.4 -> 8.5 ms,
+  corr 0.886, lag 10 ms recovered).
+- Needs firmware v3.2 on the board (backend refuses older at connect);
+  the bench board may still be on v3.1 — flash with
+  `python Arduino/Eltec/flash_firmware.py` first.
+- Same-day usability fix: `compare` with no paths now auto-picks the
+  newest `*_legacy_*` capture (reference) and the newest `*_rig_*` capture
+  from the default folder and prints what it chose — the placeholder-style
+  `compare <legacy.npz> <rig.npz>` example was a PowerShell parser error
+  when pasted verbatim, and PowerShell does not expand globs either.
+
+## 405 noise pipeline hygiene + the legacy amplifier measured (2026-08-31)
+
+Follow-up to the 2026-08-31 audit of the noise verdict chain (implementation
+verified correct end to end; these are the defects it surfaced). Archived
+captures are unaffected — every no-context replay is bit-identical — but
+LIVE captures now judge their first/last window with the anti-alias filter
+seated on real samples, so a bench re-run on a known part is due before
+trusting new edge-window counts near the limit.
+
+- **Edge context for the anti-alias FIR** (the one filtering change):
+  `decimate_antialiased` accepts real neighbour samples as filter history;
+  reflection padding had let out-of-band interference into judged windows
+  0/19 at only ~11–21 dB (vs ≥ 60 dB interior; ≤ 1.4 % effect on all 14
+  archived captures). The tester streams 0.31 s extra and seats the FIR on
+  the quiet-wait tail (left) + extra samples (right); both slices are
+  archived in new `left_context_v`/`right_context_v` NPZ arrays so saved
+  captures replay to the live verdict; `replot_noise_capture.py` honours
+  them when present.
+- **Soak FAIL message fixed**: `apply_noise_gate` computed "allowed" from
+  the fixed 15 % and told a 60 s soak FAIL "allowed 9"; it now reports the
+  allowance the capture was judged with, and
+  `NoiseCaptureReport.max_over_percent` records it (was hard-wired to 15 %).
+- `analyze_noise_capture_band_limited`'s `threshold_mv`/`max_over_fraction`
+  are now REQUIRED — the old defaults were the withdrawn 75 µV / 20 %
+  limits and a new caller that omitted them silently got a retired gate
+  (production always passed the constants explicitly). Hand-ported with the
+  edge-context change to the dormant m449m18 copy per the porting procedure
+  (m406mca has no noise code).
+- Stale text swept: five "75 µV" comments → ~429 µV; the live-preview
+  comment no longer claims the boxcar preview is the verdict trace; in-app
+  help no longer says noise runs after the driven capture nor that the AIN1
+  gate is active; "same passband as the boxcar" corrected (same 22 Hz
+  passband *edge*; the FIR's −3 dB corner is 24.4 Hz, so the verdict band
+  is 0.852–24.4 Hz); the calibration record's noise-row line pointers
+  re-reconciled; the clip row's "condemns its ringing neighbour" reworded
+  as the emergent effect it is.
+- `docs/CALIBRATION_RECORD.md` §2.2 addendum: the legacy amp's frequency
+  response was measured (band-pass ×4140 peak at ~1.4 Hz, −3 dB
+  0.46–4.1 Hz; nameplate = midband gain; bandwidth still cannot explain
+  700 — the residual is a frequency-flat ~3–6×, prime suspect
+  source-impedance loading; verification measurements listed). **User
+  decision recorded: verdict-level agreement with the legacy fixture is the
+  acceptance criterion; the scalar 700 and the judged band stay.**
+- Tests: 38 / 175 / 109 / 111 (was 38 / 174 / 109 / 110) — new
+  edge-context coverage in both models, soak-message and context-plumbing
+  assertions in the 405 integration suite.
+
 ## Workspace reorganised for handover (2026-08-28)
 
 - Committed the outstanding work that had only existed in the working tree:

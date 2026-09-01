@@ -19,6 +19,7 @@ from stability_analysis import (  # noqa: E402
     analyze_noise_capture,
     analyze_noise_capture_band_limited,
     analyze_stability,
+    antialias_edge_context_samples,
     complete_cycle_segments,
     decimate_antialiased,
     decimate_boxcar,
@@ -456,10 +457,18 @@ class BandLimitedNoiseAnalysisTests(unittest.TestCase):
         ]
 
         fast_analysis, _filtered, rate = analyze_noise_capture_band_limited(
-            fast, 1000.0, decimation_factor=20, threshold_mv=0.075
+            fast,
+            1000.0,
+            decimation_factor=20,
+            threshold_mv=0.075,
+            max_over_fraction=0.20,
         )
         slow_analysis, _filtered, _rate = analyze_noise_capture_band_limited(
-            slow, 1000.0, decimation_factor=20, threshold_mv=0.075
+            slow,
+            1000.0,
+            decimation_factor=20,
+            threshold_mv=0.075,
+            max_over_fraction=0.20,
         )
 
         self.assertEqual(rate, 50.0)
@@ -508,6 +517,82 @@ class BandLimitedNoiseAnalysisTests(unittest.TestCase):
         # Same output timeline as the boxcar it replaced.
         self.assertEqual(len(filtered), n // factor)
 
+    def test_edge_context_seats_the_filter_and_no_context_stays_identical(self):
+        # 2026-08-31: reflection padding is exact for a linear trend but
+        # wrong for oscillatory content, so out-of-band interference leaked
+        # into the FIRST and LAST judged windows at only ~11-21 dB (vs
+        # >= 60 dB interior). Real neighbour samples as filter history must
+        # (1) leave the no-context output bit-identical (archived captures
+        # replay unchanged), (2) crush an out-of-band tone at the edges
+        # like the interior, (3) change nothing away from the edges, and
+        # (4) keep a settling ramp exact when its context continues it.
+        import math as m
+
+        rate, factor = 1000.0, 20
+        edge = antialias_edge_context_samples(factor)
+        self.assertEqual(edge, 310)  # the production 621-tap design
+        n = 20000
+
+        def window_pp(window):
+            return max(window) - min(window)
+
+        worst_plain = 0.0
+        worst_seated = 0.0
+        for phase in (0.0, 1.3, 2.9, 4.4):
+            full = [
+                1.2 + 0.001 * m.sin(2 * m.pi * 60.0 * i / rate + phase)
+                for i in range(-edge, n + edge)
+            ]
+            left, capture, right = (
+                full[:edge], full[edge:edge + n], full[edge + n:]
+            )
+            plain = decimate_antialiased(capture, factor)
+            seated = decimate_antialiased(
+                capture, factor, left_context_v=left, right_context_v=right
+            )
+            self.assertEqual(len(seated), len(plain))
+            # No-context call forms are all bit-identical (the replay path).
+            self.assertEqual(
+                plain,
+                decimate_antialiased(
+                    capture, factor, left_context_v=None, right_context_v=None
+                ),
+            )
+            self.assertEqual(
+                plain,
+                decimate_antialiased(
+                    capture, factor, left_context_v=[], right_context_v=[]
+                ),
+            )
+            # Context only changes outputs whose FIR footprint reaches
+            # beyond the capture: the interior is untouched.
+            interior = slice(edge // factor + 1, -(edge // factor) - 1)
+            self.assertEqual(plain[interior], seated[interior])
+            worst_plain = max(
+                worst_plain, window_pp(plain[:50]), window_pp(plain[-50:])
+            )
+            worst_seated = max(
+                worst_seated, window_pp(seated[:50]), window_pp(seated[-50:])
+            )
+        # The defect: reflection leaks the 60 Hz tone into edge windows...
+        self.assertGreater(worst_plain, 0.00002)
+        # ...and real context restores interior-grade (>= 60 dB) rejection.
+        self.assertLess(worst_seated, 0.000002)
+
+        # A settling ramp whose context continues the line is still exact.
+        ramp_full = [1.2 + 0.0005 * i / rate for i in range(-edge, n + edge)]
+        filtered = decimate_antialiased(
+            ramp_full[edge:edge + n],
+            factor,
+            left_context_v=ramp_full[:edge],
+            right_context_v=ramp_full[edge + n:],
+        )
+        worst = max(
+            abs(value - (1.2 + 0.0005 * (k * factor + factor // 2) / rate))
+            for k, value in enumerate(filtered)
+        )
+        self.assertLess(worst, 1e-12)
+
     def test_detrend_removes_each_windows_own_line(self):
         # A pure line becomes ~zero; a line plus a center-symmetric square
         # keeps the square's full pk-pk (the fit sees zero extra slope).
@@ -533,13 +618,18 @@ class BandLimitedNoiseAnalysisTests(unittest.TestCase):
         # detrending it would fail every window.
         drift = [1.2 + 0.0005 * index / 1000.0 for index in range(20000)]
         detrended, _trace, _rate = analyze_noise_capture_band_limited(
-            drift, 1000.0, decimation_factor=20, threshold_mv=300.0 / 700.0
+            drift,
+            1000.0,
+            decimation_factor=20,
+            threshold_mv=300.0 / 700.0,
+            max_over_fraction=0.20,
         )
         raw_rule, _trace, _rate = analyze_noise_capture_band_limited(
             drift,
             1000.0,
             decimation_factor=20,
             threshold_mv=300.0 / 700.0,
+            max_over_fraction=0.20,
             detrend_windows=False,
         )
         self.assertTrue(detrended.passed)

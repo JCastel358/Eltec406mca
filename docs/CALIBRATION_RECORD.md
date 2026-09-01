@@ -53,19 +53,19 @@ Detailed mechanics: [`m405m22/README.md`](../tech_app/eltec_rig/m405m22/README.m
 | `OFFSET_MIN_V` / `OFFSET_MAX_V` | 0.80 / 3.00 V | tester ≈ l.124 | TP412 offset band. Needs firmware ≥ v2.0 (unbuffered gain-1 front end reads linearly to ~5 V). |
 | `SENSOR_OFFSET_MIN_PLAUSIBLE_V` | 0.05 V | tester ≈ l.315 | Near-0 V float = empty slot / dead buffer. Polled for `OFFSET_WAKE_TIMEOUT_S` = 5 s before deciding (2026-08-17: lot-500 part 500-44 was wrongly rejected as an empty slot before the poll existed). The old 3.5 V high-side "no sensor" rail was removed 2026-08-13: a railed ~5 V AIN0 **is** the high-offset failure signature. |
 | Offset policy | high-side fail-fast; low side judged on a **settled re-read** after the sensitivity capture | tester | 2026-08-17, lot 500: offsets rise for tens of seconds after insertion — 35 of 48 parts read 0.15–1.1 V *below* their settled legacy value on the insertion read. CSV keeps both: `offset_initial_v` and `offset_v`. Settled offsets match the old fixture to +0.018 ± 0.032 V (2026-08-18 re-run). |
-| `NOISE_LEGACY_PP_LIMIT_MV` | 300 mV | tester ≈ l.383 | TP412's scope limit, read **behind the legacy bench amplifier**. |
-| `NOISE_LEGACY_AMPLIFIER_GAIN` | 4000 (nominal, **not** used for the verdict) | tester ≈ l.382 | Sticker gain of the TL084-based legacy amplifier. |
-| `NOISE_EFFECTIVE_CHAIN_FACTOR` | **700** | tester ≈ l.386 | See §2.2. |
-| `NOISE_PP_LIMIT_MV` | 300 / 700 ≈ **0.429 mV (429 µV) pk-pk at the sensor pin** | tester ≈ l.387 | Derived. Displayed as red cutoff lines at ±214 µV. |
-| `NOISE_DECIMATION_FACTOR` | 20 (1000 → 50 SPS, passband flat to ~22 Hz) | tester ≈ l.388 | Chosen 2026-08-13 (fixture floor 5.6 % of limit at 20:1; ≥10:1 suffices; raw is unusable at 36 %). Since **2026-08-20** the decimator is a Kaiser windowed-sinc anti-alias FIR (`stability_analysis.decimate_antialiased`, ≥ 60 dB stopband from 28 Hz) — the original boxcar's −13 dB sidelobes folded 60 Hz mains to 10 Hz at only −16 dB (41 % phantom energy on the interference-heavy `test-22` capture). Same passband and timeline; all nine archived raw captures replay to identical verdicts. |
+| `NOISE_LEGACY_PP_LIMIT_MV` | 300 mV | tester ≈ l.387 | TP412's scope limit, read **behind the legacy bench amplifier**. |
+| `NOISE_LEGACY_AMPLIFIER_GAIN` | 4000 (nominal, **not** used for the verdict) | tester ≈ l.386 | Sticker gain of the TL084-based legacy amplifier. |
+| `NOISE_EFFECTIVE_CHAIN_FACTOR` | **700** | tester ≈ l.390 | See §2.2. |
+| `NOISE_PP_LIMIT_MV` | 300 / 700 ≈ **0.429 mV (429 µV) pk-pk at the sensor pin** | tester ≈ l.391 | Derived. Displayed as red cutoff lines at ±214 µV. |
+| `NOISE_DECIMATION_FACTOR` | 20 (1000 → 50 SPS, passband flat to ~22 Hz) | tester ≈ l.392 | Chosen 2026-08-13 (fixture floor 5.6 % of limit at 20:1; ≥10:1 suffices; raw is unusable at 36 %). Since **2026-08-20** the decimator is a Kaiser windowed-sinc anti-alias FIR (`stability_analysis.decimate_antialiased`, ≥ 60 dB stopband from 28 Hz) — the original boxcar's −13 dB sidelobes folded 60 Hz mains to 10 Hz at only −16 dB (41 % phantom energy on the interference-heavy `test-22` capture). Same passband and timeline; all nine archived raw captures replay to identical verdicts. **2026-08-31:** precision — the Kaiser's passband edge is 22.15 Hz but its −3 dB corner is **24.4 Hz** (22.17 Hz was the boxcar's; with the detrend the verdict's −3 dB band is 0.852–24.4 Hz), and the FIR now seats on **real edge context** (0.31 s per side: quiet-wait tail + extra streamed samples, archived in the capture NPZ) instead of reflection padding, which had let out-of-band interference into the first/last judged window at only ~11–21 dB. No-context replays (all pre-existing captures) are bit-identical. |
 | Judged band | ≈ **0.85–22 Hz** | analysis | Per-window detrend = high-pass −3 dB at 0.85 Hz; decimation = low-pass at 22.17 Hz (`engineer_tools/filter_response_analysis.py`, 2026-08-20). |
-| `NOISE_WINDOW_S` | 1 s windows | tester ≈ l.381 | |
-| `NOISE_MAX_OVER_FRACTION` | **0.15 → PASS iff ≤ 3 of 20 windows exceed the limit** | tester ≈ l.395 | Tightened from 20 % on **2026-08-17** (lot 500): the one part the legacy fixture failed for noise (500-44, 496 mV on the old scope) measured 4/20 windows over and was slipping through at 20 %; every other part was 0/20 except 500-3's isolated 2-window environmental spike, which must stay tolerated. 4 over fails, 2 passes. **Single-part anchor — refine with more known-noisy parts.** |
-| `NOISE_CAPTURE_SECONDS` | 20 s | tester ≈ l.396 | Fixed for now; adaptive length is future work. |
-| `NOISE_SOAK_CAPTURE_SECONDS` / `NOISE_SOAK_MAX_OVER_FRACTION` | 60 s / allowed count held at the **same absolute 3 (3 of 60)** | tester ≈ l.410 | **2026-08-18**: 500-44's burst noise is intermittent (4/20 over on 08-17, 0/20 on 08-18) while clean parts take environmental transients (500-1 hit 3/20). No threshold separates them; observation time does. Operator-selectable per part on the load step. |
-| Quiet wait | adaptive: `NOISE_WAIT_BEFORE_CAPTURE_S` 3 s min, `NOISE_WAIT_MAX_S` 20 s, start when 2 consecutive 1 s mean deltas ≤ limit/4 (≈107 µV/s) | tester ≈ l.426 | 2026-08-13. Can only delay the capture, never fail the part (`noise_baseline_settled` column records a deadline start). |
+| `NOISE_WINDOW_S` | 1 s windows | tester ≈ l.385 | |
+| `NOISE_MAX_OVER_FRACTION` | **0.15 → PASS iff ≤ 3 of 20 windows exceed the limit** | tester ≈ l.410 | Tightened from 20 % on **2026-08-17** (lot 500): the one part the legacy fixture failed for noise (500-44, 496 mV on the old scope) measured 4/20 windows over and was slipping through at 20 %; every other part was 0/20 except 500-3's isolated 2-window environmental spike, which must stay tolerated. 4 over fails, 2 passes. **Single-part anchor — refine with more known-noisy parts.** |
+| `NOISE_CAPTURE_SECONDS` | 20 s | tester ≈ l.411 | Fixed for now; adaptive length is future work. |
+| `NOISE_SOAK_CAPTURE_SECONDS` / `NOISE_SOAK_MAX_OVER_FRACTION` | 60 s / allowed count held at the **same absolute 3 (3 of 60)** | tester ≈ l.425 | **2026-08-18**: 500-44's burst noise is intermittent (4/20 over on 08-17, 0/20 on 08-18) while clean parts take environmental transients (500-1 hit 3/20). No threshold separates them; observation time does. Operator-selectable per part on the load step. |
+| Quiet wait | adaptive: `NOISE_WAIT_BEFORE_CAPTURE_S` 3 s min, `NOISE_WAIT_MAX_S` 20 s, start when 2 consecutive 1 s mean deltas ≤ limit/4 (≈107 µV/s) | tester ≈ l.441 | 2026-08-13. Can only delay the capture, never fail the part (`noise_baseline_settled` column records a deadline start). |
 | Per-window detrend | each 1 s window judged against its own least-squares baseline (mean + slope) | `stability_analysis.detrend_window_segments` | 2026-08-13 — residual DC settling cannot inflate the pk-pk (mirrors the legacy AC-coupled amplifier). |
-| `NOISE_CLIP_LIMIT_V` | 98 % of the ±5 V input range | tester ≈ l.430 | A window whose RAW samples touch the clip counts as over-limit; a clipped window also condemns its ringing neighbour. |
+| `NOISE_CLIP_LIMIT_V` | 98 % of the ±5 V input range | tester ≈ l.445 | A window whose RAW samples touch the clip counts as over-limit; the FIR's ~0.3 s ring-through from a railed window can also push its neighbour over (emergent, not a coded rule). |
 | Raw-capture auto-save | whenever any window goes over, PASS or FAIL | tester | 2026-08-18. Files under `noise_captures/lot_<lot>/`; see [`DATA_MAP.md`](DATA_MAP.md). |
 | `SENSITIVITY_LEGACY_EQUIVALENT_FACTOR` | **4.30** | tester ≈ l.452 | See §2.3. |
 | `SENSITIVITY_CALIBRATION_ID` | `405m22_tp412_lot500_pairwise_v1` | tester ≈ l.459 | Stamped on every CSV row. |
@@ -101,12 +101,51 @@ consistent with 600–800.
 
 The 2026-08-20 passband analysis (`engineer_tools/filter_response_analysis.py`)
 showed no physically sensible 1 Hz-centred band-pass can turn 4000 into 700
-(best achievable ratio 0.235 vs the required 0.175), so the gap is a **real
-gain difference** (10:1 probe setting, an amplifier range switch, or a wrong
-nameplate) — not a bandwidth effect. **Open action:** ask the amplifier's
-builder for the true midband gain / probe setting and the passband corners;
-a known passband would let the rig replicate the amplifier digitally instead
-of scaling through one factor.
+(best achievable ratio 0.235 vs the required 0.175, order-1 models), so the
+gap was attributed to a **real gain difference** (10:1 probe setting, an
+amplifier range switch, or a wrong nameplate) — not a bandwidth effect.
+Partially superseded by the 2026-08-31 addendum below: the response has now
+been measured, "wrong nameplate" and "10:1 probe" are effectively cleared,
+and the gain-scale conclusion itself stands.
+
+**2026-08-31 addendum — the amplifier's frequency response was measured
+directly** (11-point sine sweep, ~1 mV injected; output amplitudes 0.1 Hz →
+340 mV, 0.2 → 1.16 V, 0.5 → 3.06 V, 1 → 4.14 V, 2 → 4.10 V, 5 → 2.56 V,
+10 → 1.14 V, 20 → 336 mV, 50 → 63 mV, 100 → 17 mV, 200 → 5 mV):
+
+- The amp is a **band-pass peaking ×4140 at ~1.4 Hz** (−3 dB 0.46–4.1 Hz,
+  ≈2 real poles per side — two cascaded AC-coupled stages; gain ≥ 4000 only
+  over 0.86–2.2 Hz; |H| = 700 only at 0.15 and 13.2 Hz). The **nameplate
+  ×4000 is its real midband gain** (+0.5 dB) *if* the ~1 mV injection level
+  was accurate; a 10:1 probe is disfavoured on arithmetic (it over-explains).
+- **Bandwidth still cannot produce 700**: weighting the archived pin spectra
+  by the measured response gives effective factors 3400–6000 (clean lot-500
+  parts ≈ 4200), not 620–830 — the 08-20 conclusion survives its order-1
+  modelling limitation.
+- The measured **shape** validates against the archive: scaled by a flat
+  ≈3.2× it reproduces all 14 archived capture verdicts, 500-44's 496 mV
+  legacy reading (predicts 492 mV) and the 150–200 mV good-part reading.
+  The residual is a **frequency-flat ~3–6× in-service scale**; prime
+  suspect: **source-impedance loading** (the high-impedance pyro element
+  into the amp's input network — the sweep drove it from a stiff
+  generator), which would make nameplate, sweep and 700 simultaneously
+  consistent.
+- **Open action (updated):** record where the sweep was injected (amp input
+  terminals vs the fixture's sensor socket) and how the 1 mV was verified
+  (measured at the node vs generator dial; amplitude vs pk-pk). Then repeat
+  1 Hz and 0.2 Hz through a ~10–50 pF series capacitor or ~1 GΩ series
+  resistor emulating the pyro source (expect ≈14 dB drop at 1 Hz under the
+  loading hypothesis). Most informative extra sweep points: 0.03, 15,
+  500 Hz. The 08-13 cross-measurement's probe ratio and amp range-switch
+  position are unrecorded — capture them next time the legacy station is up.
+- **Decision (2026-08-31): the rig is not required to replicate the amp's
+  spectral response.** The acceptance criterion is verdict-level agreement
+  with the legacy fixture (parts that pass there pass here, parts that fail
+  for noise there fail here), which the flat-band ÷ 700 architecture meets
+  on the lot-500 comparison and the archived captures. The scalar 700 and
+  the judged band stay; the per-tone divergence (more lenient than the amp
+  below ~13 Hz, stricter above, sub-0.85 Hz discounted) is accepted and
+  documented here.
 
 Bench facts behind the choice of band (2026-08-13, raw data in
 `noise_experiments/`, see [`DATA_MAP.md`](DATA_MAP.md)): fixture floor with
