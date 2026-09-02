@@ -13,6 +13,51 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array rig: DAQ backend, simulator and bench probe (2026-09-02)
+
+First code of the 50-position array rig (`array_rig/m40623/`, model 40623
+per TP120). Nothing here issues a verdict yet; this commit is the hardware
+boundary and the tool that proves it on the bench.
+
+- `daq_backend.py` - `ctypes` wrapper over the ACCES `AIOUSB.dll` (cdecl,
+  Win32 status returns; prototypes from the shipped `AIOUSB.cs`). Fixture
+  geometry (`row-col` labels, CH = (row-1)*10 + (col-1)), the range-code
+  table with OWN counts-to-volts scaling (never `ADC_GetScanV`, in case the
+  unit is a `-HG` variant), the 21-byte configuration block
+  (`AdcConfig`, one range on all sixteen 4-channel groups, timer+scan
+  trigger 0x05, contiguous scan 0-49, hardware oversample), the bulk byte
+  stream de-interleaver (partial-scan carry-over, drop the first conversion
+  after each multiplexer hop, average the rest), `StreamDiagnostics` with
+  the 1 % scan-rate rule and the driver's "buffer pool exhausted" flag as
+  an integrity failure, connect retries while the device re-enumerates
+  after its host-loaded firmware, the callback stream
+  (`ADC_BulkContinuousCallbackStart` + the 8254 pacing clock; callback only
+  copies and enqueues, a consumer thread de-interleaves) and a one-shot
+  `ADC_BulkAcquire` fallback. `SimulatedDaq` mirrors the same surface with
+  a profiled tray (HO, railed, LO, dead, empty and bursty positions, upward
+  offset settling) and injectable stream faults.
+- `daq_bench_probe.py` - engineering CLI: `info`, `selfcal`, `config`,
+  `scan` (own volts next to the driver's: the -HG check), `slots` (per
+  conversion-slot means: is slot 0 the unsettled one?), `floor` (cal-mode
+  GROUND = instrument noise), `stream`/`capture` (rate, pool events,
+  leftover bytes, CPU; optional raw `.npz`), `crosstalk`; `--simulate` and
+  `--oneshot`.
+- Production acquisition constants (defaults in both files, explained in
+  the tester when it lands): range 0-5 V (76.3 uV/LSB), 1000 scans/s per
+  channel, oversample 3 with the first conversion dropped, 64 000-byte
+  buffers x 32 -> 200 kS/s aggregate and 400 KB/s over USB (40 % of each
+  ceiling).
+- Tests: `array_rig/m40623/tests/test_daq_backend.py` (55 cases against a
+  scripted fake DLL and a fake clock: block encoding, carry-over at
+  arbitrary split points, scaling for every range code, connect retry and
+  timeout, read-back mismatch, callback flags and unaligned buffers,
+  recorded callback errors, rate check, bulk one-shot, simulator profile).
+  `run_all_tests.py` runs it as the fifth suite ("40623 array"); the four
+  existing suites are unchanged.
+- Bench spike still to do (next entry): `info -> selfcal -> config -> scan
+  (known voltage) -> slots -> floor -> stream 60 -> crosstalk` on the real
+  DAQ, numbers into `docs/CALIBRATION_RECORD.md`.
+
 ## Repository split: single_detector_rig/ + array_rig/ (2026-09-02)
 
 A second test rig is being added: a 50-position detector array (5 rows x 10

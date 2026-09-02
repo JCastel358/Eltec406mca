@@ -34,6 +34,7 @@ SUITES = (
     ("405 M22", "single_detector_rig/m405m22/tests"),
     ("406 MCA", "single_detector_rig/m406mca/tests"),
     ("449 M18", "single_detector_rig/m449m18/tests"),
+    ("40623 array", "array_rig/m40623/tests"),
 )
 
 # Exact test ids that fail on Windows for environment reasons only.
