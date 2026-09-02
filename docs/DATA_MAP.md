@@ -125,7 +125,8 @@ The raw captures themselves (`.npz`) are **not** in git (they are ignored by
 | `engineer_tools/filter_response_analysis.py` | (synthetic + a measured capture spectrum) | Characterises the pipeline's passband and aliasing; tests legacy-amplifier passband hypotheses. |
 | `single_detector_rig/<model>/stability_calibration.py` | live rig → `calibration/*_cycles.csv` | Collects known-good peak-delta evidence for the stability threshold (`capture`, `summarize`). Engineering only — never issues verdicts. |
 | `array_rig/m40623/daq_bench_probe.py` | live DAQ → stdout, optional `.npz` | Bench checks of the array rig's acquisition path (identity, self-cal, config read-back, -HG check, unsettled conversion slot, instrument floor, 60 s stream integrity, crosstalk). Engineering only. |
-| `engineer_tools/array_noise_parity.py` | `noise_captures/lot_<lot>/tray_*.npz` + a typed legacy data sheet | Pairs legacy-fixture DMM readings with array captures, fits the chain factor, proposes the pin-level noise limits (CALIBRATION_RECORD §4b.2). |
+| `engineer_tools/array_noise_parity.py` | `noise_captures/lot_<lot>/tray_*.npz` (or the lot CSV) + a typed legacy data sheet | Pairs legacy-fixture DMM readings with array captures by sensor id (or tray + position), fits the chain factor (median ratio and regression through origin, worst-window and median-window metrics), replays other bands, proposes the pin-level noise limits and writes `calibration/parity_<date>.csv|.png` (CALIBRATION_RECORD §4b.2). |
+| `engineer_tools/replot_noise_capture.py --model 40623 [--position 2-4]` | `noise_captures/lot_<lot>/tray_*_raw.npz` | Replays one or every loaded position of an array tray capture through the production pipeline and alternative bands; "no limit" until the array limits exist. |
 
 ---
 

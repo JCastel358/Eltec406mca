@@ -13,6 +13,45 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array rig: bench spike numbers, parity tool, replot of tray captures (2026-09-02)
+
+- **Bench spike on the real DAQ** (`daq_bench_probe.py info -> selfcal ->
+  config -> scan -> slots -> floor -> stream 60`, DAQ alone, the PCB inputs
+  not connected): the 21-byte configuration block round-trips, self-cal
+  takes 0.3 s, the pacing clock grants exactly 1000.000 Hz, a 60 s callback
+  stream delivered 60 000 scans in 60.00 s with 0 pool events, 0 leftover
+  bytes and 0.4 % CPU in the consumer thread; the driver's end-of-stream
+  flag arrives after `ADC_BulkContinuousEnd`. The conversion-slot check on
+  floating inputs shows slot 0 off by up to 34 counts (typically 2-7), so
+  dropping the first conversion after each multiplexer hop stays. Numbers
+  in CALIBRATION_RECORD section 6.
+- **Probe fix:** the cal-mode GROUND reference reads exactly code 0 on a
+  unipolar range (it clips), so `floor` now uses the onboard full-scale
+  reference through the same path (`--floor-source ground` kept for
+  bipolar ranges). Instrument floor at the production settings: raw rms
+  about 54 uV (0.7 LSB), judged-band window pk-pk median 49 uV, worst
+  channel 79 uV.
+- Still open on the bench: the -HG scaling check (known voltage on CH0
+  with the PCB) and crosstalk (a source on one channel) - section 4b.3.
+- `engineer_tools/array_noise_parity.py` - pairs a typed legacy data sheet
+  (`sensor_id, legacy_noise_mv[, position, tray]`) with the array rig's lot
+  CSV or tray `.npz` captures, fits the legacy chain factor (median ratio
+  and regression through origin, on the worst-window and median-window
+  metrics), counts how many parts the proposed window classifies like the
+  legacy window, replays other bands from the captures (`--replay-band`),
+  writes `calibration/parity_<date>.csv|.png` and prints the proposed
+  `NOISE_PP_LIMIT_LOW/HIGH_MV`. Never edits the app.
+- `engineer_tools/replot_noise_capture.py` understands the array rig's 2-D
+  tray captures: each loaded position becomes a capture named
+  `tray_<n>_<position>`, `--position` / `--channel` select channels,
+  `--model 40623` scans the array root, and captures without a limit show
+  "no limit" instead of a verdict. Replays reproduce the tester's numbers
+  (the same math on both rigs).
+- Tests: `array_rig/m40623/tests/test_engineer_tools_array.py` (parity on
+  a synthetic lot with a planted factor, lot-CSV input, tray+position
+  fallback, replay band; replot splitting and agreement with the tester's
+  numpy port). 40623 array suite: 134; total 598.
+
 ## Array rig: 40623 tester, selector, launchers, docs (2026-09-02)
 
 The array rig is complete for offset + noise per TP120 (sensitivity waits

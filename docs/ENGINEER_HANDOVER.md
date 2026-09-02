@@ -240,7 +240,7 @@ python -m unittest discover -s array_rig/m40623/tests              # DAQ backend
 
 Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-08-28:
 glue 38, 405 M22 175 (4 skipped), 406 MCA 109, 449 M18 111, array glue 31,
-40623 array 128 — **592 tests** (2026-09-02).
+40623 array 134 — **598 tests** (2026-09-02).
 Known and accepted on Windows: the 406 suite reports one error
 (`test_launcher_installation_uses_only_v6_1_identities`, runs the bash
 installer) and one failure
@@ -318,7 +318,7 @@ then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
 8. **405 DUT threshold 0.500 mV / 0.250 mV reference / 60 s deadline** are provisional (2026-08-12).
 9. Low priority: `500-27_noise_raw.npz` and its `_2` twin are byte-identical — check whether Re-measure can save a stale buffer; adaptive noise-capture length; repeatability across temperature, emitter replacement and battery state.
 10. Housekeeping: the GitHub repository is still named `Eltec406mca` — rename it to `Eltec_TestRig` in the repository settings (old URLs redirect).
-11. **Array rig bench spike** (CALIBRATION_RECORD §4b.2 step 1): instrument floor per channel, -HG check with a known voltage, which conversion slot is unsettled (keeps or drops `DAQ_DROP_CONVERSIONS_AFTER_MUX`), 60 s stream integrity at 400 KB/s (fallback: oversample 2 or 1, or the `ADC_BulkAcquire` one-shot path behind the same interface), crosstalk at 1000 scans/s.
+11. **Array rig bench spike** — done 2026-09-02 for the DAQ alone (CALIBRATION_RECORD §6: stream integrity clean at 400 KB/s, floor 49 µV median / 79 µV worst pk-pp in the judged band, slot 0 unsettled → drop stays). **Still open with the PCB:** the -HG scaling check (known ~1.5 V on CH0, `daq_bench_probe.py scan`) and crosstalk (`crosstalk --source-channel N` with a 10 Hz source).
 12. **Array rig hardware questions** (§4b.3): PCB supply/loading vs TP120's 9000054 (+8 V, 100 kΩ) and 9000233 (±5 V, vacuum); amplifier 9000232 gain/passband; vacuum for the paired lot.
 13. **Array rig noise limits**: the paired lot and `array_noise_parity.py` (§8); until then every noise verdict is NO_LIMIT and every row says PENDING.
 14. **Emitter board for the array**: TP120 sensitivity/polarity at 3 Hz — the tester has the disabled "Sensitivity" step and the `drive` slot; the ESP32 firmware's `PWM,FREQ` can drive it.

@@ -10,7 +10,7 @@ that go into ``docs/CALIBRATION_RECORD.md``:
     python array_rig/m40623/daq_bench_probe.py config            # apply + read back the production block
     python array_rig/m40623/daq_bench_probe.py scan --reads 10   # own-scale volts next to the driver's (-HG check)
     python array_rig/m40623/daq_bench_probe.py slots --seconds 2 # per-conversion-slot means: is slot 0 the settling one?
-    python array_rig/m40623/daq_bench_probe.py floor --seconds 20   # cal-mode GROUND: the instrument's own noise
+    python array_rig/m40623/daq_bench_probe.py floor --seconds 20   # onboard reference through the same path: the instrument's own noise
     python array_rig/m40623/daq_bench_probe.py stream --seconds 60 [--save tray.npz]   # rate / pool / leftover check
     python array_rig/m40623/daq_bench_probe.py crosstalk --source-channel 0 --seconds 10
     python array_rig/m40623/daq_bench_probe.py capture --seconds 20 --save x.npz   # raw wideband capture to a file
@@ -348,9 +348,17 @@ def _report_band_limited(volts: np.ndarray, scan_hz: float, config: daq.AdcConfi
 
 def cmd_floor(args: argparse.Namespace) -> int:
     device = open_device(args)
-    config = device.configure(config_from_args(args, cal_code=daq.CAL_GROUND))
-    print(f"cal mode GROUND (the ADC reads its own ground reference through the same amplifier path): "
-          f"{describe_config(config, args.hz)}")
+    # Bench finding 2026-09-02: on a UNIPOLAR range the onboard ground
+    # reference reads exactly code 0 on every channel (it sits at or below the
+    # bottom of the range, so the ADC clips and shows no noise at all). The
+    # onboard full-scale reference (0.909 V at 0-10 V, so ~0.909 V mid-range
+    # on the production 0-5 V range) goes through the same multiplexer and
+    # amplifier path and is the usable instrument-floor source; --floor-source
+    # ground is kept for bipolar ranges (where 0 V sits mid-scale).
+    cal_code = daq.CAL_GROUND if args.floor_source == "ground" else daq.CAL_REF_UNIPOLAR
+    config = device.configure(config_from_args(args, cal_code=cal_code))
+    print(f"cal mode {'GROUND' if cal_code == daq.CAL_GROUND else 'FULL-SCALE REFERENCE'} (the ADC reads its own "
+          f"onboard reference through the same multiplexer/amplifier path): {describe_config(config, args.hz)}")
     try:
         volts, _, _ = _stream_and_report(args, device, config, seconds=args.seconds)
     finally:
@@ -421,6 +429,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--oneshot", action="store_true", help="use ADC_BulkAcquire instead of the callback stream")
     parser.add_argument("--source-channel", type=int, default=0)
     parser.add_argument("--save", type=str, default="", help="write the capture to this .npz")
+    parser.add_argument("--floor-source", choices=["reference", "ground"], default="reference",
+                        help="floor: onboard full-scale reference (default; ground clips at code 0 on unipolar ranges) or ground")
     return parser
 
 

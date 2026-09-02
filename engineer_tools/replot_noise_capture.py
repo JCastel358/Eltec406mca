@@ -25,11 +25,23 @@ out-of-band noise, it would alias it into the band. Custom band-pass filters
 here are zero-phase Butterworth-magnitude responses applied via FFT
 (numpy-only; reflection padding suppresses edge transients).
 
+Array rig (2026-09-02): the 40623 array tester saves one ``tray_<n>_raw.npz``
+per tray holding ALL fifty channels (``waveform_v`` is ``[50, N]``, with
+``positions`` / ``sensor_numbers`` arrays). This tool replays those too: each
+loaded channel becomes one capture named ``tray_<n>_<position>``, and
+``--position 2-4`` / ``--channel 13`` select channels (default: every loaded
+position). Array captures carry NO noise limit yet (CALIBRATION PENDING), so
+their verdict column reads "no limit" unless ``--limit-mv`` is given. The
+production math is the same for both rigs (the array's numpy port is
+checked against these functions on every test run), so the replay
+reproduces the tester's worst / median numbers.
+
 Examples (run from the repo root):
 
-  python engineer_tools/replot_noise_capture.py                # all captures, default bands
+  python engineer_tools/replot_noise_capture.py                # all 405 captures, default bands
   python engineer_tools/replot_noise_capture.py --band 0.5 2 --band 0.3 5
   python engineer_tools/replot_noise_capture.py <dir-or-file> --show
+  python engineer_tools/replot_noise_capture.py --model 40623 --position 2-4   # one array position, all trays
 """
 
 from __future__ import annotations
@@ -51,6 +63,14 @@ DEFAULT_CAPTURE_ROOT = (
     / "405m22_esp32"
     / "noise_captures"
 )
+ARRAY_CAPTURE_ROOT = (
+    Path.home()
+    / "Documents"
+    / "Eltec_40623_Test_Results"
+    / "40623_array_daq"
+    / "noise_captures"
+)
+CAPTURE_ROOTS = {"405m22": DEFAULT_CAPTURE_ROOT, "40623": ARRAY_CAPTURE_ROOT}
 # Production constants (mirrors the app; overridable per file by its metadata)
 DEFAULT_LIMIT_MV = 300.0 / 700.0  # legacy 300 mV behind the ~700x chain
 DEFAULT_ALLOW_FRACTION = 0.15
@@ -60,7 +80,11 @@ CLIP_LIMIT_V = 4.9
 
 
 def load_capture(path: Path) -> dict:
-    """Return {'waveform_v', 'rate_hz', 'meta'} from an .npz or .csv capture."""
+    """Return {'waveform_v', 'rate_hz', 'meta'} from an .npz or .csv capture.
+
+    A 2-D ``waveform_v`` (the array rig's tray capture) is NOT flattened here:
+    use ``load_tray_channels`` to split it into per-position captures.
+    """
     if path.suffix.lower() == ".npz":
         data = np.load(path)
         meta = {
@@ -102,6 +126,66 @@ def load_capture(path: Path) -> dict:
         "left_context_v": None,
         "right_context_v": None,
     }
+
+
+def load_tray_channels(
+    path: Path,
+    positions: set[str] | None = None,
+    channels: set[int] | None = None,
+) -> list[dict]:
+    """Split an array-rig tray capture into one single-channel capture per loaded position.
+
+    Each entry looks like ``load_capture``'s result plus ``position``,
+    ``channel``, ``sensor_number`` and a ``name`` (``tray_<n>_<position>``);
+    the per-channel edge contexts are carried along. Positions that were
+    EMPTY at lock time (occupancy array) are skipped unless asked for.
+    """
+    data = np.load(path)
+    waveform = np.asarray(data["waveform_v"], dtype=float)
+    if waveform.ndim != 2:
+        raise ValueError(f"{path} is not a multi-channel tray capture")
+    meta = {
+        key: str(data[key]) for key in data.files if data[key].ndim == 0 and key != "sample_rate_hz"
+    }
+    rate = float(data["sample_rate_hz"])
+    labels = [str(p) for p in data["positions"]] if "positions" in data.files else [str(i) for i in range(waveform.shape[0])]
+    numbers = [int(n) for n in data["sensor_numbers"]] if "sensor_numbers" in data.files else [0] * waveform.shape[0]
+    occupancy = [str(o) for o in data["occupancy"]] if "occupancy" in data.files else ["LOADED"] * waveform.shape[0]
+    left = np.asarray(data["left_context_v"], dtype=float) if "left_context_v" in data.files else None
+    right = np.asarray(data["right_context_v"], dtype=float) if "right_context_v" in data.files else None
+    tray = meta.get("tray_number", path.stem)
+    entries = []
+    for channel in range(waveform.shape[0]):
+        label = labels[channel]
+        wanted = (positions is not None and label in positions) or (channels is not None and channel in channels)
+        if positions is None and channels is None:
+            wanted = occupancy[channel] == "LOADED"
+        if not wanted:
+            continue
+        entries.append({
+            "waveform_v": waveform[channel],
+            "rate_hz": rate,
+            "meta": {**meta, "position": label, "channel": str(channel), "sensor_number": str(numbers[channel]),
+                     "noise_outcome": ""},
+            "left_context_v": None if left is None else left[channel],
+            "right_context_v": None if right is None else right[channel],
+            "position": label,
+            "channel": channel,
+            "sensor_number": numbers[channel],
+            "name": f"tray_{tray}_{label}",
+            "array": True,
+        })
+    return entries
+
+
+def is_tray_capture(path: Path) -> bool:
+    if path.suffix.lower() != ".npz":
+        return False
+    try:
+        data = np.load(path)
+        return np.asarray(data["waveform_v"]).ndim == 2
+    except Exception:
+        return False
 
 
 def fft_band_filter(
@@ -204,14 +288,22 @@ def spectral_density(waveform_v: np.ndarray, rate_hz: float):
     return freq, np.sqrt(psd) * 1e6
 
 
-def analyze_file(path: Path, variants, limit_override, allow_fraction, detrend):
-    capture = load_capture(path)
+def analyze_file(path: Path, variants, limit_override, allow_fraction, detrend, capture: dict | None = None):
+    """Analyse one capture (a file, or a pre-split array-rig channel entry)."""
+    if capture is None:
+        capture = load_capture(path)
     raw = capture["waveform_v"]
     rate = capture["rate_hz"]
     meta = capture["meta"]
-    limit_mv = limit_override or float(
-        meta.get("noise_pp_limit_mv", DEFAULT_LIMIT_MV)
-    )
+    # Array-rig captures have no noise limit yet (CALIBRATION PENDING): judge
+    # with an unreachable limit and report "no limit" instead of a verdict.
+    no_limit = limit_override is None and "noise_pp_limit_mv" not in meta
+    if capture.get("array") and no_limit:
+        limit_mv = 1e30
+    else:
+        limit_mv = limit_override or float(
+            meta.get("noise_pp_limit_mv", DEFAULT_LIMIT_MV)
+        )
     results = []
     for kind, params in variants:
         if kind == "app":
@@ -261,10 +353,12 @@ def analyze_file(path: Path, variants, limit_override, allow_fraction, detrend):
         )
     return {
         "path": path,
+        "name": capture.get("name", path.stem),
         "raw": raw,
         "rate": rate,
         "meta": meta,
         "limit_mv": limit_mv,
+        "no_limit": bool(capture.get("array")) and no_limit,
         "results": results,
     }
 
@@ -278,16 +372,16 @@ def plot_file(entry, out_dir: Path, show: bool):
 
     raw = entry["raw"]
     rate = entry["rate"]
-    limit_uv = entry["limit_mv"] * 1000.0
+    limit_uv = 0.0 if entry.get("no_limit") else entry["limit_mv"] * 1000.0
     results = entry["results"]
-    name = entry["path"].stem
+    name = entry.get("name", entry["path"].stem)
 
     rows = 2 + len(results)
     fig, axes = plt.subplots(rows, 1, figsize=(12, 2.4 * rows), sharex=False)
     fig.suptitle(
         f"{name} — recorded {entry['meta'].get('recorded_at', '?')}, "
         f"stored verdict {entry['meta'].get('noise_outcome', '?')}, "
-        f"limit {limit_uv:.0f} µV pk-pk/window",
+        + ("no limit yet (CALIBRATION PENDING)" if entry.get("no_limit") else f"limit {limit_uv:.0f} µV pk-pk/window"),
         fontsize=11,
     )
 
@@ -306,8 +400,9 @@ def plot_file(entry, out_dir: Path, show: bool):
         t = np.arange(len(judged)) / result["judged_rate"]
         analysis = result["analysis"]
         axis.plot(t, judged, lw=0.6, color="tab:blue")
-        axis.axhline(limit_uv / 2, color="red", lw=1)
-        axis.axhline(-limit_uv / 2, color="red", lw=1)
+        if limit_uv:
+            axis.axhline(limit_uv / 2, color="red", lw=1)
+            axis.axhline(-limit_uv / 2, color="red", lw=1)
         window_samples = int(round(WINDOW_S * result["judged_rate"]))
         for index, pp_mv in enumerate(analysis.window_pp_mv):
             if pp_mv > entry["limit_mv"]:
@@ -315,7 +410,7 @@ def plot_file(entry, out_dir: Path, show: bool):
                     index * WINDOW_S, (index + 1) * WINDOW_S,
                     color="red", alpha=0.12,
                 )
-        verdict = "PASS" if analysis.passed else "FAIL"
+        verdict = "no limit" if entry.get("no_limit") else ("PASS" if analysis.passed else "FAIL")
         axis.set_title(
             f"{result['label']} — {verdict}: worst "
             f"{analysis.worst_pp_mv*1000:.0f} µV, median "
@@ -326,7 +421,7 @@ def plot_file(entry, out_dir: Path, show: bool):
             color="darkgreen" if analysis.passed else "darkred",
         )
         axis.set_ylabel("µV")
-        span = max(1.2 * np.max(np.abs(judged)), limit_uv)
+        span = max(1.2 * np.max(np.abs(judged)), limit_uv, 1e-3)
         axis.set_ylim(-span, span)
 
     freq, asd = spectral_density(raw, rate)
@@ -352,12 +447,12 @@ def plot_file(entry, out_dir: Path, show: bool):
     return out_path
 
 
-def collect_paths(arguments: list[str]) -> list[Path]:
-    roots = [Path(a) for a in arguments] if arguments else [DEFAULT_CAPTURE_ROOT]
+def collect_paths(arguments: list[str], default_root: Path = DEFAULT_CAPTURE_ROOT) -> list[Path]:
+    roots = [Path(a) for a in arguments] if arguments else [default_root]
     files: list[Path] = []
     for root in roots:
         if root.is_dir():
-            found = sorted(root.rglob("*_noise_raw*.npz"))
+            found = sorted(root.rglob("*_noise_raw*.npz")) + sorted(root.rglob("tray_*_raw*.npz"))
             # fall back to CSVs that have no NPZ twin
             npz_stems = {p.with_suffix("").name for p in found}
             found += [
@@ -371,7 +466,7 @@ def collect_paths(arguments: list[str]) -> list[Path]:
         else:
             sys.exit(f"path not found: {root}")
     if not files:
-        sys.exit("no *_noise_raw* captures found")
+        sys.exit("no *_noise_raw* / tray_*_raw* captures found")
     return files
 
 
@@ -403,6 +498,12 @@ def main() -> None:
                         help="PNG output directory (default: <capture dir>/replots)")
     parser.add_argument("--show", action="store_true",
                         help="open interactive windows as well as saving PNGs")
+    parser.add_argument("--model", choices=sorted(CAPTURE_ROOTS), default="405m22",
+                        help="which rig's default capture root to scan when no path is given")
+    parser.add_argument("--position", action="append", metavar="ROW-COL",
+                        help="array captures: only this position (repeatable, e.g. 2-4)")
+    parser.add_argument("--channel", action="append", type=int, metavar="N",
+                        help="array captures: only this DAQ channel (repeatable)")
     args = parser.parse_args()
 
     variants: list[tuple[str, object]] = []
@@ -419,24 +520,34 @@ def main() -> None:
         variants.append(("band", (0.5, 5.0)))
         variants.append(("band", (0.3, 10.0)))
 
-    files = collect_paths(args.paths)
+    files = collect_paths(args.paths, CAPTURE_ROOTS[args.model])
+    wanted_positions = set(args.position) if args.position else None
+    wanted_channels = set(args.channel) if args.channel else None
+    jobs: list[tuple[Path, dict | None]] = []
+    for path in files:
+        if is_tray_capture(path):
+            jobs += [(path, entry) for entry in load_tray_channels(path, wanted_positions, wanted_channels)]
+        elif wanted_positions is None and wanted_channels is None:
+            jobs.append((path, None))
+    if not jobs:
+        sys.exit("no captures matched (check --position / --channel)")
     header = f"{'capture':28s} {'variant':42s} {'worstuV':>8s} {'meduV':>7s} {'over':>6s} verdict"
     print(header)
     print("-" * len(header))
-    for path in files:
+    for path, capture in jobs:
         entry = analyze_file(
-            path, variants, args.limit_mv, args.allow, not args.no_detrend
+            path, variants, args.limit_mv, args.allow, not args.no_detrend, capture=capture
         )
         stored = entry["meta"].get("noise_outcome", "")
         for index, result in enumerate(entry["results"]):
             analysis = result["analysis"]
-            verdict = "PASS" if analysis.passed else "FAIL"
+            verdict = "no limit" if entry.get("no_limit") else ("PASS" if analysis.passed else "FAIL")
             note = ""
             if index == 0 and not args.no_app and stored:
                 note = ("  (= stored)" if verdict == stored
                         else f"  (STORED WAS {stored}!)")
             print(
-                f"{path.stem:28s} {result['label']:42s} "
+                f"{entry['name']:28s} {result['label']:42s} "
                 f"{analysis.worst_pp_mv*1000:8.0f} "
                 f"{analysis.median_pp_mv*1000:7.0f} "
                 f"{analysis.windows_over:3d}/{analysis.windows_total:<2d} "

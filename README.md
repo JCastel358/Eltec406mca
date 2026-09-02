@@ -105,7 +105,7 @@ build belongs on which rig (legacy 406 rigs stay on v1.9):
 python run_all_tests.py
 ```
 
-Six `unittest` suites (four for the single rig, two for the array rig), 592
+Six `unittest` suites (four for the single rig, two for the array rig), 598
 tests, no hardware needed. On Windows the 406 MCA suite reports two known
 environment-only cases (they pass on Xubuntu) — see the handover doc §7.
 
