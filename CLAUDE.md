@@ -34,7 +34,7 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
    Baseline: glue 38, 405 175 (4 skipped), 406 109 (on Windows exactly two
    known environment-only cases: `test_launcher_installation_uses_only_v6_1_identities`
    and `test_auto_connect_validates_candidates_and_is_idempotent`), 449 111,
-   array glue 31, 40623 array 134 — 598 tests. Any other failure is yours.
+   array glue 31, 40623 array 241 — 705 tests. Any other failure is yours.
 7. **Commit and push before restructuring; tag before deleting.** Retired
    code is at `archive/pre-cleanup-2026-08-28` — recover with
    `git show <tag>:<path>`, do not re-create from memory.
@@ -46,7 +46,7 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
 
 - Stdlib `unittest`, run from the repo root with `-s single_detector_rig/<dir>/tests` or `-s array_rig/<dir>/tests`; no pytest on the bench laptop. Tests never write under `Documents` (the array tester takes an explicit results root; `ELTEC_ARRAY_RESULTS_ROOT` redirects a GUI run).
 - `.gitattributes` enforces line endings (LF in the repo; `.cmd`/`.bat`/`.ps1` CRLF on checkout). Do not hand-convert files.
-- Windows bench laptop: board on COM3; `arduino-cli` is inside the Arduino IDE install (`flash_firmware.py` finds it). Xubuntu: `/dev/ttyUSB0`. The array rig's DAQ is `USB-AIO16-64MA` (VID 0x1605 PID 0x8145) driven through `AIOUSB.dll` (64-bit, System32) via `ctypes`; `array_rig/m40623/daq_bench_probe.py` is the bench check, `--simulate` runs everything without hardware.
+- Windows bench laptop: board on COM3; `arduino-cli` is inside the Arduino IDE install (`flash_firmware.py` finds it). Xubuntu: `/dev/ttyUSB0`. The array rig's DAQ is `USB-AIO16-64MA` (VID 0x1605 PID 0x8145) driven through `AIOUSB.dll` (64-bit, System32) via `ctypes`; `array_rig/m40623/daq_bench_probe.py` is the bench check, `daq_rig_readout.py` / `daq_live_waveform.py` the bench readout and live viewer (engineering only); `--simulate` runs all of them without hardware.
 - Match the existing code style (long explanatory comments above constants are the house style — they carry the *why*). Docs are Markdown with tables; dates are ISO.
 - Prefer editing the existing doc that owns a topic over adding a new file: numbers → `CALIBRATION_RECORD.md`, operator steps → `TECHNICIAN_RUNBOOK.md`, engineering procedure → `ENGINEER_HANDOVER.md`, data locations → `DATA_MAP.md`, model mechanics → that model's README, firmware → `Arduino/Eltec/README.md`.
 
@@ -61,5 +61,8 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
 - The 40623 offset limits (0.3–1.2 V) are **PROVISIONAL** until the array PCB's loading is confirmed against fixture 9000054 (+8 V, 100 kΩ source resistor).
 - Array position labels are TP120's `row-col` (`1-3` = row 1, part 3); DAQ channel = `(row-1)*10 + (col-1)`, CH0–CH49 single-ended.
 - DAQ volts come from raw counts × our own range table, never from `ADC_GetScanV` (a `-HG` unit would mis-scale it); the range is per group of four channels, the scan is one contiguous range, there is no anti-alias filter (the rig captures wideband at 1000 scans/s and band-limits in software).
+- The DLL's immediate-read entry points (`ADC_GetScan` / `ADC_GetScanV`) rewrite the device's trigger byte (0x05 → 0x04) and never restore it; `AiousbDaq._reassert_config()` re-writes the block after every immediate read and before every stream. Never call those entry points directly and never remove the re-assert — offsets polled, then a stream started, delivered 0 scans on the unit (2026-09-02).
+- The probe's "driver V" column is **not** an -HG check (`ADC_GetScanV` uses the same counts × span / 65536 formula); only a known, metered voltage on CH0 tells a high-gain unit.
+- `daq_rig_readout.py` / `daq_live_waveform.py` are engineering tools: no verdicts, output files only at explicit paths (never `Documents`), and only one program on the DAQ at a time (tester, probe, readout or viewer).
 - The two rigs each have a `sensor_versions.py`; they must never be imported into one process (the runner uses one interpreter per suite).
 - `Arduino/Eltec/Eltec.ino` and the frozen snapshots still say `tech_app/` in a comment — leave them (byte-frozen).

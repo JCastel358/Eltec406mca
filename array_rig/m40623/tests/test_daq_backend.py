@@ -56,6 +56,9 @@ class FakeLib:
         self.timer_calls: list[float] = []
         self.poll_sequence: list[int] = []
         self.bulk_buffer_fill: bytes = b""
+        # The real DLL delivers one last END-flagged, zero-size buffer from
+        # inside ADC_BulkContinuousEnd; opt in per test.
+        self.end_delivers_end_flag = False
 
     def _status(self, name: str) -> int:
         return self.status_overrides.get(name, 0)
@@ -105,14 +108,29 @@ class FakeLib:
         self.calls.append(("ADC_SetCal", index, name))
         return self._status("ADC_SetCal")
 
+    def _immediate_read_side_effect(self) -> None:
+        """What the vendor DLL really does (``ADC_GetScan_Inner``): it forces
+        scan mode and clears the timer/external trigger bits of the device's
+        configuration block - 0x05 becomes 0x04 - and never restores them.
+        Bench-verified 2026-09-02; without the backend's re-assert a later
+        stream is paced but converts nothing."""
+
+        block = bytearray(self.config_block)
+        if len(block) > 0x13:
+            block[0x11] = 0x04 | (block[0x11] & 0xFC)
+            block[0x13] = max(1, block[0x13])   # "oversample at least +1" - the same routine
+            self.config_block = bytes(block)
+
     def ADC_GetScan(self, index, buf):
         self.calls.append(("ADC_GetScan", index))
+        self._immediate_read_side_effect()
         for i, value in enumerate(self.scan_counts):
             buf[i] = int(value)
         return self._status("ADC_GetScan")
 
     def ADC_GetScanV(self, index, buf):
         self.calls.append(("ADC_GetScanV", index))
+        self._immediate_read_side_effect()
         for i in range(128):
             buf[i] = float(self.scan_counts[i]) / 65536.0 * 5.0
         return self._status("ADC_GetScanV")
@@ -132,6 +150,8 @@ class FakeLib:
 
     def ADC_BulkContinuousEnd(self, index, status):
         self.calls.append(("ADC_BulkContinuousEnd", index))
+        if self.end_delivers_end_flag and self.callback is not None:
+            self.deliver(b"", flags=backend.CALLBACK_FLAG_END_OF_STREAM)
         return self._status("ADC_BulkContinuousEnd")
 
     def ADC_BulkAcquire(self, index, size, buf):
@@ -482,6 +502,37 @@ class ConfigureAndScanTests(unittest.TestCase):
         self.assertAlmostEqual(volts[0], 0.7, places=3)
         self.assertEqual(sum(1 for c in lib.calls if c[0] == "ADC_GetScan"), 6)
 
+    def test_immediate_reads_restore_the_configuration_block(self):
+        # The DLL's ADC_GetScan/ADC_GetScanV rewrite byte 0x11 (trigger) and
+        # leave it; the backend must write its own block back every time so
+        # the device is always in the configuration ``config`` says it is.
+        device, lib, _ = make_device()
+        device.connect()
+        device.configure(backend.AdcConfig())
+        intended = backend.build_config_block(backend.AdcConfig())
+        self.assertEqual(intended[0x11], 0x05)
+        lib._immediate_read_side_effect()  # the fake really models it
+        self.assertEqual(lib.config_block[0x11], 0x04)
+        device.configure(backend.AdcConfig())
+        device.read_scan_counts(reads=2)
+        self.assertEqual(lib.config_block, intended)
+        names = [c[0] for c in lib.calls]
+        last_scan = max(i for i, name in enumerate(names) if name == "ADC_GetScan")
+        last_set = max(i for i, name in enumerate(names) if name == "ADC_SetConfig")
+        self.assertGreater(last_set, last_scan)
+        device.read_scan_driver_volts()
+        self.assertEqual(lib.config_block, intended)
+
+    def test_immediate_read_failure_is_not_masked_by_the_reassert(self):
+        device, lib, _ = make_device()
+        device.connect()
+        device.configure(backend.AdcConfig())
+        lib.status_overrides["ADC_GetScan"] = 5
+        lib.status_overrides["ADC_SetConfig"] = 7   # the re-assert fails too: the read's error must win
+        with self.assertRaises(backend.DaqStatusError) as raised:
+            device.read_scan_counts()
+        self.assertEqual(raised.exception.function, "ADC_GetScan")
+
     def test_driver_volts_are_separate_from_own_scale(self):
         device, lib, _ = make_device()
         device.connect()
@@ -604,6 +655,68 @@ class StreamTests(unittest.TestCase):
             self.device.start_stream(scan_hz=1000.0, buffer_count=1)
         with self.assertRaises(ValueError):
             self.device.start_stream(scan_hz=0.0)
+
+    def _corrupt_trigger_byte(self) -> bytes:
+        """Mimic the DLL side effect having happened behind the backend's back."""
+
+        block = bytearray(self.lib.config_block)
+        block[0x11] = 0x04
+        self.lib.config_block = bytes(block)
+        return backend.build_config_block(backend.AdcConfig())
+
+    def test_start_stream_reasserts_the_block_after_an_immediate_read(self):
+        self.device.read_scan_counts(reads=3)  # the tester's offset polling
+        intended = self._corrupt_trigger_byte()
+        before = len(self.lib.calls)
+        self.device.start_stream(scan_hz=1000.0)
+        since = self.lib.calls[before:]
+        names = [c[0] for c in since]
+        start = names.index("ADC_BulkContinuousCallbackStart")
+        sets = [c for i, c in enumerate(since) if c[0] == "ADC_SetConfig" and i < start]
+        self.assertTrue(sets, "no ADC_SetConfig before the stream start")
+        self.assertEqual(sets[-1][2], intended)
+        self.assertEqual(self.lib.config_block[0x11], 0x05)
+        self.device.stop_stream()
+
+    def test_bulk_acquire_reasserts_the_block(self):
+        self.device.read_scan_counts(reads=1)
+        intended = self._corrupt_trigger_byte()
+        data, _ = scan_bytes_for(10, 50, 4)
+        self.lib.bulk_buffer_fill = data
+        self.lib.poll_sequence = [0]
+        before = len(self.lib.calls)
+        self.device.bulk_acquire(scans=10, scan_hz=1000.0, timeout_s=5.0)
+        since = self.lib.calls[before:]
+        names = [c[0] for c in since]
+        acquire = names.index("ADC_BulkAcquire")
+        sets = [c for i, c in enumerate(since) if c[0] == "ADC_SetConfig" and i < acquire]
+        self.assertTrue(sets)
+        self.assertEqual(sets[-1][2], intended)
+
+    def test_end_flag_before_stop_is_a_problem(self):
+        self.device.start_stream(scan_hz=1000.0)
+        data, _ = scan_bytes_for(2, 50, 4)
+        self.lib.deliver(data)
+        self.lib.deliver(b"", flags=backend.CALLBACK_FLAG_END_OF_STREAM)
+        self.device.read_stream(timeout_s=0.5)
+        diagnostics = self.device.stop_stream()
+        self.assertTrue(diagnostics.ended_by_device)
+        self.assertTrue(diagnostics.ended_early)
+        self.assertIn("before it was stopped", "; ".join(diagnostics.problems()))
+        self.assertIn("ended by device before stop", diagnostics.summary())
+
+    def test_end_flag_from_a_normal_stop_is_not_a_problem(self):
+        self.lib.end_delivers_end_flag = True
+        self.device.start_stream(scan_hz=1000.0)
+        data, _ = scan_bytes_for(1000, 50, 4)
+        self.lib.deliver(data)
+        self.device.read_stream(timeout_s=0.5)
+        self.clock.now += 1.0
+        diagnostics = self.device.stop_stream()
+        self.assertTrue(diagnostics.ended_by_device)
+        self.assertFalse(diagnostics.ended_early)
+        self.assertNotIn("ended by device", diagnostics.summary())
+        diagnostics.check()
 
     def test_bulk_acquire_one_shot(self):
         data, expected = scan_bytes_for(10, 50, 4)

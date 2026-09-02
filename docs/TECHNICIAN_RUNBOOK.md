@@ -177,7 +177,7 @@ folders** — the engineer backs them up.
 | App does not start | Missing Python or package | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-rig\launcher.log` (Windows) / `~/.local/state/eltec-rig/launcher.log` (Xubuntu). |
 | "Battery: not monitored" | Normal | Nothing — neither battery is measured on this fixture. |
 | Array rig: "No ACCES device found" | DAQ USB unplugged, or plugged in less than five seconds ago (it loads its program first) | Check the cable, wait five seconds, **Start lot** again. Still nothing → engineer (driver package). |
-| Array rig: "stream integrity", "buffer pool exhausted", tray NOT MEASURED | Laptop on battery or window minimised during the capture, USB hub, another program hogging the laptop | AC power, keep the window visible, no hub, **Re-measure tray**. Persistent → engineer. |
+| Array rig: "stream integrity", "buffer pool exhausted", "no data from the stream", tray NOT MEASURED | Laptop on battery or window minimised during the capture, USB hub, another program hogging the laptop, another program using the DAQ (the engineer's tools); "no data" can also be the DAQ's USB cable | The app retries by itself, then marks the tray NOT MEASURED. AC power, keep the window visible, no hub, close any other DAQ program, check the DAQ's USB cable, **Re-measure tray**. Persistent → engineer. |
 | Array rig: every tile yellow "empty? click" | PCB not powered, or the ribbon cable is off | Power the PCB, check the DB37 cables, wait for the tiles to update. |
 | Array rig: a whole row red or 0 V | Cable / row supply | Engineer — do not fail the parts. |
 | Array rig app does not start | Missing Python or the ACCES driver | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-array-rig\launcher.log` (selector) / `%LOCALAPPDATA%\eltec-40623-array\launcher.log` (tester). |
@@ -195,3 +195,6 @@ folders** — the engineer backs them up.
   fail — the noise limit for this rig has not been set. Do not pull or insert
   parts during the capture. Do not skip the stabilisation wait on parts that
   were just powered.
+- Array rig: do not run the engineer's DAQ tools (the bench probe, the
+  readout, the live viewer) while the tester is open — only one program can
+  use the DAQ at a time. Close one before starting the other.

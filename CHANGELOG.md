@@ -13,6 +13,136 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array rig: ESP32-style bench readout and live viewer for the DAQ (2026-09-02)
+
+The bench habits of the single-detector rig (`Arduino/Eltec/esp32_rig_readout.py`'s
+`Esp32Rig` API + CLI, `live_waveform.py`'s rolling scope) now exist for the
+50-channel DAQ, inside `array_rig/m40623/` and built on `daq_backend.py`
+only (nothing shared with the single rig). Both are engineering tools: no
+verdicts, output files only at explicit paths, never under `Documents`, one
+program on the DAQ at a time.
+
+- `array_rig/m40623/daq_rig_readout.py` - `ArrayRig` (connect -> configure
+  -> `ADC_SetCal(':AUTO:')` -> configure, the tester's order;
+  `read_offset_voltage(position)` / `read_offsets()` = median of 24
+  immediate scans, the ESP32 `OFFSET?` depth; `capture(seconds, positions)`
+  -> `Capture` with own-scale volts `[channels, N]`, a synthesised `t_us`
+  from the granted pacing-clock frequency (the DAQ has no per-sample
+  timestamps), `band_limited_pp_mv()` through the tester's exact judged-band
+  pipeline, `to_csv()` (`t_us,<position>,...`) and `to_npz()` (the bench
+  probe's key layout + `drop_first`, replayable by
+  `engineer_tools/replot_noise_capture.py` given the file path);
+  `set_range()`; `LiveStream` = a thread that owns every device call and
+  fills a ring buffer (`snapshot`, `latest`, `stats` with the delivery rate
+  between the first and the newest chunk - so the driver's buffer latency
+  does not read as a shortfall - and the lag behind real time). CLI
+  `info | offset [POSITION ...] | stream -s 8 [-p ...] [-o cap.csv]
+  [--npz cap.npz] | noise -s 20 [--quiet-wait S] | watch [-p ...] [-s S]
+  [--interval 1] | test -s 20`; positions as `row-col`, `CHn` or a channel
+  number; `--simulate`; the tester's acquisition constants as defaults
+  (mirrored, with a drift test). A capture whose stream diagnostics report
+  a problem raises (the ESP32 tool's overrun rule).
+- `array_rig/m40623/daq_live_waveform.py` - matplotlib rolling scope of ANY
+  position, switched live (arrow keys over the 5 x 10 grid, `n` / `p`, a
+  click on a tile, a "Pos" button). Three panels: the wideband trace with
+  the stats box (mean, raw pk-pk, judged-band worst/median, rate, lag,
+  chunks, errors); the 5 x 10 grid of all positions coloured by the live
+  offset in TP120's provisional bands or (`g`) by judged-band pk-pk with no
+  limit; and the judged-band trace of the selected position (the tester's
+  FIR-decimate-and-detrend pipeline on the displayed window, per-window
+  pk-pk listed) in place of the ESP32 viewer's cycle-average panel (no
+  emitter board, so no sync to fold on). SPACE = Hold/Run (the slot of the
+  ESP32 viewer's emitter toggle), `]` / `[` window ladder 0.25-60 s as
+  before, `s` saves the whole buffer as `daq_live_<stamp>.npz` (`--save-dir`,
+  default the current directory; `--save-on-exit`), `--exit-after` for
+  unattended runs (works headless with `MPLBACKEND=Agg`). Drawing is a
+  canvas timer with blitting (a full redraw of the 50-tile figure costs
+  ~100 ms); the y-scale holds with hysteresis instead of jumping every
+  frame.
+- Verified on the real unit 2026-09-02: `info`, `offset`, `test` (offsets,
+  then a stream - the order that delivered nothing before the fix in the
+  entry below), `stream` 0.5 s / 2 s with CSV and npz, `watch`, and the
+  viewer for 6 s under Tk and 4 s headless - all integrity OK at 999-1000
+  scans/s. Inputs read ~0 V because the array PCB was not connected.
+- Tests: `tests/test_daq_rig_readout.py` (59) and
+  `tests/test_daq_live_waveform.py` (40, Agg backend) - token forms,
+  connect/config/self-cal, offsets, captures and their files, npz replay
+  through the replot tool, `LiveStream` fill/wrap/stop/error paths and the
+  rate rule, every CLI command under `--simulate`, the ladder / selection /
+  judged-band helpers, viewer updates with hold, grid metric and save, the
+  headless `--exit-after` path, constants drift, Documents guards. 40623
+  array suite 142 -> 241; `run_all_tests.py` total **705**.
+- Pre-commit review fixes (an independent read of the new code): the
+  viewer holds its y-scale on a flat trace (a code-0 input used to fail the
+  40 % fill rule and force a full figure redraw on every frame - 6 fps with
+  the CPU pegged), `LiveStream.snapshot` copies only the wanted rows, the
+  END-before-stop flag is decided at delivery on the DLL's thread (the
+  consumer could dequeue an early END after the stop was requested), a
+  range set between `live_stream()` and `start()` is honoured, duplicate
+  `-p` tokens collapse to one, `to_npz('x.NPZ')` returns the file numpy
+  writes, and a failing re-assert or stop never masks the read error that
+  caused it.
+- Docs: README map and test count, `array_rig/README.md` layout,
+  `m40623/README.md` engineering + tests, ENGINEER_HANDOVER sections
+  3/7/9/10/11, DATA_MAP section 4, CLAUDE.md rule 6 baseline and "easy to
+  get wrong" items, runbook (one program on the DAQ at a time - on the bench
+  a second program is not refused: it silently takes the stream away from
+  the first, whose integrity check then fails).
+
+## Array rig: the DLL's immediate reads clear the trigger byte - backend re-asserts its block; silent streams time out (2026-09-02)
+
+A read-only verification of the DAQ installation and of every assumption in
+`daq_backend.py` against the vendor documentation and the DLL's shipped
+Delphi source (`C:\Users\Public\Documents\ACCES\USB-AIO16-64MA\Win32\Driver.SRC`)
+found the installation clean (driver 3.0.150.9161 CyUSB3, `AIOUSB.dll` 2.4
+x64 in System32 loaded by the 64-bit Python, the unit on a root-hub port at
+USB 2.0 high-speed, selective suspend disabled on AC and DC; the not-present
+"(D15 Lo)" Device Manager entries are the chip's pre-firmware identity and
+harmless), every probe command clean again (60 s stream 60 000 scans in
+60.00 s, 0 pool events, 0 leftover bytes; one-shot `ADC_BulkAcquire` path
+3000/3000; instrument floor 53 uV rms, judged band 50.6 uV median / 77.5 uV
+worst), all eleven code-vs-documentation items matching - and one blocker:
+
+- **`ADC_GetScan` / `ADC_GetScanV` rewrite the device's configuration
+  block** (`ADC_GetScan_Inner`: scan mode forced, timer and external
+  trigger bits cleared, 0x05 -> 0x04, oversample forced to at least 1)
+  and never restore any of it. The tester
+  polls offsets with `ADC_GetScan` and then starts the noise stream without
+  re-writing the block; reproduced on the unit in that exact order: pacing
+  clock granted 1000.000 Hz, **0 scans in 12 s**, and the GUI would have
+  sat at "quiet wait" until Cancel. The bench spike never saw it because
+  every probe command reconfigures first. Fix in `daq_backend.py`:
+  `AiousbDaq._reassert_config()` re-writes and read-back-verifies its block
+  after every immediate read (`read_scan_counts`, `read_scan_driver_volts`)
+  and before every `start_stream` / `bulk_acquire`; the fake DLL in
+  `test_daq_backend.py` now models the side effect and three regression
+  tests pin the re-assert. Confirmed on the unit: the same sequence now
+  streams 3040 scans in 3.04 s with the block reading 0x05 throughout.
+- `eltec_40623_array_tester.py`: `STREAM_NO_DATA_TIMEOUT_S = 5.0`
+  (`CapturePlan.no_data_timeout_s`) - the quiet wait and the capture loop
+  abandon a stream that delivers nothing for 5 s with a
+  `StreamTimeoutError`, so the existing retry policy runs and the tray is
+  recorded NOT MEASURED instead of hanging (two tests; the runbook's
+  troubleshooting row now lists "no data from the stream").
+- `StreamDiagnostics`: new `ended_early` - the driver's END flag arriving
+  before `stop_stream` asked for it is now a problem ("the record is
+  incomplete") and the only case the summary reports as "ended by device
+  before stop" (the flag is delivered on every normal stop, so the old
+  summary text was noise); pool events reworded to what the flag means (an
+  extra buffer had to be inserted: the host fell behind) - still a retry;
+  the comment on the END buffer timing corrected (`ADC_BulkContinuousEnd`
+  joins the DLL's threads before it returns).
+- The "-HG check" was overstated: the DLL's `ADC_GetScanV` uses the same
+  counts x span / 65536 formula as our table (source checked), so the
+  probe's "driver V" column can never reveal a high-gain variant; only a
+  known, metered voltage on an input can. Probe footer, `m40623/README.md`,
+  CALIBRATION_RECORD 4b.2 / 4b.3 reworded; `floor` wording corrected to the
+  full-scale reference (ground clips at code 0 on a unipolar range);
+  "full-speed" -> the link is USB 2.0 high-speed, the 1 MB/s figure is the
+  driver's. CALIBRATION_RECORD section 6 array row extended with the
+  finding, the driver version and the USB facts. No constant moved.
+- Tests: 40623 array suite 134 -> 142 (backend 55 -> 61, tester +2).
+
 ## Array rig: bench spike numbers, parity tool, replot of tray captures (2026-09-02)
 
 - **Bench spike on the real DAQ** (`daq_bench_probe.py info -> selfcal ->

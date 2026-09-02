@@ -14,7 +14,7 @@ live in this repository, one top-level folder each:
 
 Windows 11 and Xubuntu are both supported.
 
-| Sensor model | Procedure | Status (2026-08-28) | Results folder (`Documents\…`) |
+| Sensor model | Procedure | Status (2026-09-02) | Results folder (`Documents\…`) |
 | --- | --- | --- | --- |
 | **405 M22** (1 Hz) | TP412 — offset, emitter-off noise, sensitivity/polarity | production; sensitivity factor 4.30 from lot 500 | `Eltec_405M22_Test_Results\405m22_esp32` |
 | **406 MCA** (10 Hz) | offset, sensitivity/polarity, v6.1 stability policy | production; factor 1.582 from lot 520 | `Eltec_406MCA_Test_Results\v6_1_esp32` |
@@ -65,7 +65,7 @@ array_rig/                   THE array application — selector + one directory 
   eltec_array_tester.py      selector GUI (model dropdown → launches the model app)
   sensor_versions.py         model registry + required hardware (DAQ)
   tray_history.py            per-lot tray event log (shared)
-  m40623/                    the 40623 build: GUI, DAQ backend (ctypes AIOUSB.dll), numpy noise port, probe, tests, launchers
+  m40623/                    the 40623 build: GUI, DAQ backend (ctypes AIOUSB.dll), numpy noise port, probe, bench readout + live viewer, tests, launchers
 Arduino/Eltec/               firmware (single rig today; the array rig's emitter board will use it later)
   Eltec.ino                  live sketch (v3.2)        README.md = protocol, flashing, troubleshooting
   versions/                  frozen copy of every build + which firmware belongs on which rig
@@ -105,7 +105,7 @@ build belongs on which rig (legacy 406 rigs stay on v1.9):
 python run_all_tests.py
 ```
 
-Six `unittest` suites (four for the single rig, two for the array rig), 598
+Six `unittest` suites (four for the single rig, two for the array rig), 705
 tests, no hardware needed. On Windows the 406 MCA suite reports two known
 environment-only cases (they pass on Xubuntu) — see the handover doc §7.
 
@@ -127,7 +127,7 @@ behind the production constants — the backup routine is in
 | [docs/DATA_MAP.md](docs/DATA_MAP.md) | engineer | results layout, evidence, backup |
 | [single_detector_rig/README.md](single_detector_rig/README.md) | engineer | the selector app, launchers, v2.0 skip/attempt features |
 | [m405m22/README.md](single_detector_rig/m405m22/README.md) · [m406mca/README.md](single_detector_rig/m406mca/README.md) · [m449m18/README.md](single_detector_rig/m449m18/README.md) | engineer | per-model test mechanics |
-| [array_rig/README.md](array_rig/README.md) · [m40623/README.md](array_rig/m40623/README.md) | engineer | the array rig: selector, DAQ chain, the 40623 flow, colours, files, PENDING status |
+| [array_rig/README.md](array_rig/README.md) · [m40623/README.md](array_rig/m40623/README.md) | engineer | the array rig: selector, DAQ chain, the 40623 flow, colours, files, PENDING status, the engineering tools (bench probe, readout, live viewer) |
 | [docs/TP120(40623).pdf](docs/TP120(40623).pdf) · [docs/daq_usb_aio16_64ma/](docs/daq_usb_aio16_64ma/) | engineer | the 40623 test procedure; DAQ datasheet, DAQ-PACK guide, letter of volatility |
 | [Arduino/Eltec/README.md](Arduino/Eltec/README.md) · [versions/README.md](Arduino/Eltec/versions/README.md) | engineer | firmware, protocol, flashing, version archive |
 | [CHANGELOG.md](CHANGELOG.md) | both | what changed, when, why |

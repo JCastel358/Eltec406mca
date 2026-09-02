@@ -90,8 +90,9 @@ DAQ_SCAN_HZ = 1000.0
 # Hardware oversample = extra conversions per channel per scan. 3 -> 4
 # conversions; the first (right after the multiplexer hop, the one most likely
 # unsettled) is dropped and the other three averaged. 50 ch x 4 x 1000/s =
-# 200 kS/s aggregate (40 % of the ADC ceiling) and 400 KB/s over USB (~40 % of
-# the practical full-speed ceiling). Proven or adjusted by the bench probe
+# 200 kS/s aggregate (40 % of the 500 kS/s ADC ceiling) and 400 KB/s over USB
+# (~40 % of the driver's 1 MB/s throughput figure; the link itself is USB 2.0
+# high-speed, 480 Mb/s, bench-verified 2026-09-02). Proven or adjusted by the bench probe
 # (`daq_bench_probe.py slots` / `stream 60`); fallbacks: oversample 2 or 1.
 DAQ_OVERSAMPLE = 3
 DAQ_DROP_CONVERSIONS_AFTER_MUX = 1
@@ -103,6 +104,14 @@ STREAM_BUFFER_COUNT = 32
 # exhausted, callback error) is retried this many times before the tray is
 # recorded NOT MEASURED - the single rig's stream-retry policy.
 STREAM_RETRY_LIMIT = 2
+# A stream that stops delivering data (the pacing clock ticking with the
+# trigger bit cleared - the 2026-09-02 bench finding, since fixed in the
+# backend -, a pulled cable, a driver stall) used to hold the tray at "quiet
+# wait" forever. After this many seconds without a chunk the attempt is
+# abandoned as a rig fault and the retry policy above takes over. Generous
+# next to the 64 000-byte callback buffers (~0.16 s each) so a busy laptop
+# never trips it.
+STREAM_NO_DATA_TIMEOUT_S = 5.0
 # ADC_SetCal(":AUTO:") at connect: the "A" grade board's real-time calibration
 # then corrects offset/gain against its onboard references.
 DAQ_SELF_CALIBRATE_ON_CONNECT = True
@@ -216,6 +225,7 @@ class CapturePlan:
     decimation_factor: int = aa.NOISE_DECIMATION_FACTOR
     edge_context_samples: int = NOISE_EDGE_CONTEXT_SAMPLES
     retry_limit: int = STREAM_RETRY_LIMIT
+    no_data_timeout_s: float = STREAM_NO_DATA_TIMEOUT_S
     scan_hz: float = DAQ_SCAN_HZ
     range_code: int = DAQ_RANGE_CODE
     oversample: int = DAQ_OVERSAMPLE
@@ -630,6 +640,21 @@ def _read_scans_volts(device: daq.DaqDevice, plan: CapturePlan, timeout_s: float
     return daq.counts_to_volts(chunk, plan.range_code)
 
 
+def _check_no_data(last_data_monotonic: float, plan: CapturePlan, stage: str) -> None:
+    """Raise when the stream has been silent longer than the plan allows.
+
+    ``read_stream`` returning ``None`` is normal for a moment (the callback
+    buffers are ~0.16 s apart); a stream that produces nothing at all is a
+    rig fault and must fail into the retry path, never hold the tray.
+    """
+
+    silent = time.monotonic() - last_data_monotonic
+    if silent > plan.no_data_timeout_s:
+        raise daq.StreamTimeoutError(
+            f"no data from the stream for {silent:.1f} s during the {stage} (limit {plan.no_data_timeout_s:.0f} s)"
+        )
+
+
 def run_quiet_wait(
     device: daq.DaqDevice,
     plan: CapturePlan,
@@ -655,12 +680,15 @@ def run_quiet_wait(
     tail: list[np.ndarray] = []
     tail_len = 0
     settled = False
+    last_data = time.monotonic()
     while collected < max_samples:
         if cancelled and cancelled():
             raise CaptureCancelled("cancelled during the quiet wait")
         chunk = _read_scans_volts(device, plan)
         if chunk is None:
+            _check_no_data(last_data, plan, "quiet wait")
             continue
+        last_data = time.monotonic()
         collected += chunk.shape[0]
         tail.append(chunk)
         tail_len += chunk.shape[0]
@@ -721,12 +749,15 @@ def run_tray_capture(
             chunks: list[np.ndarray] = []
             got = 0
             wanted = capture_samples + context
+            last_data = time.monotonic()
             while got < wanted:
                 if cancelled and cancelled():
                     raise CaptureCancelled("cancelled during the capture")
                 chunk = _read_scans_volts(device, plan)
                 if chunk is None:
+                    _check_no_data(last_data, plan, "capture")
                     continue
+                last_data = time.monotonic()
                 chunks.append(chunk)
                 got += chunk.shape[0]
                 if progress:

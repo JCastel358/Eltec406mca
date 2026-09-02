@@ -8,7 +8,7 @@ that go into ``docs/CALIBRATION_RECORD.md``:
     python array_rig/m40623/daq_bench_probe.py info
     python array_rig/m40623/daq_bench_probe.py selfcal
     python array_rig/m40623/daq_bench_probe.py config            # apply + read back the production block
-    python array_rig/m40623/daq_bench_probe.py scan --reads 10   # own-scale volts next to the driver's (-HG check)
+    python array_rig/m40623/daq_bench_probe.py scan --reads 10   # own-scale volts per channel (the -HG question needs a metered voltage on CH0)
     python array_rig/m40623/daq_bench_probe.py slots --seconds 2 # per-conversion-slot means: is slot 0 the settling one?
     python array_rig/m40623/daq_bench_probe.py floor --seconds 20   # onboard reference through the same path: the instrument's own noise
     python array_rig/m40623/daq_bench_probe.py stream --seconds 60 [--save tray.npz]   # rate / pool / leftover check
@@ -245,10 +245,13 @@ def cmd_scan(args: argparse.Namespace) -> int:
             channel_label(config, i), f"{median_counts[i]:8.1f}", f"{spread[i]:5.0f}",
             f"{own[i]:9.5f}", f"{driver[i]:9.5f}", f"{(driver[i] - own[i]) * 1e3:+8.2f}",
         ])
-    print_table(rows, ["channel  pos", "counts", "p-p", "own V", "driver V", "diff mV"])
+    print_table(rows, ["channel  pos", "counts", "p-p", "own V", "driver V*", "diff mV"])
     print(
-        "\n-HG check: put a known voltage (about 1.5 V) on CH0 and ground CH1. If 'own V' matches the meter the unit is standard "
-        "range; if it is ~10x or ~100x off, this is a -HG (high gain) unit and the range table must be changed."
+        "\n-HG check: put a known, METERED voltage (about 1.5 V) on CH0 and ground CH1. 'own V' must match the meter within "
+        "a few mV; ~10x or ~100x off means a -HG (high gain) unit and the range table must be changed."
+        "\n* 'driver V' is the DLL's ADC_GetScanV taken in a separate read AFTER the counts above. It uses the same "
+        "counts x span / 65536 formula as 'own V' (vendor DLL source), so it is a sanity check of our arithmetic, never a "
+        "gain check: a difference in that column is the input moving between reads, not a scaling error."
     )
     device.close()
     return 0

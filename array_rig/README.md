@@ -35,6 +35,13 @@ board; the app shows the step greyed out.
   Python is required (the 64-bit DLL lives in `System32`). No extra Python
   packages beyond the single rig's (`numpy`, `tkinter`, `matplotlib` for
   the grid snapshot).
+- Engineering tools (no verdicts, files only at explicit paths), all in
+  `array_rig\m40623\` and all with `--simulate`: `daq_bench_probe.py` (bench
+  checks), `daq_rig_readout.py` (offsets, captures to CSV / npz, text-mode
+  watch) and `daq_live_waveform.py` (rolling scope of any position) — see the
+  m40623 README. Only one program can own the DAQ: close the tester before
+  running one of them, and vice versa (a second program is not refused — it
+  silently takes the stream away from the first).
 
 The single-detector rig and this rig can run at the same time — different
 hardware, different state folders.
@@ -53,13 +60,17 @@ array_rig/
       daq_backend.py                ctypes wrapper over AIOUSB.dll, de-interleave, stream integrity, SimulatedDaq
       array_analysis.py             numpy port of the single rig's noise DSP + TP120 offset classes + verdict model
       daq_bench_probe.py            engineering CLI (never issues verdicts)
+      daq_rig_readout.py            engineering readout: ArrayRig API + CLI (offsets, captures to CSV / npz, text-mode watch) — the ESP32 readout's counterpart
+      daq_live_waveform.py          engineering live viewer: matplotlib rolling scope of any position + the 5 x 10 grid — live_waveform.py's counterpart
       tests/                        unit + flow tests; golden_noise_reference.py is the frozen DSP oracle
       run_… / install_…             per-model launchers
 ```
 
 Ownership rule inside a model directory: `daq_backend.py` is the hardware
 boundary (no Tk), `array_analysis.py` is pure math (no I/O, no hardware), the
-tester owns orchestration, UI and files, the probe is engineering only.
+tester owns orchestration, UI and files; the probe, the readout and the live
+viewer are engineering only — no verdicts, output files only at explicit
+paths (never under `Documents`), and only one program on the DAQ at a time.
 
 ## Adding a model
 
@@ -83,7 +94,7 @@ of the 405 M22 noise functions used as a test oracle).
 ```
 python run_all_tests.py                                        # every suite of both rigs
 python -m unittest discover -s array_rig/tests                 # selector glue + tray history
-python -m unittest discover -s array_rig/m40623/tests          # backend, analysis (golden parity), tester flow
+python -m unittest discover -s array_rig/m40623/tests          # backend, analysis (golden parity), tester flow, readout, live viewer (Agg), engineer tools
 ```
 
 Stdlib `unittest`, from the repository root, no hardware needed (the tests

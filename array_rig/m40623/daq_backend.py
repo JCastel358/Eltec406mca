@@ -40,6 +40,15 @@ Facts that shape the code (datasheet + DAQ-PACK guide in
   against a known voltage by the bench probe.
 * The device loads its firmware from the host at every plug-in and
   re-enumerates, so ``connect`` retries for a few seconds.
+* The DLL's immediate-read entry points (``ADC_GetScan`` / ``ADC_GetScanV``)
+  REWRITE the device's configuration block: they force scan mode, clear
+  the timer/external trigger bits (0x05 -> 0x04) and force oversample to
+  at least 1, and never restore any of it
+  (vendor source ``ADC_GetScan_Inner``; reproduced on the bench 2026-09-02:
+  after three immediate reads a stream started without re-writing the block
+  delivered 0 scans in 12 s). The backend therefore re-asserts its own
+  block after every immediate read and again before every stream start, so
+  the device is always in the configuration ``self.config`` says it is.
 """
 
 from __future__ import annotations
@@ -479,7 +488,12 @@ class StreamDiagnostics:
     bytes_received: int = 0
     leftover_bytes: int = 0
     pool_too_small_events: int = 0
+    #: the driver's end-of-stream flag was seen (it always is after a normal
+    #: ``ADC_BulkContinuousEnd``: the DLL delivers one last END-flagged buffer)
     ended_by_device: bool = False
+    #: the END flag arrived BEFORE ``stop_stream`` asked for it - the device or
+    #: driver ended the stream on its own, so the record is incomplete
+    ended_early: bool = False
     callback_error: str | None = None
     consumer_cpu_s: float | None = None
 
@@ -508,9 +522,16 @@ class StreamDiagnostics:
         if self.callback_error:
             problems.append(f"callback error: {self.callback_error}")
         if self.pool_too_small_events:
+            # The DLL flags a buffer it had to INSERT because no blank pool
+            # buffer was free: the host fell behind the stream. Data is only
+            # lost if the device FIFO overflowed meanwhile, which cannot be
+            # told apart from here - so the capture is retried regardless.
             problems.append(
-                f"driver buffer pool exhausted {self.pool_too_small_events} time(s) - data lost while the host stalled"
+                f"driver buffer pool exhausted {self.pool_too_small_events} time(s) (extra buffer inserted: "
+                "the host fell behind the stream)"
             )
+        if self.ended_early:
+            problems.append("the device ended the stream before it was stopped - the record is incomplete")
         if self.scans_received == 0:
             problems.append("no complete scans were received")
         error = self.rate_error_fraction
@@ -538,7 +559,7 @@ class StreamDiagnostics:
             f"{self.scans_received} scans in {self.elapsed_s or 0.0:.2f} s ({rate_text}, timer {self.actual_timer_hz:.3f} Hz), "
             f"{self.buffers_received} buffers, {self.leftover_bytes} leftover bytes, "
             f"{self.pool_too_small_events} pool events"
-            + (", ended by device" if self.ended_by_device else "")
+            + (", ended by device before stop" if self.ended_early else "")
             + (f", callback error: {self.callback_error}" if self.callback_error else "")
         )
 
@@ -712,13 +733,14 @@ class AiousbDaq:
         self._index: int | None = None
         self._streaming = False
         self._callback: Any = None
-        self._raw_queue: queue.Queue[tuple[bytes, int]] | None = None
+        self._raw_queue: queue.Queue[tuple[bytes, int, bool]] | None = None
         self._out_queue: queue.Queue[np.ndarray] | None = None
         self._consumer: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._diagnostics: StreamDiagnostics | None = None
         self._deinterleaver: ScanDeinterleaver | None = None
         self._callback_error: str | None = None
+        self._stop_requested = False
         self._lock = threading.RLock()
 
     # -- lifecycle ---------------------------------------------------------
@@ -799,18 +821,43 @@ class AiousbDaq:
         with self._lock:
             if self._streaming:
                 raise StreamStateError("Stop the stream before reconfiguring the ADC.")
-            block = build_config_block(config)
-            size = _UL(len(block))
-            buffer = ctypes.create_string_buffer(block, len(block))
-            check_status("ADC_SetConfig", self._lib.ADC_SetConfig(self.device_index, buffer, ctypes.byref(size)))
-            readback = self.read_config_block()
-            if readback != block:
-                raise DaqError(
-                    "ADC_GetConfig read back a different block than was written: "
-                    f"wrote {block.hex(' ')}, read {readback.hex(' ')}."
-                )
+            self._write_config_block(config)
             self.config = config
             return config
+
+    def _write_config_block(self, config: AdcConfig) -> None:
+        """``ADC_SetConfig`` + byte-exact read-back of ``config``."""
+
+        block = build_config_block(config)
+        size = _UL(len(block))
+        buffer = ctypes.create_string_buffer(block, len(block))
+        check_status("ADC_SetConfig", self._lib.ADC_SetConfig(self.device_index, buffer, ctypes.byref(size)))
+        readback = self.read_config_block()
+        if readback != block:
+            raise DaqError(
+                "ADC_GetConfig read back a different block than was written: "
+                f"wrote {block.hex(' ')}, read {readback.hex(' ')}."
+            )
+
+    def _reassert_config(self) -> None:
+        """Put ``self.config`` back on the device.
+
+        ``ADC_GetScan``/``ADC_GetScanV`` rewrite the trigger byte (module
+        docstring), so the block is re-written after every immediate read and
+        before every stream start. Cheap (two control transfers) next to the
+        immediate read itself, and the only way to keep ``self.config``
+        truthful.
+        """
+
+        self._write_config_block(self._require_config())
+
+    def _reassert_config_quietly(self) -> None:
+        """``_reassert_config`` on a failure path: a second error must not mask the first."""
+
+        try:
+            self._reassert_config()
+        except DaqError:
+            pass
 
     def read_config_block(self) -> bytes:
         buffer = ctypes.create_string_buffer(64)
@@ -836,11 +883,16 @@ class AiousbDaq:
                 raise StreamStateError("Stop the stream before an immediate scan.")
             rows = np.empty((reads, config.channels), dtype=np.float64)
             buffer = (ctypes.c_ushort * MAX_DEVICE_CHANNELS)()
-            for row in range(reads):
-                check_status("ADC_GetScan", self._lib.ADC_GetScan(self.device_index, buffer))
-                rows[row, :] = np.frombuffer(buffer, dtype=np.uint16)[
-                    config.start_channel : config.end_channel + 1
-                ]
+            try:
+                for row in range(reads):
+                    check_status("ADC_GetScan", self._lib.ADC_GetScan(self.device_index, buffer))
+                    rows[row, :] = np.frombuffer(buffer, dtype=np.uint16)[
+                        config.start_channel : config.end_channel + 1
+                    ]
+            except DaqError:
+                self._reassert_config_quietly()
+                raise
+            self._reassert_config()  # ADC_GetScan cleared the timer-trigger bit
         return rows
 
     def read_scan_volts_median(self, *, reads: int = 3) -> np.ndarray:
@@ -849,12 +901,25 @@ class AiousbDaq:
         return counts_to_volts(np.median(counts, axis=0), config.range_code)
 
     def read_scan_driver_volts(self) -> np.ndarray:
-        """The driver's own ``ADC_GetScanV`` volts - bench probe only (-HG check)."""
+        """The driver's own ``ADC_GetScanV`` volts - bench probe only.
+
+        An arithmetic cross-check of the own-scale volts, never a gain (-HG)
+        check: the DLL uses the same counts x span / 65536 formula (module
+        docstring), so only a known, metered voltage on an input can tell a
+        high-gain unit.
+        """
 
         config = self._require_config()
         buffer = (ctypes.c_double * MAX_DEVICE_CHANNELS)()
         with self._lock:
-            check_status("ADC_GetScanV", self._lib.ADC_GetScanV(self.device_index, buffer))
+            if self._streaming:
+                raise StreamStateError("Stop the stream before an immediate scan.")
+            try:
+                check_status("ADC_GetScanV", self._lib.ADC_GetScanV(self.device_index, buffer))
+            except DaqError:
+                self._reassert_config_quietly()
+                raise
+            self._reassert_config()  # same side effect as ADC_GetScan
         return np.frombuffer(buffer, dtype=np.float64)[config.start_channel : config.end_channel + 1].copy()
 
     # -- bulk streaming ----------------------------------------------------
@@ -877,6 +942,10 @@ class AiousbDaq:
         with self._lock:
             if self._streaming:
                 raise StreamStateError("A stream is already running.")
+            # The block on the device may not be ours any more (an immediate
+            # read clears the timer-trigger bit): re-write it, or the pacing
+            # clock ticks and nothing is converted.
+            self._reassert_config()
             self._deinterleaver = ScanDeinterleaver(
                 config.channels, config.conversions_per_channel, drop_first=drop_first, average=average
             )
@@ -884,6 +953,7 @@ class AiousbDaq:
             self._out_queue = queue.Queue()
             self._stop_event.clear()
             self._callback_error = None
+            self._stop_requested = False
             self._callback = ADCallback(self._on_buffer)
             timer_hz = ctypes.c_double(float(scan_hz))
             started = self._monotonic()
@@ -930,7 +1000,11 @@ class AiousbDaq:
             data = ctypes.string_at(pbuf, int(bufsize)) if int(bufsize) > 0 else b""
             raw_queue = self._raw_queue
             if raw_queue is not None:
-                raw_queue.put((data, int(flags)))
+                # "Early" is decided HERE, at delivery on the DLL's thread: the
+                # consumer may dequeue an END buffer only after stop_stream()
+                # has set the flag, and would then miss that the device ended
+                # the stream on its own.
+                raw_queue.put((data, int(flags), not self._stop_requested))
         except Exception as exc:  # never let an exception escape into the DLL
             self._callback_error = repr(exc)
 
@@ -944,7 +1018,7 @@ class AiousbDaq:
         cpu_start = time.process_time()
         while True:
             try:
-                data, flags = raw_queue.get(timeout=0.05)
+                data, flags, early = raw_queue.get(timeout=0.05)
             except queue.Empty:
                 if self._stop_event.is_set():
                     break
@@ -964,6 +1038,7 @@ class AiousbDaq:
                 out_queue.put(scans)
             if flags & CALLBACK_FLAG_END_OF_STREAM:
                 diagnostics.ended_by_device = True
+                diagnostics.ended_early = early
                 break
         diagnostics.leftover_bytes = worker.pending_bytes
         diagnostics.consumer_cpu_s = time.process_time() - cpu_start
@@ -991,14 +1066,16 @@ class AiousbDaq:
             if not self._streaming or self._diagnostics is None:
                 raise StreamStateError("No stream is running.")
             diagnostics = self._diagnostics
+            self._stop_requested = True
             try:
                 self._end_bulk()
             finally:
                 diagnostics.stopped_monotonic = self._monotonic()
                 self._streaming = False
-            # The DLL hands over its last (possibly zero-size, END-flagged)
-            # buffer shortly after ADC_BulkContinuousEnd returns; let the
-            # consumer see it before it is told to stop.
+            # ADC_BulkContinuousEnd joins the DLL's own threads before it
+            # returns, so the last (zero-size, END-flagged) buffer has already
+            # been handed to the callback by now; the short sleep only lets
+            # the consumer thread drain the raw queue before it is told to stop.
             self._sleep(0.1)
             self._stop_event.set()
         if self._consumer is not None:
@@ -1046,6 +1123,7 @@ class AiousbDaq:
         with self._lock:
             if self._streaming:
                 raise StreamStateError("Stop the stream before a bulk acquisition.")
+            self._reassert_config()  # see start_stream
             check_status("ADC_BulkAcquire", self._lib.ADC_BulkAcquire(self.device_index, total_bytes, buffer))
             timer_hz = ctypes.c_double(float(scan_hz))
             check_status("CTR_StartOutputFreq", self._lib.CTR_StartOutputFreq(self.device_index, 0, ctypes.byref(timer_hz)))

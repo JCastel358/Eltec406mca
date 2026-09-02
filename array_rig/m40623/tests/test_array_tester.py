@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -352,6 +353,40 @@ class ControllerFlowTests(unittest.TestCase, HomeGuardMixin):
         self.assertEqual(rows[-1]["noise_worst_pp_mv"], "")
         events = [e.event for e in tray_history.read_tray_events(controller.attempts_path)]
         self.assertIn("capture_error", events)
+
+    def test_silent_stream_times_out_into_the_rig_fault_path(self):
+        # 2026-09-02 bench finding: a stream whose pacing clock ticks with the
+        # trigger bit cleared delivers nothing at all. The tray must fail into
+        # the retry / NOT MEASURED path, not sit at "quiet wait" forever.
+        class SilentDaq(daq.SimulatedDaq):
+            def read_stream(self, *, timeout_s: float = 1.0):
+                self._require_config()
+                if not self._streaming:
+                    raise daq.StreamStateError("No stream is running.")
+                return None
+
+        plan = app.CapturePlan(capture_seconds=1.0, stabilisation_s=0.0, quiet_min_s=0.5, quiet_max_s=1.0,
+                               no_data_timeout_s=0.05, retry_limit=1)
+        sim = SilentDaq(daq.SimProfile(empty_positions=frozenset({"1-10"})), real_time=False)
+        controller = app.TrayController(sim, lot="7", tray_number=1, tester_name="JC", results_root=self.root, plan=plan)
+        controller.start()
+        resolve_unknowns(controller)
+        controller.lock_tray()
+        started = time.monotonic()
+        report = controller.run_noise_phase(stabilisation_wait_s=0.0)
+        self.assertLess(time.monotonic() - started, 5.0)
+        self.assertIsNotNone(report.rig_fault)
+        self.assertIn("no data from the stream", report.rig_fault)
+        self.assertEqual(report.attempts_used, 2)
+        self.assertFalse(sim.is_streaming)
+        self.assertTrue(all(r.verdict is aa.PositionVerdict.NOT_MEASURED for r in report.results))
+        events = [e.event for e in tray_history.read_tray_events(controller.attempts_path)]
+        self.assertIn("capture_retry", events)
+        self.assertIn("capture_error", events)
+
+    def test_capture_plan_carries_the_no_data_timeout(self):
+        self.assertEqual(app.CapturePlan().no_data_timeout_s, app.STREAM_NO_DATA_TIMEOUT_S)
+        self.assertGreater(app.STREAM_NO_DATA_TIMEOUT_S, 1.0)  # several callback buffers of slack
 
     def test_remeasure_increments_attempt_and_keeps_numbers(self):
         controller, sim = make_controller(self.root)

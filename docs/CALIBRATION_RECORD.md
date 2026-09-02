@@ -217,7 +217,7 @@ policy build). Detailed mechanics:
 
 | Constant | Value | Where | Provenance |
 | --- | --- | --- | --- |
-| Healthy offset | 0.3–1.2 V (`OFFSET_MIN_V` / `OFFSET_MAX_V`) | vendored engine `eltec_rig/v1_single_sensor/eltec_406mca_tester.py` l.46 | 406MCA production limit (carried from the LabJack era). |
+| Healthy offset | 0.3–1.2 V (`OFFSET_MIN_V` / `OFFSET_MAX_V`) | vendored engine `single_detector_rig/v1_single_sensor/eltec_406mca_tester.py` l.46 | 406MCA production limit (carried from the LabJack era). |
 | `SENSOR_OFFSET_MIN_PLAUSIBLE_V` / `_MAX_PLAUSIBLE_V` | 0.05 / 2.5 V | tester ≈ l.208 | Outside = no sensor / no buffer. |
 | Frequency setup | 10.0 ± 0.1 Hz (first three cycles validated) | tester / backend | 406MCA production limit. |
 | Filter sensitivity minimums (legacy-scope mV) | -3: 25 · -27: 25 · -266: 30.9 · -273 + blackened tube: 2.3 · **-284 + extra -6 + blackened tube: 4.0 (default)** | tester | 406MCA production limits. |
@@ -297,9 +297,10 @@ Added 2026-09-02.
 ### 4b.2 Derivation plan for the noise limits
 
 1. Bench spike (`daq_bench_probe.py`): instrument floor per channel in the
-   judged band (cal-mode GROUND), the -HG check with a known voltage, which
-   conversion slot is unsettled, 60 s stream integrity, crosstalk — numbers
-   into §6.
+   judged band (onboard full-scale reference — the ground reference clips at
+   code 0 on a unipolar range), the -HG check with a known, metered voltage,
+   which conversion slot is unsettled, 60 s stream integrity, crosstalk —
+   numbers into §6.
 2. Paired lot: 30–50 parts (include known-noisy and known-dead ones)
    measured on the legacy 9000233 fixture per TP120 (DMM reading per
    position, under vacuum) and on this rig (60 s capture, same day); type
@@ -324,7 +325,11 @@ Added 2026-09-02.
    could seed a provisional limit (flagged nominal-derived — remember §2.2:
    the 405's sticker gain was not its effective gain).
 4. Whether the DAQ is the `-HG` high-gain factory variant (changes the volts
-   scaling; the probe's known-voltage check detects it).
+   scaling). Only a known, metered voltage on an input can tell: the driver's
+   `ADC_GetScanV` uses the same counts × span / 65536 formula as our own table
+   (vendor DLL source, checked 2026-09-02), so the "driver V" column of
+   `daq_bench_probe.py scan` is a sanity check of the arithmetic, not a gain
+   check. The unit's product string does not encode the variant either.
 5. Multiplexer crosstalk at 1000 scans/s is unspecified by the datasheet
    (−60 dB at 500 kS/s) — measured by the probe.
 
@@ -357,8 +362,8 @@ reference gates are off (§2.4).
 | Power | 6.5 V battery → emitters only; 9 V battery → sensor buffers; grounds common | Isolated 2026-08-12 — this fixed the emitter-induced spike. Neither battery is monitored (AIN7 divider unused; plan: AIN6 with ≥ 4:1 divider). |
 | Serial | 500000 baud ASCII over CP210x USB | Windows driver grants only a 512-byte receive queue; see the stream-reliability notes in `m405m22/README.md`. |
 | Bench board (2026-08-28) | DOIT ESP32 DEVKIT V1, COM3 on the Windows laptop, running firmware **v3.1**; v3.2 compiled, not yet flashed | `python Arduino/Eltec/flash_firmware.py --check` reports what a board runs. |
-| **Array rig DAQ** (2026-09-02) | ACCES USB-AIO16-64MA DAQ-PACK, VID 0x1605 PID 0x8145, serial 40E68DEE0D501728, `AIOUSB.dll` 2.4.0.0 (64-bit, System32); 16-bit SAR, one ADC behind two multiplexer stages, 500 kS/s aggregate, **no anti-alias filter**, range per group of 4 channels, contiguous scan only, firmware loaded from the host at plug-in | `array_rig/m40623/daq_bench_probe.py info`. Self-calibration (`ADC_SetCal :AUTO:`) supported and run at every connect. |
-| Array rig acquisition | 0–5 V range (76.3 µV/LSB), CH0–CH49 single-ended, 1000 scans/s per channel, oversample 3 with the first conversion dropped → 200 kS/s aggregate, 400 KB/s USB; callback buffers 64 000 B × 32 | **Bench spike 2026-09-02** (`daq_bench_probe.py`, DAQ alone, PCB inputs not connected): configuration block written and read back identically; `ADC_SetCal(":AUTO:")` 0.3 s; pacing clock granted **exactly 1000.000 Hz**; 60 s callback stream **60 000 scans in 60.00 s (999.95 scans/s, −0.005 %)**, 376 buffers, **0 pool events, 0 leftover bytes**, consumer thread 0.4 % CPU, the driver's end-of-stream flag delivered after `ADC_BulkContinuousEnd`. **Instrument floor** (onboard full-scale reference through the same multiplexer/amplifier path, 20 s, production settings): raw rms ≈ 54 µV (≈ 0.7 LSB) on every channel; in the judged band **median window pk-pk 49 µV (median over channels), worst channel CH16 79 µV**. Cal-mode GROUND reads exactly code 0 on the unipolar range (clips) — unusable as a floor source, hence the reference. **Conversion-slot check** (floating inputs, worst case): slot 0 differs from the rest by up to 34 counts (2.6 mV, CH40), typically 2–7 counts → the first conversion after a multiplexer hop is unsettled, **`DAQ_DROP_CONVERSIONS_AFTER_MUX = 1` stays**. Still open: the **-HG check** (needs a known voltage on CH0 with the PCB) and **crosstalk** (needs a source on one channel). |
+| **Array rig DAQ** (2026-09-02) | ACCES USB-AIO16-64MA DAQ-PACK, VID 0x1605 PID 0x8145, serial 40E68DEE0D501728, `AIOUSB.dll` 2.4.0.0 (64-bit, System32; the probe prints the same file's fixed-info version 2.4.8796.22296); 16-bit SAR, one ADC behind two multiplexer stages, 500 kS/s aggregate, **no anti-alias filter**, range per group of 4 channels, contiguous scan only, firmware loaded from the host at plug-in | `array_rig/m40623/daq_bench_probe.py info`. Self-calibration (`ADC_SetCal :AUTO:`) supported and run at every connect. |
+| Array rig acquisition | 0–5 V range (76.3 µV/LSB), CH0–CH49 single-ended, 1000 scans/s per channel, oversample 3 with the first conversion dropped → 200 kS/s aggregate, 400 KB/s USB; callback buffers 64 000 B × 32 | **Bench spike 2026-09-02** (`daq_bench_probe.py`, DAQ alone, PCB inputs not connected): configuration block written and read back identically; `ADC_SetCal(":AUTO:")` 0.3 s; pacing clock granted **exactly 1000.000 Hz**; 60 s callback stream **60 000 scans in 60.00 s (999.95 scans/s, −0.005 %)**, 376 buffers, **0 pool events, 0 leftover bytes**, consumer thread 0.4 % CPU, the driver's end-of-stream flag delivered after `ADC_BulkContinuousEnd`. **Instrument floor** (onboard full-scale reference through the same multiplexer/amplifier path, 20 s, production settings): raw rms ≈ 54 µV (≈ 0.7 LSB) on every channel; in the judged band **median window pk-pk 49 µV (median over channels), worst channel CH16 79 µV**. Cal-mode GROUND reads exactly code 0 on the unipolar range (clips) — unusable as a floor source, hence the reference. **Conversion-slot check** (floating inputs, worst case): slot 0 differs from the rest by up to 34 counts (2.6 mV, CH40), typically 2–7 counts → the first conversion after a multiplexer hop is unsettled, **`DAQ_DROP_CONVERSIONS_AFTER_MUX = 1` stays**. Still open: the **-HG check** (needs a known, metered voltage on CH0 with the PCB) and **crosstalk** (needs a source on one channel). **Immediate reads rewrite the trigger byte**: the DLL's `ADC_GetScan` turns 0x05 into 0x04 (scan mode, timer off; oversample forced to at least 1) and never restores it — verified 2026-09-02 in the vendor DLL source and on the unit (the production call order, three offset reads then a stream without re-writing the block, delivered 0 scans in 12 s); since 2026-09-02 the backend re-asserts its block after every immediate read and before every stream, and the tester abandons a stream that stays silent for 5 s (`STREAM_NO_DATA_TIMEOUT_S`) into the retry / NOT MEASURED path. Driver 3.0.150.9161 (CyUSB3), USB 2.0 high-speed on a root-hub port, USB selective suspend disabled (AC and DC). |
 | Array PCB | 5 × 10 positions, one unity-gain buffer per position, row order onto CH0–CH49 (row 1 = CH0–9) | Supply / source-resistor loading vs TP120's fixtures 9000054 (+8 V, 100 kΩ) and 9000233 (±5 V, vacuum): **to be confirmed** (§4b.3). |
 
 ---
