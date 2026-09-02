@@ -11,7 +11,7 @@ commit**. For sensitivity factors also bump the model's
 `SENSITIVITY_CALIBRATION_ID` so every CSV row says which calibration produced
 it.
 
-Last reconciled against the code: **2026-08-28**.
+Last reconciled against the code: **2026-09-02**.
 
 ---
 
@@ -37,6 +37,18 @@ Code locations: `single_detector_rig/<model>/eltec_<model>_esp32_tester.py`
 gate pin, minimum firmware), `<model>/stability_settings.json` (peak-delta
 threshold). The three model directories are deliberate near-copies — see the
 copy-per-model policy in [`ENGINEER_HANDOVER.md`](ENGINEER_HANDOVER.md).
+
+**Array rig (50 positions, ACCES USB-AIO16-64MA DAQ) — model 40623, TP120** — see §4b:
+
+| Gate | 40623 array |
+| --- | --- |
+| Offset band | **ON, PROVISIONAL** 0.3–1.2 V (TP120); < 0.05 V on a loaded socket = D; ≥ 4.9 V = HO (railed). Only HO/railed fail fast at insertion; LO/D on the settled reading. |
+| Noise | **PENDING** — pin-level limits `None` (measured and recorded only; TP120's 10.0–37.9 mV are DMM readings behind amplifier 9000232 + rectifier-hold 9000272). Structural rules when limits exist: 15 % window rule (high), median rule (low). |
+| Sensitivity / polarity | **not implemented** (no emitter board) |
+| Front end | unity-gain buffer per position → DAQ 0–5 V single-ended, 1000 scans/s per channel, oversample 3 with the first conversion dropped |
+
+Code: `array_rig/m40623/array_analysis.py` (limits, verdict model),
+`array_rig/m40623/eltec_40623_array_tester.py` (DAQ and timing constants).
 
 ---
 
@@ -252,6 +264,72 @@ the 0.100 mV threshold.
 
 ---
 
+## 4b. Model 40623 (TP120, 50-position DAQ array) — CALIBRATION PENDING
+
+Tester: `array_rig/m40623/eltec_40623_array_tester.py`; limits and verdict
+model: `array_rig/m40623/array_analysis.py`. Test procedure document:
+**TP120 rev W** ([`TP120(40623).pdf`](TP120(40623).pdf)) — sensitivity &
+polarity (3 Hz chopper, not implemented: no emitter board), noise, offset
+check. Mechanics: [`m40623/README.md`](../array_rig/m40623/README.md).
+Added 2026-09-02.
+
+### 4b.1 Constants
+
+| Constant | Value | Where | Provenance / state |
+| --- | --- | --- | --- |
+| `OFFSET_MIN_V` / `OFFSET_MAX_V` | 0.3 / 1.2 V | `array_analysis.py` | TP120 rev W "40623 Offset Check": test box 9000054, **+8 V supply, 100 kΩ source resistor**, DMM 20 V scale, "let detectors stand for ten to fifteen minutes, if needed". **PROVISIONAL**: the array PCB's supply/loading must be confirmed to match 9000054 before these transfer without a correction. |
+| `OFFSET_SETTLE_DELTA_V` | 0.05 V | `array_analysis.py` | TP120 sensitivity pages: "wait until reading does not shift more than ± 0.05 V". Applied as a recorded warning (early vs settled reading), never a verdict. |
+| `OFFSET_DEAD_V` | 0.05 V | `array_analysis.py` | A loaded socket under this = D (dead / no output). Same value as the 405's wake-up floor; bench-tunable. Empty vs loaded at ~0 V is the technician's call at lock time (the rig cannot tell them apart). |
+| `OFFSET_RAIL_V` | 4.9 V (0.98 × 5 V range) | `array_analysis.py` | A railed part = HO (405 lesson: never a wiring error). |
+| Offset policy | HO / railed fail fast at insertion; LO / D judged on the **settled** reading (mean of the last 2 s of the capture); insertion read recorded as `offset_initial_v` | tester | Carried from the 405 M22 lot-500 observation (offsets settle upward for tens of seconds). |
+| `NOISE_LEGACY_PP_LIMIT_LOW_MV` / `_HIGH_MV` | 10.0 / 37.9 mV | `array_analysis.py` | TP120 rev W "40623 Noise": fixture 9000233 (50 sockets, 5×10 switch box), **±5 V** supply, **under vacuum**, 5 min stabilisation, 15–20 s settle per position, amplifier box **9000232** → rectifier-hold **9000272** (Reset until < 1.0 mV, release, **≥ 60 s** hold) → DMM 200 mV DC. "Noise level must be between 10.0 mV and 37.9 mV." A LOW limit exists (dead crystal/FET). **These are DMM readings behind an amplifier of unknown gain/passband — never pin-level.** |
+| `NOISE_LEGACY_CHAIN_FACTOR` | **None** | `array_analysis.py` | Not derived. Derivation = the 405's §2.2/§2.3 recipe: the same parts on the legacy 9000233 fixture (DMM readings per position) and on this rig; `engineer_tools/array_noise_parity.py` pairs them and proposes the factor. |
+| `NOISE_PP_LIMIT_LOW_MV` / `_HIGH_MV` | **None** | `array_analysis.py` | = legacy limit ÷ chain factor once derived. With `None` every noise verdict is `NO_LIMIT` (measured, recorded, never a failure); tiles show the value and "no limit yet". |
+| `NOISE_MAX_OVER_FRACTION` | 0.15 (structural default) | `array_analysis.py` | Copied from the 405 M22's lot-500 rule. **Re-decide with the paired lot.** |
+| Low-side rule | MEDIAN window pk-pk below the low limit → NOISE_LOW | `array_analysis.py` | Structural choice: a dead crystal is quiet in every window; the median ignores one environmental bang. Re-decide with the paired lot. |
+| `NOISE_DECIMATION_FACTOR` / `NOISE_WINDOW_S` | 20 / 1.0 s | `array_analysis.py` | The single rig's pipeline unchanged (1000 → 50 SPS Kaiser FIR, 621 taps, 310-sample edge context, per-window detrend): judged band ≈ 0.85–22 Hz. Frozen oracle: `tests/golden_noise_reference.py` (from `single_detector_rig/m405m22/stability_analysis.py` at d7526b5). |
+| `NOISE_CAPTURE_SECONDS` | 60 s (20 s engineering option) | tester | TP120's ≥ 60 s hold → 60 one-second windows. |
+| `NOISE_STABILISATION_S` | 300 s (skippable, actual wait recorded per row) | tester | TP120: "Let detectors stand for five minutes". |
+| Adaptive quiet wait | 3–20 s, 2 blocks within 0.1 mV | tester | Carried from the 405; `NOISE_BASELINE_SETTLE_DELTA_MV = 0.1` is the 405's derived value rounded — only affects wait time, never a verdict. |
+| `CALIBRATION_STATUS` / `CALIBRATION_ID` / `VERDICT_STATUS` | PENDING / `40623_array50_daq_PENDING` / PROVISIONAL | `array_analysis.py` | Stamped on every CSV row and every raw capture. Bump the id when the limits are derived. |
+| DAQ range / rate / oversample | 0–5 V (code 2, 76.3 µV/LSB) / 1000 scans/s / 3 (first conversion dropped) | tester | See §6. Recorded per row (`daq_range_code`, `daq_oversample`, `daq_drop_conversions`, `daq_scan_rate_hz`, `daq_actual_timer_hz`). |
+
+### 4b.2 Derivation plan for the noise limits
+
+1. Bench spike (`daq_bench_probe.py`): instrument floor per channel in the
+   judged band (cal-mode GROUND), the -HG check with a known voltage, which
+   conversion slot is unsettled, 60 s stream integrity, crosstalk — numbers
+   into §6.
+2. Paired lot: 30–50 parts (include known-noisy and known-dead ones)
+   measured on the legacy 9000233 fixture per TP120 (DMM reading per
+   position, under vacuum) and on this rig (60 s capture, same day); type
+   the legacy readings into `legacy_readings.csv` (`sensor_id, position,
+   legacy_noise_mv`) and run `engineer_tools/array_noise_parity.py`. It
+   reports the median ratio and regression-through-origin slope for the
+   worst-window and median-window metrics, replays alternative bands from
+   the saved `.npz`, and proposes `NOISE_PP_LIMIT_LOW/HIGH = 10.0/37.9 ÷
+   factor`.
+3. Require identical pass/fail decisions to the legacy fixture on the lot,
+   set the constants, bump `CALIBRATION_ID`, update this section and the
+   §1 mini-table, CHANGELOG entry — one commit.
+
+### 4b.3 Open hardware questions (flagged, not blocking)
+
+1. PCB supply and loading: TP120 measures offset at +8 V with a 100 kΩ source
+   resistor but noise at ±5 V. Which does the PCB implement? The offset
+   limits transfer directly only if the loading matches 9000054.
+2. Vacuum: the legacy noise spec is under vacuum; the paired derivation must
+   be done in the conditions this rig actually uses.
+3. Amplifier 9000232 gain and passband are unknown; a nominal gain, if found,
+   could seed a provisional limit (flagged nominal-derived — remember §2.2:
+   the 405's sticker gain was not its effective gain).
+4. Whether the DAQ is the `-HG` high-gain factory variant (changes the volts
+   scaling; the probe's known-voltage check detects it).
+5. Multiplexer crosstalk at 1000 scans/s is unspecified by the datasheet
+   (−60 dB at 500 kS/s) — measured by the probe.
+
+---
+
 ## 5. Reference-calibration schema history (`reference_sensor_calibration.json`)
 
 | Schema | Introduced | Meaning | Accepted by |
@@ -279,6 +357,9 @@ reference gates are off (§2.4).
 | Power | 6.5 V battery → emitters only; 9 V battery → sensor buffers; grounds common | Isolated 2026-08-12 — this fixed the emitter-induced spike. Neither battery is monitored (AIN7 divider unused; plan: AIN6 with ≥ 4:1 divider). |
 | Serial | 500000 baud ASCII over CP210x USB | Windows driver grants only a 512-byte receive queue; see the stream-reliability notes in `m405m22/README.md`. |
 | Bench board (2026-08-28) | DOIT ESP32 DEVKIT V1, COM3 on the Windows laptop, running firmware **v3.1**; v3.2 compiled, not yet flashed | `python Arduino/Eltec/flash_firmware.py --check` reports what a board runs. |
+| **Array rig DAQ** (2026-09-02) | ACCES USB-AIO16-64MA DAQ-PACK, VID 0x1605 PID 0x8145, serial 40E68DEE0D501728, `AIOUSB.dll` 2.4.0.0 (64-bit, System32); 16-bit SAR, one ADC behind two multiplexer stages, 500 kS/s aggregate, **no anti-alias filter**, range per group of 4 channels, contiguous scan only, firmware loaded from the host at plug-in | `array_rig/m40623/daq_bench_probe.py info`. Self-calibration (`ADC_SetCal :AUTO:`) supported and run at every connect. |
+| Array rig acquisition | 0–5 V range (76.3 µV/LSB), CH0–CH49 single-ended, 1000 scans/s per channel, oversample 3 with the first conversion dropped → 200 kS/s aggregate, 400 KB/s USB; callback buffers 64 000 B × 32 | Bench spike numbers (instrument floor per channel in the judged band, actual timer Hz, 60 s rate error, pool events, crosstalk, -HG check, unsettled slot) **pending** — recorded here when the spike is run. |
+| Array PCB | 5 × 10 positions, one unity-gain buffer per position, row order onto CH0–CH49 (row 1 = CH0–9) | Supply / source-resistor loading vs TP120's fixtures 9000054 (+8 V, 100 kΩ) and 9000233 (±5 V, vacuum): **to be confirmed** (§4b.3). |
 
 ---
 

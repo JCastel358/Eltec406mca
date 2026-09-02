@@ -1,10 +1,10 @@
-# Engineer handover — Eltec sensor test rig
+# Engineer handover — Eltec sensor test rigs
 
 For the engineer who inherits this rig: what it is, how it is built, the rules
 that keep it trustworthy, and what is still open. Read this once end to end;
 afterwards the [root README](../README.md) is the index.
 
-Written 2026-08-28.
+Written 2026-08-28; array rig added 2026-09-02.
 
 ---
 
@@ -25,6 +25,16 @@ a CSV row per sensor. Three models are supported:
 The rig replaced a LabJack T7-Pro fixture in July 2026; every LabJack-era app
 was retired on 2026-08-28 (git tag `archive/pre-cleanup-2026-08-28`).
 
+**A second rig lives beside it since 2026-09-02** (`array_rig/`, tag
+`archive/pre-array-rig-2026-09-02` marks the tree before the split): a
+50-position PCB (5 × 10, one unity-gain buffer per position) read by an
+**ACCES USB-AIO16-64MA** DAQ over USB, testing fifty detectors per tray. Same
+selector + model-directory pattern, no firmware.
+
+| Model | Procedure | State (2026-09-02) |
+| --- | --- | --- |
+| 40623 (array, 50 positions) | TP120: offset check + noise; sensitivity/polarity waits for the emitter board | app complete, **calibration pending** — noise limits `None`, offset limits provisional, raw captures saved for the paired lot |
+
 ## 2. Day-1 reading order
 
 1. This file.
@@ -33,6 +43,7 @@ was retired on 2026-08-28 (git tag `archive/pre-cleanup-2026-08-28`).
 4. The README of the model you will work on: [405](../single_detector_rig/m405m22/README.md) (the most detailed — noise pipeline, serial-reliability post-mortems), [406](../single_detector_rig/m406mca/README.md), [449](../single_detector_rig/m449m18/README.md).
 5. [`Arduino/Eltec/README.md`](../Arduino/Eltec/README.md) — firmware, serial protocol, flashing; then [`versions/README.md`](../Arduino/Eltec/versions/README.md) — which firmware belongs on which rig.
 6. [`docs/DATA_MAP.md`](DATA_MAP.md) — where results and evidence live, and the backup routine.
+6b. For the array rig: [`array_rig/README.md`](../array_rig/README.md) then [`m40623/README.md`](../array_rig/m40623/README.md) (DAQ chain, flow, colours, files) and CALIBRATION_RECORD §4b.
 7. [`CHANGELOG.md`](../CHANGELOG.md) — the dated history; skim the top ten entries.
 
 ## 3. Architecture
@@ -59,6 +70,22 @@ Two hardware facts shape everything else:
   connect therefore re-programs the board (`PIN,33`, `PWM,FREQ`, `PWM,DUTY`,
   `FE,V19` for the 406), and nothing survives a port close.
 
+### Array rig hardware chain
+
+```
+laptop ──USB 2.0── ACCES USB-AIO16-64MA DAQ-PACK ──J2/J1 DB37── 50 unity-gain buffers ── 50 detector sockets (5 x 10)
+            (AIOUSB.dll, ctypes)   16-bit SAR, 2 mux stages,        CH0-CH49 single-ended, row order:
+                                   500 kS/s, no anti-alias filter    CH = (row-1)*10 + (col-1)
+```
+
+No ESP32 yet: the emitter board (sensitivity phase) will drive emitters with
+the same firmware later. Facts that shape the array code: the range is per
+group of four channels, the scan is one contiguous range, hardware
+oversamples arrive raw in streamed mode, volts are computed from raw counts
+with our own table (a `-HG` unit would mis-scale the driver's volts), the
+device re-enumerates after loading its firmware at plug-in. Bench proof:
+`array_rig/m40623/daq_bench_probe.py`.
+
 ### Software layout
 
 ```
@@ -80,6 +107,19 @@ single_detector_rig/
 Each model app runs standalone (cwd = its directory) and is launched by the
 selector as an independent process so one model can never corrupt another.
 Results go **outside** the repository (DATA_MAP §1).
+
+```
+array_rig/
+  eltec_array_tester.py    selector GUI (model dropdown → SUBPROCESS), mirror of the single rig's
+  sensor_versions.py       registry + REQUIRED_HARDWARE (the DAQ; no firmware)
+  tray_history.py          shared: <lot>_attempts.csv tray-event writer + numbering helpers
+  m40623/
+      eltec_40623_array_tester.py   TrayController (Tk-free flow: poll → lock → noise → save) + the Tk GUI
+      daq_backend.py                ctypes wrapper over AIOUSB.dll, config block, de-interleave, StreamDiagnostics, SimulatedDaq
+      array_analysis.py             numpy port of the 405 noise DSP + TP120 offset classes + enum verdict model
+      daq_bench_probe.py            engineering CLI (never issues verdicts)
+      tests/                        golden_noise_reference.py = frozen copy of the 405 noise functions (the oracle)
+```
 
 ### Measurement principles shared by the models
 
@@ -130,6 +170,14 @@ behaviour and force re-verification of everything.
 The vendored engine `eltec_rig/v1_single_sensor/eltec_406mca_tester.py` is
 shared by design (pure numpy signal math, ports untouched); treat it as frozen.
 
+**Across the two rigs the rule is stronger: nothing is imported from
+`single_detector_rig/` into `array_rig/` or back.** The array rig's noise
+DSP is a numpy re-expression of the 405's functions; the 405 originals are
+frozen verbatim in `array_rig/m40623/tests/golden_noise_reference.py` and a
+drift test fails if either side changes. Porting a DSP fix between the rigs
+is therefore explicit: change the 405, re-freeze the oracle deliberately,
+make the numpy port agree, run both suites.
+
 ## 5. Firmware lifecycle
 
 The live sketch is `Arduino/Eltec/Eltec.ino`; every released build is frozen
@@ -172,6 +220,12 @@ section to `CALIBRATION_RECORD.md` (gates default OFF with a
 `CALIBRATION PENDING` stamp until a paired-fixture calibration exists — the
 449 M18 shows the pattern), add the results root to `DATA_MAP.md`.
 
+**Array rig:** same recipe inside `array_rig/` (copy `m40623/`, replace the
+spec constants in `array_analysis.py`, register in `array_rig/sensor_versions.py`,
+extend the expected keys in `array_rig/tests/test_eltec_array_rig.py`, add the
+suite, a CALIBRATION_RECORD section — the 40623's §4b shows the PENDING
+pattern — and the DATA_MAP row).
+
 ## 7. Tests
 
 ```
@@ -180,10 +234,13 @@ python -m unittest discover -s single_detector_rig/tests            # selector g
 python -m unittest discover -s single_detector_rig/m405m22/tests
 python -m unittest discover -s single_detector_rig/m406mca/tests
 python -m unittest discover -s single_detector_rig/m449m18/tests
+python -m unittest discover -s array_rig/tests                     # array selector glue + tray history
+python -m unittest discover -s array_rig/m40623/tests              # DAQ backend (fake DLL), analysis (golden parity), tester flow
 ```
 
 Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-08-28:
-glue 38, 405 M22 174 (4 skipped), 406 MCA 109, 449 M18 110 — **431 tests**.
+glue 38, 405 M22 175 (4 skipped), 406 MCA 109, 449 M18 111, array glue 31,
+40623 array 128 — **592 tests** (2026-09-02).
 Known and accepted on Windows: the 406 suite reports one error
 (`test_launcher_installation_uses_only_v6_1_identities`, runs the bash
 installer) and one failure
@@ -223,6 +280,18 @@ with a known-good emitter (five adaptive readings, repeatable within 10 %),
 expect ~5 mV. Schema versions are enforced so stale baselines are rejected
 (CALIBRATION_RECORD §5).
 
+**Array rig noise limits (open — CALIBRATION_RECORD §4b.2):** run the bench
+spike first (`daq_bench_probe.py info → selfcal → config → scan` with a known
+voltage → `slots → floor 20 → stream 60 → crosstalk`; numbers into §6). Then
+the paired lot: 30–50 parts on the legacy 9000233 fixture per TP120 (DMM
+reading per position, under vacuum) and on the array rig the same day;
+type the legacy readings into `legacy_readings.csv` and run
+`engineer_tools/array_noise_parity.py --legacy legacy_readings.csv --array
+<lot csv or npz dir>`; it proposes the chain factor and the pin-level
+limits for the worst-window and median metrics and can replay other bands
+from the saved captures. Require identical decisions to the legacy fixture,
+then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
+
 **Stability threshold evidence:** `python single_detector_rig/<model>/stability_calibration.py capture --sensor-id KNOWN_GOOD_01` then `summarize` on the `calibration/*_cycles.csv` files — review peak-delta percentiles before changing `stability_settings.json`.
 
 ## 9. Bench tools
@@ -234,6 +303,8 @@ expect ~5 mV. Schema versions are enforced so stale baselines are rejected
 | `Arduino/Eltec/live_waveform.py --pwm --freq 1` | rolling scope view, SPACE toggles the emitter, `lag` readout must stay ~0 |
 | `engineer_tools/replot_noise_capture.py` | replay saved raw noise captures under any band; verdict comparison |
 | `engineer_tools/filter_response_analysis.py` | passband / aliasing characterisation of the noise pipeline |
+| `array_rig/m40623/daq_bench_probe.py info\|selfcal\|config\|scan\|slots\|floor\|stream\|capture\|crosstalk` (`--simulate`, `--oneshot`) | the array rig's DAQ on the bench: identity, self-cal, config read-back, -HG check, unsettled slot, instrument floor, 60 s integrity, crosstalk |
+| `engineer_tools/array_noise_parity.py` | derive the array rig's pin-level noise limits from a paired lot (CALIBRATION_RECORD §4b.2) |
 
 ## 10. Known hardware issues and open work
 
@@ -247,6 +318,10 @@ expect ~5 mV. Schema versions are enforced so stale baselines are rejected
 8. **405 DUT threshold 0.500 mV / 0.250 mV reference / 60 s deadline** are provisional (2026-08-12).
 9. Low priority: `500-27_noise_raw.npz` and its `_2` twin are byte-identical — check whether Re-measure can save a stale buffer; adaptive noise-capture length; repeatability across temperature, emitter replacement and battery state.
 10. Housekeeping: the GitHub repository is still named `Eltec406mca` — rename it to `Eltec_TestRig` in the repository settings (old URLs redirect).
+11. **Array rig bench spike** (CALIBRATION_RECORD §4b.2 step 1): instrument floor per channel, -HG check with a known voltage, which conversion slot is unsettled (keeps or drops `DAQ_DROP_CONVERSIONS_AFTER_MUX`), 60 s stream integrity at 400 KB/s (fallback: oversample 2 or 1, or the `ADC_BulkAcquire` one-shot path behind the same interface), crosstalk at 1000 scans/s.
+12. **Array rig hardware questions** (§4b.3): PCB supply/loading vs TP120's 9000054 (+8 V, 100 kΩ) and 9000233 (±5 V, vacuum); amplifier 9000232 gain/passband; vacuum for the paired lot.
+13. **Array rig noise limits**: the paired lot and `array_noise_parity.py` (§8); until then every noise verdict is NO_LIMIT and every row says PENDING.
+14. **Emitter board for the array**: TP120 sensitivity/polarity at 3 Hz — the tester has the disabled "Sensitivity" step and the `drive` slot; the ESP32 firmware's `PWM,FREQ` can drive it.
 
 ## 11. Working conventions
 
@@ -256,4 +331,5 @@ expect ~5 mV. Schema versions are enforced so stale baselines are rejected
 - Never write generated data into the repository — results stay in `Documents/Eltec_*_Test_Results` (and are `.gitignore`d if copied in by accident).
 - Keep `Eltec.ino` identical to the newest `versions/` snapshot; never edit a snapshot.
 - Recovering a retired file: `git show archive/pre-cleanup-2026-08-28:tech_app/deprecated/v6_1_esp32/README.md > recovered.md` (any path under that tag).
+- The two rigs each have a `sensor_versions.py` (and other same-named modules); they are never imported into one process — `run_all_tests.py` runs one interpreter per suite. Tests never write under `Documents`: the array tester takes an explicit results root, and `ELTEC_ARRAY_RESULTS_ROOT` redirects a GUI / simulator run.
 - Environments: Windows 11 bench laptop (board on **COM3**; Python 3 with tkinter, numpy, pyserial, matplotlib; `arduino-cli` lives inside the Arduino IDE 2.x install, `flash_firmware.py` finds it) and Xubuntu (`/dev/ttyUSB0`, user in `dialout`, `sudo apt install python3 python3-tk python3-numpy python3-serial python3-matplotlib`). Line endings are enforced by `.gitattributes`.

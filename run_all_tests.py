@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Run every test suite of the Eltec test rig and print one summary table.
+"""Run every test suite of both Eltec test rigs and print one summary table.
 
 Each suite runs in its own interpreter - exactly the documented
 ``python -m unittest discover -s <suite dir>`` command, from the repository
 root - because the model directories deliberately share module names
-(``esp32_backend``, ``stability_analysis``, the vendored engine) and must
-never be imported into one process together.
+(``esp32_backend``, ``stability_analysis``, the vendored engine; the two
+rigs each have a ``sensor_versions``) and must never be imported into one
+process together.
 
 Exit status: 0 when every suite is clean, 1 otherwise. Two cases in the
 406 MCA suite are known environment-only failures on Windows (they exercise
@@ -34,6 +35,7 @@ SUITES = (
     ("405 M22", "single_detector_rig/m405m22/tests"),
     ("406 MCA", "single_detector_rig/m406mca/tests"),
     ("449 M18", "single_detector_rig/m449m18/tests"),
+    ("array glue", "array_rig/tests"),
     ("40623 array", "array_rig/m40623/tests"),
 )
 

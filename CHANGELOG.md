@@ -13,6 +13,64 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array rig: 40623 tester, selector, launchers, docs (2026-09-02)
+
+The array rig is complete for offset + noise per TP120 (sensitivity waits
+for the emitter board). CALIBRATION PENDING throughout.
+
+- `array_rig/m40623/eltec_40623_array_tester.py` - the model application.
+  Tk-free core (`TrayController`, the tests drive it) + Tk GUI. Flow: Start
+  lot (connect, configure, self-calibrate) -> Load & offset (offsets polled
+  at 2 Hz; parts over 1.2 V or railed turn RED immediately so they are
+  pulled before the capture; ~0 V tiles are yellow until the technician
+  marks them EMPTY or LOADED; low reads are amber, not a verdict) -> Lock
+  tray (occupancy frozen, sensor numbers assigned row-major over the loaded
+  positions continuing the lot, the HO parts' FAIL rows written now) ->
+  Noise (TP120 5-minute stabilisation countdown, skippable with the actual
+  wait recorded; adaptive 3-20 s quiet wait; 60 s capture of all fifty
+  channels at 1000 scans/s plus 310 samples of real context each side;
+  stream integrity checked, retried up to twice, else NOT MEASURED rows) ->
+  Judged (settled offset = mean of the last 2 s is the offset verdict;
+  noise per channel in the single rig's band; tiles coloured) -> Save (one
+  CSV row per position, raw `.npz` of the tray, grid `.png`, tray events) ->
+  Re-measure / Next tray. Disabled "Sensitivity" step and a `drive` slot
+  mark where the emitter board plugs in. `--simulate` /
+  `ELTEC_ARRAY_SIMULATE=1` run on `SimulatedDaq`; `ELTEC_ARRAY_RESULTS_ROOT`
+  redirects the results folder for engineering runs.
+- `array_rig/eltec_array_tester.py` + `sensor_versions.py` (selector and
+  registry, mirrors of the single rig's; `REQUIRED_HARDWARE` instead of
+  firmware), `array_rig/tray_history.py` (tray-event log + numbering
+  helpers), launchers/installers with the identities `eltec-array-rig` /
+  `com.eltec.array-rig.desktop` / "Eltec Array Rig" and `eltec-40623-array`
+  / `com.eltec.40623-array-tester.desktop` / "Eltec 40623 Array Tester"
+  (derived from the single rig's templates), icons, `array_rig/README.md`
+  and `array_rig/m40623/README.md`.
+- Results: `Documents/Eltec_40623_Test_Results/40623_array_daq/`
+  (`40623_array_lot_<lot>.csv`, `_attempts.csv`, `noise_captures/lot_<lot>/
+  tray_<n>_raw.npz`, `grid_snapshots/lot_<lot>/tray_<n>.png`). CSV columns
+  documented in the model README; older files keep their header. Every row
+  and capture carries `calibration_status = PENDING`, `calibration_id =
+  40623_array50_daq_PENDING`, `verdict_status = PROVISIONAL`, the DAQ
+  settings and the stream diagnostics.
+- Tests: `array_rig/tests` (selector glue, tray history: 31) and
+  `array_rig/m40623/tests/test_array_tester.py` (paths, CSV header
+  compatibility, numbering, lock, noise phase with retry and rig-fault
+  paths, save, re-measure, limits-defined colouring, GUI smoke; results
+  root redirected to a temporary directory with a guard that nothing lands
+  under Documents). `run_all_tests.py` now runs six suites: 38 / 175 / 109 /
+  111 / 31 / 128 = 592.
+- Docs: README (two rigs), CLAUDE.md (rule 1 extended across rigs, six-suite
+  baseline, array easy-to-get-wrong items), CALIBRATION_RECORD (§1 array
+  mini-table, new **§4b** with every 40623 constant, the TP120 numbers
+  verbatim, the derivation plan and the open hardware questions, §6 DAQ
+  rows), DATA_MAP (root, layout, tools, backup), ENGINEER_HANDOVER (array
+  chain and layout, cross-rig policy, tests, paired-lot procedure, probe,
+  open work), TECHNICIAN_RUNBOOK (which rig, **§3b** run a tray,
+  troubleshooting, do-nots).
+- Bench spike on the real DAQ (probe `info -> selfcal -> config -> scan ->
+  slots -> floor -> stream 60 -> crosstalk`) and
+  `engineer_tools/array_noise_parity.py` follow in the next commits.
+
 ## Array rig: noise analysis port and provisional verdict model (2026-09-02)
 
 `array_rig/m40623/array_analysis.py` - pure math, no I/O.

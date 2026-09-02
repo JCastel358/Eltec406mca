@@ -6,7 +6,7 @@ file is written to a per-model folder under the signed-in user's `Documents`.
 This file maps those folders, the naming conventions, the in-repo evidence
 that backs the production constants, and the backup routine.
 
-Reconciled with the Windows bench laptop on **2026-08-28**.
+Reconciled with the Windows bench laptop on **2026-09-02**.
 
 ---
 
@@ -17,6 +17,7 @@ Reconciled with the Windows bench laptop on **2026-08-28**.
 | 405 M22 | `Eltec_405M22_Test_Results\405m22_esp32\` | `sensor_versions.py` / `m405m22` tester |
 | 406 MCA | `Eltec_406MCA_Test_Results\v6_1_esp32\` (the folder name is the historical v6.1 build id — it is the correct, live location) | `m406mca` tester |
 | 449 M18 | `Eltec_449M18_Test_Results\449m18_esp32\` | `m449m18` tester |
+| 40623 array (DAQ rig) | `Eltec_40623_Test_Results\40623_array_daq\` | `array_rig/m40623` tester (`ELTEC_ARRAY_RESULTS_ROOT` overrides it for engineering runs) |
 
 The apps create these on first save. A batch started on Windows is readable on
 Xubuntu and vice versa (same CSV format, same layout). Re-entering an existing
@@ -42,6 +43,26 @@ batch number resumes it at the next sensor.
 
 `<prefix>` is `405m22_esp32`, `406mca_esp32` or `449m18_esp32`. The 449 M18
 snapshots carry `_5hz` / `_18hz` suffixes.
+
+### Inside the array rig's root (one tray = up to fifty parts)
+
+```
+Eltec_40623_Test_Results\40623_array_daq\
+├── 40623_array_lot_<lot>.csv               one row per POSITION per tray attempt (high-offset parts get their
+│                                           row at lock time, the rest after the noise capture); every row is
+│                                           stamped calibration_status / calibration_id / verdict_status
+├── 40623_array_lot_<lot>_attempts.csv      one row per TRAY event: locked / stabilisation_shortened /
+│                                           capture_started / capture_retry / capture_error / judged / saved / remeasure
+├── noise_captures\lot_<lot>\tray_<n>_raw.npz   the RAW 1000 SPS capture of all 50 channels (float32 [50, N],
+│                                           ~4 MB compressed per 60 s tray) + 310-sample edge contexts, channel/
+│                                           position/sensor-number arrays and metadata — the evidence for the
+│                                           pending noise-limit derivation; never delete
+└── grid_snapshots\lot_<lot>\tray_<n>.png       the coloured 5x10 grid (the TP120 data sheet equivalent)
+```
+
+Columns: `array_rig/m40623/README.md`. Sensor numbers are assigned at lock
+time, row-major over the loaded positions, continuing the lot's highest
+number; a re-measured tray keeps them (`tray_attempt` increments).
 
 CSV columns are documented in each model README
 ([405](../single_detector_rig/m405m22/README.md),
@@ -103,6 +124,8 @@ The raw captures themselves (`.npz`) are **not** in git (they are ignored by
 | `engineer_tools/replot_noise_capture.py` | `noise_captures/**/*_noise_raw.npz|.csv` | Replays a saved raw capture through the exact production pipeline and through alternative bands / boxcars; prints a verdict-comparison table and a PNG per capture. This is why raw captures must never be lost — any future limit or band change can be re-judged on real parts. `--boxcar 20` reproduces the pre-2026-08-20 pipeline. |
 | `engineer_tools/filter_response_analysis.py` | (synthetic + a measured capture spectrum) | Characterises the pipeline's passband and aliasing; tests legacy-amplifier passband hypotheses. |
 | `single_detector_rig/<model>/stability_calibration.py` | live rig → `calibration/*_cycles.csv` | Collects known-good peak-delta evidence for the stability threshold (`capture`, `summarize`). Engineering only — never issues verdicts. |
+| `array_rig/m40623/daq_bench_probe.py` | live DAQ → stdout, optional `.npz` | Bench checks of the array rig's acquisition path (identity, self-cal, config read-back, -HG check, unsettled conversion slot, instrument floor, 60 s stream integrity, crosstalk). Engineering only. |
+| `engineer_tools/array_noise_parity.py` | `noise_captures/lot_<lot>/tray_*.npz` + a typed legacy data sheet | Pairs legacy-fixture DMM readings with array captures, fits the chain factor, proposes the pin-level noise limits (CALIBRATION_RECORD §4b.2). |
 
 ---
 
@@ -114,9 +137,11 @@ rule, the 60 s soak). The laptop is a single point of failure.
 
 Routine (owner: the rig engineer):
 
-1. **After every calibration lot and at least monthly**, zip the three roots:
+1. **After every calibration lot and at least monthly**, zip the four roots:
    `Eltec_405M22_Test_Results`, `Eltec_406MCA_Test_Results`,
-   `Eltec_449M18_Test_Results` → `Eltec_TestResults_backup_<YYYY-MM-DD>.zip`.
+   `Eltec_449M18_Test_Results`, `Eltec_40623_Test_Results` →
+   `Eltec_TestResults_backup_<YYYY-MM-DD>.zip` (the array root grows by a
+   few MB per tray: every raw 50-channel capture is kept).
 2. Copy the zip to the company share / cloud drive (not the same laptop).
 3. Open the zip once and confirm `lot_500` CSVs and `noise_captures\lot_500\`
    are inside.
