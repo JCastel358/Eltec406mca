@@ -13,6 +13,47 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array rig: noise analysis port and provisional verdict model (2026-09-02)
+
+`array_rig/m40623/array_analysis.py` - pure math, no I/O.
+
+- The 405 M22 build's emitter-off noise pipeline (Kaiser anti-alias FIR,
+  decimate 1000 -> 50 SPS, per-1-s-window least-squares detrend, windowed
+  pk-pk with the clip rule re-checked on the raw window, `<=` with the
+  1e-12 boundary tolerance) re-expressed in numpy for fifty channels at
+  once. Tap values are computed with the same scalar arithmetic so they
+  are identical; the rest agrees with the pure-Python original to ~1e-15
+  relative. A full 50-channel x 60 s tray analyses in 0.3 s (the original
+  would take tens of seconds per tray).
+- The original functions are FROZEN verbatim in
+  `array_rig/m40623/tests/golden_noise_reference.py` (copied from
+  `single_detector_rig/m405m22/stability_analysis.py` at commit d7526b5)
+  and used as the oracle by `test_array_analysis.py`; a drift test
+  compares that copy with the live 405 module so a change on either side
+  is noticed. No code is shared between the two rigs.
+- Model 40623 (TP120 rev W) constants with provenance comments: offset
+  0.3-1.2 V (PROVISIONAL: PCB loading vs fixture 9000054 unconfirmed),
+  +/-0.05 V settle rule, 0.05 V dead floor, 4.9 V rail; legacy noise
+  limits 10.0-37.9 mV recorded as what they are (DMM readings behind
+  amplifier 9000232 + rectifier-hold 9000272) and the pin-level limits
+  `None` until a paired lot derives the chain factor. With `None` limits
+  every noise verdict is NO_LIMIT: measured and recorded, never a
+  failure. The 405's 15 %-of-windows rule is carried as a structural
+  default and marked re-decide.
+- Verdict model with enums and structured `FailReason`s (no string-prefix
+  sniffing): offset classes OK / HO / HO_RAILED / LO / DEAD / EMPTY (only
+  HO and railed fail fast at insertion - offsets settle upward), noise
+  verdicts PASS / HIGH (> max_over_fraction of windows over the high limit
+  or clipped) / LOW (MEDIAN window pk-pk under the low limit, so one bang
+  cannot revive a dead crystal) / NO_LIMIT, position verdicts with the
+  precedence EMPTY -> NOT_MEASURED -> FAIL_OFFSET -> FAIL_NOISE_HIGH ->
+  NOISE_LOW -> PASS, TP120 failure-mode tags (HO, LO, SH, D, N, NL, NM),
+  tile states for the grid, the adaptive quiet-wait rule (never a
+  verdict). Every result is stamped calibration_status PENDING,
+  calibration_id `40623_array50_daq_PENDING`, verdict_status PROVISIONAL.
+- `daq_bench_probe.py floor` and `crosstalk` now report judged-band
+  worst/median pk-pk per channel through this module.
+
 ## Array rig: DAQ backend, simulator and bench probe (2026-09-02)
 
 First code of the 50-position array rig (`array_rig/m40623/`, model 40623
