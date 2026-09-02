@@ -11,7 +11,7 @@ legacy-equivalent value. Offset, polarity, stability, signal-quality, battery,
 reference-unit, and hardware-integrity gates remain unchanged.
 
 This directory is the live **406 MCA model of the unified rig app**
-(`tech_app/eltec_rig`, normally launched from its selector). The standalone
+(`single_detector_rig`, normally launched from its selector). The standalone
 v6 and v6.1 builds it descends from were retired on 2026-08-28 and are
 preserved at git tag `archive/pre-cleanup-2026-08-28`.
 
@@ -130,11 +130,11 @@ schemas or batches.
 
 ## Run
 
-Normally: start the unified selector (`tech_app/eltec_rig/run_eltec_rig_tester.cmd`
+Normally: start the unified selector (`single_detector_rig/run_eltec_rig_tester.cmd`
 / `.sh`) and pick **Model 406 MCA**. Standalone, from the repository root:
 
 ```bash
-./tech_app/eltec_rig/m406mca/run_eltec_406mca_esp32_tester.sh
+./single_detector_rig/m406mca/run_eltec_406mca_esp32_tester.sh
 ```
 
 Or from this directory:
@@ -147,13 +147,13 @@ The optional Xubuntu desktop/menu launcher is installed only when explicitly
 requested:
 
 ```bash
-./tech_app/eltec_rig/m406mca/install_xubuntu_launcher.sh
+./single_detector_rig/m406mca/install_xubuntu_launcher.sh
 ```
 
 Remove only the v6.1 launcher with:
 
 ```bash
-./tech_app/eltec_rig/m406mca/install_xubuntu_launcher.sh --uninstall
+./single_detector_rig/m406mca/install_xubuntu_launcher.sh --uninstall
 ```
 
 ### Windows
@@ -165,7 +165,7 @@ suppresses it). Optional Desktop + Start Menu shortcut, per-user, no admin
 rights (`-Uninstall` removes it):
 
 ```bat
-powershell -ExecutionPolicy Bypass -File tech_app\eltec_rig\m406mca\install_windows_launcher.ps1
+powershell -ExecutionPolicy Bypass -File single_detector_rig\m406mca\install_windows_launcher.ps1
 ```
 
 Results on Windows: `%USERPROFILE%\Documents\Eltec_406MCA_Test_Results\v6_1_esp32\`.
@@ -204,10 +204,10 @@ The calibration CLI remains an evidence tool; it does not issue part verdicts
 or edit `stability_settings.json`.
 
 ```bash
-python3 tech_app/eltec_rig/m406mca/stability_calibration.py capture \
+python3 single_detector_rig/m406mca/stability_calibration.py capture \
   --sensor-id KNOWN_GOOD_01
 
-python3 tech_app/eltec_rig/m406mca/stability_calibration.py summarize \
+python3 single_detector_rig/m406mca/stability_calibration.py summarize \
   ~/Documents/Eltec_406MCA_Test_Results/v6_1_esp32/calibration/*_cycles.csv
 ```
 
@@ -216,7 +216,7 @@ python3 tech_app/eltec_rig/m406mca/stability_calibration.py summarize \
 Run the isolated v6.1 suite from the repository root:
 
 ```bash
-python3 -m unittest discover -s tech_app/eltec_rig/m406mca/tests -v
+python3 -m unittest discover -s single_detector_rig/m406mca/tests -v
 ```
 
 The suite covers the three-attempt state machine, identical 10/20 windows,

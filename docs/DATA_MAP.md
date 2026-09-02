@@ -44,9 +44,9 @@ batch number resumes it at the next sensor.
 snapshots carry `_5hz` / `_18hz` suffixes.
 
 CSV columns are documented in each model README
-([405](../tech_app/eltec_rig/m405m22/README.md),
-[406](../tech_app/eltec_rig/m406mca/README.md),
-[449](../tech_app/eltec_rig/m449m18/README.md)). Older batch files keep their
+([405](../single_detector_rig/m405m22/README.md),
+[406](../single_detector_rig/m406mca/README.md),
+[449](../single_detector_rig/m449m18/README.md)). Older batch files keep their
 original header when columns are added later — rows stay aligned, new columns
 are simply absent. A `NOT MEASURED` row (rig fault, nothing recorded) has empty
 measurement columns and `failure_mode_tag = NM`; it is excluded from yield.
@@ -102,7 +102,7 @@ The raw captures themselves (`.npz`) are **not** in git (they are ignored by
 | --- | --- | --- |
 | `engineer_tools/replot_noise_capture.py` | `noise_captures/**/*_noise_raw.npz|.csv` | Replays a saved raw capture through the exact production pipeline and through alternative bands / boxcars; prints a verdict-comparison table and a PNG per capture. This is why raw captures must never be lost — any future limit or band change can be re-judged on real parts. `--boxcar 20` reproduces the pre-2026-08-20 pipeline. |
 | `engineer_tools/filter_response_analysis.py` | (synthetic + a measured capture spectrum) | Characterises the pipeline's passband and aliasing; tests legacy-amplifier passband hypotheses. |
-| `tech_app/eltec_rig/<model>/stability_calibration.py` | live rig → `calibration/*_cycles.csv` | Collects known-good peak-delta evidence for the stability threshold (`capture`, `summarize`). Engineering only — never issues verdicts. |
+| `single_detector_rig/<model>/stability_calibration.py` | live rig → `calibration/*_cycles.csv` | Collects known-good peak-delta evidence for the stability threshold (`capture`, `summarize`). Engineering only — never issues verdicts. |
 
 ---
 

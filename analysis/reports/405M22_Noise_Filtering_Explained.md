@@ -1,6 +1,6 @@
 # How the 405 M22 noise test actually filters
 
-**Scope:** the noise capture and verdict in `tech_app/eltec_rig/` (the unified
+**Scope:** the noise capture and verdict in `single_detector_rig/` (the unified
 Eltec Test Rig app), Model 405 M22 path only.
 **Status of this document:** every number below was measured from the shipping
 code and the saved captures on 2026-08-26, not copied from design notes.
@@ -381,11 +381,11 @@ Captures live under
 
 | What | Where |
 |---|---|
-| Constants, capture, orchestration | `tech_app/eltec_rig/m405m22/eltec_405m22_esp32_tester.py` (`NOISE_*` block; `read_noise_capture`) |
-| FIR design and decimation | `tech_app/eltec_rig/m405m22/stability_analysis.py` (`design_antialias_lowpass_fir`, `decimate_antialiased`) |
+| Constants, capture, orchestration | `single_detector_rig/m405m22/eltec_405m22_esp32_tester.py` (`NOISE_*` block; `read_noise_capture`) |
+| FIR design and decimation | `single_detector_rig/m405m22/stability_analysis.py` (`design_antialias_lowpass_fir`, `decimate_antialiased`) |
 | Detrend | same file (`detrend_window_segments`) |
 | Verdict rule | same file (`analyze_noise_capture_band_limited`, `analyze_noise_capture`) |
-| Tests | `tech_app/eltec_rig/m405m22/tests/test_stability_analysis.py`, `test_v6_integration.py` |
+| Tests | `single_detector_rig/m405m22/tests/test_stability_analysis.py`, `test_v6_integration.py` |
 
 The frozen standalone build `tech_app/405m22_esp32/` still uses the boxcar and
 is intentionally left untouched, per the originals-frozen rule.

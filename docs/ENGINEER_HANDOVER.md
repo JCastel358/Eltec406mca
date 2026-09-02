@@ -29,8 +29,8 @@ was retired on 2026-08-28 (git tag `archive/pre-cleanup-2026-08-28`).
 
 1. This file.
 2. [`docs/CALIBRATION_RECORD.md`](CALIBRATION_RECORD.md) — every limit, factor and gate state, with provenance. **Read before touching any threshold.**
-3. [`tech_app/eltec_rig/README.md`](../tech_app/eltec_rig/README.md) — the selector app, launchers, v2.0 skip/attempt machinery.
-4. The README of the model you will work on: [405](../tech_app/eltec_rig/m405m22/README.md) (the most detailed — noise pipeline, serial-reliability post-mortems), [406](../tech_app/eltec_rig/m406mca/README.md), [449](../tech_app/eltec_rig/m449m18/README.md).
+3. [`single_detector_rig/README.md`](../single_detector_rig/README.md) — the selector app, launchers, v2.0 skip/attempt machinery.
+4. The README of the model you will work on: [405](../single_detector_rig/m405m22/README.md) (the most detailed — noise pipeline, serial-reliability post-mortems), [406](../single_detector_rig/m406mca/README.md), [449](../single_detector_rig/m449m18/README.md).
 5. [`Arduino/Eltec/README.md`](../Arduino/Eltec/README.md) — firmware, serial protocol, flashing; then [`versions/README.md`](../Arduino/Eltec/versions/README.md) — which firmware belongs on which rig.
 6. [`docs/DATA_MAP.md`](DATA_MAP.md) — where results and evidence live, and the backup routine.
 7. [`CHANGELOG.md`](../CHANGELOG.md) — the dated history; skim the top ten entries.
@@ -62,7 +62,7 @@ Two hardware facts shape everything else:
 ### Software layout
 
 ```
-tech_app/eltec_rig/
+single_detector_rig/
   eltec_rig_tester.py      selector GUI: dropdown → launches the model app as a SUBPROCESS
   sensor_versions.py       registry (one SensorVersion per model) + REQUIRED_FIRMWARE
   attempt_history.py       shared: <lot>_attempts.csv writer + skipped-parts queue
@@ -116,7 +116,7 @@ behaviour and force re-verification of everything.
 **Porting a fix across models**
 
 1. Fix and test it in the model where it was found; commit.
-2. `git show <that commit> -- tech_app/eltec_rig/<model>/` and apply the same
+2. `git show <that commit> -- single_detector_rig/<model>/` and apply the same
    hunks to each sibling that has the same code (`stability_analysis.py`,
    `stability_calibration.py`, `esp32_backend.py` and the tester share most
    structure; check the 406's older `stability_analysis.py` first — it is the
@@ -176,10 +176,10 @@ section to `CALIBRATION_RECORD.md` (gates default OFF with a
 
 ```
 python run_all_tests.py            # all four suites, summary table, exit 1 on failure
-python -m unittest discover -s tech_app/eltec_rig/tests            # selector glue + attempt history
-python -m unittest discover -s tech_app/eltec_rig/m405m22/tests
-python -m unittest discover -s tech_app/eltec_rig/m406mca/tests
-python -m unittest discover -s tech_app/eltec_rig/m449m18/tests
+python -m unittest discover -s single_detector_rig/tests            # selector glue + attempt history
+python -m unittest discover -s single_detector_rig/m405m22/tests
+python -m unittest discover -s single_detector_rig/m406mca/tests
+python -m unittest discover -s single_detector_rig/m449m18/tests
 ```
 
 Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-08-28:
@@ -223,7 +223,7 @@ with a known-good emitter (five adaptive readings, repeatable within 10 %),
 expect ~5 mV. Schema versions are enforced so stale baselines are rejected
 (CALIBRATION_RECORD §5).
 
-**Stability threshold evidence:** `python tech_app/eltec_rig/<model>/stability_calibration.py capture --sensor-id KNOWN_GOOD_01` then `summarize` on the `calibration/*_cycles.csv` files — review peak-delta percentiles before changing `stability_settings.json`.
+**Stability threshold evidence:** `python single_detector_rig/<model>/stability_calibration.py capture --sensor-id KNOWN_GOOD_01` then `summarize` on the `calibration/*_cycles.csv` files — review peak-delta percentiles before changing `stability_settings.json`.
 
 ## 9. Bench tools
 

@@ -5,7 +5,7 @@ from collections import deque
 from types import SimpleNamespace
 from unittest import mock
 
-from tech_app.eltec_rig.m406mca import esp32_backend as backend
+from single_detector_rig.m406mca import esp32_backend as backend
 
 
 class ScriptedSerial:

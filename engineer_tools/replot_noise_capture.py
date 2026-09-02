@@ -41,7 +41,7 @@ from pathlib import Path
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "tech_app" / "eltec_rig" / "m405m22"))
+sys.path.insert(0, str(REPO_ROOT / "single_detector_rig" / "m405m22"))
 import stability_analysis as sa  # noqa: E402  (the production analysis math)
 
 DEFAULT_CAPTURE_ROOT = (

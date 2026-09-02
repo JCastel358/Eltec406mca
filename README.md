@@ -2,7 +2,7 @@
 
 Bench rig and software that qualify Eltec pyroelectric IR sensors. An ESP32
 chops an IR emitter and streams a 24-bit ADS1256 ADC to a laptop; **one
-Python desktop application** (`tech_app/eltec_rig`) runs the test procedure
+Python desktop application** (`single_detector_rig`) runs the test procedure
 for the sensor model chosen in a dropdown, judges each part, and writes a CSV
 row per sensor. Windows 11 and Xubuntu are both supported.
 
@@ -17,7 +17,7 @@ row per sensor. Windows 11 and Xubuntu are both supported.
 ## I'm a technician — run a batch
 
 1. Laptop on AC power, ESP32 USB cable in, both batteries connected, no fans near the fixture.
-2. Double-click the **Eltec Test Rig** desktop icon (or `tech_app\eltec_rig\run_eltec_rig_tester.cmd` / `.sh`).
+2. Double-click the **Eltec Test Rig** desktop icon (or `single_detector_rig\run_eltec_rig_tester.cmd` / `.sh`).
 3. Pick the sensor model → **Start tester** → batch number, your name, filter setup → load a part → **Enter**.
 4. Read the banner (PASS / PASS · NEAR LIMIT / FAIL) → **Save + Next Sensor (Enter)**.
 
@@ -44,7 +44,7 @@ docs/
   ENGINEER_HANDOVER.md       engineering manual + open work
   CALIBRATION_RECORD.md      every limit/factor/gate state with provenance  ← source of truth for numbers
   DATA_MAP.md                where results & evidence live (outside the repo) + backup routine
-tech_app/eltec_rig/          THE application — selector + one directory per sensor model
+single_detector_rig/         THE application — selector + one directory per sensor model
   eltec_rig_tester.py        selector GUI (dropdown → launches the model app)
   sensor_versions.py         model registry + required firmware
   attempt_history.py         per-batch attempt log + skipped-parts queue (shared)
@@ -109,8 +109,8 @@ behind the production constants — the backup routine is in
 | [docs/ENGINEER_HANDOVER.md](docs/ENGINEER_HANDOVER.md) | engineer | architecture, policies, procedures, open work, conventions |
 | [docs/CALIBRATION_RECORD.md](docs/CALIBRATION_RECORD.md) | engineer | constants + provenance + gate states per model |
 | [docs/DATA_MAP.md](docs/DATA_MAP.md) | engineer | results layout, evidence, backup |
-| [tech_app/eltec_rig/README.md](tech_app/eltec_rig/README.md) | engineer | the selector app, launchers, v2.0 skip/attempt features |
-| [m405m22/README.md](tech_app/eltec_rig/m405m22/README.md) · [m406mca/README.md](tech_app/eltec_rig/m406mca/README.md) · [m449m18/README.md](tech_app/eltec_rig/m449m18/README.md) | engineer | per-model test mechanics |
+| [single_detector_rig/README.md](single_detector_rig/README.md) | engineer | the selector app, launchers, v2.0 skip/attempt features |
+| [m405m22/README.md](single_detector_rig/m405m22/README.md) · [m406mca/README.md](single_detector_rig/m406mca/README.md) · [m449m18/README.md](single_detector_rig/m449m18/README.md) | engineer | per-model test mechanics |
 | [Arduino/Eltec/README.md](Arduino/Eltec/README.md) · [versions/README.md](Arduino/Eltec/versions/README.md) | engineer | firmware, protocol, flashing, version archive |
 | [CHANGELOG.md](CHANGELOG.md) | both | what changed, when, why |
 

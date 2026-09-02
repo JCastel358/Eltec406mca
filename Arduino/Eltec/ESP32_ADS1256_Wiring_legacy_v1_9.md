@@ -6,7 +6,7 @@ retired standalone 406MCA v6/v6.1 applications ran on, with firmware **v1.9**
 (this wiring was first written at firmware v1.7 and is unchanged through v1.9).
 Keep it only for a legacy rig that still runs those applications (preserved at
 git tag `archive/pre-cleanup-2026-08-28`); such a rig must stay on v1.9. The
-unified rig (`tech_app/eltec_rig`, all models) uses
+unified rig (`single_detector_rig`, all models) uses
 `ESP32_ADS1256_Wiring_v2_0.md` and firmware v3.x.
 
 The older `ESP32_ADS1256_Wiring.docx` described the historical 9 V/AIN1/bare-MOSFET

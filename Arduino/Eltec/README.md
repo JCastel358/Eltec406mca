@@ -21,7 +21,7 @@ sensor model; the host application selects what it needs at runtime.
 
 ## Which firmware goes on the board
 
-- **Unified bench rig (`tech_app/eltec_rig`, all models): v3.2.** The bench
+- **Unified bench rig (`single_detector_rig`, all models): v3.2.** The bench
   board currently runs **v3.1** — v3.2 (adds `PWM,DUTY`) is compiled but not
   yet flashed or bench-verified; the 449 M18 mode refuses anything older than
   v3.2, the 405 M22 and 406 MCA modes also run on v2.1–v3.1.
@@ -62,7 +62,7 @@ Monitor before running any Python tool — only one program can own the port.
 **Version bump procedure:** edit `Eltec.ino` → bump the `IDN?` string (every
 flash-relevant change) → compile/flash/verify → snapshot into
 `versions/Eltec_vX_Y/Eltec_vX_Y.ino` → add the row in `versions/README.md` →
-update `REQUIRED_FIRMWARE` in `tech_app/eltec_rig/sensor_versions.py` →
+update `REQUIRED_FIRMWARE` in `single_detector_rig/sensor_versions.py` →
 CHANGELOG entry → **commit the same day** (v1.9 had to be reconstructed because
 the sketch was edited twice without a commit).
 

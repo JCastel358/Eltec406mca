@@ -1,7 +1,7 @@
 # Eltec 449 M18 ESP32 Tester (TP443 frequency tracking, 5 Hz + 18 Hz)
 
 The **Model 449 M18** entry of the unified rig app
-([`tech_app/eltec_rig`](../README.md)). It implements document **TP443
+([`single_detector_rig`](../README.md)). It implements document **TP443
 page 6, "449M18 Frequency Tracking"**: the part's sensitivity is read at
 **5 Hz** and then at **18 Hz**, and the **18 Hz / 5 Hz ratio** is checked.
 The build is derived from the 405 M22 tester (same guided flow, adaptive
@@ -169,7 +169,7 @@ stability, with the gate on they exercise every spec.
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tech_app/eltec_rig/m449m18/tests    # from the repo root
+python3 -m unittest discover -s single_detector_rig/m449m18/tests    # from the repo root
 ```
 
 `test_449m18_integration.py` (policy, evaluation gate off/on, hardware

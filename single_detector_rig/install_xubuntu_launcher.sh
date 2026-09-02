@@ -12,7 +12,7 @@ if command -v readlink >/dev/null 2>&1; then
 fi
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "$SOURCE_PATH")" && pwd -P)
-REPO_ROOT=$(cd -- "$SCRIPT_DIR/../.." && pwd -P)
+REPO_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd -P)
 LAUNCHER="$SCRIPT_DIR/run_eltec_rig_tester.sh"
 APP_PATH="$SCRIPT_DIR/eltec_rig_tester.py"
 ICON_PATH="$SCRIPT_DIR/assets/eltec_desktop_icon.png"

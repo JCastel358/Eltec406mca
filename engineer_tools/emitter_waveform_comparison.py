@@ -74,7 +74,7 @@ from pathlib import Path
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "tech_app" / "eltec_rig" / "m449m18"))
+sys.path.insert(0, str(REPO_ROOT / "single_detector_rig" / "m449m18"))
 import esp32_backend as eb  # noqa: E402  (the production 449 M18 backend)
 
 # NOT one of the Eltec_*_Test_Results evidence folders — engineering

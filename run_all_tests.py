@@ -30,10 +30,10 @@ REPO_ROOT = Path(__file__).resolve().parent
 
 # (label, suite directory relative to the repository root)
 SUITES = (
-    ("selector glue", "tech_app/eltec_rig/tests"),
-    ("405 M22", "tech_app/eltec_rig/m405m22/tests"),
-    ("406 MCA", "tech_app/eltec_rig/m406mca/tests"),
-    ("449 M18", "tech_app/eltec_rig/m449m18/tests"),
+    ("selector glue", "single_detector_rig/tests"),
+    ("405 M22", "single_detector_rig/m405m22/tests"),
+    ("406 MCA", "single_detector_rig/m406mca/tests"),
+    ("449 M18", "single_detector_rig/m449m18/tests"),
 )
 
 # Exact test ids that fail on Windows for environment reasons only.

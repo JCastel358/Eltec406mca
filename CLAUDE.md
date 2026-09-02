@@ -1,7 +1,7 @@
 # CLAUDE.md — ground rules for AI-assisted work in this repository
 
 Eltec sensor test rig: ESP32 + ADS1256 hardware, one Tkinter application
-(`tech_app/eltec_rig`) with one qualified tester per sensor model (405 M22,
+(`single_detector_rig`) with one qualified tester per sensor model (405 M22,
 406 MCA, 449 M18), firmware in `Arduino/Eltec`. Read `README.md` first; the
 numbers live in `docs/CALIBRATION_RECORD.md`, the history in `CHANGELOG.md`.
 
@@ -38,7 +38,7 @@ numbers live in `docs/CALIBRATION_RECORD.md`, the history in `CHANGELOG.md`.
 
 ## Conventions
 
-- Stdlib `unittest`, run from the repo root with `-s tech_app/eltec_rig/<dir>/tests`; no pytest on the bench laptop.
+- Stdlib `unittest`, run from the repo root with `-s single_detector_rig/<dir>/tests`; no pytest on the bench laptop.
 - `.gitattributes` enforces line endings (LF in the repo; `.cmd`/`.bat`/`.ps1` CRLF on checkout). Do not hand-convert files.
 - Windows bench laptop: board on COM3; `arduino-cli` is inside the Arduino IDE install (`flash_firmware.py` finds it). Xubuntu: `/dev/ttyUSB0`.
 - Match the existing code style (long explanatory comments above constants are the house style — they carry the *why*). Docs are Markdown with tables; dates are ISO.

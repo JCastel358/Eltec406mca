@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-from tech_app.eltec_rig.m406mca import esp32_backend as backend
-from tech_app.eltec_rig.m406mca import stability_calibration as calibration
-from tech_app.eltec_rig.m406mca.stability_analysis import StabilitySettings
+from single_detector_rig.m406mca import esp32_backend as backend
+from single_detector_rig.m406mca import stability_calibration as calibration
+from single_detector_rig.m406mca.stability_analysis import StabilitySettings
 
 
 def stable_stream(sample_count: int = 802) -> list[backend.StreamSample]:

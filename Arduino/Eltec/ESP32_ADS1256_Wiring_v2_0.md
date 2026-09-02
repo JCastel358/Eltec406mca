@@ -1,7 +1,7 @@
 # Eltec ESP32 + ADS1256 wiring (firmware v2.0 — 405 M22 / TP412 fixture)
 
 This is the wiring reference for the **unified bench rig** — every model in
-`tech_app/eltec_rig` — on firmware v2.0 and later (v3.2 today: ADS1256 sensor
+`single_detector_rig` — on firmware v2.0 and later (v3.2 today: ADS1256 sensor
 channels boot at PGA gain 1 with the input buffer OFF, so the TP412 0.8-3.0 V
 offset band reads linearly; the 406 MCA mode switches the front end at runtime
 with `FE,V19`). A legacy standalone rig still running the retired 406MCA

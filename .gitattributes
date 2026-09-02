@@ -13,3 +13,4 @@
 *.docx binary
 *.xlsx binary
 *.npz binary
+*.pdf binary

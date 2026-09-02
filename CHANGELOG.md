@@ -13,6 +13,51 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Repository split: single_detector_rig/ + array_rig/ (2026-09-02)
+
+A second test rig is being added: a 50-position detector array (5 rows x 10
+columns, one unity-gain buffer per position) read by an ACCES I/O
+USB-AIO16-64MA DAQ-PACK, testing offset and noise per TP120 (model 40623)
+with an emitter board to follow. The repository now has one top-level
+folder per rig; everything they share (firmware, docs, engineer tools,
+analysis, assets, the test runner) stays at the top level.
+
+- `tech_app/eltec_rig/` -> **`single_detector_rig/`** (`git mv`, history
+  preserved); the now-empty `tech_app/` was deleted. Nothing inside the
+  moved tree changed except path text. `array_rig/` arrives in the next
+  commits.
+- Path references updated: `run_all_tests.py` (the four suite paths; labels
+  unchanged), `engineer_tools/replot_noise_capture.py` and
+  `emitter_waveform_comparison.py` (`sys.path` inserts), the two 406 MCA
+  tests that import the package by name (`single_detector_rig.m406mca`), a
+  comment in `m406mca/esp32_backend.py`, and the selector's
+  `install_xubuntu_launcher.sh` (its `REPO_ROOT` message climbed two levels
+  for a package that is now one level below the root). Docs: `README.md`,
+  `CLAUDE.md`, all four `docs/*.md`, the four app READMEs, the noise
+  filtering report, `Arduino/Eltec/README.md`, both wiring notes and
+  `Arduino/Eltec/versions/README.md` (its two path mentions only - the
+  firmware snapshots themselves are untouched).
+- Deliberately NOT edited: the `tech_app/v4_emitter` comment in
+  `Arduino/Eltec/Eltec.ino` and in every frozen `versions/*/Eltec_v*.ino`
+  (hard rule: snapshots are byte-frozen and `Eltec.ino` must stay identical
+  to the newest one). Historical paths in this file and in the "History"
+  paragraph of `single_detector_rig/README.md` are history and stay as
+  written; `archive/pre-cleanup-2026-08-28:tech_app/...` tag paths remain
+  valid.
+- Evidence added to the repository: `docs/TP120(40623).pdf` (the 40623 test
+  procedure, rev W) and `docs/daq_usb_aio16_64ma/` (the DAQ datasheet,
+  DAQ-PACK M-series guide, letter of volatility and vendor links).
+  `.gitattributes` now marks `*.pdf` binary.
+- **Bench PCs: the installed desktop shortcuts point at the old path.**
+  Re-run `single_detector_rig\install_windows_launcher.ps1` (Windows) or
+  `single_detector_rig/install_xubuntu_launcher.sh` (Xubuntu) once; the
+  remembered sensor-version selection is unaffected.
+- No behaviour, threshold, CSV or firmware change. Tag
+  `archive/pre-array-rig-2026-09-02` marks the tree before the move.
+  `python run_all_tests.py` after the move: glue 38, 405 M22 175 (4
+  skipped), 406 MCA 109 (the two known Windows-only cases), 449 M18 111 -
+  identical to before.
+
 ## Live viewer: sync-locked cycle-average panel (2026-08-31)
 
 `Arduino/Eltec/live_waveform.py` — the 449 M18 detector's ~20 mV response at

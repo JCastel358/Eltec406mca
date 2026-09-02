@@ -32,7 +32,7 @@ Last reconciled against the code: **2026-08-28**.
 | ADS1256 front end | boot default: gain 1, buffer OFF (±5 V) | app sends `FE,V19`: gain 2, buffer ON (±2.5 V) | boot default (±5 V) |
 | Minimum firmware | v2.0 | v1.7 (legacy standalone rigs stay on **v1.9**) | **v3.2** |
 
-Code locations: `tech_app/eltec_rig/<model>/eltec_<model>_esp32_tester.py`
+Code locations: `single_detector_rig/<model>/eltec_<model>_esp32_tester.py`
 (gates, limits, factors), `<model>/esp32_backend.py` (drive frequency, duty,
 gate pin, minimum firmware), `<model>/stability_settings.json` (peak-delta
 threshold). The three model directories are deliberate near-copies — see the
@@ -42,9 +42,9 @@ copy-per-model policy in [`ENGINEER_HANDOVER.md`](ENGINEER_HANDOVER.md).
 
 ## 2. Model 405 M22 (TP412, 1 Hz)
 
-Tester: `tech_app/eltec_rig/m405m22/eltec_405m22_esp32_tester.py`.
+Tester: `single_detector_rig/m405m22/eltec_405m22_esp32_tester.py`.
 Test procedure document: **TP412** (offset, sensitivity/polarity at 1 Hz, noise).
-Detailed mechanics: [`m405m22/README.md`](../tech_app/eltec_rig/m405m22/README.md).
+Detailed mechanics: [`m405m22/README.md`](../single_detector_rig/m405m22/README.md).
 
 ### 2.1 Constants
 
@@ -199,9 +199,9 @@ on. The same crosstalk disabled the 406 MCA (2026-08-24) and 449 M18 gates.
 
 ## 3. Model 406 MCA (10 Hz)
 
-Tester: `tech_app/eltec_rig/m406mca/eltec_406mca_esp32_tester.py` (the v6.1
+Tester: `single_detector_rig/m406mca/eltec_406mca_esp32_tester.py` (the v6.1
 policy build). Detailed mechanics:
-[`m406mca/README.md`](../tech_app/eltec_rig/m406mca/README.md).
+[`m406mca/README.md`](../single_detector_rig/m406mca/README.md).
 
 | Constant | Value | Where | Provenance |
 | --- | --- | --- | --- |
@@ -228,9 +228,9 @@ policy build). Detailed mechanics:
 
 ## 4. Model 449 M18 (TP443 frequency tracking, 5 Hz + 18 Hz) — CALIBRATION PENDING
 
-Tester: `tech_app/eltec_rig/m449m18/eltec_449m18_esp32_tester.py` (added
+Tester: `single_detector_rig/m449m18/eltec_449m18_esp32_tester.py` (added
 2026-08-26). Detailed mechanics and the derivation recipe:
-[`m449m18/README.md`](../tech_app/eltec_rig/m449m18/README.md).
+[`m449m18/README.md`](../single_detector_rig/m449m18/README.md).
 
 | Constant | Value | Where | State |
 | --- | --- | --- | --- |

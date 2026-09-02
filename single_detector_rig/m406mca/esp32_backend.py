@@ -45,7 +45,7 @@ PWM_GPIO = 33
 MINIMUM_FIRMWARE_VERSION = (1, 7, 0)
 EXPECTED_FIRMWARE_PREFIX = "ELTEC-ESP32-ADS1256,v"
 
-# Unified-rig support (tech_app/eltec_rig). The 406MCA was qualified on the
+# Unified-rig support (single_detector_rig). The 406MCA was qualified on the
 # v1.9 firmware front end (ADS1256 PGA gain 2, input buffer ON, +/-2.5 V full
 # scale). Firmware v2.0+ boots on the 405 M22 front end (gain 1, buffer OFF),
 # which would silently change this app's noise floor and thresholds, so on any

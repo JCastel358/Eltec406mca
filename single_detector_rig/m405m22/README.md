@@ -1,7 +1,7 @@
 # Eltec 405 M22 ESP32 Tester (1 Hz TP412 evaluation build)
 
 This directory is the **405 M22 model of the unified rig app**
-(`tech_app/eltec_rig`, normally launched from its selector): the ESP32/ADS1256
+(`single_detector_rig`, normally launched from its selector): the ESP32/ADS1256
 tester (derived from the 406MCA v6.1 application) for the **Model 405 M22**
 high-gain thermally compensated pyroelectric IR detector, following document
 **TP412** (offset, sensitivity/polarity at 1 Hz, and noise). The sensitivity
@@ -309,7 +309,7 @@ The application runs on **both Xubuntu and Windows** from the same checkout —
 same code, same CSV format, same results folder layout. Only the launcher
 differs. Batch CSVs written on one host are readable on the other.
 
-Normally: start the unified selector (`tech_app/eltec_rig/run_eltec_rig_tester.cmd`
+Normally: start the unified selector (`single_detector_rig/run_eltec_rig_tester.cmd`
 / `.sh`) and pick **Model 405 M22**. The model app can also be started
 standalone:
 
@@ -318,13 +318,13 @@ standalone:
 From the repository root:
 
 ```bash
-./tech_app/eltec_rig/m405m22/run_eltec_405m22_esp32_tester.sh
+./single_detector_rig/m405m22/run_eltec_405m22_esp32_tester.sh
 ```
 
 The optional Xubuntu launcher installer creates only 405 M22 identities:
 
 ```bash
-./tech_app/eltec_rig/m405m22/install_xubuntu_launcher.sh
+./single_detector_rig/m405m22/install_xubuntu_launcher.sh
 ```
 
 - display name: `Eltec 405 M22 ESP32 Tester`;
@@ -338,7 +338,7 @@ The optional Xubuntu launcher installer creates only 405 M22 identities:
 Double-click `run_eltec_405m22_esp32_tester.cmd`, or from a terminal:
 
 ```bat
-tech_app\eltec_rig\m405m22\run_eltec_405m22_esp32_tester.cmd
+single_detector_rig\m405m22\run_eltec_405m22_esp32_tester.cmd
 ```
 
 It runs the GUI under `pythonw.exe` (no console window), logs to the file
@@ -349,7 +349,7 @@ The optional shortcut installer adds a Desktop and a Start Menu entry
 (per-user, no admin rights, `-Uninstall` removes both):
 
 ```bat
-powershell -ExecutionPolicy Bypass -File tech_app\eltec_rig\m405m22\install_windows_launcher.ps1
+powershell -ExecutionPolicy Bypass -File single_detector_rig\m405m22\install_windows_launcher.ps1
 ```
 
 - display name: `Eltec 405 M22 ESP32 Tester`;
@@ -524,7 +524,7 @@ for nicer snapshots).
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tech_app/eltec_rig/m405m22/tests -v
+python3 -m unittest discover -s single_detector_rig/m405m22/tests -v
 ```
 
 The suite mirrors the v6.1 coverage retimed for 1 Hz and adds the TP412

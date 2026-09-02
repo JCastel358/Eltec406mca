@@ -20,8 +20,8 @@ screen, stop and tell the rig engineer — do not improvise.
 ## 2. Start the app
 
 - Double-click the **Eltec Test Rig** desktop icon, or
-  `tech_app\eltec_rig\run_eltec_rig_tester.cmd` (Windows) /
-  `tech_app/eltec_rig/run_eltec_rig_tester.sh` (Xubuntu).
+  `single_detector_rig\run_eltec_rig_tester.cmd` (Windows) /
+  `single_detector_rig/run_eltec_rig_tester.sh` (Xubuntu).
 - The selector opens full screen. Pick the **sensor version** in the dropdown
   and press **Start tester**. The last choice is remembered.
 

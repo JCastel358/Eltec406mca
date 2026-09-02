@@ -17,7 +17,7 @@ format, and results folders as before. The selection is remembered between
 sessions.
 
 ```
-tech_app/eltec_rig/
+single_detector_rig/
 ├── eltec_rig_tester.py          # the selector GUI (this app's entry point)
 ├── sensor_versions.py           # registry: one entry per testable model
 ├── attempt_history.py           # v2.0: per-batch *_attempts.csv log + skipped-parts queue (shared by all models)
@@ -114,8 +114,8 @@ arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
 
 | | Xubuntu | Windows |
 | --- | --- | --- |
-| run | `./tech_app/eltec_rig/run_eltec_rig_tester.sh` | double-click `tech_app\eltec_rig\run_eltec_rig_tester.cmd` |
-| desktop icon | `./tech_app/eltec_rig/install_xubuntu_launcher.sh` | `powershell -ExecutionPolicy Bypass -File tech_app\eltec_rig\install_windows_launcher.ps1` |
+| run | `./single_detector_rig/run_eltec_rig_tester.sh` | double-click `single_detector_rig\run_eltec_rig_tester.cmd` |
+| desktop icon | `./single_detector_rig/install_xubuntu_launcher.sh` | `powershell -ExecutionPolicy Bypass -File single_detector_rig\install_windows_launcher.ps1` |
 | log | `~/.local/state/eltec-rig/launcher.log` | `%LOCALAPPDATA%\eltec-rig\launcher.log` |
 
 Both installers are opt-in and per-user (`--uninstall` / `-Uninstall` to
@@ -238,10 +238,10 @@ thresholds and calibrations are untouched.
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tech_app/eltec_rig/tests            # selector glue
-python3 -m unittest discover -s tech_app/eltec_rig/m405m22/tests    # run from the repo root
-python3 -m unittest discover -s tech_app/eltec_rig/m406mca/tests    # run from the repo root
-python3 -m unittest discover -s tech_app/eltec_rig/m449m18/tests    # run from the repo root
+python3 -m unittest discover -s single_detector_rig/tests            # selector glue
+python3 -m unittest discover -s single_detector_rig/m405m22/tests    # run from the repo root
+python3 -m unittest discover -s single_detector_rig/m406mca/tests    # run from the repo root
+python3 -m unittest discover -s single_detector_rig/m449m18/tests    # run from the repo root
 ```
 
 On Windows the m406mca suite reports the two long-standing environment-only
