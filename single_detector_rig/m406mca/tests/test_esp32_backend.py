@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import unittest
 from collections import deque
 from types import SimpleNamespace
@@ -191,7 +192,11 @@ class ConnectionTests(unittest.TestCase):
         self.assertFalse(rig.ser.dtr)
         self.assertFalse(rig.ser.rts)
         self.assertTrue(rig.ser.output_reset)
-        self.assertTrue(factory.created_options[-1].get("exclusive"))
+        if os.name == "posix":
+            # Exclusive tty locks exist only on POSIX (the Xubuntu prod host).
+            self.assertTrue(factory.created_options[-1].get("exclusive"))
+        else:
+            self.assertNotIn("exclusive", factory.created_options[-1])
 
         selected_serial = rig.ser
         rig.close()
@@ -199,6 +204,49 @@ class ConnectionTests(unittest.TestCase):
         self.assertTrue(selected_serial.flushed)
         self.assertTrue(selected_serial.closed)
         self.assertFalse(rig.connected)
+
+    def test_connect_requests_large_receive_buffer_when_supported(self):
+        # Windows/pyserial exposes set_buffer_size; the CP210x driver default
+        # overflowed during long captures whenever the GUI stalled, producing
+        # timestamp gaps plus driver-duplicated records. The rig requests the
+        # same 1 MiB receive buffer the 405 M22 build asks for (the Windows
+        # CP210x driver ignores it; the drain thread carries the reliability).
+        class BufferedScriptedSerial(ScriptedSerial):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.buffer_size_calls: list[dict] = []
+
+            def set_buffer_size(self, **kwargs):
+                self.buffer_size_calls.append(dict(kwargs))
+
+        serial_port = BufferedScriptedSerial(
+            {"IDN?": ["ELTEC-ESP32-ADS1256,v1.7"]}
+        )
+        rig = rig_for(serial_port)
+        rig.connect()
+
+        self.assertEqual(
+            serial_port.buffer_size_calls,
+            [{"rx_size": backend.RECEIVE_BUFFER_BYTES}],
+        )
+        self.assertGreaterEqual(backend.RECEIVE_BUFFER_BYTES, 1 << 20)
+
+    def test_connect_tolerates_absent_or_failing_set_buffer_size(self):
+        # POSIX pyserial has no set_buffer_size (ScriptedSerial mirrors that),
+        # and some drivers reject the request; neither may break connect().
+        class RejectingScriptedSerial(ScriptedSerial):
+            def set_buffer_size(self, **_kwargs):
+                raise OSError("driver refused buffer resize")
+
+        for serial_port in (
+            ScriptedSerial({"IDN?": ["ELTEC-ESP32-ADS1256,v1.7"]}),
+            RejectingScriptedSerial({"IDN?": ["ELTEC-ESP32-ADS1256,v1.7"]}),
+        ):
+            with self.subTest(type(serial_port).__name__):
+                rig = rig_for(serial_port)
+                rig.connect()
+                self.assertTrue(rig.connected)
+                rig.close()
 
     def test_v3_firmware_gets_qualified_front_end_on_connect(self):
         # Unified-rig boards (firmware v2.1+) boot on the 405 M22 gain-1
@@ -258,6 +306,101 @@ class ConnectionTests(unittest.TestCase):
         ):
             rig.connect()
         self.assertFalse(rig.connected)
+
+    def test_front_end_recheck_is_one_readback_while_the_board_still_matches(self):
+        # 2026-09-03: before every measurement the app re-checks the front
+        # end. A board that still holds FE,V19 costs one FE? round trip and
+        # reports "nothing reverted".
+        serial_port = ScriptedSerial(
+            {
+                "IDN?": ["ELTEC-ESP32-ADS1256,v3.0"],
+                "FE,V19": ["OK,FE,gain=2,buf=1"],
+                "FE?": ["FE,gain=2,buf=1,fs=2.500"],
+            }
+        )
+        rig = rig_for(serial_port)
+        rig.connect()
+        writes_at_connect = list(serial_port.writes)
+
+        self.assertFalse(rig.ensure_qualified_front_end())
+
+        self.assertEqual(serial_port.writes, writes_at_connect + ["FE?"])
+
+    def test_front_end_recheck_reapplies_after_a_board_restart(self):
+        # An ESP32 that reset with the port open boots on the v2.0 gain-1
+        # unbuffered front end. The re-check must catch that, re-apply
+        # FE,V19, verify it and report True so the app can say so.
+        readbacks = iter(
+            [
+                ["FE,gain=2,buf=1,fs=2.500"],   # connect read-back
+                ["FE,gain=1,buf=0,fs=5.000"],   # re-check: the board rebooted
+                ["FE,gain=2,buf=1,fs=2.500"],   # verification after re-apply
+            ]
+        )
+        serial_port = ScriptedSerial(
+            {
+                "IDN?": ["ELTEC-ESP32-ADS1256,v3.0"],
+                "FE,V19": ["OK,FE,gain=2,buf=1"],
+                "FE?": lambda _port: next(readbacks),
+            }
+        )
+        rig = rig_for(serial_port)
+        rig.connect()
+        writes_at_connect = len(serial_port.writes)
+
+        self.assertTrue(rig.ensure_qualified_front_end())
+
+        self.assertEqual(
+            serial_port.writes[writes_at_connect:], ["FE?", "FE,V19", "FE?"]
+        )
+
+    def test_front_end_recheck_that_cannot_reapply_is_a_hard_error(self):
+        readbacks = iter(
+            [["FE,gain=2,buf=1,fs=2.500"], ["FE,gain=1,buf=0,fs=5.000"]]
+        )
+        serial_port = ScriptedSerial(
+            {
+                "IDN?": ["ELTEC-ESP32-ADS1256,v3.0"],
+                "FE,V19": ["OK,FE,gain=2,buf=1"],
+                "FE?": lambda _port: next(readbacks),
+            }
+        )
+        rig = rig_for(serial_port)
+        rig.connect()
+        # The re-apply's acknowledge is fine but the board keeps answering
+        # gain 1: measuring on it would be wrong, so it must refuse.
+        serial_port.scripts["FE,V19"] = ["OK,FE,gain=1,buf=0"]
+
+        with self.assertRaisesRegex(
+            backend.Esp32ProtocolError, "not applied as expected"
+        ):
+            rig.ensure_qualified_front_end()
+
+    def test_front_end_recheck_skips_legacy_boards_and_refuses_mid_stream(self):
+        legacy = ScriptedSerial({"IDN?": ["ELTEC-ESP32-ADS1256,v1.9"]})
+        rig = rig_for(legacy)
+        rig.connect()
+        writes = list(legacy.writes)
+        self.assertFalse(rig.ensure_qualified_front_end())
+        self.assertEqual(legacy.writes, writes)
+
+        streaming = ScriptedSerial(
+            {
+                "IDN?": ["ELTEC-ESP32-ADS1256,v3.0"],
+                "FE,V19": ["OK,FE,gain=2,buf=1"],
+                "FE?": ["FE,gain=2,buf=1,fs=2.500"],
+                "STREAM,START": ["STREAM,BEGIN,1000,SENSOR"],
+                "STREAM,STOP": ["STREAM,END,0,0"],
+            }
+        )
+        rig = rig_for(streaming)
+        rig.connect()
+        rig.start_stream()
+        try:
+            with self.assertRaises(backend.StreamStateError):
+                rig.ensure_qualified_front_end()
+        finally:
+            rig.close()
 
     def test_old_firmware_is_rejected_with_flash_guidance(self):
         serial_port = ScriptedSerial(
@@ -470,6 +613,9 @@ class StreamTests(unittest.TestCase):
         self.assertEqual(diagnostics.drained_samples, 1)
         self.assertEqual(diagnostics.torn_lines, 1)
         self.assertEqual(diagnostics.ignored_lines, 1)
+        self.assertEqual(diagnostics.ignored_line_samples, ["boot noise"])
+        self.assertEqual(diagnostics.live_samples, 3)
+        self.assertIsNotNone(diagnostics.last_sample_monotonic)
         self.assertEqual(diagnostics.timestamp_gap_count, 1)
         self.assertEqual(diagnostics.estimated_missing_samples, 1)
         self.assertEqual(diagnostics.firmware_samples_sent, 5)
@@ -498,10 +644,11 @@ class StreamTests(unittest.TestCase):
 
         self.assertEqual(len(samples), 1000)
         self.assertTrue(diagnostics.healthy)
-        # One bulk read gets the sample burst and one gets STREAM,END. The
-        # assertion leaves a little room for implementation details while
+        # One bulk read gets the sample burst and one gets STREAM,END; the
+        # drain thread's blocking one-byte wake-up read adds a couple more.
+        # The assertion leaves a little room for implementation details while
         # guarding against regression to one OS read per sample line.
-        self.assertLessEqual(self.serial_port.read_calls - reads_before, 3)
+        self.assertLessEqual(self.serial_port.read_calls - reads_before, 6)
 
     def test_reference_stream_selects_ain1_firmware_channel(self):
         header = self.rig.start_stream("reference")
@@ -563,6 +710,98 @@ class StreamTests(unittest.TestCase):
             self.rig.stop_stream(timeout_s=0.01)
         self.assertFalse(self.rig.is_streaming)
         self.assertFalse(self.rig.stream_diagnostics.stop_marker_seen)
+
+    def test_mid_stream_reboot_leaves_its_banner_and_a_restarted_count(self):
+        # 2026-09-03: an ESP32 that resets mid-capture prints garbled ROM
+        # output (115200 baud) and then its READY line, and answers
+        # STREAM,STOP with a counter that restarted at 0. Both must survive
+        # on the diagnostics so the tester can attribute the stall.
+        self.serial_port.scripts["STREAM,STOP"] = ["STREAM,END,0,0"]
+        self.rig.start_stream()
+        self.serial_port.lines.extend(
+            [
+                ScriptedSerial._as_bytes("D,1000,100,0.500000,0"),
+                ScriptedSerial._as_bytes("D,2000,101,0.501000,0"),
+                ScriptedSerial._as_bytes("D,3000,102,0.502000,0"),
+                b"\xff\xfe\x00rst\n",
+                ScriptedSerial._as_bytes("READY,ELTEC-ESP32-ADS1256"),
+            ]
+        )
+
+        samples = self.rig.read_stream(max_samples=3, timeout_s=0.05)
+        diagnostics = self.rig.stop_stream(timeout_s=0.05)
+
+        self.assertEqual(len(samples), 3)
+        self.assertEqual(diagnostics.live_samples, 3)
+        self.assertEqual(diagnostics.firmware_samples_sent, 0)
+        self.assertEqual(diagnostics.ignored_lines, 2)
+        self.assertEqual(
+            diagnostics.ignored_line_samples, ["???rst", "READY,ELTEC-ESP32-ADS1256"]
+        )
+        self.assertIn("non-protocol line", diagnostics.summary())
+
+    def test_drain_thread_runs_only_while_streaming(self):
+        # The dedicated drain thread is what keeps the Windows CP210x driver
+        # queue from overflowing (dropping/re-delivering data) while the GUI
+        # thread is busy; it must start with the stream and stop with it.
+        self.assertIsNone(self.rig._drain_thread)
+        self.rig.start_stream()
+        drain_thread = self.rig._drain_thread
+        self.assertIsNotNone(drain_thread)
+        self.assertTrue(drain_thread.is_alive())
+
+        self.rig.stop_stream(timeout_s=0.2)
+
+        self.assertIsNone(self.rig._drain_thread)
+        drain_thread.join(timeout=2.0)
+        self.assertFalse(drain_thread.is_alive())
+
+    def test_slow_consumer_loses_no_samples_with_drain_thread(self):
+        # Simulate the GUI stalling between read_stream() calls: every queued
+        # line must still come through because the drain thread keeps moving
+        # bytes into the host buffer while the consumer sleeps.
+        total = 500
+        self.serial_port.scripts["STREAM,STOP"] = [f"STREAM,END,{total},0"]
+        self.rig.start_stream()
+        self.serial_port.lines.extend(
+            ScriptedSerial._as_bytes(
+                f"D,{index * 1000},{index},0.500000,{index % 2}"
+            )
+            for index in range(1, total + 1)
+        )
+
+        samples = []
+        while len(samples) < total:
+            import time as _time
+
+            _time.sleep(0.02)  # consumer stall
+            chunk = self.rig.read_stream(max_samples=100, timeout_s=0.5)
+            if not chunk:
+                break
+            samples.extend(chunk)
+        diagnostics = self.rig.stop_stream(timeout_s=0.5)
+
+        self.assertEqual(len(samples), total)
+        self.assertEqual(diagnostics.received_samples, total)
+        self.assertTrue(diagnostics.count_matches_firmware)
+        self.assertTrue(diagnostics.healthy)
+
+    def test_drain_thread_serial_error_invalidates_port(self):
+        self.rig.start_stream()
+
+        def broken_read(_size=1):
+            raise OSError("USB unplugged mid-stream")
+
+        self.serial_port.read = broken_read
+        self.serial_port.lines.append(b"x")  # make in_waiting nonzero
+
+        with self.assertRaisesRegex(backend.Esp32ConnectionError, "USB unplugged"):
+            # The drain thread hits the error; the next consumer read surfaces
+            # it (possibly after one empty poll cycle).
+            for _attempt in range(50):
+                self.rig.read_stream(max_samples=10, timeout_s=0.05)
+        self.assertIsNone(self.rig.ser)
+        self.assertTrue(self.serial_port.closed)
 
 
 if __name__ == "__main__":

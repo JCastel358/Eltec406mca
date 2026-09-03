@@ -488,6 +488,9 @@ class StreamTests(unittest.TestCase):
         self.assertEqual(diagnostics.drained_samples, 1)
         self.assertEqual(diagnostics.torn_lines, 1)
         self.assertEqual(diagnostics.ignored_lines, 1)
+        self.assertEqual(diagnostics.ignored_line_samples, ["boot noise"])
+        self.assertEqual(diagnostics.live_samples, 3)
+        self.assertIsNotNone(diagnostics.last_sample_monotonic)
         self.assertEqual(diagnostics.timestamp_gap_count, 1)
         self.assertEqual(diagnostics.estimated_missing_samples, 1)
         self.assertEqual(diagnostics.firmware_samples_sent, 5)
@@ -582,6 +585,35 @@ class StreamTests(unittest.TestCase):
             self.rig.stop_stream(timeout_s=0.01)
         self.assertFalse(self.rig.is_streaming)
         self.assertFalse(self.rig.stream_diagnostics.stop_marker_seen)
+
+    def test_mid_stream_reboot_leaves_its_banner_and_a_restarted_count(self):
+        # 2026-09-03: an ESP32 that resets mid-capture prints garbled ROM
+        # output (115200 baud) and then its READY line, and answers
+        # STREAM,STOP with a counter that restarted at 0. Both must survive
+        # on the diagnostics so the tester can attribute the stall.
+        self.serial_port.scripts["STREAM,STOP"] = ["STREAM,END,0,0"]
+        self.rig.start_stream()
+        self.serial_port.lines.extend(
+            [
+                ScriptedSerial._as_bytes("D,1000,100,0.500000,0"),
+                ScriptedSerial._as_bytes("D,2000,101,0.501000,0"),
+                ScriptedSerial._as_bytes("D,3000,102,0.502000,0"),
+                b"\xff\xfe\x00rst\n",
+                ScriptedSerial._as_bytes("READY,ELTEC-ESP32-ADS1256"),
+            ]
+        )
+
+        samples = self.rig.read_stream(max_samples=3, timeout_s=0.05)
+        diagnostics = self.rig.stop_stream(timeout_s=0.05)
+
+        self.assertEqual(len(samples), 3)
+        self.assertEqual(diagnostics.live_samples, 3)
+        self.assertEqual(diagnostics.firmware_samples_sent, 0)
+        self.assertEqual(diagnostics.ignored_lines, 2)
+        self.assertEqual(
+            diagnostics.ignored_line_samples, ["???rst", "READY,ELTEC-ESP32-ADS1256"]
+        )
+        self.assertIn("non-protocol line", diagnostics.summary())
 
     def test_drain_thread_runs_only_while_streaming(self):
         # The dedicated drain thread is what keeps the Windows CP210x driver

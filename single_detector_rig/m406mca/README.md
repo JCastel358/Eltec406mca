@@ -7,8 +7,10 @@ retry policy.
 
 The new-fixture sensitivity gate uses the paired-fixture calibration described
 below. Raw sensitivity is always preserved, while the UI and CSV also report a
-legacy-equivalent value. Offset, polarity, stability, signal-quality, battery,
-reference-unit, and hardware-integrity gates remain unchanged.
+legacy-equivalent value. Polarity, stability, signal-quality, battery,
+reference-unit, and hardware-integrity gates are unchanged; the offset band is
+unchanged but is now read at a different point in the test (see *Offset: the
+verdict is a settled re-read* below).
 
 This directory is the live **406 MCA model of the unified rig app**
 (`single_detector_rig`, normally launched from its selector). The standalone
@@ -66,12 +68,12 @@ The legacy filter-specific sensitivity minimum remains the center of a raw
 | Raw sensitivity | Outcome |
 | ---: | --- |
 | `< 2.43 mV` | `FAIL` — low sensitivity |
-| `2.43-2.63 mV` inclusive | `PASS · NEAR LIMIT` — passes, with a re-measure suggestion |
+| `2.43-2.63 mV` inclusive | `PASS · NEAR LIMIT` — passes, with a warning card |
 | `> 2.63 mV` | `PASS` for the sensitivity gate |
 
 Since 2026-08-25 a reading inside the band is a plain **PASS** (it is within
 the conversion factor's margin of error): the result page shows the green
-banner plus an amber "near the limit — suggestion: re-measure" card, the CSV
+banner plus an amber "near the limit" card, the CSV
 records `sensitivity_gate_outcome = NEAR LIMIT`, and no quarantine record
 exists any more (older CSVs with `RETEST` rows are shown as failures in the
 summary — they were quarantine records, not passes). Another definitive
@@ -82,6 +84,72 @@ This calibration is provisional. Continue collecting repeated known-low and
 borderline parts before narrowing/removing the band. The simulator has a
 `Borderline sensitivity` case for exercising the near-limit path.
 
+## Offset: the verdict is a settled re-read (2026-09-03)
+
+The production band is unchanged at `OFFSET_MIN_V` 0.3 V to `OFFSET_MAX_V`
+1.2 V. What changed is **when** the reading that carries the verdict is taken.
+
+A 406MCA's DC offset keeps moving for tens of seconds after the part is
+seated, downward. The insertion read is taken before the emitter even starts,
+so parts were failing `HO - High offset` on a level that was inside the band
+by the time the capture finished 30-60 s later. (The 405 M22 has judged on a
+settled re-read since 2026-08-17 for the mirror-image reason: its parts settle
+upward.)
+
+The order per part is now:
+
+1. `OFFSET?` at insertion, emitter off. **Only the low side blocks:** below
+   `SENSOR_OFFSET_MIN_PLAUSIBLE_V` (0.05 V) AIN0 is floating, which means no
+   sensor or no buffer, and nothing is captured. A high or railed reading is a
+   real part and continues.
+2. The 10 Hz sensitivity capture (unchanged).
+3. `OFFSET?` again, emitter off. The part has now been powered in the rig
+   through the whole stabilization plus the 20-cycle measurement, so this
+   costs no bench time - it is simply the level TP120's band describes. **This
+   value is the verdict, the result card and the `offset_v` column.** The
+   insertion read is kept as `offset_initial_v`.
+4. One confirmation read `OFFSET_SETTLE_POLL_S` (1 s) later, so every part
+   records a real read-to-read delta. If step 3 was **inside** the band the
+   part is done here - waiting longer could only walk a good part back out.
+5. If it was **outside** the band the part is held and re-read once a second
+   until one of:
+   - the level is back inside the band (pass on);
+   - it has stopped moving for `OFFSET_SETTLE_QUIET_READS` (2) polls without
+     improving - a genuinely high part fails in about 2 s instead of burning
+     the deadline;
+   - `OFFSET_SETTLE_MAX_WAIT_S` (20 s), where the last reading is used and the
+     row is marked as never settled.
+
+"Stopped moving" is a **relative** delta: at or below
+`OFFSET_SETTLE_DELTA_FRACTION` (10 %) of the current reading, i.e. 62 mV at
+0.624 V. That is roughly a thousand times the read-to-read scatter of an
+`OFFSET?` reply (the firmware already returns the median of 24 samples taken
+over ~100 ms at gain 2), so only real drift can breach it - which is why there
+is deliberately **no noise estimation** in this path. The residual after that
+median is the sensor's own slow wander, which is the thing being measured. If
+bench data ever shows the wait ending early on wander, average three
+consecutive reads per sample before tightening the fraction.
+
+A reading that is still moving **toward** the band never ends the wait early,
+however small the step: "it changed for the better" is exactly the case this
+policy exists to catch.
+
+**Drift is recorded, never gated.** A part inside the band whose level is
+still moving is a PASS with an amber `OFFSET WAS STILL SETTLING` card and a
+warning in the result; it is never a failure. A drift limit would be an
+invented number until a lot's worth of `offset_settle_delta_v` exists to
+derive one from. Note that this rig has no emitter-off noise test, so that
+warning is the only place a drifting part is flagged.
+
+New batch CSV columns: `offset_initial_v`, `offset_settle_s`,
+`offset_settle_delta_v`, `offset_settled` (YES/NO), `offset_settle_reads`.
+Batch files started before this change keep their original header and stay
+aligned.
+
+The simulator has an `Offset settles into band` case (starts at 1.35 V and
+decays into the band) for exercising the hold without hardware. **Stop** is
+honoured inside the wait exactly as it is inside a capture.
+
 ## Reference gate
 
 The AIN1 reference-unit gate uses a dedicated delta threshold:
@@ -91,9 +159,10 @@ The AIN1 reference-unit gate uses a dedicated delta threshold:
 3. Five consecutive peak deltas at or below `0.250 mV`.
 4. Average the next five complete cycles.
 5. Require that reading to be inside the fixed `+/-25%` baseline window. When
-   AIN1 is above the window, read the AIN0 DC offset before invalidating the
-   reference calibration. If AIN0 is above the `1.2 V` production high-offset
-   limit (and still within the plausible connected-sensor range), treat the
+   AIN1 is above the window, read the AIN0 DC offset (the insertion read)
+   before invalidating the reference calibration. If AIN0 is above the `1.2 V`
+   production high-offset limit (and still within the plausible
+   connected-sensor range), treat the
    AIN1 spike as interference from that bad DUT, preserve the reference
    calibration, and continue so the DUT is recorded as `HO - High offset`.
    A normal-offset DUT, a low AIN1 result, or an implausible AIN0 value keeps
@@ -198,6 +267,45 @@ sudo apt install python3-matplotlib libnotify-bin desktop-file-utils xdg-user-di
 The signed-in user must have permission to access `/dev/ttyUSB*` or
 `/dev/ttyACM*`, normally through the `dialout` group.
 
+## Serial-stream reliability (ported from the 405 M22, 2026-09-03)
+
+Until 2026-09-03 this build kept the original serial backend and the strict
+stream validator: any timestamp gap or host/firmware count mismatch rejected
+the capture, and a single 2 ms USB hiccup failed a 12 s capture on the bench
+("1 timestamp gaps (~2 missing samples); host/firmware sample counts differ
+(12047/12049)", 2026-08-31). The 405 M22 had solved this on 2026-08-12/13/17
+and the 449 M18 carried the same code; the 406 now does too, ported by hand
+(docs/ENGINEER_HANDOVER.md §4), each piece with its own tests:
+
+- `esp32_backend.py`: the dedicated drain thread that blocks in the driver
+  read while streaming, the Windows power-throttling opt-out (at import and
+  at connect), driver `CE_RXOVER` attribution, the receive-buffer request,
+  and the stall diagnostics (`last_sample_monotonic`, `ignored_line_samples`,
+  `live_samples`).
+- Bounded micro-gap tolerance: at most `STREAM_MAX_MICRO_GAPS` (3) gaps and
+  `STREAM_MAX_MISSING_SAMPLES` (20 = 20 ms) lost samples per capture, the
+  lost slots refilled from the firmware timestamps (`StreamGapFiller`) so
+  the 10 Hz cycle math sees an unbroken timeline; a gap that swallows a sync
+  edge is a retryable stream error, not a "check firmware and GPIO33" fault.
+  Duplicates, reordering, torn records, ADC overruns and a >2 % rate error
+  still reject. Same budget as the 405/449 (user decision 2026-09-03); the
+  thresholds are untouched.
+- Bounded retries: each calibration reading, the reference gate and the
+  driven capture get `REFERENCE_READING_STREAM_RETRIES` (2) fresh attempts
+  on a `StreamIntegrityError`, nothing recorded from a rejected capture.
+- Stalls: a stream silent for 2 s is stopped, attributed from the board's
+  `STREAM,END` reply (`[host-stall]`, `[board-reset]`, `[board-silent]`,
+  `[no-reply]` - see the 405 README, part 3) and restarted like any other
+  transient failure; every restart is a `stream_retry` row in the batch's
+  `_attempts.csv`.
+- **Front-end guard.** `FE,V19` is session state: an ESP32 that resets while
+  the port stays open boots back on the v2.0 gain-1 unbuffered front end
+  and every later reading would silently be on the wrong one. The backend's
+  `ensure_qualified_front_end()` re-reads `FE?` before every measurement,
+  every calibration and every stream retry; a reverted board is
+  re-programmed and verified exactly as at connect, the status line says
+  the board restarted, and a `rig_note` row records it.
+
 ## Engineering stability evidence
 
 The calibration CLI remains an evidence tool; it does not issue part verdicts
@@ -222,4 +330,5 @@ python3 -m unittest discover -s single_detector_rig/m406mca/tests -v
 The suite covers the three-attempt state machine, identical 10/20 windows,
 third-kick unstable classification, 20-second retry deadline, direct streaming
 integration, CSV telemetry, launcher isolation, reference behavior, serial
-integrity, simulator behavior, and GUI workflow.
+integrity (micro-gap tolerance and refill, stall attribution and bounded
+restarts, the front-end re-check), simulator behavior, and GUI workflow.

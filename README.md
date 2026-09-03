@@ -28,9 +28,10 @@ Windows 11 and Xubuntu are both supported.
 1. Laptop on AC power, ESP32 USB cable in, both batteries connected, no fans near the fixture.
 2. Double-click the **Eltec Test Rig** desktop icon (or `single_detector_rig\run_eltec_rig_tester.cmd` / `.sh`). For a tray of fifty on the array rig use the **Eltec Array Rig** icon (`array_rig\run_eltec_array_tester.cmd` / `.sh`) — runbook §3b.
 3. Pick the sensor model → **Start tester** → batch number, your name, filter setup → load a part → **Enter**.
-4. Read the banner (PASS / PASS · NEAR LIMIT / FAIL) → **Save + Next Sensor (Enter)**.
+4. Read the banner (PASS / PASS · NEAR LIMIT / FAIL) → load the next sensor →
+   **Next (Enter)**. The number only advances when a part passes.
 
-Everything else — verdicts, the Skip / Re-measure buttons, where files go,
+Everything else — verdicts, the Stop / Next buttons, where files go,
 what to do when something fails — is in
 **[docs/TECHNICIAN_RUNBOOK.md](docs/TECHNICIAN_RUNBOOK.md)**.
 
@@ -57,7 +58,7 @@ docs/
 single_detector_rig/         THE single-detector application — selector + one directory per sensor model
   eltec_rig_tester.py        selector GUI (dropdown → launches the model app)
   sensor_versions.py         model registry + required firmware
-  attempt_history.py         per-batch attempt log + skipped-parts queue (shared)
+  attempt_history.py         per-batch attempt log (shared)
   v1_single_sensor/          vendored signal-math engine (shared, frozen)
   m405m22/ m406mca/ m449m18/ one qualified tester each: GUI, backend, analysis, tests, launchers, README
   run_eltec_rig_tester.*     launchers; install_*_launcher.* = optional desktop icon

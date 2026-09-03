@@ -462,6 +462,24 @@ REFERENCE_READING_STREAM_RETRIES = 2
 # capture with nothing recorded (and are then retried as before).
 STREAM_MAX_MICRO_GAPS = 3
 STREAM_MAX_MISSING_SAMPLES = 20   # 20 ms of data at 1000 S/s
+# How a STALLED stream is attributed (2026-09-03, ported from the 405 M22).
+# "Stalled" means the host saw no sample for STREAM_TIMEOUT_S; that alone
+# cannot say which side went quiet, so the capture stops the stream first
+# and reads the board's STREAM,END reply, whose numbers decide the tag
+# below. The tag is appended to the error text and therefore lands in the
+# batch's *_attempts.csv (see the 449 README, serial-stream reliability):
+#   host-stall    the board kept counting samples the computer never read in
+#                 time (they were still queued in the OS buffer, or lost when
+#                 it overflowed) - the laptop froze, the rig did not
+#   board-reset   the board's sample counter restarted (and usually its
+#                 READY banner arrived mid-stream) - the ESP32 rebooted
+#   board-silent  the board answered STREAM,STOP with the same count the
+#                 host has - it stopped producing samples (ADS1256 DRDY)
+#   no-reply      the board did not answer STREAM,STOP at all
+STALL_KIND_HOST = "host-stall"
+STALL_KIND_BOARD_RESET = "board-reset"
+STALL_KIND_BOARD_SILENT = "board-silent"
+STALL_KIND_NO_REPLY = "no-reply"
 # Schema v4 marks baselines whose reference readings were driven at the
 # 406MCA reference unit's qualified 10 Hz / 50 % on the gain-1 front end -
 # the same drive this build uses for its reference phases, so a baseline
@@ -1240,11 +1258,12 @@ CSV_FIELDS = [
     # V6 peak-delta stabilization telemetry, once per drive.
     *stability_fields(STABILITY_LOW_PREFIX),
     *stability_fields(STABILITY_HIGH_PREFIX),
-    # v2.0 attempt history: how many measurement attempts this verdict
-    # took and how often the part was set aside (details per event in the
-    # batch's *_attempts.csv, see attempt_history.py).
+    # Attempt history: how many measurement attempts this part took, and
+    # which part tested under this sensor number this row is (1 = the first
+    # part tried as 500-7, 2 = the one loaded after it failed, ...). Details
+    # per event in the batch's *_attempts.csv, see attempt_history.py.
     "measure_attempts",
-    "skip_count",
+    "number_attempt",
 ]
 
 STABILITY_SAMPLE_DIAGNOSTIC_FIELDS = (
@@ -1574,30 +1593,74 @@ def count_existing_batch_rows(csv_path: Path) -> int:
         return 0
 
 
+def row_sensor_number(row: dict) -> int | None:
+    """The sensor number of a batch CSV row, from either column."""
+    sensor_number_text = (row.get("sensor_number") or "").strip()
+    if sensor_number_text:
+        try:
+            return int(sensor_number_text)
+        except ValueError:
+            pass
+    sensor_id = (row.get("sensor_id") or "").strip()
+    if "-" in sensor_id:
+        try:
+            return int(sensor_id.rsplit("-", 1)[-1])
+        except ValueError:
+            pass
+    return None
+
+
 def next_sensor_number_for_batch(csv_path: Path) -> int:
+    """The number the next part is tested under: one past the last PASS.
+
+    2026-09-02 rule change. A sensor number is a place in the shipped run,
+    so it is only spent when a part actually passes. A FAIL - or a NOT
+    MEASURED row - leaves the number open and the next part loaded into the
+    rig is tested under it again, which is what the bench already does
+    physically: a bad part is put aside and another one takes its place.
+    A batch CSV is therefore one row per TEST, not one row per number:
+    500-7 can appear several times, the last of them the PASS that finally
+    earns the number.
+
+    Taking the highest PASSED number (rather than counting passes) also
+    keeps batches written before this rule intact: those numbers were handed
+    out per row, so a file whose last pass is 500-9 continues at 500-10.
+    """
     if not csv_path.exists():
         return 1
-    next_number = 1
+    highest_passed = 0
     try:
         with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
             for row in csv.DictReader(csv_file):
-                sensor_number_text = (row.get("sensor_number") or "").strip()
-                if sensor_number_text:
-                    try:
-                        next_number = max(next_number, int(sensor_number_text) + 1)
-                        continue
-                    except ValueError:
-                        pass
-                sensor_id = (row.get("sensor_id") or "").strip()
-                if "-" in sensor_id:
-                    suffix = sensor_id.rsplit("-", 1)[-1]
-                    try:
-                        next_number = max(next_number, int(suffix) + 1)
-                    except ValueError:
-                        pass
+                if (row.get("pass_fail") or "").strip() != OUTCOME_PASS:
+                    continue
+                number = row_sensor_number(row)
+                if number is not None:
+                    highest_passed = max(highest_passed, number)
     except Exception:
+        # Unreadable file: err high so a number is never handed out twice.
         return count_existing_batch_rows(csv_path) + 1
-    return next_number
+    return highest_passed + 1
+
+
+def number_attempt_for_batch(csv_path: Path, sensor_id: str) -> int:
+    """1-based: which part tested under ``sensor_id`` the next one will be.
+
+    Written to the ``number_attempt`` column so the repeated ids a reused
+    number produces stay readable without relying on row order (1 = the
+    first part tried as 500-7, 2 = the one loaded after it failed, ...).
+    """
+    if not sensor_id or not csv_path.exists():
+        return 1
+    tested = 0
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+            for row in csv.DictReader(csv_file):
+                if (row.get("sensor_id") or "").strip() == sensor_id:
+                    tested += 1
+    except Exception:
+        return 1
+    return tested + 1
 
 
 def polarity_good_bad(polarity: str) -> str:
@@ -1705,7 +1768,7 @@ def append_result_csv(
     failure_mode: str = "",
     offset_initial_v: float | None = None,
     measure_attempts: int = 0,
-    skip_count: int = 0,
+    number_attempt: int = 1,
 ) -> None:
     """Write one verdict row: both TP443 readings, the ratio, and the gates.
 
@@ -1751,7 +1814,7 @@ def append_result_csv(
         "operator_comments": comment.strip(),
         "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
         "measure_attempts": str(measure_attempts),
-        "skip_count": str(skip_count),
+        "number_attempt": str(number_attempt),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
         "reference_calibrated_at": (
             reference_calibration.recorded_at if reference_calibration else ""
@@ -2139,6 +2202,30 @@ class StreamIntegrityError(Esp32BackendError):
     """
 
 
+class StreamStalledError(StreamIntegrityError):
+    """The stream went silent for STREAM_TIMEOUT_S and was abandoned.
+
+    Built by ``EmitterEsp32Rig._stall_error`` AFTER the stream has been
+    stopped, so the message says which side went quiet (``kind`` is one of
+    the STALL_KIND_* tags). It is a ``StreamIntegrityError`` on purpose
+    (2026-09-03): a stall is exactly what the technician used to cure by
+    pressing Re-measure, so ``call_with_stream_retries`` now performs that
+    restart itself, bounded, and nothing from the silent capture is ever
+    recorded. A dead port is NOT a stall (``Esp32ConnectionError``) and is
+    still never retried.
+    """
+
+    def __init__(self, message: str, *, kind: str, received: int) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.received = received
+
+
+def stream_glitch_label(exc: Exception) -> str:
+    """Status-line noun for a capture being restarted: a stall names itself."""
+    return "Stream stalled" if isinstance(exc, StreamStalledError) else "Serial stream glitch"
+
+
 def call_with_stream_retries(
     capture,
     *,
@@ -2150,19 +2237,24 @@ def call_with_stream_retries(
     ``capture`` receives the zero-based attempt number. Only
     ``StreamIntegrityError`` is retried — hardware faults, cancellation, and
     every other error propagate immediately, as does the final integrity
-    failure once ``retries`` extra attempts are exhausted.
+    failure once ``retries`` extra attempts are exhausted. Since 2026-09-03
+    that includes ``StreamStalledError``: a stream that went silent is
+    restarted the way the technician used to restart it by hand.
+    ``on_retry(attempt, error)`` runs before each restart with the 1-based
+    restart number and the rejected attempt's error, so the caller can show
+    it and log it (the attempts CSV keeps the stall attribution).
     """
 
     attempt = 0
     while True:
         try:
             return capture(attempt)
-        except StreamIntegrityError:
+        except StreamIntegrityError as exc:
             attempt += 1
             if attempt > retries:
                 raise
             if on_retry is not None:
-                on_retry(attempt)
+                on_retry(attempt, exc)
 
 
 class StreamGapFiller:
@@ -2302,6 +2394,113 @@ class EmitterEsp32Rig(Esp32EmitterRig):
     #: validated capture, or None when that stream was perfectly clean.
     last_stream_tolerance_note: str | None = None
 
+    def _stall_error(
+        self,
+        received: int,
+        *,
+        target: int | None = None,
+        what: str = "waveform",
+    ) -> StreamStalledError:
+        """Stop a silent stream and say which side went quiet.
+
+        Called when ``read_stream`` returned nothing for STREAM_TIMEOUT_S.
+        Until 2026-09-03 the capture raised "stalled after N samples" from
+        inside its loop and the ``finally`` then sent STREAM,STOP - so the
+        one reply that tells a rebooted board from a laptop that froze (the
+        firmware's own sample count, the drained backlog, any READY banner)
+        was read and thrown away, and the technician was left to press
+        Re-measure by hand. Now the stream is stopped HERE, the reply is
+        read, and its numbers pick the STALL_KIND_* tag that goes into the
+        message, the status line and the attempts CSV. The result is a
+        ``StreamIntegrityError`` subclass, so ``call_with_stream_retries``
+        restarts the capture the way the technician used to.
+
+        A dead port makes ``stop_stream`` raise ``Esp32ConnectionError``;
+        that is not a stall, is not retried, and propagates unchanged.
+        """
+        diagnostics = self.stream_diagnostics
+        silent_s: float | None = None
+        last_seen = getattr(diagnostics, "last_sample_monotonic", None)
+        if last_seen is not None:
+            silent_s = max(0.0, time.monotonic() - float(last_seen))
+        if self.is_streaming:
+            diagnostics = self.stop_stream(
+                timeout_s=self.STREAM_TIMEOUT_S, raise_on_timeout=False
+            )
+        firmware_sent = getattr(diagnostics, "firmware_samples_sent", None)
+        host_total = int(getattr(diagnostics, "received_samples", received) or 0)
+        drained = int(getattr(diagnostics, "drained_samples", 0) or 0)
+        live = max(0, host_total - drained)
+        ignored = int(getattr(diagnostics, "ignored_lines", 0) or 0)
+        banner = [
+            str(line)
+            for line in (getattr(diagnostics, "ignored_line_samples", None) or ())
+        ]
+        ready = next((line for line in banner if line.startswith("READY")), None)
+        rate_hz = float(
+            getattr(diagnostics, "expected_rate_hz", None) or DEFAULT_SAMPLE_RATE_HZ
+        )
+
+        head = f"ESP32 {what} stream stalled after {received}"
+        if target:
+            head += f"/{target}"
+        head += " samples"
+        if silent_s is not None:
+            head += f" (no sample for {silent_s:.1f} s)"
+        head += "."
+
+        if firmware_sent is None:
+            kind = STALL_KIND_NO_REPLY
+            detail = (
+                "The board did not answer STREAM,STOP, so it or its USB link "
+                "is gone."
+            )
+            advice = "Check the USB cable and the rig power, then measure again."
+        elif ready is not None or firmware_sent + STREAM_MAX_MISSING_SAMPLES < live:
+            kind = STALL_KIND_BOARD_RESET
+            detail = (
+                "The board restarted during the capture (its sample counter "
+                f"came back at {firmware_sent}"
+            )
+            if ready is not None:
+                detail += "; its READY banner arrived mid-stream"
+            elif ignored:
+                detail += f"; {ignored} boot line(s) arrived mid-stream"
+            detail += "). Nothing on the computer stopped."
+            advice = (
+                "Check the rig USB power and cable (a brownout resets the "
+                "ESP32), then measure again."
+            )
+        elif (
+            drained > STREAM_MAX_MISSING_SAMPLES
+            or firmware_sent > live + STREAM_MAX_MISSING_SAMPLES
+        ):
+            kind = STALL_KIND_HOST
+            detail = f"The board kept sampling (firmware {firmware_sent} vs host {live}"
+            if drained:
+                detail += (
+                    f"; {drained} samples = {drained / rate_hz:.1f} s were still "
+                    "waiting in the computer buffer"
+                )
+            detail += (
+                "): the computer stopped reading the stream, the rig did not stop."
+            )
+            advice = (
+                "Keep the tester window visible, plug the laptop into power and "
+                "close other programs, then measure again."
+            )
+        else:
+            kind = STALL_KIND_BOARD_SILENT
+            detail = (
+                "The board stopped producing samples (firmware count "
+                f"{firmware_sent} matches the host count {live}): the ADS1256 "
+                "data-ready signal stopped."
+            )
+            advice = "Power-cycle the rig (ESP32 and ADS1256), then measure again."
+        return StreamStalledError(
+            f"{head} {detail} [{kind}] {advice}", kind=kind, received=received
+        )
+
     def _validate_stream_diagnostics(self, diagnostics, *, minimum_samples: int) -> None:
         """Reject incomplete/corrupted streams instead of recording a verdict.
 
@@ -2422,9 +2621,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     timeout_s=self.STREAM_TIMEOUT_S,
                 ))
                 if not chunk:
-                    raise Esp32BackendError(
-                        f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
-                    )
+                    raise self._stall_error(len(samples), target=target_scans)
                 samples.extend(chunk)
         finally:
             if self.is_streaming:
@@ -2614,9 +2811,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 )
                 if not analysis_due:
                     if not chunk:
-                        raise Esp32BackendError(
-                            f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
-                        )
+                        raise self._stall_error(len(samples), target=target_scans)
                     continue
                 stream_ended = not chunk
                 samples_analyzed = len(samples)
@@ -2683,9 +2878,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 if analysis.report.measurement_complete or analysis.report.unstable:
                     break
                 if stream_ended:
-                    raise Esp32BackendError(
-                        f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
-                    )
+                    raise self._stall_error(len(samples), target=target_scans)
         finally:
             if self.is_streaming:
                 diagnostics = self.stop_stream(timeout_s=self.STREAM_TIMEOUT_S)
@@ -3355,8 +3548,9 @@ def draw_horizontal_gradient(canvas: tk.Canvas, x0: int, y0: int, x1: int, y1: i
 # big matters more on the rig than spelling every label out in full.
 FOOTER_KEY_HINTS = (" (Enter)", " (Esc)")
 FOOTER_SHORT_LABELS = {
-    "Save + Next Sensor": "Save + Next",
-    "Save + Exit Batch": "Save + Exit",
+    "Next sensor": "Next",
+    "Measure again": "Measure",
+    "Stop batch": "Stop",
     "Calibrate reference unit to test": "Calibrate reference first",
     "Recharge battery to test": "Recharge battery",
     "Check wiring to test": "Check wiring",
@@ -3383,7 +3577,7 @@ class RoundButton(tk.Canvas):
             "fg": ELTEC_BLUE_DARK, "outline": "",
             "disabled_fill": PAGE_BG, "disabled_fg": "#aeb9c5", "disabled_outline": "",
         },
-        # v2.0 footer: green = save / move on, amber = set the part aside.
+        # Footer colours: green = record and move on, red = stop now.
         "success": {
             "fill": "#1f8a4c", "hover": "#176d3c", "press": "#125630",
             "fg": "#ffffff", "outline": "",
@@ -3393,6 +3587,13 @@ class RoundButton(tk.Canvas):
             "fill": "#fff4d6", "hover": "#ffe9b3", "press": "#ffd98a",
             "fg": "#8a5a00", "outline": "#e8b94a",
             "disabled_fill": PAGE_BG, "disabled_fg": "#c2b7a3", "disabled_outline": "#e6dccb",
+        },
+        # Stop: the one control that stays live in the middle of a capture,
+        # so it has to be findable without reading it.
+        "danger": {
+            "fill": FAIL_ACCENT, "hover": "#b91c1c", "press": "#991b1b",
+            "fg": "#ffffff", "outline": "",
+            "disabled_fill": "#e7bcbc", "disabled_fg": "#f7eaea", "disabled_outline": "",
         },
     }
     SIZE_PADS = {"xl": (34, 18), "lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
@@ -4177,7 +4378,6 @@ class ScopeView(tk.Canvas):
 # --------------------------------------------------------------------------- #
 class EmitterTesterApp(tk.Tk):
     SETUP_STEP = "setup"
-    LOAD_STEP = "load"
     RESULT_STEP = "result"
     HEADER_H = 96
 
@@ -4252,16 +4452,13 @@ class EmitterTesterApp(tk.Tk):
         self.current_sensor_number = 0
         self.current_sensor_id = ""
         self.result_saved = True
-        # v2.0 skip / attempt history (attempt_history.py). While
-        # ``resuming_skipped`` is set, "next" walks the skipped queue in
-        # first-skipped-first-measured order instead of handing out fresh
-        # sensor numbers.
-        self.resuming_skipped = False
+        # Attempt history (attempt_history.py): reads spent on the part now
+        # in the rig, and which part tested under this sensor number it is
+        # (2026-09-02: a number is only spent by a PASS, so a failed part
+        # leaves its number open for the one loaded in its place).
         self.measure_attempts = 0
-        self.skip_count = 0
-        self.skip_button: RoundButton | None = None
-        self.remeasure_button: RoundButton | None = None
-        self.skipped_button: RoundButton | None = None
+        self.number_attempt = 1
+        self.stop_button: RoundButton | None = None
         # Action-bar fitting (see _fit_footer): the chosen size/label
         # variant and a measuring-font cache.
         self.footer_nav_buttons: tuple = ()
@@ -4466,7 +4663,7 @@ class EmitterTesterApp(tk.Tk):
 
         self.rail = StepRail(
             body,
-            ["Batch info", "Load sensor", "Measure & result"],
+            ["Batch info", "Measure & result"],
             self.animator,
             mono_family=self.FONT_MONO,
             body_family=self.FONT_BODY,
@@ -4642,7 +4839,7 @@ class EmitterTesterApp(tk.Tk):
         self.step_scroll.yview_moveto(0.0)
 
     def update_progress_labels(self) -> None:
-        order = [self.SETUP_STEP, self.LOAD_STEP, self.RESULT_STEP]
+        order = [self.SETUP_STEP, self.RESULT_STEP]
         self.rail.set_current(order.index(self.step))
 
     def render_step(self) -> None:
@@ -4651,8 +4848,6 @@ class EmitterTesterApp(tk.Tk):
         self.update_progress_labels()
         if self.step == self.SETUP_STEP:
             self.render_setup_step()
-        elif self.step == self.LOAD_STEP:
-            self.render_load_step()
         else:
             self.render_result_step()
         self.render_navigation()
@@ -4718,7 +4913,13 @@ class EmitterTesterApp(tk.Tk):
         tk.Label(parent, text=text.upper(), bg=bg, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=row, column=0, sticky="w", pady=pady)
 
     def render_setup_step(self) -> None:
-        self._step_heading(0, "01", "Batch information", "Enter the batch number and your name, choose the filter, then press Enter.")
+        self._step_heading(
+            0,
+            "01",
+            "Batch information",
+            "Enter the batch number and your name, choose the filter, load the "
+            "first sensor, then press Enter.",
+        )
 
         card = Card(self.step_frame, accent_stops=TECH_GRADIENT)
         card.grid(row=1, column=0, sticky="new", pady=(20, 0))
@@ -4744,9 +4945,10 @@ class EmitterTesterApp(tk.Tk):
         self.update_filter_hint()
 
         self._build_reference_calibration_card(row=2)
+        self._build_load_sensor_card(row=3)
 
         adv_container = tk.Frame(self.step_frame, bg=PAGE_BG)
-        adv_container.grid(row=3, column=0, sticky="new", pady=(S(16), 0))
+        adv_container.grid(row=4, column=0, sticky="new", pady=(S(16), 0))
         link = tk.Label(adv_container, text="⚙  Advanced options…", bg=PAGE_BG, fg=ELTEC_BLUE,
                         font=self.fb(12, "bold"), cursor="hand2")
         link.grid(row=0, column=0, sticky="w")
@@ -4971,19 +5173,16 @@ class EmitterTesterApp(tk.Tk):
             if self.busy or self.measuring or self.reference_calibrating:
                 button.configure(state="disabled")
 
-    def render_load_step(self) -> None:
-        self._step_heading(
-            0,
-            "02",
-            f"Load sensor {self.current_sensor_id}"
-            + ("  (skipped part)" if self.resuming_skipped else ""),
-            f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}",
-        )
+    def _build_load_sensor_card(self, row: int) -> None:
+        """"Put a sensor in the rig" - shown on the setup screen.
 
-        self._build_reference_calibration_card(row=1)
-
+        2026-09-02: there is no separate load STEP any more. Start reads the
+        part that is already in the rig, and Next on the result screen reads
+        the one loaded in its place, so the only place this instruction is
+        still needed is before the batch begins.
+        """
         card = Card(self.step_frame, accent_stops=TECH_GRADIENT)
-        card.grid(row=2, column=0, sticky="ew", pady=(22, 0))
+        card.grid(row=row, column=0, sticky="ew", pady=(22, 0))
         inner = card.inner
         inner.columnconfigure(1, weight=1)
         rig = tk.Canvas(inner, width=S(190), height=S(128), bg=CARD_BG, highlightthickness=0, bd=0)
@@ -4991,12 +5190,11 @@ class EmitterTesterApp(tk.Tk):
         self._draw_rig_illustration(rig)
         text_col = tk.Frame(inner, bg=CARD_BG)
         text_col.grid(row=0, column=1, sticky="w")
-        tk.Label(text_col, text="Place the sensor in the testing rig", bg=CARD_BG, fg=TEXT_DARK, font=self.fd(24)).pack(anchor="w")
-        tk.Label(text_col, text="Then press Enter to read the offset and run the 5 Hz and 18 Hz captures.", bg=CARD_BG, fg=MUTED_FG, font=self.fb(13)).pack(anchor="w", pady=(6, 0))
+        tk.Label(text_col, text="Place the first sensor in the testing rig", bg=CARD_BG, fg=TEXT_DARK, font=self.fd(24)).pack(anchor="w")
+        tk.Label(text_col, text="Start runs the 5 Hz and 18 Hz captures straight away; after that, load the next sensor and press Next.", bg=CARD_BG, fg=MUTED_FG, font=self.fb(13), wraplength=S(520), justify="left").pack(anchor="w", pady=(6, 0))
         chips = tk.Frame(text_col, bg=CARD_BG)
         chips.pack(anchor="w", pady=(14, 0))
         for chip_text in (
-            f"SENSOR {self.current_sensor_id}",
             f"{EMITTER_PWM_FREQUENCY_HZ:g} Hz → {EMITTER_PWM_HIGH_FREQUENCY_HZ:g} Hz · {EMITTER_PWM_DUTY_CYCLE:g}% DUTY",
             "GAIN ×1 BUFFER",
         ):
@@ -5049,7 +5247,7 @@ class EmitterTesterApp(tk.Tk):
         elif self.last_measure_error is not None:
             self.render_measure_fault_view()
         else:
-            self._step_heading(0, "03", f"{self.current_sensor_id}: ready to measure", "Press Enter (or Measure) to run the emitter test.")
+            self._step_heading(0, "02", f"{self.current_sensor_id}: ready to measure", "Load the sensor in the rig, then press Enter (or Measure).")
             self.btn(self.step_frame, "Measure", self.run_measurement, kind="primary", size="lg").grid(row=2, column=0, sticky="w", pady=(22, 0))
         if not self.measuring:
             self._build_battery_banner()
@@ -5057,16 +5255,17 @@ class EmitterTesterApp(tk.Tk):
     def render_measure_fault_view(self) -> None:
         """Nothing was recorded: offer a retry AND a way past this sensor.
 
-        A rig or serial fault used to leave the technician with Measure as the
-        only option, which blocks the whole batch on one sensor that may not
-        even be at fault. Skipping writes a NOT MEASURED row with a reason, so
-        the sensor is accounted for without inventing a verdict for it.
+        Nothing was written, so the number is untouched: Next simply reads
+        this sensor again. Recording it as NOT MEASURED is the way to close
+        the number out when the rig itself cannot be fixed on the spot - it
+        writes a row with no readings, which is not a pass, so the number
+        stays open for the next part anyway.
         """
         self._step_heading(
             0,
-            "03",
+            "02",
             f"{self.current_sensor_id}: nothing was recorded",
-            "Re-measure or Skip part below, or record this sensor as NOT MEASURED.",
+            "Press Next to read it again, or record this sensor as NOT MEASURED.",
         )
         card = Card(
             self.step_frame,
@@ -5103,7 +5302,7 @@ class EmitterTesterApp(tk.Tk):
         self.btn(
             buttons,
             "Record as NOT MEASURED",
-            self.open_skip_sensor_window,
+            self.open_not_measured_window,
             kind="outline",
             size="lg",
         ).grid(row=0, column=0)
@@ -5111,8 +5310,8 @@ class EmitterTesterApp(tk.Tk):
             self.step_frame,
             text=(
                 f"{OUTCOME_NOT_MEASURED} writes a verdict row with no offset, sensitivity "
-                "or polarity and leaves the sensor out of the yield. Skip part keeps it "
-                "open to measure later instead."
+                "or polarity and leaves the sensor out of the yield. It is not a pass, so "
+                f"the next part is still tested as {self.current_sensor_id}."
             ),
             bg=PAGE_BG,
             fg=MUTED_FG,
@@ -5675,13 +5874,16 @@ class EmitterTesterApp(tk.Tk):
 
     # ----- navigation ----- #
     #
-    # v2.0 action bar, left -> right:
-    #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
-    #   Save + Exit Batch · Save + Next Sensor
-    # Colour carries the meaning: green = save and move on, amber = set the
-    # part aside for later, blue outline = run the test again.
+    # Action bar (2026-09-02), left -> right:  Stop  ...  Next
     #
-    # The buttons sit in two groups (navigation left, actions right) so
+    # Two buttons, and only two. Stop is red and live at every moment of a
+    # batch - mid-capture it abandons the reading, otherwise it ends the
+    # batch. Next is green and always means "read the sensor that is in the
+    # rig now": on a verdict it writes the row first. Skip part, Re-measure,
+    # Measure skipped, Back and Save + Exit Batch are gone with the skip
+    # queue they belonged to.
+    #
+    # The buttons still sit in two groups (Stop left, Next right) so
     # _fit_footer can shrink or wrap the bar on a narrow screen instead of
     # letting the rightmost button run off the edge.
     FOOTER_GAP = 10
@@ -5709,31 +5911,16 @@ class EmitterTesterApp(tk.Tk):
         self.footer_left = tk.Frame(self.footer_bar, bg=PAGE_BG)
         self.footer_right = tk.Frame(self.footer_bar, bg=PAGE_BG)
         result_step = self.step == self.RESULT_STEP
-        gap = S(self.FOOTER_GAP)
 
-        self.back_button = self.btn(self.footer_left, "Back", self.go_back, kind="ghost", size="lg")
-        self.back_button.grid(row=0, column=0, sticky="w")
-        self.skipped_button = self.btn(self.footer_left, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
-        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(gap, 0))
-
-        self.skip_button = self.btn(self.footer_right, "Skip part", self.open_skip_window, kind="warn", size="xl")
-        self.skip_button.grid(row=0, column=0, sticky="e", padx=(0, gap))
-        self.remeasure_button = self.btn(self.footer_right, "Re-measure", self.run_measurement, kind="outline", size="xl")
-        self.remeasure_button.grid(row=0, column=1, sticky="e", padx=(0, gap))
-        self.secondary_button = self.btn(self.footer_right, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
-        self.secondary_button.grid(row=0, column=2, sticky="e", padx=(0, gap))
+        self.stop_button = self.btn(self.footer_left, "Stop", self.stop, kind="danger", size="xl")
+        self.stop_button.grid(row=0, column=0, sticky="w")
         self.primary_button = self.btn(
             self.footer_right, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
         )
-        self.primary_button.grid(row=0, column=3, sticky="e")
+        self.primary_button.grid(row=0, column=0, sticky="e")
 
-        self.footer_nav_buttons = (self.back_button, self.skipped_button)
-        self.footer_action_buttons = (
-            self.skip_button,
-            self.remeasure_button,
-            self.secondary_button,
-            self.primary_button,
-        )
+        self.footer_nav_buttons = (self.stop_button,)
+        self.footer_action_buttons = (self.primary_button,)
         for button in self.footer_nav_buttons + self.footer_action_buttons:
             button._footer_full_text = button._text
         self._footer_fit = None  # brand-new widgets: force a fresh fit
@@ -5764,11 +5951,7 @@ class EmitterTesterApp(tk.Tk):
                 text = text[: -len(hint)]
                 break
         if tier == "short":
-            # "Measure skipped (3)" carries a count, so match its prefix.
-            if text.startswith("Measure skipped"):
-                text = "Skipped" + text[len("Measure skipped"):]
-            else:
-                text = FOOTER_SHORT_LABELS.get(text, text)
+            text = FOOTER_SHORT_LABELS.get(text, text)
         return text
 
     def _footer_font(self, size: str) -> tkfont.Font:
@@ -5790,13 +5973,13 @@ class EmitterTesterApp(tk.Tk):
     def _fit_footer(self, _event: tk.Event | None = None) -> None:
         """Keep every footer button inside the window.
 
-        The action bar carries up to six buttons, and at full size they need
-        more width than the content column has on a 1366-wide rig screen or
-        at 150% Windows scaling - which clipped the rightmost button, Save +
-        Next Sensor, off the edge. Measure what the visible buttons actually
-        need and pick the first FOOTER_VARIANTS entry that fits: it drops the
-        key hints, then switches to compact wording, then wraps the actions
-        onto their own row, and only shrinks the buttons as a last resort.
+        Two full-size buttons fit any rig screen, but the blocked-measure
+        labels ("Calibrate reference unit to test") are long enough to need
+        the same treatment the six-button bar did. Measure what the visible
+        buttons actually need and pick the first FOOTER_VARIANTS entry that
+        fits: it drops the key hints, then switches to compact wording, then
+        wraps the actions onto their own row, and only shrinks the buttons
+        as a last resort.
         Bound to the footer's <Configure>, so it also re-fits when the window
         is maximized or resized.
         """
@@ -5834,119 +6017,135 @@ class EmitterTesterApp(tk.Tk):
 
     def update_navigation_state(self) -> None:
         idle = not self.busy and not self.measuring
-        for button in (self.skipped_button, self.skip_button, self.remeasure_button, self.secondary_button):
-            if button is not None:
-                button.grid_remove()
         if self.step == self.SETUP_STEP:
-            self.back_button.configure(state="disabled")
+            self.stop_button.grid_remove()
             self._set_footer_text(self.primary_button, "Start (Enter)")
             self.primary_button.configure(state="disabled" if self.busy else "normal")
             self._fit_footer()
             return
-        # Skipped parts waiting to be measured (never the one on the bench).
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if waiting and not self.resuming_skipped:
-            self.skipped_button.grid()
-            self._set_footer_text(self.skipped_button, f"Measure skipped ({len(waiting)})")
-            self.skipped_button.configure(state="normal" if idle else "disabled")
-        if self.step == self.LOAD_STEP:
-            self.back_button.configure(state="disabled" if self.busy else "normal")
-            self.skip_button.grid()
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            # Hard block: no measurement on a low battery or a wiring fault
-            # (battery branches are inert while monitoring is disabled).
-            battery_blocking = (
-                BATTERY_MONITORING_ENABLED and self.battery_state in ("low", "fault")
-            )
-            blocked = (
-                self.busy
-                or battery_blocking
-                or self.stability_config_error is not None
-                or not self.reference_gate_ready()
-            )
-            if self.stability_config_error is not None:
-                measure_text = "Fix stability settings"
-            elif battery_blocking and self.battery_state == "fault":
-                measure_text = "Check wiring to test"
-            elif battery_blocking:
-                measure_text = "Recharge battery to test"
-            elif not self.reference_gate_ready():
-                measure_text = "Calibrate reference unit to test"
-            else:
-                measure_text = "Measure (Enter)"
-            self._set_footer_text(self.primary_button, measure_text)
-            self.primary_button.configure(state="disabled" if blocked else "normal")
+        # Stop is the only control that is never disabled: a technician who
+        # needs the rig to stop must not have to wait for a capture to end.
+        self.stop_button.grid()
+        self.stop_button.configure(state="normal")
+        self._set_footer_text(
+            self.stop_button, "Stop" if self.measuring else "Stop batch (Esc)"
+        )
+        # Hard block: no measurement on a low battery or a wiring fault
+        # (battery branches are inert while monitoring is disabled).
+        battery_blocking = (
+            BATTERY_MONITORING_ENABLED and self.battery_state in ("low", "fault")
+        )
+        if self.stability_config_error is not None:
+            blocked_text = "Fix stability settings"
+        elif battery_blocking and self.battery_state == "fault":
+            blocked_text = "Check wiring to test"
+        elif battery_blocking:
+            blocked_text = "Recharge battery to test"
+        elif not self.reference_gate_ready():
+            blocked_text = "Calibrate reference unit to test"
         else:
-            self.skip_button.grid()
-            self.remeasure_button.grid()
-            self.secondary_button.grid()
-            self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
-            ready = idle and self.last_result is not None and not self.result_saved
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            self._set_footer_text(
-                self.remeasure_button,
-                "Re-measure" if self.last_result is not None or self.last_measure_error else "Measure",
-            )
-            self.remeasure_button.configure(state="normal" if idle and not self.result_saved else "disabled")
+            blocked_text = None
+        if self.last_result is not None and not self.result_saved:
+            # A verdict is on screen: Next writes it, then reads the part
+            # loaded in its place (the same number again unless it passed).
+            self._set_footer_text(self.primary_button, "Next sensor (Enter)")
+            self.primary_button.configure(state="normal" if idle else "disabled")
+        elif blocked_text is not None:
+            self._set_footer_text(self.primary_button, blocked_text)
+            self.primary_button.configure(state="disabled")
+        else:
             self._set_footer_text(
                 self.primary_button,
-                "Save + Next Sensor (Enter)",
+                "Measure again (Enter)" if self.last_measure_error else "Measure (Enter)",
             )
-            self.primary_button.configure(state="normal" if ready else "disabled")
-            self._set_footer_text(
-                self.secondary_button,
-                "Save + Exit Batch (Esc)",
-            )
-            self.secondary_button.configure(state="normal" if ready else "disabled")
+            self.primary_button.configure(state="normal" if idle else "disabled")
         self._fit_footer()
 
     def go_next(self) -> None:
-        if self.busy:
+        """Read the sensor that is in the rig now.
+
+        On a verdict that means writing it first; the number that comes back
+        is the same one unless the part passed. With nothing to write (a
+        stopped or faulted attempt) it just reads again.
+        """
+        if self.busy or self.measuring:
             return
         if self.step == self.SETUP_STEP:
             self.start_batch()
-        elif self.step == self.LOAD_STEP:
-            if self.stability_config_error is not None:
-                self.run_measurement()
-                return
-            self.show_step(self.RESULT_STEP)
-            self.run_measurement()
-        elif self.step == self.RESULT_STEP:
-            self.save_and_continue()
-
-    def go_back(self) -> None:
-        if self.busy or self.measuring:
             return
-        if self.step == self.LOAD_STEP:
-            self.show_step(self.SETUP_STEP)
-        elif self.step == self.RESULT_STEP and not self.result_saved:
-            self.show_step(self.LOAD_STEP)
+        if self.last_result is not None and not self.result_saved:
+            if self.save_current_sensor():
+                self._advance_to_next_sensor()
+            return
+        self.run_measurement()
+
+    def stop(self, _event: tk.Event | None = None) -> None:
+        """The technician's escape hatch, live at every moment of a batch.
+
+        Mid-capture it abandons the reading (see abort_measurement).
+        Otherwise it ends the batch, writing a verdict that is still on
+        screen first - there is no separate Save + Exit Batch button any
+        more. Since 2026-09-03 that write happens WITHOUT asking: the part
+        has already been judged and the technician pressed Stop to finish
+        the batch, so a confirmation box at that moment only invited a slip
+        that threw the reading away. A write that cannot complete (a
+        cleared failure mode, a results-folder error) puts up its own error
+        and leaves the batch running, so nothing is lost.
+        """
+        if self.step == self.SETUP_STEP:
+            return
+        if self.measuring or self.busy:
+            self.abort_measurement()
+            return
+        if self.last_result is not None and not self.result_saved:
+            if not self.save_current_sensor():
+                return
+        self._end_batch()
+
+    def abort_measurement(self) -> None:
+        """Drop the capture in flight; nothing is recorded, nothing moves.
+
+        Bumping the measurement token is what actually stops it: the capture
+        loops poll ``cancelled=lambda: token != self.measure_token`` at every
+        chunk boundary and raise, so the worker's own finally-blocks stop the
+        stream and switch the emitter off, and every callback it posts is
+        ignored from here on. The sensor number is untouched - press Next to
+        read the same part again.
+        """
+        self.measure_token += 1
+        self.measuring = False
+        self.busy = False
+        self._log_attempt(attempt_history.EVENT_STOPPED)
+        self.last_metrics = None
+        self.last_result = None
+        self.last_measure_error = None
+        self.preview_waveform = np.array([], dtype=float)
+        self.preview_sync = np.array([], dtype=float)
+        self.measure_status_var.set("")
+        self._reset_measure_progress()
+        self.status_var.set(
+            f"Stopped - {self.current_sensor_id} was not recorded. Press Next "
+            "to read it again."
+        )
+        self.render_step()
 
     def show_step(self, step: str) -> None:
         self.step = step
         self.render_step()
-        # Re-check the battery whenever we arrive at the load step (a sensor is
-        # about to be tested) so the watcher reflects the current supply.
-        if step == self.LOAD_STEP:
-            self.refresh_battery()
 
     def on_enter_key(self, event: tk.Event) -> str | None:
         if isinstance(event.widget, (ttk.Button, RoundButton)):
             return None
         if self.busy or self.measuring:
             return "break"
-        if self.step == self.RESULT_STEP and (self.last_result is None or self.result_saved):
-            return "break"
         self.go_next()
         return "break"
 
     def on_escape_key(self, _event: tk.Event) -> str | None:
-        if self.step == self.RESULT_STEP and not self.busy and not self.measuring and self.last_result is not None and not self.result_saved:
-            self.save_and_end_batch()
-            return "break"
-        return None
+        if self.step == self.SETUP_STEP:
+            return None
+        self.stop()
+        return "break"
 
     def focus_default_widget(self) -> None:
         widget = self.default_focus_widget
@@ -5976,25 +6175,28 @@ class EmitterTesterApp(tk.Tk):
         self.tester_name = tester_name
         self.filter_setup = self.filter_var.get()
         csv_path = batch_results_path(batch_number)
-        self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        self.current_sensor_number = next_sensor_number_for_batch(csv_path)
         existing = count_existing_batch_rows(csv_path)
         position = "next" if existing else "first"
-        waiting = self.skipped_parts_queue()
-        status = f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}."
-        if waiting:
-            status += f"  {len(waiting)} skipped part(s) waiting: {attempt_history.format_queue(waiting)}."
-        self.status_var.set(status)
+        self.status_var.set(
+            f"Batch {batch_number}: {position} sensor is "
+            f"{batch_number}-{self.current_sensor_number}."
+        )
         self.prepare_current_sensor()
-        self.show_step(self.LOAD_STEP)
+        # The sensor is already in the rig (the setup card says so), so
+        # start reading it instead of showing a screen that asks for it.
+        self.show_step(self.RESULT_STEP)
+        self.run_measurement()
 
     def prepare_current_sensor(self) -> None:
         self.current_sensor_id = f"{self.batch_number}-{self.current_sensor_number}"
         self.result_saved = False
-        # Earlier attempts on this id (a part coming back from the skipped
-        # pile keeps its history) so the verdict row reports the true count.
-        self.measure_attempts, self.skip_count = attempt_history.attempt_counts(
-            self._attempts_path(), self.current_sensor_id
+        # A reused number is a DIFFERENT physical part, so the read count
+        # starts over; number_attempt says which part under this number it
+        # is (1 = the first one tried, 2 = the one loaded after it failed).
+        self.measure_attempts = 0
+        self.number_attempt = number_attempt_for_batch(
+            batch_results_path(self.batch_number), self.current_sensor_id
         )
         self.last_metrics = None
         self.last_result = None
@@ -6018,28 +6220,19 @@ class EmitterTesterApp(tk.Tk):
         self.measure_status_var.set("")
         self._reset_measure_progress()
 
-    def save_and_continue(self) -> None:
-        if self.save_current_sensor():
-            self._advance_to_next_sensor()
-
-    def save_and_end_batch(self) -> None:
-        if self.save_current_sensor():
-            self._end_batch()
-
     def _advance_to_next_sensor(self) -> None:
-        if self.resuming_skipped:
-            # Walk the skipped pile in the order it was built; once it is
-            # empty fall back to fresh numbers.
-            waiting = [
-                item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-            ]
-            if waiting:
-                self._load_skipped_part(*waiting[0])
-                return
-            self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        """Take the next number and read the part already in the rig.
+
+        next_sensor_number_for_batch hands back the SAME number when the row
+        just written was not a pass, so a failed part is replaced on the
+        bench and the replacement is tested as the same sensor number.
+        """
+        self.current_sensor_number = next_sensor_number_for_batch(
+            batch_results_path(self.batch_number)
+        )
         self.prepare_current_sensor()
-        self.show_step(self.LOAD_STEP)
+        self.show_step(self.RESULT_STEP)
+        self.run_measurement()
 
     def _end_batch(self) -> None:
         saved_batch = self.batch_number
@@ -6050,34 +6243,9 @@ class EmitterTesterApp(tk.Tk):
         self.show_batch_summary_window(saved_batch, saved_csv)
         self.render_step()
 
-    # ----- v2.0: set a part aside and come back to it in skip order ----- #
+    # ----- per-batch attempt log ----- #
     def _attempts_path(self) -> Path:
         return attempt_history.attempts_path_for(batch_results_path(self.batch_number))
-
-    def skipped_parts_queue(self) -> list[tuple[int, str]]:
-        """Skipped parts without a verdict yet, first skipped first."""
-        if not self.batch_number:
-            return []
-        return attempt_history.skipped_queue(
-            self._attempts_path(), batch_results_path(self.batch_number)
-        )
-
-    def _next_fresh_sensor_number(self) -> int:
-        """Next never-used number: above every saved AND every skipped id."""
-        csv_path = batch_results_path(self.batch_number)
-        return max(
-            next_sensor_number_for_batch(csv_path),
-            attempt_history.highest_sensor_number(self._attempts_path()) + 1,
-        )
-
-    def can_skip_part(self) -> bool:
-        return (
-            self.step in (self.LOAD_STEP, self.RESULT_STEP)
-            and not self.busy
-            and not self.measuring
-            and not self.result_saved
-            and bool(self.current_sensor_id)
-        )
 
     def _log_attempt(
         self,
@@ -6090,10 +6258,12 @@ class EmitterTesterApp(tk.Tk):
         """Append one event to the batch's attempt log (never blocks a test)."""
         if not self.batch_number or not self.current_sensor_id:
             return
-        if event in (attempt_history.EVENT_MEASURED, attempt_history.EVENT_MEASURE_ERROR):
+        if event in (
+            attempt_history.EVENT_MEASURED,
+            attempt_history.EVENT_MEASURE_ERROR,
+            attempt_history.EVENT_STOPPED,
+        ):
             self.measure_attempts += 1
-        elif event == attempt_history.EVENT_SKIPPED:
-            self.skip_count += 1
         try:
             attempt_history.append_attempt(
                 self._attempts_path(),
@@ -6113,181 +6283,26 @@ class EmitterTesterApp(tk.Tk):
                 fail_reasons=None if result is None else result.fail_reasons,
             )
         except Exception:
-            if event == attempt_history.EVENT_SKIPPED:
-                raise
+            pass
 
-    def open_skip_window(self) -> None:
-        if not self.can_skip_part():
-            return
-        dialog = tk.Toplevel(self)
-        dialog.title(f"Skip {self.current_sensor_id}")
-        dialog.minsize(S(560), S(320))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
+    def _log_stream_retry(self, phase: str, attempt: int, exc: Exception) -> None:
+        """Attempts-log row for a capture the app restarted by itself.
 
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.rowconfigure(4, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIP PART —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"Set {self.current_sensor_id} aside",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-
-        # Just a comment box - no reason list to click through (2026-08-24:
-        # keep the skip to two clicks; the attempt log carries the numbers).
-        note_holder = tk.Frame(frame, bg=PAGE_BG)
-        note_holder.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
-        note_holder.rowconfigure(1, weight=1)
-        note_holder.columnconfigure(0, weight=1)
-        tk.Label(note_holder, text="COMMENT (OPTIONAL)", bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 4))
-        note = tk.Text(
-            note_holder, wrap="word", font=self.fb(13), undo=True, relief="flat", bd=0,
-            bg=CARD_BG, fg=TEXT_DARK, padx=12, pady=10, insertbackground=ELTEC_BLUE,
-            highlightbackground=CARD_BORDER, highlightcolor=ELTEC_BLUE, highlightthickness=1,
-            height=4,
-        )
-        note.grid(row=1, column=0, sticky="nsew")
-
-        tk.Label(
-            frame,
-            text=(
-                f"Put it on the skipped pile, in order. It comes back as "
-                f"{self.current_sensor_id} under “Measure skipped”."
+        A retried capture never reaches ``on_measure_error``, so without this
+        row the evidence of WHY it was restarted (the stall attribution tag,
+        the gap counts) would vanish with the retry. Runs on the UI thread -
+        callers ``push`` it - because ``_log_attempt`` reads a Tk variable.
+        """
+        self._log_attempt(
+            attempt_history.EVENT_STREAM_RETRY,
+            reason=(
+                f"{phase}, restart {attempt}/{REFERENCE_READING_STREAM_RETRIES}: {exc}"
             ),
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(11),
-            wraplength=S(520),
-            justify="left",
-        ).grid(row=5, column=0, sticky="w", pady=(10, 0))
-
-        def commit(_event: tk.Event | None = None) -> str:
-            if self.skip_current_part("", note.get("1.0", "end-1c")):
-                dialog.destroy()
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=6, column=0, sticky="e", pady=(16, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, "Skip part", commit, kind="warn", size="md").grid(row=0, column=1)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        note.focus_set()
-
-    def skip_current_part(self, reason: str, note: str = "") -> bool:
-        """Record the skip and move on WITHOUT spending a sensor number."""
-        if not self.can_skip_part():
-            return False
-        skipped_id = self.current_sensor_id
-        try:
-            self._log_attempt(
-                attempt_history.EVENT_SKIPPED,
-                result=self.last_result,
-                reason=reason,
-                note=note,
-            )
-        except Exception as exc:
-            messagebox.showerror("Could not record the skip", str(exc))
-            return False
-        self.result_saved = True  # nothing left to save for this part now
-        self.delete_autosave()
-        self._advance_to_next_sensor()
-        waiting = len(self.skipped_parts_queue())
-        self.status_var.set(
-            f"{skipped_id} set aside ({waiting} skipped, waiting). Now loading {self.current_sensor_id}."
         )
-        return True
 
-    def measure_skipped(self) -> None:
-        """Bring the skipped pile back, first skipped first."""
-        if self.busy or self.measuring:
-            return
-        if self.step == self.RESULT_STEP and self.last_result is not None and not self.result_saved:
-            messagebox.showinfo(
-                "Finish this part first",
-                f"Save, skip or re-measure {self.current_sensor_id} before loading a skipped part.",
-            )
-            return
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if not waiting:
-            return
-        first_number, first_id = waiting[0]
-        dialog = tk.Toplevel(self)
-        dialog.title("Skipped parts")
-        dialog.minsize(S(520), S(260))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIPPED PARTS —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"{len(waiting)} waiting, in skip order",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-        tk.Label(
-            frame,
-            text=attempt_history.format_queue(waiting),
-            bg=CARD_BG,
-            fg=ELTEC_BLUE_DARK,
-            font=self.fm(13, "bold"),
-            padx=12,
-            pady=10,
-            wraplength=S(480),
-            justify="left",
-            anchor="w",
-        ).grid(row=2, column=0, sticky="ew")
-        tk.Label(
-            frame,
-            text=f"Take the first part off the pile — it is {first_id}. The rest follow in this order.",
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(12),
-            wraplength=S(480),
-            justify="left",
-        ).grid(row=3, column=0, sticky="w", pady=(12, 0))
-
-        def load(_event: tk.Event | None = None) -> str:
-            dialog.destroy()
-            self._load_skipped_part(first_number, first_id)
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=4, column=0, sticky="e", pady=(18, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, f"Load {first_id} (Enter)", load, kind="primary", size="md").grid(row=0, column=1)
-        dialog.bind("<Return>", load)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        dialog.focus_set()
-
-    def _load_skipped_part(self, sensor_number: int, sensor_id: str) -> None:
-        self.resuming_skipped = True
-        self.current_sensor_number = sensor_number
-        self.prepare_current_sensor()
-        self._log_attempt(attempt_history.EVENT_RESUMED)
-        remaining = len(self.skipped_parts_queue()) - 1
-        self.status_var.set(
-            f"Skipped part {sensor_id} loaded — measure it now."
-            + (f"  {remaining} more waiting." if remaining > 0 else "  Last skipped part.")
-        )
-        self.show_step(self.LOAD_STEP)
-
-    # ----- skip a sensor that could not be measured ----- #
-    def can_skip_sensor(self) -> bool:
-        """Skipping is only offered when an attempt recorded nothing."""
+    # ----- record a sensor that could not be measured at all ----- #
+    def can_record_not_measured(self) -> bool:
+        """Only offered when an attempt recorded nothing."""
         return (
             self.step == self.RESULT_STEP
             and not self.busy
@@ -6297,11 +6312,11 @@ class EmitterTesterApp(tk.Tk):
             and self.last_measure_error is not None
         )
 
-    def open_skip_sensor_window(self) -> None:
-        if not self.can_skip_sensor():
+    def open_not_measured_window(self) -> None:
+        if not self.can_record_not_measured():
             return
         dialog = tk.Toplevel(self)
-        dialog.title(f"Skip {self.current_sensor_id}")
+        dialog.title(f"{OUTCOME_NOT_MEASURED}: {self.current_sensor_id}")
         dialog.minsize(S(640), S(430))
         dialog.configure(bg=PAGE_BG)
         dialog.transient(self)
@@ -6312,7 +6327,7 @@ class EmitterTesterApp(tk.Tk):
         dialog.columnconfigure(0, weight=1)
         frame.rowconfigure(5, weight=1)
         frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIP SENSOR —", bg=PAGE_BG, fg=ELTEC_RED, font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(frame, text=f"{OUTCOME_NOT_MEASURED} —", bg=PAGE_BG, fg=ELTEC_RED, font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
         tk.Label(
             frame,
             text=f"Sensor {self.current_sensor_id} was not measured",
@@ -6324,7 +6339,9 @@ class EmitterTesterApp(tk.Tk):
             frame,
             text=(
                 f"It is saved as {OUTCOME_NOT_MEASURED}: no offset, sensitivity or "
-                "polarity is written, and it does not count as a pass or a fail."
+                "polarity is written, and it does not count as a pass or a fail. "
+                f"It is not a pass, so the next part is still tested as "
+                f"{self.current_sensor_id}."
             ),
             bg=PAGE_BG,
             fg=MUTED_FG,
@@ -6371,7 +6388,7 @@ class EmitterTesterApp(tk.Tk):
         ).grid(row=6, column=0, sticky="w", pady=(10, 0))
 
         def commit(end_batch: bool) -> None:
-            if self.save_skipped_sensor(reason_var.get(), note.get("1.0", "end-1c")):
+            if self.save_not_measured_sensor(reason_var.get(), note.get("1.0", "end-1c")):
                 dialog.destroy()
                 if end_batch:
                     self._end_batch()
@@ -6381,13 +6398,13 @@ class EmitterTesterApp(tk.Tk):
         buttons = tk.Frame(frame, bg=PAGE_BG)
         buttons.grid(row=7, column=0, sticky="e", pady=(16, 0))
         self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="sm").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, "Skip + Exit Batch", lambda: commit(True), kind="outline", size="sm").grid(row=0, column=1, padx=(0, 10))
-        self.btn(buttons, "Skip + Next Sensor", lambda: commit(False), kind="primary", size="sm").grid(row=0, column=2)
+        self.btn(buttons, "Record + Stop batch", lambda: commit(True), kind="outline", size="sm").grid(row=0, column=1, padx=(0, 10))
+        self.btn(buttons, "Record + Next sensor", lambda: commit(False), kind="primary", size="sm").grid(row=0, column=2)
         reason_combo.focus_set()
 
-    def save_skipped_sensor(self, reason: str, note: str) -> bool:
+    def save_not_measured_sensor(self, reason: str, note: str) -> bool:
         """Write the NOT MEASURED row, restoring state if the write fails."""
-        if not self.can_skip_sensor():
+        if not self.can_record_not_measured():
             return False
         try:
             split_failure_mode(reason)
@@ -6488,7 +6505,7 @@ class EmitterTesterApp(tk.Tk):
                 failure_mode=failure_mode,
                 offset_initial_v=self.last_offset_initial_v,
                 measure_attempts=self.measure_attempts,
-                skip_count=self.skip_count,
+                number_attempt=self.number_attempt,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
@@ -6574,7 +6591,7 @@ class EmitterTesterApp(tk.Tk):
         if self.busy or self.measuring:
             return
         # Refresh on-screen banners + the Measure button lock when idle.
-        if self.step in (self.LOAD_STEP, self.RESULT_STEP):
+        if self.step == self.RESULT_STEP:
             self.render_step()
         else:
             self.update_navigation_state()
@@ -6731,14 +6748,19 @@ class EmitterTesterApp(tk.Tk):
                             calibration_ui=True,
                         )
 
-                    def on_retry(attempt: int, reading_number: int = reading_number) -> None:
+                    def on_retry(
+                        attempt: int, exc: Exception, reading_number: int = reading_number
+                    ) -> None:
                         text = (
-                            f"Serial stream glitch in reading {reading_number}; "
+                            f"{stream_glitch_label(exc)} in reading {reading_number}; "
                             f"nothing was recorded — retrying "
                             f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…"
                         )
                         push(lambda value=text: self.reference_progress_var.set(value))
                         push(lambda value=text: self.status_var.set(value))
+                        push(lambda: self._log_stream_retry(
+                            f"reference calibration reading {reading_number}", attempt, exc
+                        ))
 
                     reading_mv = call_with_stream_retries(capture, on_retry=on_retry)
                     readings_mv.append(reading_mv)
@@ -6798,10 +6820,6 @@ class EmitterTesterApp(tk.Tk):
     def run_measurement(self, _event: tk.Event | None = None) -> None:
         if self.busy or self.measuring:
             return
-        if self.last_result is not None and not self.result_saved:
-            # The shown verdict is being discarded: keep it in the attempt
-            # log so a later review can see WHY the part was re-measured.
-            self._log_attempt(attempt_history.EVENT_REMEASURE, result=self.last_result)
         simulator = self.simulator_var.get()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
@@ -6817,7 +6835,7 @@ class EmitterTesterApp(tk.Tk):
                 detail = calibration.invalidation_reason
             else:
                 detail = self.reference_calibration_error or "No valid reference calibration is saved."
-            self.step = self.LOAD_STEP
+            self.step = self.RESULT_STEP
             self.status_var.set("Reference calibration required — the sensor was not read.")
             self.render_step()
             messagebox.showwarning(
@@ -7143,13 +7161,14 @@ class EmitterTesterApp(tk.Tk):
                             ),
                         )
 
-                    def reference_gate_retry(attempt: int) -> None:
+                    def reference_gate_retry(attempt: int, exc: Exception) -> None:
                         push(lambda: self.set_measure_status(
                             token,
-                            "Serial stream glitch during the reference check; "
+                            f"{stream_glitch_label(exc)} during the reference check; "
                             f"nothing was recorded — retrying ({attempt}/"
                             f"{REFERENCE_READING_STREAM_RETRIES})…",
                         ))
+                        push(lambda: self._log_stream_retry("reference check", attempt, exc))
 
                     try:
                         reference_check_mv = call_with_stream_retries(
@@ -7326,12 +7345,15 @@ class EmitterTesterApp(tk.Tk):
                         cancelled=lambda: token != self.measure_token,
                     )
 
-                def driven_capture_retry(attempt: int) -> None:
+                def driven_capture_retry(attempt: int, exc: Exception) -> None:
                     push(lambda: self.set_measure_status(
                         token,
-                        f"Serial stream glitch during the {drive_text} capture; "
+                        f"{stream_glitch_label(exc)} during the {drive_text} capture; "
                         f"nothing was recorded — restarting the capture "
                         f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…",
+                    ))
+                    push(lambda: self._log_stream_retry(
+                        f"{drive_text} capture", attempt, exc
                     ))
 
                 try:
@@ -7666,10 +7688,15 @@ class EmitterTesterApp(tk.Tk):
                 "measure the whole tray (TP443 spec 4)."
             )
         elif outcome == OUTCOME_PASS:
-            self.status_var.set(f"{self.current_sensor_id}: {OUTCOME_PASS}.")
+            self.status_var.set(
+                f"{self.current_sensor_id}: {OUTCOME_PASS} — Next saves it and reads the "
+                "sensor now in the rig as "
+                f"{self.batch_number}-{self.current_sensor_number + 1}."
+            )
         else:
             self.status_var.set(
-                f"{self.current_sensor_id}: FAIL — confirm the failure mode, then save the sensor."
+                f"{self.current_sensor_id}: FAIL — confirm the failure mode, then Next saves "
+                f"it and reads the sensor now in the rig as {self.current_sensor_id} again."
             )
         self.write_autosave("measurement_complete")
         self.render_step()
@@ -7698,7 +7725,7 @@ class EmitterTesterApp(tk.Tk):
             return
         self.measuring = False
         self.busy = False
-        self.step = self.LOAD_STEP
+        self.step = self.RESULT_STEP
         self.status_var.set("Reference-unit lockout — the sensor was not read.")
         self.measure_status_var.set("")
         self._reset_measure_progress()
@@ -7735,7 +7762,8 @@ class EmitterTesterApp(tk.Tk):
         self.failure_mode_var.set(BAD_SENSOR_FAILURE_MODE)
         self._log_attempt(attempt_history.EVENT_MEASURED, result=final)
         self.status_var.set(
-            f"{self.current_sensor_id}: FAIL — no offset with a sensor loaded (bad part). Save the sensor."
+            f"{self.current_sensor_id}: FAIL — no offset with a sensor loaded (bad part). "
+            f"Next saves it and reads the replacement as {self.current_sensor_id} again."
         )
         self.measure_status_var.set("")
         self.write_autosave("measurement_complete")
@@ -7927,9 +7955,8 @@ class EmitterTesterApp(tk.Tk):
             "sensor_number": self.current_sensor_number,
             "sensor_id": self.current_sensor_id,
             "filter_setup": self.filter_setup,
-            "resuming_skipped": self.resuming_skipped,
             "measure_attempts": self.measure_attempts,
-            "skip_count": self.skip_count,
+            "number_attempt": self.number_attempt,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "offset_initial_v": self.last_offset_initial_v,
             "low_hz": LOW_FREQUENCY_HZ,
@@ -8022,7 +8049,7 @@ class EmitterTesterApp(tk.Tk):
                 head,
                 text=(
                     f"TP443 spec 4 — measure the whole tray 100 %: triggered by "
-                    f"{attempt_history.format_queue([(0, sensor_id) for sensor_id in tray_flags])}"
+                    f"{attempt_history.format_sensor_ids(tray_flags)}"
                 ),
                 bg=PAGE_BG,
                 fg="#8a5a00",
@@ -8030,20 +8057,6 @@ class EmitterTesterApp(tk.Tk):
                 wraplength=S(940),
                 justify="left",
             ).pack(anchor="w", pady=(10, 0))
-        waiting = attempt_history.skipped_queue(
-            attempt_history.attempts_path_for(csv_path), csv_path
-        )
-        if waiting:
-            tk.Label(
-                head,
-                text=f"Skipped, not measured yet ({len(waiting)}): {attempt_history.format_queue(waiting)}",
-                bg=PAGE_BG,
-                fg="#8a5a00",
-                font=self.fb(12, "bold"),
-                wraplength=S(940),
-                justify="left",
-            ).pack(anchor="w", pady=(10, 0))
-
         frame = tk.Frame(summary, bg=PAGE_BG)
         frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(8, 0))
         summary.rowconfigure(1, weight=1)

@@ -107,8 +107,17 @@ from esp32_backend import (
     EXPECTED_FIRMWARE_PREFIX,
     Esp32BackendError,
     Esp32EmitterRig,
+    StreamSample,
+    _opt_out_of_windows_power_throttling,
     probe_esp32_status,
 )
+
+# Windows 11 on battery demotes a backgrounded GUI process to EcoQoS and
+# coarsens its timers to ~15.6 ms, which overflows the CP210x driver's real
+# 512-byte receive queue mid-capture (2026-08-17 root cause on the 405 M22;
+# ported here 2026-09-03). Opt the whole process out as early as possible -
+# before the first reference calibration capture, not merely at rig connect.
+_opt_out_of_windows_power_throttling()
 from stability_analysis import (
     CycleAnalysis,
     DEFAULT_MAX_MEASUREMENT_ATTEMPTS,
@@ -206,8 +215,61 @@ BATTERY_FAULT_MAX_V = 7.5    # above this: not a plausible 6 V SLA reading
 # on). Operator mitigation meanwhile: if several sensors in a row fail low
 # sensitivity, suspect the emitter before condemning the parts.
 REFERENCE_GATE_ENABLED = False
-SENSOR_OFFSET_MIN_PLAUSIBLE_V = 0.05   # connected 406MCA sits near 0.3-1.2 V;
-SENSOR_OFFSET_MAX_PLAUSIBLE_V = 2.5    # outside this band = no sensor / no buffer
+# A connected 406MCA sits near 0.3-1.2 V through the buffer. The LOW bound is
+# the "is anything plugged in?" test - an unbuffered/floating AIN0 reads near
+# 0 V. The HIGH bound is NOT a pre-flight abort (2026-09-03): a railed part is
+# a real sensor whose offset has not settled yet, so it runs the full test and
+# is judged on the settled re-read. The constant still bounds the high-offset
+# reference-interference check.
+SENSOR_OFFSET_MIN_PLAUSIBLE_V = 0.05
+SENSOR_OFFSET_MAX_PLAUSIBLE_V = 2.5
+# ---------------------------------------------------- settled-offset policy
+# (2026-09-03) A 406MCA's DC offset keeps moving for tens of seconds after the
+# part is seated. The insertion read is taken before the emitter even starts,
+# and parts have been failing HO on it that sit inside 0.3-1.2 V once they
+# settle. The VERDICT therefore uses a re-read taken AFTER the sensitivity
+# capture - by then the part has been powered in the rig through the whole
+# stabilization plus the 20-cycle measurement, so no bench time is added - and
+# the insertion value is kept beside it as offset_initial_v so each part's
+# settling behaviour is visible in the batch data. The 405 M22 build has
+# worked this way since 2026-08-17 (its parts settle upward; these settle
+# down).
+#
+# The re-read is always confirmed one poll later, so every part records a real
+# read-to-read delta. An IN-BAND reading returns on that confirmation whether
+# or not it is still moving: waiting longer could only walk a good part back
+# out of the band. An OUT-OF-BAND reading is held instead of failed - the wait
+# ends when the level returns to the band, when it has stopped moving (a
+# genuinely high part fails in ~2 s instead of burning the deadline), or at
+# OFFSET_SETTLE_MAX_WAIT_S.
+#
+# "Quiet" is a RELATIVE delta: |v - v_prev| <= OFFSET_SETTLE_DELTA_FRACTION of
+# the current reading (62 mV at 0.624 V). That is ~1000x the read-to-read
+# scatter of an OFFSET? median-of-24 (tens of uV at gain 2), so only real
+# drift can breach it and there is deliberately NO noise estimation in this
+# path. If bench data ever shows the wait ending early on low-frequency
+# wander, average three consecutive reads per sample before tightening the
+# fraction.
+#
+# A quiet reading that is still moving TOWARD the band never ends the wait
+# early: "it changed for the better" is the case this policy exists to catch,
+# so an improving part keeps the full deadline.
+OFFSET_SETTLE_MAX_WAIT_S = 20.0
+OFFSET_SETTLE_POLL_S = 1.0
+OFFSET_SETTLE_DELTA_FRACTION = 0.10
+OFFSET_SETTLE_QUIET_READS = 2
+# An in-band part that is still moving PASSES with this warning. Drift is
+# never a failure on this model (user decision 2026-09-03): a drift limit
+# would be an invented number until a lot's worth of offset_settle_delta_v
+# exists to derive one from, and this rig has no emitter-off noise test that
+# would catch a drifting part later.
+OFFSET_DRIFT_WARNING_PREFIX = "Offset still settling:"
+# Simulator: the settling case starts above the band and decays into it, so
+# the held-while-settling path can be demonstrated without hardware.
+SIM_CASE_OFFSET_SETTLES = "Offset settles into band"
+SIM_OFFSET_SETTLE_START_V = 1.35
+SIM_OFFSET_SETTLE_FINAL_V = 1.05
+SIM_OFFSET_SETTLE_TAU_S = 3.0
 # Battery level as displayed by the header gauge: full at ~6.4 V.
 BATTERY_GAUGE_FULL_V = 6.4
 # Simulator battery levels so the low-battery lockout can be exercised without hardware.
@@ -255,7 +317,47 @@ REFERENCE_MEASUREMENT_CYCLES = 5
 REFERENCE_PEAK_DELTA_THRESHOLD_MV = 0.250
 REFERENCE_TOLERANCE_PERCENT = 25.0
 REFERENCE_CALIBRATION_SCHEMA_VERSION = 2
-for _sim_case in ("Borderline sensitivity", "Never stabilizes"):
+# Serial-stream tolerance and retries (2026-09-03, ported by hand from the
+# 405 M22 build, which carried them since 2026-08-12/13/17 - see that README,
+# "Serial-stream reliability"). A USB serial link can lose a handful of bytes
+# in a rare transient hiccup; the integrity validator then rejects the whole
+# capture with nothing recorded. Give each production capture (calibration
+# reading, reference gate, driven capture) this many fresh attempts before
+# failing. Only StreamIntegrityError is retried - real hardware faults still
+# abort at once.
+REFERENCE_READING_STREAM_RETRIES = 2
+# A capture tolerates BOUNDED micro-gap loss: at most STREAM_MAX_MICRO_GAPS
+# gaps and STREAM_MAX_MISSING_SAMPLES lost samples in total, with the
+# firmware/host counters agreeing within the same budget; the lost slots are
+# refilled from the firmware timestamps (StreamGapFiller) so index-based
+# cycle math sees an unbroken timeline. This is the budget the 405 M22 and
+# 449 M18 already carry; on the 406 it replaces the original "any gap
+# rejects" rule, under which a single 2-sample USB hiccup failed a 12 s
+# capture (bench, 2026-08-31: "1 timestamp gaps (~2 missing samples);
+# host/firmware sample counts differ (12047/12049)"). Duplicate/reordered/
+# torn records, ADC overruns, or a >2% rate error are the driver-overflow
+# corruption signature and still reject the capture with nothing recorded.
+# 20 ms of a 10 Hz cycle cannot move a robust per-cycle peak.
+STREAM_MAX_MICRO_GAPS = 3
+STREAM_MAX_MISSING_SAMPLES = 20   # 20 ms of data at 1000 S/s
+# How a STALLED stream is attributed (2026-09-03). "Stalled" means the host
+# saw no sample for STREAM_TIMEOUT_S; that alone cannot say which side went
+# quiet, so the capture stops the stream first and reads the board's
+# STREAM,END reply, whose numbers decide the tag below. The tag is appended
+# to the error text and therefore lands in the batch's *_attempts.csv:
+#   host-stall    the board kept counting samples the computer never read in
+#                 time (they were still queued in the OS buffer, or lost when
+#                 it overflowed) - the laptop froze, the rig did not
+#   board-reset   the board's sample counter restarted (and usually its
+#                 READY banner arrived mid-stream) - the ESP32 rebooted
+#   board-silent  the board answered STREAM,STOP with the same count the
+#                 host has - it stopped producing samples (ADS1256 DRDY)
+#   no-reply      the board did not answer STREAM,STOP at all
+STALL_KIND_HOST = "host-stall"
+STALL_KIND_BOARD_RESET = "board-reset"
+STALL_KIND_BOARD_SILENT = "board-silent"
+STALL_KIND_NO_REPLY = "no-reply"
+for _sim_case in ("Borderline sensitivity", "Never stabilizes", SIM_CASE_OFFSET_SETTLES):
     if _sim_case not in SIM_CASES:
         SIM_CASES = [*SIM_CASES, _sim_case]
 
@@ -290,7 +392,11 @@ def simulate_v6_startup_capture(
     if case_name == "Wrong polarity":
         triangle = -triangle
     stable_case = case_name if case_name in SIM_CASES and case_name != "Never stabilizes" else "Known good"
-    offset_v = simulate_offset_v(stable_case)
+    offset_v = (
+        SIM_OFFSET_SETTLE_START_V
+        if case_name == SIM_CASE_OFFSET_SETTLES
+        else simulate_offset_v(stable_case)
+    )
     # A 100 mV exponential baseline transient crosses the provisional 0.1 mV
     # adjacent-cycle threshold at roughly ten seconds.
     startup_drift_v = 0.100 * np.exp(-t / 3.0)
@@ -358,13 +464,13 @@ def evaluate_result(
             )
         elif disposition == SENSITIVITY_NEAR_LIMIT:
             # Still a PASS: the reading is within the conversion factor's
-            # margin of error, so warn and suggest a re-measure only.
+            # margin of error, so warn only.
             final.warnings.append(
                 f"{SENSITIVITY_NEAR_LIMIT_WARNING_PREFIX} raw {raw_sensitivity_mv:.3f} mV "
                 f"is inside the inclusive {fail_below_mv:.2f}-{pass_above_mv:.2f} mV "
                 f"band around the limit; legacy-equivalent {equivalent_mv:.3f} mV using "
                 f"factor {SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f}. Within the margin "
-                "of error of the conversion factor - re-measure advised, sensor passes."
+                "of error of the conversion factor - sensor passes."
             )
     final.passed = not final.fail_reasons
     return final
@@ -414,6 +520,26 @@ def is_sensitivity_near_limit(final_result: FinalResult | None) -> bool:
         str(warning).startswith(SENSITIVITY_NEAR_LIMIT_WARNING_PREFIX)
         for warning in final_result.warnings
     )
+
+
+def is_offset_still_settling(final_result: FinalResult | None) -> bool:
+    """True when the recorded offset was still moving when it was taken."""
+    if final_result is None:
+        return False
+    return any(
+        str(warning).startswith(OFFSET_DRIFT_WARNING_PREFIX)
+        for warning in final_result.warnings
+    )
+
+
+def offset_settle_warning_text(final_result: FinalResult | None) -> str:
+    """The recorded still-settling note, or an empty string."""
+    if final_result is None:
+        return ""
+    for warning in final_result.warnings:
+        if str(warning).startswith(OFFSET_DRIFT_WARNING_PREFIX):
+            return str(warning)
+    return ""
 
 
 def result_outcome(final_result: FinalResult | None) -> str:
@@ -589,6 +715,19 @@ CSV_FIELDS = [
     "pwm_hz",
     "pwm_duty",
     "offset_v",
+    # The insertion-time offset read. ``offset_v`` is the settled re-read taken
+    # after the sensitivity capture (2026-09-03: these parts keep moving for
+    # tens of seconds after they are seated); the two columns side by side show
+    # each part's settling behaviour.
+    "offset_initial_v",
+    # Settle-wait telemetry: how long the app held the part after the capture,
+    # the last read-to-read movement, and whether the level had stopped moving.
+    # Drift is recorded, never gated - a limit needs a lot's worth of these
+    # numbers behind it first.
+    "offset_settle_s",
+    "offset_settle_delta_v",
+    "offset_settled",
+    "offset_settle_reads",
     # ``sensitivity_mv`` remains the raw ESP32 value for compatibility with
     # existing v6.1 batch files. The explicit fields below make the calibrated
     # value and decision policy unambiguous for new batches.
@@ -636,11 +775,12 @@ CSV_FIELDS = [
     "active_measurement_cycles_required",
     "pwm_on_seconds",
     "data_source",
-    # v2.0 attempt history: how many measurement attempts this verdict
-    # took and how often the part was set aside (details per event in the
-    # batch's *_attempts.csv, see attempt_history.py).
+    # Attempt history: how many measurement attempts this part took, and
+    # which part tested under this sensor number this row is (1 = the first
+    # part tried as 500-7, 2 = the one loaded after it failed, ...). Details
+    # per event in the batch's *_attempts.csv, see attempt_history.py.
     "measure_attempts",
-    "skip_count",
+    "number_attempt",
 ]
 
 STABILITY_SAMPLE_DIAGNOSTIC_FIELDS = (
@@ -971,30 +1111,73 @@ def count_existing_batch_rows(csv_path: Path) -> int:
         return 0
 
 
+def row_sensor_number(row: dict) -> int | None:
+    """The sensor number of a batch CSV row, from either column."""
+    sensor_number_text = (row.get("sensor_number") or "").strip()
+    if sensor_number_text:
+        try:
+            return int(sensor_number_text)
+        except ValueError:
+            pass
+    sensor_id = (row.get("sensor_id") or "").strip()
+    if "-" in sensor_id:
+        try:
+            return int(sensor_id.rsplit("-", 1)[-1])
+        except ValueError:
+            pass
+    return None
+
+
 def next_sensor_number_for_batch(csv_path: Path) -> int:
+    """The number the next part is tested under: one past the last PASS.
+
+    2026-09-02 rule change. A sensor number is a place in the shipped run,
+    so it is only spent when a part actually passes. A FAIL leaves the
+    number open and the next part loaded into the rig is tested under it
+    again, which is what the bench already does physically: a bad part is
+    put aside and another one takes its place. A batch CSV is therefore one
+    row per TEST, not one row per number: 500-7 can appear several times,
+    the last of them the PASS that finally earns the number.
+
+    Taking the highest PASSED number (rather than counting passes) also
+    keeps batches written before this rule intact: those numbers were handed
+    out per row, so a file whose last pass is 500-9 continues at 500-10.
+    """
     if not csv_path.exists():
         return 1
-    next_number = 1
+    highest_passed = 0
     try:
         with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
             for row in csv.DictReader(csv_file):
-                sensor_number_text = (row.get("sensor_number") or "").strip()
-                if sensor_number_text:
-                    try:
-                        next_number = max(next_number, int(sensor_number_text) + 1)
-                        continue
-                    except ValueError:
-                        pass
-                sensor_id = (row.get("sensor_id") or "").strip()
-                if "-" in sensor_id:
-                    suffix = sensor_id.rsplit("-", 1)[-1]
-                    try:
-                        next_number = max(next_number, int(suffix) + 1)
-                    except ValueError:
-                        pass
+                if (row.get("pass_fail") or "").strip() != OUTCOME_PASS:
+                    continue
+                number = row_sensor_number(row)
+                if number is not None:
+                    highest_passed = max(highest_passed, number)
     except Exception:
+        # Unreadable file: err high so a number is never handed out twice.
         return count_existing_batch_rows(csv_path) + 1
-    return next_number
+    return highest_passed + 1
+
+
+def number_attempt_for_batch(csv_path: Path, sensor_id: str) -> int:
+    """1-based: which part tested under ``sensor_id`` the next one will be.
+
+    Written to the ``number_attempt`` column so the repeated ids a reused
+    number produces stay readable without relying on row order (1 = the
+    first part tried as 500-7, 2 = the one loaded after it failed, ...).
+    """
+    if not sensor_id or not csv_path.exists():
+        return 1
+    tested = 0
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+            for row in csv.DictReader(csv_file):
+                if (row.get("sensor_id") or "").strip() == sensor_id:
+                    tested += 1
+    except Exception:
+        return 1
+    return tested + 1
 
 
 def polarity_good_bad(polarity: str) -> str:
@@ -1079,8 +1262,10 @@ def append_result_csv(
     reference_calibration: "ReferenceCalibration | None" = None,
     reference_check_mv: float | None = None,
     failure_mode: str = "",
+    offset_initial_v: float | None = None,
+    offset_settle: "OffsetSettleReport | None" = None,
     measure_attempts: int = 0,
-    skip_count: int = 0,
+    number_attempt: int = 1,
 ) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
@@ -1118,6 +1303,7 @@ def append_result_csv(
         "pwm_hz": f"{pwm_hz:g}",
         "pwm_duty": f"{pwm_duty:g}",
         "offset_v": "" if final_result.offset_v is None else f"{final_result.offset_v:.6f}",
+        "offset_initial_v": _fmt_optional_float(offset_initial_v, 5),
         "sensitivity_mv": "" if final_result.sensitivity_mv is None else f"{final_result.sensitivity_mv:.6f}",
         "sensitivity_raw_mv": "" if raw_sensitivity_mv is None else f"{raw_sensitivity_mv:.6f}",
         "sensitivity_legacy_equivalent_mv": _fmt_optional_float(
@@ -1137,7 +1323,7 @@ def append_result_csv(
         "operator_comments": comment.strip(),
         "waveform_snapshot_paths": "; ".join(str(path) for path in snapshot_paths),
         "measure_attempts": str(measure_attempts),
-        "skip_count": str(skip_count),
+        "number_attempt": str(number_attempt),
         "battery_v": "" if battery_v is None else f"{battery_v:.3f}",
         "noise_rms_mv": _fmt_optional_float(metrics.noise_rms_mv if metrics else None, 4),
         "snr_db": _fmt_optional_float(metrics.signal_to_noise_db if metrics else None, 2),
@@ -1163,6 +1349,8 @@ def append_result_csv(
     }
     if capture_report is not None:
         row.update(capture_report.csv_fields())
+    if offset_settle is not None:
+        row.update(offset_settle.csv_fields())
     # Batch CSVs created before a column was added keep their original header;
     # write only the columns that file already has so rows stay aligned.
     fieldnames = CSV_FIELDS
@@ -1499,6 +1687,174 @@ def snapshot_detail_lines(
 # --------------------------------------------------------------------------- #
 # ESP32 + ADS1256 device adapter for the v4-compatible measurement engine
 # --------------------------------------------------------------------------- #
+class StreamIntegrityError(Esp32BackendError):
+    """A capture was rejected because the serial stream was unreliable.
+
+    Nothing is recorded from such a capture, and on Windows the trigger is
+    typically a transient USB/driver hiccup, so callers with time budget may
+    retry the whole capture a bounded number of times (see
+    ``call_with_stream_retries``).
+    """
+
+
+class StreamStalledError(StreamIntegrityError):
+    """The stream went silent for STREAM_TIMEOUT_S and was abandoned.
+
+    Built by ``EmitterEsp32Rig._stall_error`` AFTER the stream has been
+    stopped, so the message says which side went quiet (``kind`` is one of
+    the STALL_KIND_* tags). It is a ``StreamIntegrityError`` on purpose
+    (2026-09-03): a stall is exactly what the technician used to cure by
+    pressing Re-measure, so ``call_with_stream_retries`` now performs that
+    restart itself, bounded, and nothing from the silent capture is ever
+    recorded. A dead port is NOT a stall (``Esp32ConnectionError``) and is
+    still never retried.
+    """
+
+    def __init__(self, message: str, *, kind: str, received: int) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.received = received
+
+
+def stream_glitch_label(exc: Exception) -> str:
+    """Status-line noun for a capture being restarted: a stall names itself."""
+    return "Stream stalled" if isinstance(exc, StreamStalledError) else "Serial stream glitch"
+
+
+def call_with_stream_retries(
+    capture,
+    *,
+    retries: int = REFERENCE_READING_STREAM_RETRIES,
+    on_retry=None,
+):
+    """Run ``capture(attempt)``, retrying only transient stream failures.
+
+    ``capture`` receives the zero-based attempt number. Only
+    ``StreamIntegrityError`` is retried — hardware faults, cancellation, and
+    every other error propagate immediately, as does the final integrity
+    failure once ``retries`` extra attempts are exhausted. Since 2026-09-03
+    that includes ``StreamStalledError``: a stream that went silent is
+    restarted the way the technician used to restart it by hand.
+    ``on_retry(attempt, error)`` runs before each restart with the 1-based
+    restart number and the rejected attempt's error, so the caller can show
+    it and log it (the attempts CSV keeps the stall attribution).
+    """
+
+    attempt = 0
+    while True:
+        try:
+            return capture(attempt)
+        except StreamIntegrityError as exc:
+            attempt += 1
+            if attempt > retries:
+                raise
+            if on_retry is not None:
+                on_retry(attempt, exc)
+
+
+class StreamGapFiller:
+    """Rebuild a contiguous sample timeline across tolerated serial micro-gaps.
+
+    The Windows CP210x link occasionally drops a few samples even after the
+    1 MiB-buffer/drain-thread fixes (USB scheduling level; noticeably more
+    often with a laptop charger's EMI on the link). The integrity validator
+    bounds that loss, but every downstream consumer — PWM sync cadence
+    validation, cycle segmentation, noise windows, elapsed-time estimates —
+    indexes the sample array assuming an unbroken 1 kS/s timeline, so a
+    2-sample gap inside one 10 Hz reference cycle used to read as
+    1000/98 = 10.204 Hz and fail the ±0.1 Hz sync check as a fake rig error.
+
+    Each streamed sample carries the firmware's own ``timestamp_us``; when
+    consecutive timestamps show a gap of 1..STREAM_MAX_MISSING_SAMPLES
+    samples, the missing slots are refilled with linearly interpolated volts
+    and a mid-gap sync transition (max cadence error ≈ gap/2 samples). Gaps
+    beyond the budget are left unfilled and only counted — the integrity
+    validator rejects those captures anyway. Samples without timestamps
+    (tests, simulators) pass through untouched.
+    """
+
+    _UINT32_MASK = 0xFFFFFFFF
+
+    def __init__(self, sample_rate_hz: float) -> None:
+        self.period_us = 1_000_000.0 / float(sample_rate_hz)
+        self.gap_count = 0
+        self.filled_count = 0
+        self.oversize_gap_count = 0
+        self._last: StreamSample | None = None
+
+    @property
+    def saw_gaps(self) -> bool:
+        return bool(self.gap_count or self.oversize_gap_count)
+
+    def extend(self, chunk):
+        """Return ``chunk`` with tolerated micro-gaps refilled in place."""
+        out = []
+        for sample in chunk:
+            timestamp = getattr(sample, "timestamp_us", None)
+            last = self._last
+            last_timestamp = (
+                None if last is None else getattr(last, "timestamp_us", None)
+            )
+            if timestamp is not None and last_timestamp is not None:
+                delta_us = (int(timestamp) - int(last_timestamp)) & self._UINT32_MASK
+                missing = int(round(delta_us / self.period_us)) - 1
+                if missing >= 1:
+                    if missing <= STREAM_MAX_MISSING_SAMPLES:
+                        self.gap_count += 1
+                        self.filled_count += missing
+                        for index in range(1, missing + 1):
+                            # Sync flips at the gap midpoint so a transition
+                            # swallowed by the gap lands within gap/2 samples
+                            # of its true position.
+                            take_new = index > missing / 2.0
+                            fraction = index / (missing + 1)
+                            out.append(
+                                StreamSample(
+                                    timestamp_us=(
+                                        int(last_timestamp)
+                                        + int(round(index * self.period_us))
+                                    )
+                                    & self._UINT32_MASK,
+                                    raw=0,
+                                    volts=(
+                                        last.volts
+                                        + (sample.volts - last.volts) * fraction
+                                    ),
+                                    sync=int(sample.sync if take_new else last.sync),
+                                )
+                            )
+                    else:
+                        self.oversize_gap_count += 1
+            out.append(sample)
+            self._last = sample
+        return out
+
+
+# The text shown and logged when the pre-measurement front-end check finds
+# the board back on its boot default (2026-09-03). Only a board restart can
+# do that with the port open, so it is also the app's only direct evidence of
+# a mid-session ESP32 reset.
+FRONT_END_REVERTED_TEXT = (
+    "ESP32 front end had reverted to the boot default - the board restarted "
+    "since the last measurement. FE,V19 was re-applied and verified before "
+    "this read."
+)
+
+
+def verify_qualified_front_end(device) -> bool:
+    """Re-check the ADS1256 front end before reading anything (2026-09-03).
+
+    Returns True when the board had reverted and was re-programmed, so the
+    caller can show and log it. Devices without the check (simulators, test
+    doubles, a v1.9 legacy rig through the backend's own version gate) are
+    passed through as "nothing to do".
+    """
+    ensure = getattr(device, "ensure_qualified_front_end", None)
+    if ensure is None:
+        return False
+    return bool(ensure())
+
+
 class EmitterEsp32Rig(Esp32EmitterRig):
     """Add NumPy frame/adaptive-capture methods to the serial backend."""
 
@@ -1511,9 +1867,131 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         sync = np.asarray([sample.sync for sample in samples], dtype=float)
         return waveform, sync
 
-    @staticmethod
-    def _validate_stream_diagnostics(diagnostics, *, minimum_samples: int) -> None:
-        """Reject incomplete/corrupted streams instead of recording a verdict."""
+    #: Human-readable note about micro-gap loss tolerated in the last
+    #: validated capture, or None when that stream was perfectly clean.
+    last_stream_tolerance_note: str | None = None
+
+    def _stall_error(
+        self,
+        received: int,
+        *,
+        target: int | None = None,
+        what: str = "waveform",
+    ) -> StreamStalledError:
+        """Stop a silent stream and say which side went quiet.
+
+        Called when ``read_stream`` returned nothing for STREAM_TIMEOUT_S.
+        Until 2026-09-03 the capture raised "stalled after N samples" from
+        inside its loop and the ``finally`` then sent STREAM,STOP - so the
+        one reply that tells a rebooted board from a laptop that froze (the
+        firmware's own sample count, the drained backlog, any READY banner)
+        was read and thrown away, and the technician was left to press
+        Re-measure by hand. Now the stream is stopped HERE, the reply is
+        read, and its numbers pick the STALL_KIND_* tag that goes into the
+        message, the status line and the attempts CSV. The result is a
+        ``StreamIntegrityError`` subclass, so ``call_with_stream_retries``
+        restarts the capture the way the technician used to.
+
+        A dead port makes ``stop_stream`` raise ``Esp32ConnectionError``;
+        that is not a stall, is not retried, and propagates unchanged.
+        """
+        diagnostics = self.stream_diagnostics
+        silent_s: float | None = None
+        last_seen = getattr(diagnostics, "last_sample_monotonic", None)
+        if last_seen is not None:
+            silent_s = max(0.0, time.monotonic() - float(last_seen))
+        if self.is_streaming:
+            diagnostics = self.stop_stream(
+                timeout_s=self.STREAM_TIMEOUT_S, raise_on_timeout=False
+            )
+        firmware_sent = getattr(diagnostics, "firmware_samples_sent", None)
+        host_total = int(getattr(diagnostics, "received_samples", received) or 0)
+        drained = int(getattr(diagnostics, "drained_samples", 0) or 0)
+        live = max(0, host_total - drained)
+        ignored = int(getattr(diagnostics, "ignored_lines", 0) or 0)
+        banner = [
+            str(line)
+            for line in (getattr(diagnostics, "ignored_line_samples", None) or ())
+        ]
+        ready = next((line for line in banner if line.startswith("READY")), None)
+        rate_hz = float(
+            getattr(diagnostics, "expected_rate_hz", None) or DEFAULT_SAMPLE_RATE_HZ
+        )
+
+        head = f"ESP32 {what} stream stalled after {received}"
+        if target:
+            head += f"/{target}"
+        head += " samples"
+        if silent_s is not None:
+            head += f" (no sample for {silent_s:.1f} s)"
+        head += "."
+
+        if firmware_sent is None:
+            kind = STALL_KIND_NO_REPLY
+            detail = (
+                "The board did not answer STREAM,STOP, so it or its USB link "
+                "is gone."
+            )
+            advice = "Check the USB cable and the rig power, then measure again."
+        elif ready is not None or firmware_sent + STREAM_MAX_MISSING_SAMPLES < live:
+            kind = STALL_KIND_BOARD_RESET
+            detail = (
+                "The board restarted during the capture (its sample counter "
+                f"came back at {firmware_sent}"
+            )
+            if ready is not None:
+                detail += "; its READY banner arrived mid-stream"
+            elif ignored:
+                detail += f"; {ignored} boot line(s) arrived mid-stream"
+            detail += "). Nothing on the computer stopped."
+            advice = (
+                "Check the rig USB power and cable (a brownout resets the "
+                "ESP32), then measure again."
+            )
+        elif (
+            drained > STREAM_MAX_MISSING_SAMPLES
+            or firmware_sent > live + STREAM_MAX_MISSING_SAMPLES
+        ):
+            kind = STALL_KIND_HOST
+            detail = f"The board kept sampling (firmware {firmware_sent} vs host {live}"
+            if drained:
+                detail += (
+                    f"; {drained} samples = {drained / rate_hz:.1f} s were still "
+                    "waiting in the computer buffer"
+                )
+            detail += (
+                "): the computer stopped reading the stream, the rig did not stop."
+            )
+            advice = (
+                "Keep the tester window visible, plug the laptop into power and "
+                "close other programs, then measure again."
+            )
+        else:
+            kind = STALL_KIND_BOARD_SILENT
+            detail = (
+                "The board stopped producing samples (firmware count "
+                f"{firmware_sent} matches the host count {live}): the ADS1256 "
+                "data-ready signal stopped."
+            )
+            advice = "Power-cycle the rig (ESP32 and ADS1256), then measure again."
+        return StreamStalledError(
+            f"{head} {detail} [{kind}] {advice}", kind=kind, received=received
+        )
+
+    def _validate_stream_diagnostics(self, diagnostics, *, minimum_samples: int) -> None:
+        """Reject incomplete/corrupted streams instead of recording a verdict.
+
+        Bounded micro-gap loss (see STREAM_MAX_MICRO_GAPS /
+        STREAM_MAX_MISSING_SAMPLES) is tolerated and only noted on
+        ``last_stream_tolerance_note`` — the Windows CP210x driver drops a few
+        samples in rare USB-scheduling hiccups even with the enlarged receive
+        buffer and the drain thread, and a handful of lost milliseconds does
+        not change a robust per-cycle peak.
+        Anything beyond that budget, and every corruption signature
+        (duplicates, reordering, torn lines, ADC overruns, rate error), still
+        raises ``StreamIntegrityError`` with nothing recorded.
+        """
+        self.last_stream_tolerance_note = None
         problems: list[str] = []
         if diagnostics.received_samples < minimum_samples:
             problems.append(
@@ -1521,10 +1999,13 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             )
         if diagnostics.torn_lines:
             problems.append(f"{diagnostics.torn_lines} malformed serial records")
-        if diagnostics.timestamp_gap_count:
+        gaps = diagnostics.timestamp_gap_count
+        missing = diagnostics.estimated_missing_samples
+        if gaps and (
+            gaps > STREAM_MAX_MICRO_GAPS or missing > STREAM_MAX_MISSING_SAMPLES
+        ):
             problems.append(
-                f"{diagnostics.timestamp_gap_count} timestamp gaps "
-                f"(~{diagnostics.estimated_missing_samples} missing samples)"
+                f"{gaps} timestamp gaps (~{missing} missing samples)"
             )
         if diagnostics.duplicate_timestamps:
             problems.append(f"{diagnostics.duplicate_timestamps} duplicate timestamps")
@@ -1534,10 +2015,18 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             problems.append(
                 f"{diagnostics.firmware_adc_overruns} ADC conversions overran the serial loop"
             )
-        if diagnostics.count_matches_firmware is False:
+        firmware_sent = getattr(diagnostics, "firmware_samples_sent", None)
+        count_difference = (
+            None
+            if firmware_sent is None
+            else firmware_sent - diagnostics.received_samples
+        )
+        if count_difference is not None and not (
+            0 <= count_difference <= STREAM_MAX_MISSING_SAMPLES
+        ):
             problems.append(
                 "host/firmware sample counts differ "
-                f"({diagnostics.received_samples}/{diagnostics.firmware_samples_sent})"
+                f"({diagnostics.received_samples}/{firmware_sent})"
             )
         rate_error = diagnostics.rate_error_percent
         if rate_error is not None and abs(rate_error) > 2.0:
@@ -1546,10 +2035,34 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                 f"({rate_error:+.1f}% from expected)"
             )
         if problems:
-            raise Esp32BackendError(
+            overflow_events = getattr(diagnostics, "driver_rx_overflow_events", 0)
+            if overflow_events:
+                # The Windows serial driver itself reported that IT dropped
+                # receive data (CE_RXOVER/CE_OVERRUN): the computer stalled
+                # reading, the cable is not the problem. Say so, with the two
+                # operator remedies that address the real mechanism.
+                advice = (
+                    f". The Windows serial driver reported its receive queue "
+                    f"overflowed {overflow_events} time(s) — the computer was "
+                    "too slow to read the stream. Keep this window visible "
+                    "during the capture, plug the laptop into power, then retry."
+                )
+            else:
+                advice = (
+                    ". Check the USB cable and close other serial programs, "
+                    "then retry."
+                )
+            raise StreamIntegrityError(
                 "ESP32 waveform stream was not reliable; nothing was recorded: "
                 + "; ".join(problems)
-                + ". Check the USB cable and close other serial programs, then retry."
+                + advice
+            )
+        if gaps or count_difference:
+            self.last_stream_tolerance_note = (
+                f"Tolerated {gaps} serial micro-gap(s), ~{missing} of "
+                f"{diagnostics.received_samples} samples lost (within the "
+                f"{STREAM_MAX_MICRO_GAPS} gaps / {STREAM_MAX_MISSING_SAMPLES} "
+                "samples budget)."
             )
 
     def read_waveform_frame(
@@ -1576,17 +2089,16 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     f"this tester requires {sample_rate_hz:g}. Re-flash "
                     f"{EXPECTED_FIRMWARE_PREFIX}1.7 or newer."
                 )
+        gap_filler = StreamGapFiller(float(header.sample_rate_hz))
         diagnostics = None
         try:
             while len(samples) < target_scans:
-                chunk = self.read_stream(
+                chunk = gap_filler.extend(self.read_stream(
                     max_samples=min(self.STREAM_CHUNK_SAMPLES, target_scans - len(samples)),
                     timeout_s=self.STREAM_TIMEOUT_S,
-                )
+                ))
                 if not chunk:
-                    raise Esp32BackendError(
-                        f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
-                    )
+                    raise self._stall_error(len(samples), target=target_scans)
                 samples.extend(chunk)
         finally:
             if self.is_streaming:
@@ -1595,7 +2107,10 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             diagnostics = self.stream_diagnostics
         if diagnostics is None:
             raise Esp32BackendError("ESP32 stream diagnostics were unavailable.")
-        self._validate_stream_diagnostics(diagnostics, minimum_samples=target_scans)
+        self._validate_stream_diagnostics(
+            diagnostics,
+            minimum_samples=target_scans - gap_filler.filled_count,
+        )
         waveform, sync = self._sample_arrays(samples[:target_scans])
         actual_scan_rate = diagnostics.measured_rate_hz or header.sample_rate_hz
         return waveform, sync, float(actual_scan_rate)
@@ -1659,6 +2174,7 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     f"this tester requires {sample_rate_hz:g}. Re-flash {EXPECTED_FIRMWARE_PREFIX}1.7 or newer."
                 )
         actual_scan_rate = float(header.sample_rate_hz)
+        gap_filler = StreamGapFiller(actual_scan_rate)
         pwm_elapsed_offset_s = max(0.0, time.monotonic() - pwm_started_monotonic)
         is_reference = str(channel).lower() in {"ref", "reference", "ain1"}
         enforce_retry_policy = not is_reference
@@ -1697,6 +2213,18 @@ class EmitterEsp32Rig(Esp32EmitterRig):
             )
             + 1,
         )
+        # Re-analyzing the whole capture after every 0.1 s chunk walks an
+        # ever-growing array while holding the GIL, which starves the serial
+        # drain thread and (on Windows) risks receive-queue overflow. Analyze
+        # every half PWM period instead — decisions happen on completed
+        # cycles, so nothing is learned more often than that anyway.
+        analysis_stride = max(
+            self.STREAM_CHUNK_SAMPLES,
+            int(round(0.5 * actual_scan_rate / expected_frequency_hz)),
+        )
+        volts_list: list[float] = []
+        sync_list: list[float] = []
+        samples_analyzed = 0
         try:
             while len(samples) < target_scans:
                 if cancelled is not None and cancelled():
@@ -1713,16 +2241,34 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                         read_count,
                         max(1, samples_through_deadline - len(samples)),
                     )
-                chunk = self.read_stream(
+                chunk = gap_filler.extend(self.read_stream(
                     max_samples=read_count,
                     timeout_s=self.STREAM_TIMEOUT_S,
-                )
-                if not chunk:
-                    raise Esp32BackendError(
-                        f"ESP32 waveform stream stalled after {len(samples)}/{target_scans} samples."
-                    )
+                ))
                 samples.extend(chunk)
-                waveform_np, sync_np = self._sample_arrays(samples)
+                for sample in chunk:
+                    volts_list.append(sample.volts)
+                    sync_list.append(sample.sync)
+                analysis_due = (
+                    len(samples) - samples_analyzed >= analysis_stride
+                    or len(samples) >= target_scans
+                    or (
+                        not analysis.report.stabilized
+                        and len(samples) >= samples_through_deadline
+                    )
+                    # A stalled/ended stream gets one closing analysis pass:
+                    # if the already-received samples complete the decision,
+                    # use them rather than declaring a stall.
+                    or (not chunk and len(samples) > samples_analyzed)
+                )
+                if not analysis_due:
+                    if not chunk:
+                        raise self._stall_error(len(samples), target=target_scans)
+                    continue
+                stream_ended = not chunk
+                samples_analyzed = len(samples)
+                waveform_np = np.asarray(volts_list, dtype=float)
+                sync_np = np.asarray(sync_list, dtype=float)
                 analysis = analyze_stability(
                     waveform_np,
                     sync_np,
@@ -1755,6 +2301,19 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                                 cycles_required=SYNC_VALIDATION_CYCLES,
                             )
                         except SyncValidationError as exc:
+                            if gap_filler.saw_gaps:
+                                # The validation window itself lost samples
+                                # (micro-gap on/near a sync edge): that is a
+                                # transient transport problem, not a PWM or
+                                # wiring fault - reject the capture with
+                                # nothing recorded so the caller's bounded
+                                # retries take a fresh one.
+                                raise StreamIntegrityError(
+                                    "ESP32 waveform stream was not reliable; "
+                                    "nothing was recorded: serial micro-gaps "
+                                    "corrupted the PWM sync validation window "
+                                    f"({exc})"
+                                ) from exc
                             raise HardwareNotReadyError(
                                 f"ESP32 {exc}. Check firmware and "
                                 f"{EMITTER_PWM_CHANNEL}, then measure again."
@@ -1769,6 +2328,8 @@ class EmitterEsp32Rig(Esp32EmitterRig):
                     )
                 if analysis.report.measurement_complete or analysis.report.unstable:
                     break
+                if stream_ended:
+                    raise self._stall_error(len(samples), target=target_scans)
         finally:
             if self.is_streaming:
                 diagnostics = self.stop_stream(timeout_s=self.STREAM_TIMEOUT_S)
@@ -1780,10 +2341,13 @@ class EmitterEsp32Rig(Esp32EmitterRig):
         # STREAM,STOP can drain a short tail that was sampled while PWM was
         # still on. Retain it so timeout troubleshooting gets the full stream
         # represented by the backend diagnostics.
-        drained_samples = list(self.drained_samples)
+        drained_samples = gap_filler.extend(list(self.drained_samples))
         if drained_samples:
             samples.extend(drained_samples)
-        self._validate_stream_diagnostics(diagnostics, minimum_samples=len(samples))
+        self._validate_stream_diagnostics(
+            diagnostics,
+            minimum_samples=len(samples) - gap_filler.filled_count,
+        )
         waveform_np, sync_np = self._sample_arrays(samples)
         analysis = analyze_stability(
             waveform_np,
@@ -1940,6 +2504,200 @@ def apply_signal_quality_gate(final: FinalResult, metrics: WaveformMetrics | Non
         final.fail_reasons.append(reason)
     final.passed = False
     return final
+
+
+# --------------------------------------------------------------------------- #
+# Settled-offset verification (see the OFFSET_SETTLE_* constants)
+# --------------------------------------------------------------------------- #
+def offset_distance_to_band_v(offset_v: float) -> float:
+    """How far a reading sits outside the production band (0.0 inside it)."""
+    if offset_v < OFFSET_MIN_V:
+        return OFFSET_MIN_V - offset_v
+    if offset_v > OFFSET_MAX_V:
+        return offset_v - OFFSET_MAX_V
+    return 0.0
+
+
+@dataclass
+class OffsetSettleReport:
+    """The post-capture offset re-read and the wait that confirmed it."""
+
+    start_v: float                 # first read after the sensitivity capture
+    final_v: float                 # the value the verdict and the CSV use
+    reads: int                     # confirmation reads after start_v
+    elapsed_s: float
+    last_delta_v: float | None     # last read-to-read movement
+    settled: bool                  # the level had stopped moving
+    in_band: bool
+    timed_out: bool
+
+    @property
+    def drifting(self) -> bool:
+        """In band but still moving: a PASS with a warning, never a failure."""
+        return self.in_band and not self.settled
+
+    def csv_fields(self) -> dict[str, str]:
+        return {
+            "offset_settle_s": f"{self.elapsed_s:.3f}",
+            "offset_settle_delta_v": _fmt_optional_float(self.last_delta_v, 5),
+            "offset_settled": "YES" if self.settled else "NO",
+            "offset_settle_reads": str(self.reads),
+        }
+
+
+def wait_for_settled_offset(
+    read_offset,
+    *,
+    start_v: float,
+    max_wait_s: float | None = None,
+    poll_s: float | None = None,
+    delta_fraction: float | None = None,
+    quiet_reads: int | None = None,
+    monotonic=None,
+    sleep=None,
+    on_read=None,
+    cancelled=None,
+) -> OffsetSettleReport:
+    """Confirm the post-capture offset read, holding an out-of-band part.
+
+    ``read_offset`` is called with no arguments for each confirmation read and
+    ``on_read(value, elapsed_s)`` - when given - reports each one to the UI.
+    At least one confirmation is always taken, so every part records a real
+    read-to-read delta.
+
+    The wait returns as soon as a reading is inside the production band; an
+    out-of-band part is held until it comes back, until it has been quiet for
+    ``quiet_reads`` polls without improving, or until ``max_wait_s``. See the
+    OFFSET_SETTLE_* constants for why the rules are shaped this way.
+    """
+    max_wait_s = OFFSET_SETTLE_MAX_WAIT_S if max_wait_s is None else max_wait_s
+    poll_s = OFFSET_SETTLE_POLL_S if poll_s is None else poll_s
+    delta_fraction = (
+        OFFSET_SETTLE_DELTA_FRACTION if delta_fraction is None else delta_fraction
+    )
+    quiet_reads = OFFSET_SETTLE_QUIET_READS if quiet_reads is None else quiet_reads
+    monotonic = time.monotonic if monotonic is None else monotonic
+    sleep = time.sleep if sleep is None else sleep
+
+    def check_cancelled() -> None:
+        if cancelled is not None and cancelled():
+            raise Esp32BackendError("Measurement was cancelled.")
+
+    started = monotonic()
+    previous = float(start_v)
+    quiet_run = 0
+    reads = 0
+    while True:
+        # Sliced so Stop is honoured inside a poll instead of after it, exactly
+        # like the capture loops (which raise the same error).
+        check_cancelled()
+        remaining = poll_s
+        while remaining > 0.0:
+            step = min(0.1, remaining)
+            sleep(step)
+            remaining -= step
+            check_cancelled()
+        latest = float(read_offset())
+        reads += 1
+        elapsed = monotonic() - started
+        delta_v = abs(latest - previous)
+        if on_read is not None:
+            on_read(latest, elapsed)
+        quiet = delta_v <= abs(latest) * delta_fraction
+        # Any movement toward the band keeps the part in the wait, however
+        # small the step - that part is on its way in, not settled out.
+        improving = offset_distance_to_band_v(latest) < offset_distance_to_band_v(previous)
+        quiet_run = quiet_run + 1 if (quiet and not improving) else 0
+        previous = latest
+
+        def report(*, settled: bool, in_band: bool, timed_out: bool) -> OffsetSettleReport:
+            return OffsetSettleReport(
+                start_v=float(start_v),
+                final_v=latest,
+                reads=reads,
+                elapsed_s=elapsed,
+                last_delta_v=delta_v,
+                settled=settled,
+                in_band=in_band,
+                timed_out=timed_out,
+            )
+
+        if OFFSET_MIN_V <= latest <= OFFSET_MAX_V:
+            return report(settled=quiet, in_band=True, timed_out=False)
+        if quiet_run >= quiet_reads:
+            return report(settled=True, in_band=False, timed_out=False)
+        if elapsed >= max_wait_s:
+            return report(settled=False, in_band=False, timed_out=True)
+
+
+def offset_settle_status_text(offset_v: float, elapsed_s: float) -> str:
+    """Measuring-screen line for one confirmation read of the settled offset."""
+    if OFFSET_MIN_V <= offset_v <= OFFSET_MAX_V:
+        return f"Settled offset {offset_v:.3f} V - inside the band. Finishing…"
+    return (
+        f"Offset {offset_v:.3f} V is outside {OFFSET_MIN_V:.1f}-{OFFSET_MAX_V:.1f} V - "
+        f"holding the part while it settles ({elapsed_s:.0f}/"
+        f"{OFFSET_SETTLE_MAX_WAIT_S:.0f} s)…"
+    )
+
+
+def apply_offset_settle_warning(
+    final: FinalResult, settle: "OffsetSettleReport | None"
+) -> FinalResult:
+    """Note an offset that was still moving. This NEVER fails a part.
+
+    An in-band reading that has not stopped moving passes with a warning, and
+    a part that never settled inside the deadline is judged on its last read
+    with the same note. The numbers behind both live in the offset_settle_*
+    CSV columns; the drift itself is not gated (2026-09-03).
+    """
+    if settle is None:
+        return final
+    delta_text = (
+        ""
+        if settle.last_delta_v is None
+        else (
+            f" (last {settle.last_delta_v * 1000.0:.0f} mV between reads "
+            f"{OFFSET_SETTLE_POLL_S:g} s apart)"
+        )
+    )
+    if settle.timed_out:
+        warning = (
+            f"{OFFSET_DRIFT_WARNING_PREFIX} {settle.final_v:.3f} V never stopped "
+            f"moving within the {OFFSET_SETTLE_MAX_WAIT_S:.0f} s settle wait"
+            f"{delta_text}. The verdict used the last reading."
+        )
+    elif settle.drifting:
+        warning = (
+            f"{OFFSET_DRIFT_WARNING_PREFIX} {settle.final_v:.3f} V is inside the "
+            f"{OFFSET_MIN_V:.1f}-{OFFSET_MAX_V:.1f} V band but the level was still "
+            f"moving{delta_text}. Recorded as measured - re-measure if the number matters."
+        )
+    else:
+        return final
+    if warning not in final.warnings:
+        final.warnings.append(warning)
+    return final
+
+
+def simulated_offset_reader(case_name: str, start_v: float, *, monotonic=time.monotonic):
+    """Offset source for the simulator's settle wait.
+
+    Every case but SIM_CASE_OFFSET_SETTLES holds its level, so the wait
+    confirms it on the first poll exactly as a settled part does on the bench.
+    The settling case decays from above the band into it.
+    """
+    started = monotonic()
+
+    def read() -> float:
+        if case_name != SIM_CASE_OFFSET_SETTLES:
+            return float(start_v)
+        elapsed = monotonic() - started
+        return SIM_OFFSET_SETTLE_FINAL_V + (
+            float(start_v) - SIM_OFFSET_SETTLE_FINAL_V
+        ) * math.exp(-elapsed / SIM_OFFSET_SETTLE_TAU_S)
+
+    return read
 
 
 # --------------------------------------------------------------------------- #
@@ -2377,8 +3135,9 @@ def draw_horizontal_gradient(canvas: tk.Canvas, x0: int, y0: int, x1: int, y1: i
 # big matters more on the rig than spelling every label out in full.
 FOOTER_KEY_HINTS = (" (Enter)", " (Esc)")
 FOOTER_SHORT_LABELS = {
-    "Save + Next Sensor": "Save + Next",
-    "Save + Exit Batch": "Save + Exit",
+    "Next sensor": "Next",
+    "Measure again": "Measure",
+    "Stop batch": "Stop",
     "Calibrate reference unit to test": "Calibrate reference first",
     "Recharge battery to test": "Recharge battery",
     "Check wiring to test": "Check wiring",
@@ -2405,7 +3164,7 @@ class RoundButton(tk.Canvas):
             "fg": ELTEC_BLUE_DARK, "outline": "",
             "disabled_fill": PAGE_BG, "disabled_fg": "#aeb9c5", "disabled_outline": "",
         },
-        # v2.0 footer: green = save / move on, amber = set the part aside.
+        # Footer colours: green = record and move on, red = stop now.
         "success": {
             "fill": "#1f8a4c", "hover": "#176d3c", "press": "#125630",
             "fg": "#ffffff", "outline": "",
@@ -2415,6 +3174,13 @@ class RoundButton(tk.Canvas):
             "fill": "#fff4d6", "hover": "#ffe9b3", "press": "#ffd98a",
             "fg": "#8a5a00", "outline": "#e8b94a",
             "disabled_fill": PAGE_BG, "disabled_fg": "#c2b7a3", "disabled_outline": "#e6dccb",
+        },
+        # Stop: the one control that stays live in the middle of a capture,
+        # so it has to be findable without reading it.
+        "danger": {
+            "fill": FAIL_ACCENT, "hover": "#b91c1c", "press": "#991b1b",
+            "fg": "#ffffff", "outline": "",
+            "disabled_fill": "#e7bcbc", "disabled_fg": "#f7eaea", "disabled_outline": "",
         },
     }
     SIZE_PADS = {"xl": (34, 18), "lg": (26, 14), "md": (20, 11), "sm": (16, 8)}
@@ -3002,7 +3768,6 @@ class ScopeView(tk.Canvas):
 # --------------------------------------------------------------------------- #
 class EmitterTesterApp(tk.Tk):
     SETUP_STEP = "setup"
-    LOAD_STEP = "load"
     RESULT_STEP = "result"
     HEADER_H = 96
 
@@ -3076,16 +3841,13 @@ class EmitterTesterApp(tk.Tk):
         self.current_sensor_number = 0
         self.current_sensor_id = ""
         self.result_saved = True
-        # v2.0 skip / attempt history (attempt_history.py). While
-        # ``resuming_skipped`` is set, "next" walks the skipped queue in
-        # first-skipped-first-measured order instead of handing out fresh
-        # sensor numbers.
-        self.resuming_skipped = False
+        # Attempt history (attempt_history.py): reads spent on the part now
+        # in the rig, and which part tested under this sensor number it is
+        # (2026-09-02: a number is only spent by a PASS, so a failed part
+        # leaves its number open for the one loaded in its place).
         self.measure_attempts = 0
-        self.skip_count = 0
-        self.skip_button: RoundButton | None = None
-        self.remeasure_button: RoundButton | None = None
-        self.skipped_button: RoundButton | None = None
+        self.number_attempt = 1
+        self.stop_button: RoundButton | None = None
         # Action-bar fitting (see _fit_footer): the chosen size/label
         # variant and a measuring-font cache.
         self.footer_nav_buttons: tuple = ()
@@ -3097,6 +3859,10 @@ class EmitterTesterApp(tk.Tk):
         self.last_metrics: WaveformMetrics | None = None
         self.last_result: FinalResult | None = None
         self.last_capture_report: StabilityCaptureReport | None = None
+        # Insertion-time offset read plus the settle wait that confirmed the
+        # value the verdict used (see the OFFSET_SETTLE_* constants).
+        self.last_offset_initial_v: float | None = None
+        self.last_offset_settle: OffsetSettleReport | None = None
         self.preview_waveform: np.ndarray = np.array([], dtype=float)
         self.preview_sync: np.ndarray = np.array([], dtype=float)
         self.snapshot_paths: list[Path] = []
@@ -3263,7 +4029,7 @@ class EmitterTesterApp(tk.Tk):
 
         self.rail = StepRail(
             body,
-            ["Batch info", "Load sensor", "Measure & result"],
+            ["Batch info", "Measure & result"],
             self.animator,
             mono_family=self.FONT_MONO,
             body_family=self.FONT_BODY,
@@ -3438,7 +4204,7 @@ class EmitterTesterApp(tk.Tk):
         self.step_scroll.yview_moveto(0.0)
 
     def update_progress_labels(self) -> None:
-        order = [self.SETUP_STEP, self.LOAD_STEP, self.RESULT_STEP]
+        order = [self.SETUP_STEP, self.RESULT_STEP]
         self.rail.set_current(order.index(self.step))
 
     def render_step(self) -> None:
@@ -3447,8 +4213,6 @@ class EmitterTesterApp(tk.Tk):
         self.update_progress_labels()
         if self.step == self.SETUP_STEP:
             self.render_setup_step()
-        elif self.step == self.LOAD_STEP:
-            self.render_load_step()
         else:
             self.render_result_step()
         self.render_navigation()
@@ -3514,7 +4278,13 @@ class EmitterTesterApp(tk.Tk):
         tk.Label(parent, text=text.upper(), bg=bg, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=row, column=0, sticky="w", pady=pady)
 
     def render_setup_step(self) -> None:
-        self._step_heading(0, "01", "Batch information", "Enter the batch number and your name, choose the filter, then press Enter.")
+        self._step_heading(
+            0,
+            "01",
+            "Batch information",
+            "Enter the batch number and your name, choose the filter, load the "
+            "first sensor, then press Enter.",
+        )
 
         card = Card(self.step_frame, accent_stops=TECH_GRADIENT)
         card.grid(row=1, column=0, sticky="new", pady=(20, 0))
@@ -3540,9 +4310,10 @@ class EmitterTesterApp(tk.Tk):
         self.update_filter_hint()
 
         self._build_reference_calibration_card(row=2)
+        self._build_load_sensor_card(row=3)
 
         adv_container = tk.Frame(self.step_frame, bg=PAGE_BG)
-        adv_container.grid(row=3, column=0, sticky="new", pady=(S(16), 0))
+        adv_container.grid(row=4, column=0, sticky="new", pady=(S(16), 0))
         link = tk.Label(adv_container, text="⚙  Advanced options…", bg=PAGE_BG, fg=ELTEC_BLUE,
                         font=self.fb(12, "bold"), cursor="hand2")
         link.grid(row=0, column=0, sticky="w")
@@ -3753,19 +4524,16 @@ class EmitterTesterApp(tk.Tk):
             if self.busy or self.measuring or self.reference_calibrating:
                 button.configure(state="disabled")
 
-    def render_load_step(self) -> None:
-        self._step_heading(
-            0,
-            "02",
-            f"Load sensor {self.current_sensor_id}"
-            + ("  (skipped part)" if self.resuming_skipped else ""),
-            f"Batch {self.batch_number}    ·    Filter: {self.filter_setup}",
-        )
+    def _build_load_sensor_card(self, row: int) -> None:
+        """"Put a sensor in the rig" - shown on the setup screen.
 
-        self._build_reference_calibration_card(row=1)
-
+        2026-09-02: there is no separate load STEP any more. Start reads the
+        part that is already in the rig, and Next on the result screen reads
+        the one loaded in its place, so the only place this instruction is
+        still needed is before the batch begins.
+        """
         card = Card(self.step_frame, accent_stops=TECH_GRADIENT)
-        card.grid(row=2, column=0, sticky="ew", pady=(22, 0))
+        card.grid(row=row, column=0, sticky="ew", pady=(22, 0))
         inner = card.inner
         inner.columnconfigure(1, weight=1)
         rig = tk.Canvas(inner, width=S(190), height=S(128), bg=CARD_BG, highlightthickness=0, bd=0)
@@ -3773,11 +4541,11 @@ class EmitterTesterApp(tk.Tk):
         self._draw_rig_illustration(rig)
         text_col = tk.Frame(inner, bg=CARD_BG)
         text_col.grid(row=0, column=1, sticky="w")
-        tk.Label(text_col, text="Place the sensor in the testing rig", bg=CARD_BG, fg=TEXT_DARK, font=self.fd(24)).pack(anchor="w")
-        tk.Label(text_col, text="Then press Enter to read the offset and run the emitter test.", bg=CARD_BG, fg=MUTED_FG, font=self.fb(13)).pack(anchor="w", pady=(6, 0))
+        tk.Label(text_col, text="Place the first sensor in the testing rig", bg=CARD_BG, fg=TEXT_DARK, font=self.fd(24)).pack(anchor="w")
+        tk.Label(text_col, text="Start reads it straight away; after that, load the next sensor and press Next.", bg=CARD_BG, fg=MUTED_FG, font=self.fb(13)).pack(anchor="w", pady=(6, 0))
         chips = tk.Frame(text_col, bg=CARD_BG)
         chips.pack(anchor="w", pady=(14, 0))
-        for chip_text in (f"SENSOR {self.current_sensor_id}", f"{EMITTER_PWM_FREQUENCY_HZ:g} Hz · 50% DUTY", "GAIN ×1 BUFFER"):
+        for chip_text in (f"{EMITTER_PWM_FREQUENCY_HZ:g} Hz · 50% DUTY", "GAIN ×1 BUFFER"):
             chip = tk.Label(chips, text=chip_text, bg=ELTEC_BLUE_LIGHT, fg=ELTEC_BLUE_DARK, font=self.fm(9, "bold"), padx=10, pady=4)
             chip.pack(side="left", padx=(0, 8))
         self._build_battery_banner()
@@ -3811,7 +4579,7 @@ class EmitterTesterApp(tk.Tk):
         elif self.last_result is not None:
             self.render_result_view()
         else:
-            self._step_heading(0, "03", f"{self.current_sensor_id}: ready to measure", "Press Enter (or Measure) to run the emitter test.")
+            self._step_heading(0, "02", f"{self.current_sensor_id}: ready to measure", "Load the sensor in the rig, then press Enter (or Measure).")
             self.btn(self.step_frame, "Measure", self.run_measurement, kind="primary", size="lg").grid(row=2, column=0, sticky="w", pady=(22, 0))
         if not self.measuring:
             self._build_battery_banner()
@@ -3901,6 +4669,38 @@ class EmitterTesterApp(tk.Tk):
             tk.Label(
                 warn_inner,
                 text=self._near_limit_message(result),
+                bg=WARN_BG,
+                fg=WARN_FG,
+                font=self.fb(11),
+                justify="left",
+                anchor="w",
+                wraplength=S(900),
+            ).grid(row=1, column=0, sticky="ew")
+            next_row += 1
+        settling_note = offset_settle_warning_text(result)
+        if settling_note:
+            # The offset was still moving when it was recorded. That is never a
+            # failure on this model (2026-09-03) - show it and move on.
+            settle_card = Card(
+                self.step_frame,
+                card_bg=WARN_BG,
+                border=mix_color(WARN_ACCENT, WARN_BG, 0.45),
+                accent_stops=[WARN_ACCENT, WARN_ACCENT],
+                pad=(18, 14),
+            )
+            settle_card.grid(row=next_row, column=0, sticky="ew", pady=(14, 0))
+            settle_inner = settle_card.inner
+            settle_inner.columnconfigure(0, weight=1)
+            tk.Label(
+                settle_inner,
+                text="OFFSET WAS STILL SETTLING",
+                bg=WARN_BG,
+                fg=WARN_FG,
+                font=self.fm(10, "bold"),
+            ).grid(row=0, column=0, sticky="w", pady=(0, 5))
+            tk.Label(
+                settle_inner,
+                text=settling_note,
                 bg=WARN_BG,
                 fg=WARN_FG,
                 font=self.fb(11),
@@ -4107,8 +4907,8 @@ class EmitterTesterApp(tk.Tk):
         return (
             f"{reading}, within the margin of error of the ×"
             f"{SENSITIVITY_LEGACY_EQUIVALENT_FACTOR:.3f} conversion factor. "
-            "Suggestion: Re-measure to confirm. No quarantine is needed - "
-            "if you move on, this sensor is saved as a PASS."
+            "No quarantine is needed - this sensor is saved as a PASS and "
+            "keeps its number."
         )
 
     def _build_result_banner(self, row: int, outcome: str, near_limit: bool = False) -> None:
@@ -4212,13 +5012,16 @@ class EmitterTesterApp(tk.Tk):
 
     # ----- navigation ----- #
     #
-    # v2.0 action bar, left -> right:
-    #   Back · Measure skipped (N)   ...   Skip part · Re-measure ·
-    #   Save + Exit Batch · Save + Next Sensor
-    # Colour carries the meaning: green = save and move on, amber = set the
-    # part aside for later, blue outline = run the test again.
+    # Action bar (2026-09-02), left -> right:  Stop  ...  Next
     #
-    # The buttons sit in two groups (navigation left, actions right) so
+    # Two buttons, and only two. Stop is red and live at every moment of a
+    # batch - mid-capture it abandons the reading, otherwise it ends the
+    # batch. Next is green and always means "read the sensor that is in the
+    # rig now": on a verdict it writes the row first. Skip part, Re-measure,
+    # Measure skipped, Back and Save + Exit Batch are gone with the skip
+    # queue they belonged to.
+    #
+    # The buttons still sit in two groups (Stop left, Next right) so
     # _fit_footer can shrink or wrap the bar on a narrow screen instead of
     # letting the rightmost button run off the edge.
     FOOTER_GAP = 10
@@ -4246,31 +5049,16 @@ class EmitterTesterApp(tk.Tk):
         self.footer_left = tk.Frame(self.footer_bar, bg=PAGE_BG)
         self.footer_right = tk.Frame(self.footer_bar, bg=PAGE_BG)
         result_step = self.step == self.RESULT_STEP
-        gap = S(self.FOOTER_GAP)
 
-        self.back_button = self.btn(self.footer_left, "Back", self.go_back, kind="ghost", size="lg")
-        self.back_button.grid(row=0, column=0, sticky="w")
-        self.skipped_button = self.btn(self.footer_left, "Measure skipped", self.measure_skipped, kind="outline", size="lg")
-        self.skipped_button.grid(row=0, column=1, sticky="w", padx=(gap, 0))
-
-        self.skip_button = self.btn(self.footer_right, "Skip part", self.open_skip_window, kind="warn", size="xl")
-        self.skip_button.grid(row=0, column=0, sticky="e", padx=(0, gap))
-        self.remeasure_button = self.btn(self.footer_right, "Re-measure", self.run_measurement, kind="outline", size="xl")
-        self.remeasure_button.grid(row=0, column=1, sticky="e", padx=(0, gap))
-        self.secondary_button = self.btn(self.footer_right, "Save + Exit Batch", self.save_and_end_batch, kind="outline", size="xl")
-        self.secondary_button.grid(row=0, column=2, sticky="e", padx=(0, gap))
+        self.stop_button = self.btn(self.footer_left, "Stop", self.stop, kind="danger", size="xl")
+        self.stop_button.grid(row=0, column=0, sticky="w")
         self.primary_button = self.btn(
             self.footer_right, "Next", self.go_next, kind="success" if result_step else "primary", size="xl"
         )
-        self.primary_button.grid(row=0, column=3, sticky="e")
+        self.primary_button.grid(row=0, column=0, sticky="e")
 
-        self.footer_nav_buttons = (self.back_button, self.skipped_button)
-        self.footer_action_buttons = (
-            self.skip_button,
-            self.remeasure_button,
-            self.secondary_button,
-            self.primary_button,
-        )
+        self.footer_nav_buttons = (self.stop_button,)
+        self.footer_action_buttons = (self.primary_button,)
         for button in self.footer_nav_buttons + self.footer_action_buttons:
             button._footer_full_text = button._text
         self._footer_fit = None  # brand-new widgets: force a fresh fit
@@ -4301,11 +5089,7 @@ class EmitterTesterApp(tk.Tk):
                 text = text[: -len(hint)]
                 break
         if tier == "short":
-            # "Measure skipped (3)" carries a count, so match its prefix.
-            if text.startswith("Measure skipped"):
-                text = "Skipped" + text[len("Measure skipped"):]
-            else:
-                text = FOOTER_SHORT_LABELS.get(text, text)
+            text = FOOTER_SHORT_LABELS.get(text, text)
         return text
 
     def _footer_font(self, size: str) -> tkfont.Font:
@@ -4327,13 +5111,13 @@ class EmitterTesterApp(tk.Tk):
     def _fit_footer(self, _event: tk.Event | None = None) -> None:
         """Keep every footer button inside the window.
 
-        The action bar carries up to six buttons, and at full size they need
-        more width than the content column has on a 1366-wide rig screen or
-        at 150% Windows scaling - which clipped the rightmost button, Save +
-        Next Sensor, off the edge. Measure what the visible buttons actually
-        need and pick the first FOOTER_VARIANTS entry that fits: it drops the
-        key hints, then switches to compact wording, then wraps the actions
-        onto their own row, and only shrinks the buttons as a last resort.
+        Two full-size buttons fit any rig screen, but the blocked-measure
+        labels ("Calibrate reference unit to test") are long enough to need
+        the same treatment the six-button bar did. Measure what the visible
+        buttons actually need and pick the first FOOTER_VARIANTS entry that
+        fits: it drops the key hints, then switches to compact wording, then
+        wraps the actions onto their own row, and only shrinks the buttons
+        as a last resort.
         Bound to the footer's <Configure>, so it also re-fits when the window
         is maximized or resized.
         """
@@ -4371,121 +5155,133 @@ class EmitterTesterApp(tk.Tk):
 
     def update_navigation_state(self) -> None:
         idle = not self.busy and not self.measuring
-        for button in (self.skipped_button, self.skip_button, self.remeasure_button, self.secondary_button):
-            if button is not None:
-                button.grid_remove()
         if self.step == self.SETUP_STEP:
-            self.back_button.configure(state="disabled")
+            self.stop_button.grid_remove()
             self._set_footer_text(self.primary_button, "Start (Enter)")
             self.primary_button.configure(state="disabled" if self.busy else "normal")
             self._fit_footer()
             return
-        # Skipped parts waiting to be measured (never the one on the bench).
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if waiting and not self.resuming_skipped:
-            self.skipped_button.grid()
-            self._set_footer_text(self.skipped_button, f"Measure skipped ({len(waiting)})")
-            self.skipped_button.configure(state="normal" if idle else "disabled")
-        if self.step == self.LOAD_STEP:
-            self.back_button.configure(state="disabled" if self.busy else "normal")
-            self.skip_button.grid()
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            # Hard block: no measurement on a low battery or a wiring fault.
-            # Inert while battery monitoring is disabled (nothing measurable
-            # on AIN7 on this fixture - see BATTERY_MONITORING_ENABLED).
-            battery_blocked = (
-                BATTERY_MONITORING_ENABLED
-                and self.battery_state in ("low", "fault")
-            )
-            blocked = (
-                self.busy
-                or battery_blocked
-                or self.stability_config_error is not None
-                or not self.reference_gate_ready()
-            )
-            if self.stability_config_error is not None:
-                measure_text = "Fix stability settings"
-            elif battery_blocked and self.battery_state == "fault":
-                measure_text = "Check wiring to test"
-            elif battery_blocked and self.battery_state == "low":
-                measure_text = "Recharge battery to test"
-            elif not self.reference_gate_ready():
-                measure_text = "Calibrate reference unit to test"
-            else:
-                measure_text = "Measure (Enter)"
-            self._set_footer_text(self.primary_button, measure_text)
-            self.primary_button.configure(state="disabled" if blocked else "normal")
+        # Stop is the only control that is never disabled: a technician who
+        # needs the rig to stop must not have to wait for a capture to end.
+        self.stop_button.grid()
+        self.stop_button.configure(state="normal")
+        self._set_footer_text(
+            self.stop_button, "Stop" if self.measuring else "Stop batch (Esc)"
+        )
+        # Hard block: no measurement on a low battery or a wiring fault.
+        # Inert while battery monitoring is disabled (nothing measurable
+        # on AIN7 on this fixture - see BATTERY_MONITORING_ENABLED).
+        battery_blocked = (
+            BATTERY_MONITORING_ENABLED
+            and self.battery_state in ("low", "fault")
+        )
+        if self.stability_config_error is not None:
+            blocked_text = "Fix stability settings"
+        elif battery_blocked and self.battery_state == "fault":
+            blocked_text = "Check wiring to test"
+        elif battery_blocked and self.battery_state == "low":
+            blocked_text = "Recharge battery to test"
+        elif not self.reference_gate_ready():
+            blocked_text = "Calibrate reference unit to test"
         else:
-            self.skip_button.grid()
-            self.remeasure_button.grid()
-            self.secondary_button.grid()
-            self.back_button.configure(state="disabled" if self.busy or self.result_saved else "normal")
-            ready = idle and self.last_result is not None and not self.result_saved
-            self.skip_button.configure(state="normal" if self.can_skip_part() else "disabled")
-            self._set_footer_text(
-                self.remeasure_button,
-                "Re-measure" if self.last_result is not None else "Measure",
-            )
-            self.remeasure_button.configure(state="normal" if idle and not self.result_saved else "disabled")
-            self._set_footer_text(
-                self.primary_button,
-                "Save + Next Sensor (Enter)",
-            )
-            self.primary_button.configure(state="normal" if ready else "disabled")
-            self._set_footer_text(
-                self.secondary_button,
-                "Save + Exit Batch (Esc)",
-            )
-            self.secondary_button.configure(state="normal" if ready else "disabled")
+            blocked_text = None
+        if self.last_result is not None and not self.result_saved:
+            # A verdict is on screen: Next writes it, then reads the part
+            # loaded in its place (the same number again unless it passed).
+            self._set_footer_text(self.primary_button, "Next sensor (Enter)")
+            self.primary_button.configure(state="normal" if idle else "disabled")
+        elif blocked_text is not None:
+            self._set_footer_text(self.primary_button, blocked_text)
+            self.primary_button.configure(state="disabled")
+        else:
+            self._set_footer_text(self.primary_button, "Measure (Enter)")
+            self.primary_button.configure(state="normal" if idle else "disabled")
         self._fit_footer()
 
     def go_next(self) -> None:
-        if self.busy:
+        """Read the sensor that is in the rig now.
+
+        On a verdict that means writing it first; the number that comes back
+        is the same one unless the part passed. With nothing to write (a
+        stopped attempt) it just reads again.
+        """
+        if self.busy or self.measuring:
             return
         if self.step == self.SETUP_STEP:
             self.start_batch()
-        elif self.step == self.LOAD_STEP:
-            if self.stability_config_error is not None:
-                self.run_measurement()
-                return
-            self.show_step(self.RESULT_STEP)
-            self.run_measurement()
-        elif self.step == self.RESULT_STEP:
-            self.save_and_continue()
-
-    def go_back(self) -> None:
-        if self.busy or self.measuring:
             return
-        if self.step == self.LOAD_STEP:
-            self.show_step(self.SETUP_STEP)
-        elif self.step == self.RESULT_STEP and not self.result_saved:
-            self.show_step(self.LOAD_STEP)
+        if self.last_result is not None and not self.result_saved:
+            if self.save_current_sensor():
+                self._advance_to_next_sensor()
+            return
+        self.run_measurement()
+
+    def stop(self, _event: tk.Event | None = None) -> None:
+        """The technician's escape hatch, live at every moment of a batch.
+
+        Mid-capture it abandons the reading (see abort_measurement).
+        Otherwise it ends the batch, writing a verdict that is still on
+        screen first - there is no separate Save + Exit Batch button any
+        more. Since 2026-09-03 that write happens WITHOUT asking: the part
+        has already been judged and the technician pressed Stop to finish
+        the batch, so a confirmation box at that moment only invited a slip
+        that threw the reading away. A write that cannot complete (a
+        cleared failure mode, a results-folder error) puts up its own error
+        and leaves the batch running, so nothing is lost.
+        """
+        if self.step == self.SETUP_STEP:
+            return
+        if self.measuring or self.busy:
+            self.abort_measurement()
+            return
+        if self.last_result is not None and not self.result_saved:
+            if not self.save_current_sensor():
+                return
+        self._end_batch()
+
+    def abort_measurement(self) -> None:
+        """Drop the capture in flight; nothing is recorded, nothing moves.
+
+        Bumping the measurement token is what actually stops it: the capture
+        loops poll ``cancelled=lambda: token != self.measure_token`` at every
+        chunk boundary - the settled-offset wait included - and raise, so the
+        worker's own finally-blocks stop the stream and switch the emitter
+        off, and every callback it posts is
+        ignored from here on. The sensor number is untouched - press Next to
+        read the same part again.
+        """
+        self.measure_token += 1
+        self.measuring = False
+        self.busy = False
+        self._log_attempt(attempt_history.EVENT_STOPPED)
+        self.last_metrics = None
+        self.last_result = None
+        self.preview_waveform = np.array([], dtype=float)
+        self.preview_sync = np.array([], dtype=float)
+        self.measure_status_var.set("")
+        self.status_var.set(
+            f"Stopped - {self.current_sensor_id} was not recorded. Press Next "
+            "to read it again."
+        )
+        self.render_step()
 
     def show_step(self, step: str) -> None:
         self.step = step
         self.render_step()
-        # Re-check the battery whenever we arrive at the load step (a sensor is
-        # about to be tested) so the watcher reflects the current supply.
-        if step == self.LOAD_STEP:
-            self.refresh_battery()
 
     def on_enter_key(self, event: tk.Event) -> str | None:
         if isinstance(event.widget, (ttk.Button, RoundButton)):
             return None
         if self.busy or self.measuring:
             return "break"
-        if self.step == self.RESULT_STEP and (self.last_result is None or self.result_saved):
-            return "break"
         self.go_next()
         return "break"
 
     def on_escape_key(self, _event: tk.Event) -> str | None:
-        if self.step == self.RESULT_STEP and not self.busy and not self.measuring and self.last_result is not None and not self.result_saved:
-            self.save_and_end_batch()
-            return "break"
-        return None
+        if self.step == self.SETUP_STEP:
+            return None
+        self.stop()
+        return "break"
 
     def focus_default_widget(self) -> None:
         widget = self.default_focus_widget
@@ -4515,29 +5311,34 @@ class EmitterTesterApp(tk.Tk):
         self.tester_name = tester_name
         self.filter_setup = self.filter_var.get()
         csv_path = batch_results_path(batch_number)
-        self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        self.current_sensor_number = next_sensor_number_for_batch(csv_path)
         existing = count_existing_batch_rows(csv_path)
         position = "next" if existing else "first"
-        waiting = self.skipped_parts_queue()
-        status = f"Batch {batch_number}: {position} sensor is {batch_number}-{self.current_sensor_number}."
-        if waiting:
-            status += f"  {len(waiting)} skipped part(s) waiting: {attempt_history.format_queue(waiting)}."
-        self.status_var.set(status)
+        self.status_var.set(
+            f"Batch {batch_number}: {position} sensor is "
+            f"{batch_number}-{self.current_sensor_number}."
+        )
         self.prepare_current_sensor()
-        self.show_step(self.LOAD_STEP)
+        # The sensor is already in the rig (the setup card says so), so
+        # start reading it instead of showing a screen that asks for it.
+        self.show_step(self.RESULT_STEP)
+        self.run_measurement()
 
     def prepare_current_sensor(self) -> None:
         self.current_sensor_id = f"{self.batch_number}-{self.current_sensor_number}"
         self.result_saved = False
-        # Earlier attempts on this id (a part coming back from the skipped
-        # pile keeps its history) so the verdict row reports the true count.
-        self.measure_attempts, self.skip_count = attempt_history.attempt_counts(
-            self._attempts_path(), self.current_sensor_id
+        # A reused number is a DIFFERENT physical part, so the read count
+        # starts over; number_attempt says which part under this number it
+        # is (1 = the first one tried, 2 = the one loaded after it failed).
+        self.measure_attempts = 0
+        self.number_attempt = number_attempt_for_batch(
+            batch_results_path(self.batch_number), self.current_sensor_id
         )
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
+        self.last_offset_initial_v = None
+        self.last_offset_settle = None
         self.last_reference_check_mv = None
         self.show_details_var.set(False)
         self.preview_waveform = np.array([], dtype=float)
@@ -4550,28 +5351,19 @@ class EmitterTesterApp(tk.Tk):
         self.snapshot_status_var.set("")
         self.measure_status_var.set("")
 
-    def save_and_continue(self) -> None:
-        if self.save_current_sensor():
-            self._advance_to_next_sensor()
-
-    def save_and_end_batch(self) -> None:
-        if self.save_current_sensor():
-            self._end_batch()
-
     def _advance_to_next_sensor(self) -> None:
-        if self.resuming_skipped:
-            # Walk the skipped pile in the order it was built; once it is
-            # empty fall back to fresh numbers.
-            waiting = [
-                item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-            ]
-            if waiting:
-                self._load_skipped_part(*waiting[0])
-                return
-            self.resuming_skipped = False
-        self.current_sensor_number = self._next_fresh_sensor_number()
+        """Take the next number and read the part already in the rig.
+
+        next_sensor_number_for_batch hands back the SAME number when the row
+        just written was not a pass, so a failed part is replaced on the
+        bench and the replacement is tested as the same sensor number.
+        """
+        self.current_sensor_number = next_sensor_number_for_batch(
+            batch_results_path(self.batch_number)
+        )
         self.prepare_current_sensor()
-        self.show_step(self.LOAD_STEP)
+        self.show_step(self.RESULT_STEP)
+        self.run_measurement()
 
     def _end_batch(self) -> None:
         saved_batch = self.batch_number
@@ -4582,34 +5374,9 @@ class EmitterTesterApp(tk.Tk):
         self.show_batch_summary_window(saved_batch, saved_csv)
         self.render_step()
 
-    # ----- v2.0: set a part aside and come back to it in skip order ----- #
+    # ----- per-batch attempt log ----- #
     def _attempts_path(self) -> Path:
         return attempt_history.attempts_path_for(batch_results_path(self.batch_number))
-
-    def skipped_parts_queue(self) -> list[tuple[int, str]]:
-        """Skipped parts without a verdict yet, first skipped first."""
-        if not self.batch_number:
-            return []
-        return attempt_history.skipped_queue(
-            self._attempts_path(), batch_results_path(self.batch_number)
-        )
-
-    def _next_fresh_sensor_number(self) -> int:
-        """Next never-used number: above every saved AND every skipped id."""
-        csv_path = batch_results_path(self.batch_number)
-        return max(
-            next_sensor_number_for_batch(csv_path),
-            attempt_history.highest_sensor_number(self._attempts_path()) + 1,
-        )
-
-    def can_skip_part(self) -> bool:
-        return (
-            self.step in (self.LOAD_STEP, self.RESULT_STEP)
-            and not self.busy
-            and not self.measuring
-            and not self.result_saved
-            and bool(self.current_sensor_id)
-        )
 
     def _log_attempt(
         self,
@@ -4622,10 +5389,12 @@ class EmitterTesterApp(tk.Tk):
         """Append one event to the batch's attempt log (never blocks a test)."""
         if not self.batch_number or not self.current_sensor_id:
             return
-        if event in (attempt_history.EVENT_MEASURED, attempt_history.EVENT_MEASURE_ERROR):
+        if event in (
+            attempt_history.EVENT_MEASURED,
+            attempt_history.EVENT_MEASURE_ERROR,
+            attempt_history.EVENT_STOPPED,
+        ):
             self.measure_attempts += 1
-        elif event == attempt_history.EVENT_SKIPPED:
-            self.skip_count += 1
         try:
             attempt_history.append_attempt(
                 self._attempts_path(),
@@ -4644,177 +5413,26 @@ class EmitterTesterApp(tk.Tk):
                 fail_reasons=None if result is None else result.fail_reasons,
             )
         except Exception:
-            if event == attempt_history.EVENT_SKIPPED:
-                raise
+            pass
 
-    def open_skip_window(self) -> None:
-        if not self.can_skip_part():
-            return
-        dialog = tk.Toplevel(self)
-        dialog.title(f"Skip {self.current_sensor_id}")
-        dialog.minsize(S(560), S(320))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
+    def _log_stream_retry(self, phase: str, attempt: int, exc: Exception) -> None:
+        """Attempts-log row for a capture the app restarted by itself.
 
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.rowconfigure(4, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIP PART —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"Set {self.current_sensor_id} aside",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-
-        # Just a comment box - no reason list to click through (2026-08-24:
-        # keep the skip to two clicks; the attempt log carries the numbers).
-        note_holder = tk.Frame(frame, bg=PAGE_BG)
-        note_holder.grid(row=4, column=0, sticky="nsew", pady=(8, 0))
-        note_holder.rowconfigure(1, weight=1)
-        note_holder.columnconfigure(0, weight=1)
-        tk.Label(note_holder, text="COMMENT (OPTIONAL)", bg=PAGE_BG, fg=MUTED_FG, font=self.fb(11, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 4))
-        note = tk.Text(
-            note_holder, wrap="word", font=self.fb(13), undo=True, relief="flat", bd=0,
-            bg=CARD_BG, fg=TEXT_DARK, padx=12, pady=10, insertbackground=ELTEC_BLUE,
-            highlightbackground=CARD_BORDER, highlightcolor=ELTEC_BLUE, highlightthickness=1,
-            height=4,
-        )
-        note.grid(row=1, column=0, sticky="nsew")
-
-        tk.Label(
-            frame,
-            text=(
-                f"Put it on the skipped pile, in order. It comes back as "
-                f"{self.current_sensor_id} under “Measure skipped”."
+        A retried capture never reaches ``on_measure_error``, so without this
+        row the evidence of WHY it was restarted (the stall attribution tag,
+        the gap counts) would vanish with the retry. Runs on the UI thread -
+        callers ``push`` it - because ``_log_attempt`` reads a Tk variable.
+        """
+        self._log_attempt(
+            attempt_history.EVENT_STREAM_RETRY,
+            reason=(
+                f"{phase}, restart {attempt}/{REFERENCE_READING_STREAM_RETRIES}: {exc}"
             ),
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(11),
-            wraplength=S(520),
-            justify="left",
-        ).grid(row=5, column=0, sticky="w", pady=(10, 0))
-
-        def commit(_event: tk.Event | None = None) -> str:
-            if self.skip_current_part("", note.get("1.0", "end-1c")):
-                dialog.destroy()
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=6, column=0, sticky="e", pady=(16, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, "Skip part", commit, kind="warn", size="md").grid(row=0, column=1)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        note.focus_set()
-
-    def skip_current_part(self, reason: str, note: str = "") -> bool:
-        """Record the skip and move on WITHOUT spending a sensor number."""
-        if not self.can_skip_part():
-            return False
-        skipped_id = self.current_sensor_id
-        try:
-            self._log_attempt(
-                attempt_history.EVENT_SKIPPED,
-                result=self.last_result,
-                reason=reason,
-                note=note,
-            )
-        except Exception as exc:
-            messagebox.showerror("Could not record the skip", str(exc))
-            return False
-        self.result_saved = True  # nothing left to save for this part now
-        self.delete_autosave()
-        self._advance_to_next_sensor()
-        waiting = len(self.skipped_parts_queue())
-        self.status_var.set(
-            f"{skipped_id} set aside ({waiting} skipped, waiting). Now loading {self.current_sensor_id}."
         )
-        return True
 
-    def measure_skipped(self) -> None:
-        """Bring the skipped pile back, first skipped first."""
-        if self.busy or self.measuring:
-            return
-        if self.step == self.RESULT_STEP and self.last_result is not None and not self.result_saved:
-            messagebox.showinfo(
-                "Finish this part first",
-                f"Save, skip or re-measure {self.current_sensor_id} before loading a skipped part.",
-            )
-            return
-        waiting = [
-            item for item in self.skipped_parts_queue() if item[1] != self.current_sensor_id
-        ]
-        if not waiting:
-            return
-        first_number, first_id = waiting[0]
-        dialog = tk.Toplevel(self)
-        dialog.title("Skipped parts")
-        dialog.minsize(S(520), S(260))
-        dialog.configure(bg=PAGE_BG)
-        dialog.transient(self)
-        frame = tk.Frame(dialog, bg=PAGE_BG)
-        frame.grid(row=0, column=0, sticky="nsew", padx=18, pady=16)
-        dialog.rowconfigure(0, weight=1)
-        dialog.columnconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        tk.Label(frame, text="SKIPPED PARTS —", bg=PAGE_BG, fg="#8a5a00", font=self.fm(11, "bold")).grid(row=0, column=0, sticky="w")
-        tk.Label(
-            frame,
-            text=f"{len(waiting)} waiting, in skip order",
-            bg=PAGE_BG,
-            fg=TEXT_DARK,
-            font=self.fd(19),
-        ).grid(row=1, column=0, sticky="w", pady=(2, 8))
-        tk.Label(
-            frame,
-            text=attempt_history.format_queue(waiting),
-            bg=CARD_BG,
-            fg=ELTEC_BLUE_DARK,
-            font=self.fm(13, "bold"),
-            padx=12,
-            pady=10,
-            wraplength=S(480),
-            justify="left",
-            anchor="w",
-        ).grid(row=2, column=0, sticky="ew")
-        tk.Label(
-            frame,
-            text=f"Take the first part off the pile — it is {first_id}. The rest follow in this order.",
-            bg=PAGE_BG,
-            fg=MUTED_FG,
-            font=self.fb(12),
-            wraplength=S(480),
-            justify="left",
-        ).grid(row=3, column=0, sticky="w", pady=(12, 0))
-
-        def load(_event: tk.Event | None = None) -> str:
-            dialog.destroy()
-            self._load_skipped_part(first_number, first_id)
-            return "break"
-
-        buttons = tk.Frame(frame, bg=PAGE_BG)
-        buttons.grid(row=4, column=0, sticky="e", pady=(18, 0))
-        self.btn(buttons, "Cancel", dialog.destroy, kind="ghost", size="md").grid(row=0, column=0, padx=(0, 10))
-        self.btn(buttons, f"Load {first_id} (Enter)", load, kind="primary", size="md").grid(row=0, column=1)
-        dialog.bind("<Return>", load)
-        dialog.bind("<Escape>", lambda _e: dialog.destroy())
-        dialog.focus_set()
-
-    def _load_skipped_part(self, sensor_number: int, sensor_id: str) -> None:
-        self.resuming_skipped = True
-        self.current_sensor_number = sensor_number
-        self.prepare_current_sensor()
-        self._log_attempt(attempt_history.EVENT_RESUMED)
-        remaining = len(self.skipped_parts_queue()) - 1
-        self.status_var.set(
-            f"Skipped part {sensor_id} loaded — measure it now."
-            + (f"  {remaining} more waiting." if remaining > 0 else "  Last skipped part.")
-        )
-        self.show_step(self.LOAD_STEP)
+    def _log_rig_note(self, text: str) -> None:
+        """Attempts-log row for something the app noticed and put right on the rig."""
+        self._log_attempt(attempt_history.EVENT_RIG_NOTE, reason=text)
 
     def save_current_sensor(self) -> bool:
         if self.last_result is None:
@@ -4877,11 +5495,13 @@ class EmitterTesterApp(tk.Tk):
                 snapshot_paths=self.snapshot_paths,
                 battery_v=self.battery_v,
                 capture_report=self.last_capture_report,
+                offset_initial_v=self.last_offset_initial_v,
+                offset_settle=self.last_offset_settle,
                 reference_calibration=self.reference_calibration,
                 reference_check_mv=self.last_reference_check_mv,
                 failure_mode=failure_mode,
                 measure_attempts=self.measure_attempts,
-                skip_count=self.skip_count,
+                number_attempt=self.number_attempt,
             )
         except Exception as exc:
             messagebox.showerror("Could not save result", str(exc))
@@ -4967,7 +5587,7 @@ class EmitterTesterApp(tk.Tk):
         if self.busy or self.measuring:
             return
         # Refresh on-screen banners + the Measure button lock when idle.
-        if self.step in (self.LOAD_STEP, self.RESULT_STEP):
+        if self.step == self.RESULT_STEP:
             self.render_step()
         else:
             self.update_navigation_state()
@@ -5067,6 +5687,9 @@ class EmitterTesterApp(tk.Tk):
             self.ensure_connected()
             device = self.device
             device.disable_emitter_pwm(EMITTER_PWM_CHANNEL)
+            if verify_qualified_front_end(device):
+                push(lambda: self.status_var.set(FRONT_END_REVERTED_TEXT))
+                push(lambda: self._log_rig_note(FRONT_END_REVERTED_TEXT))
             # Battery gate (inert while BATTERY_MONITORING_ENABLED is False -
             # nothing measurable on AIN7 on the unified-rig fixture).
             if BATTERY_MONITORING_ENABLED:
@@ -5091,20 +5714,42 @@ class EmitterTesterApp(tk.Tk):
                     else time.monotonic()
                 )
                 for reading_number in range(1, REFERENCE_CALIBRATION_READINGS + 1):
-                    reading_start = (
-                        first_reading_start if reading_number == 1 else time.monotonic()
-                    )
-                    reading_mv = self._capture_reference_reading(
-                        device,
-                        pwm_started_monotonic=reading_start,
-                        token=token,
-                        push=push,
-                        status_prefix=(
-                            f"Reference calibration {reading_number}/"
-                            f"{REFERENCE_CALIBRATION_READINGS}"
-                        ),
-                        calibration_ui=True,
-                    )
+                    def capture(attempt: int, reading_number: int = reading_number) -> float:
+                        # Only the very first attempt of reading 1 anchors its
+                        # stability deadline to the PWM,ON moment; retries and
+                        # later readings start their own timing window.
+                        reading_start = (
+                            first_reading_start
+                            if reading_number == 1 and attempt == 0
+                            else time.monotonic()
+                        )
+                        return self._capture_reference_reading(
+                            device,
+                            pwm_started_monotonic=reading_start,
+                            token=token,
+                            push=push,
+                            status_prefix=(
+                                f"Reference calibration {reading_number}/"
+                                f"{REFERENCE_CALIBRATION_READINGS}"
+                            ),
+                            calibration_ui=True,
+                        )
+
+                    def on_retry(
+                        attempt: int, exc: Exception, reading_number: int = reading_number
+                    ) -> None:
+                        text = (
+                            f"{stream_glitch_label(exc)} in reading {reading_number}; "
+                            f"nothing was recorded — retrying "
+                            f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…"
+                        )
+                        push(lambda value=text: self.reference_progress_var.set(value))
+                        push(lambda value=text: self.status_var.set(value))
+                        push(lambda: self._log_stream_retry(
+                            f"reference calibration reading {reading_number}", attempt, exc
+                        ))
+
+                    reading_mv = call_with_stream_retries(capture, on_retry=on_retry)
                     readings_mv.append(reading_mv)
                     progress_text = (
                         f"Reference reading {reading_number}/{REFERENCE_CALIBRATION_READINGS} complete"
@@ -5162,10 +5807,6 @@ class EmitterTesterApp(tk.Tk):
     def run_measurement(self, _event: tk.Event | None = None) -> None:
         if self.busy or self.measuring:
             return
-        if self.last_result is not None and not self.result_saved:
-            # The shown verdict is being discarded: keep it in the attempt
-            # log so a later review can see WHY the part was re-measured.
-            self._log_attempt(attempt_history.EVENT_REMEASURE, result=self.last_result)
         simulator = self.simulator_var.get()
         if self.stability_config_error is not None or self.stability_settings is None:
             text = (
@@ -5181,7 +5822,7 @@ class EmitterTesterApp(tk.Tk):
                 detail = calibration.invalidation_reason
             else:
                 detail = self.reference_calibration_error or "No valid reference calibration is saved."
-            self.step = self.LOAD_STEP
+            self.step = self.RESULT_STEP
             self.status_var.set("Reference calibration required — the sensor was not read.")
             self.render_step()
             messagebox.showwarning(
@@ -5216,6 +5857,8 @@ class EmitterTesterApp(tk.Tk):
         self.last_metrics = None
         self.last_result = None
         self.last_capture_report = None
+        self.last_offset_initial_v = None
+        self.last_offset_settle = None
         self.last_reference_check_mv = None
         self.show_details_var.set(False)
         self.stability_diagnostics_saved = False
@@ -5278,6 +5921,12 @@ class EmitterTesterApp(tk.Tk):
             self.ensure_connected()
             device = self.device
             device.disable_emitter_pwm(pwm_channel)
+            # The ADS1256 front end is session state on the board: re-check
+            # it before reading anything, in case the ESP32 restarted since
+            # the last part (2026-09-03).
+            if verify_qualified_front_end(device):
+                push(lambda: self.set_measure_status(token, FRONT_END_REVERTED_TEXT))
+                push(lambda: self._log_rig_note(FRONT_END_REVERTED_TEXT))
             # Check the 6 V SLA before doing anything else: if it is too low,
             # bail out before measuring so no unreliable reading is recorded.
             # Inert while battery monitoring is disabled (nothing measurable
@@ -5314,23 +5963,43 @@ class EmitterTesterApp(tk.Tk):
                     "Checking reference unit first — watching peak stability…",
                 ))
                 try:
-                    reference_activation_time = device.configure_emitter_pwm(
-                        channel=pwm_channel,
-                        frequency_hz=pwm_hz,
-                        duty_cycle_percent=pwm_duty,
-                    )
-                    reference_started_monotonic = (
-                        float(reference_activation_time)
-                        if isinstance(reference_activation_time, (int, float))
-                        else time.monotonic()
-                    )
-                    try:
-                        reference_check_mv = self._capture_reference_reading(
+                    def reference_gate_capture(attempt: int) -> float:
+                        # Re-activating on a retry restarts the PWM phase and
+                        # gives a fresh stability anchor; a retry after a
+                        # board restart also needs the front end back first.
+                        if attempt and verify_qualified_front_end(device):
+                            push(lambda: self.set_measure_status(token, FRONT_END_REVERTED_TEXT))
+                            push(lambda: self._log_rig_note(FRONT_END_REVERTED_TEXT))
+                        reference_activation_time = device.configure_emitter_pwm(
+                            channel=pwm_channel,
+                            frequency_hz=pwm_hz,
+                            duty_cycle_percent=pwm_duty,
+                        )
+                        reference_started_monotonic = (
+                            float(reference_activation_time)
+                            if isinstance(reference_activation_time, (int, float))
+                            else time.monotonic()
+                        )
+                        return self._capture_reference_reading(
                             device,
                             pwm_started_monotonic=reference_started_monotonic,
                             token=token,
                             push=push,
                             status_prefix="Reference unit",
+                        )
+
+                    def reference_gate_retry(attempt: int, exc: Exception) -> None:
+                        push(lambda: self.set_measure_status(
+                            token,
+                            f"{stream_glitch_label(exc)} during the reference check; "
+                            f"nothing was recorded — retrying ({attempt}/"
+                            f"{REFERENCE_READING_STREAM_RETRIES})…",
+                        ))
+                        push(lambda: self._log_stream_retry("reference check", attempt, exc))
+
+                    try:
+                        reference_check_mv = call_with_stream_retries(
+                            reference_gate_capture, on_retry=reference_gate_retry
                         )
                     except ReferenceCaptureError as exc:
                         reason = (
@@ -5361,7 +6030,8 @@ class EmitterTesterApp(tk.Tk):
                         "Reference unit is outside its window. Checking AIN0 for a high-offset sensor…",
                     ))
 
-            offset_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+            offset_initial_v = device.read_offset_voltage(waveform_range_v=waveform_range_v)
+            offset_v = offset_initial_v
             if REFERENCE_GATE_ENABLED and not reference_in_window:
                 if high_offset_dut_explains_reference_spike(
                     reference_check_mv,
@@ -5386,39 +6056,29 @@ class EmitterTesterApp(tk.Tk):
                         self.reference_calibration_error = str(exc)
                     raise failure
 
-            # Pre-flight: a connected 406MCA presents its ~0.3-1.2 V DC offset
-            # through the buffer. A floating/railed AIN0 means no sensor (or no
-            # buffer) - abort before capturing anything.
-            if not (SENSOR_OFFSET_MIN_PLAUSIBLE_V <= offset_v <= SENSOR_OFFSET_MAX_PLAUSIBLE_V):
+            # Pre-flight, LOW SIDE ONLY (2026-09-03): through the buffer a
+            # missing sensor floats near 0 V, so that is the empty-slot test.
+            # A high or railed reading is never "no sensor" - it is a real part
+            # whose offset has not settled, and it must reach the settled
+            # re-read below (and record HO from it) instead of being reported
+            # as a wiring fault.
+            if offset_v < SENSOR_OFFSET_MIN_PLAUSIBLE_V:
                 raise NoSensorDetectedError(
                     f"No sensor detected: AIN0 reads {offset_v:.3f} V DC, but a connected 406MCA "
-                    "sits near 0.3-1.2 V. Seat the sensor in the rig and check the buffer wiring, "
+                    f"presents at least {SENSOR_OFFSET_MIN_PLAUSIBLE_V:.2f} V. "
+                    "Seat the sensor in the rig and check the buffer wiring, "
                     "then press Measure again.",
                     offset_v,
                 )
+            push(lambda v=offset_initial_v: self.on_initial_offset(token, v))
             push(lambda v=offset_v: self.on_offset_update(token, v))
 
             emitter_on_time: float | None = None
             emitter_off_time: float | None = None
             try:
-                # The command may reach the ESP32 before its acknowledgement
-                # fails, so PWM shutdown must cover activation as well as the
-                # subsequent stream capture.
-                activation_time = device.configure_emitter_pwm(
-                    channel=pwm_channel,
-                    frequency_hz=pwm_hz,
-                    duty_cycle_percent=pwm_duty,
-                )
-                emitter_on_time = (
-                    float(activation_time)
-                    if isinstance(activation_time, (int, float))
-                    else time.monotonic()
-                )
-                push(lambda: self.set_measure_status(
-                    token,
-                    f"Emitter PWM on. Attempt 1/{MAX_MEASUREMENT_ATTEMPTS}: "
-                    f"stabilizing peak (0/{DUT_STABILITY_CONFIRMATION_DELTAS})...",
-                ))
+                # The PWM,ON command may reach the ESP32 before its
+                # acknowledgement fails, so the PWM shutdown in the finally
+                # below covers activation as well as the stream capture.
 
                 def progress(current: StabilityAnalysis) -> None:
                     current_report = current.report
@@ -5451,15 +6111,51 @@ class EmitterTesterApp(tk.Tk):
                     # technician can turn the live scope on mid-measurement.
                     push(lambda wf=waveform_preview, sy=sync_preview: self.on_preview_frame(token, wf, sy))
 
-                waveform, sync, actual_rate, stability_analysis = device.read_waveform_until_stable(
-                    waveform_range_v=waveform_range_v,
-                    settings=settings,
-                    pwm_started_monotonic=emitter_on_time,
-                    sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
-                    expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
-                    progress=progress,
-                    preview=preview,
-                    cancelled=lambda: token != self.measure_token,
+                def driven_capture(attempt: int):
+                    nonlocal emitter_on_time
+                    # (Re-)activating restarts the PWM phase, so a stream
+                    # retry gets a clean cycle boundary and a fresh anchor; a
+                    # retry after a board restart needs the front end first.
+                    if attempt and verify_qualified_front_end(device):
+                        push(lambda: self.set_measure_status(token, FRONT_END_REVERTED_TEXT))
+                        push(lambda: self._log_rig_note(FRONT_END_REVERTED_TEXT))
+                    activation_time = device.configure_emitter_pwm(
+                        channel=pwm_channel,
+                        frequency_hz=pwm_hz,
+                        duty_cycle_percent=pwm_duty,
+                    )
+                    emitter_on_time = (
+                        float(activation_time)
+                        if isinstance(activation_time, (int, float))
+                        else time.monotonic()
+                    )
+                    push(lambda: self.set_measure_status(
+                        token,
+                        f"Emitter PWM on. Attempt 1/{MAX_MEASUREMENT_ATTEMPTS}: "
+                        f"stabilizing peak (0/{DUT_STABILITY_CONFIRMATION_DELTAS})...",
+                    ))
+                    return device.read_waveform_until_stable(
+                        waveform_range_v=waveform_range_v,
+                        settings=settings,
+                        pwm_started_monotonic=emitter_on_time,
+                        sample_rate_hz=DEFAULT_SAMPLE_RATE_HZ,
+                        expected_frequency_hz=EXPECTED_FREQUENCY_HZ,
+                        progress=progress,
+                        preview=preview,
+                        cancelled=lambda: token != self.measure_token,
+                    )
+
+                def driven_capture_retry(attempt: int, exc: Exception) -> None:
+                    push(lambda: self.set_measure_status(
+                        token,
+                        f"{stream_glitch_label(exc)} during the sensor capture; "
+                        f"nothing was recorded — restarting the capture "
+                        f"({attempt}/{REFERENCE_READING_STREAM_RETRIES})…",
+                    ))
+                    push(lambda: self._log_stream_retry("sensor capture", attempt, exc))
+
+                waveform, sync, actual_rate, stability_analysis = call_with_stream_retries(
+                    driven_capture, on_retry=driven_capture_retry
                 )
             finally:
                 deactivation_time = device.disable_emitter_pwm(pwm_channel)
@@ -5468,6 +6164,34 @@ class EmitterTesterApp(tk.Tk):
                     if isinstance(deactivation_time, (int, float))
                     else time.monotonic()
                 )
+
+            # Settled-offset verification (2026-09-03): the insertion read was
+            # taken before the emitter even started, and these parts are still
+            # moving for tens of seconds after they are seated. Re-read now -
+            # the part has been powered in the rig through the whole capture,
+            # so this costs no bench time - and hold an out-of-band level
+            # instead of failing it on a number that is still coming down.
+            # See the OFFSET_SETTLE_* constants for the wait's rules.
+            push(lambda: self.set_measure_status(
+                token, "Capture done. Re-reading the settled offset…"
+            ))
+            settled_start_v = device.read_offset_voltage(
+                waveform_range_v=waveform_range_v
+            )
+            push(lambda v=settled_start_v: self.set_measure_status(
+                token, offset_settle_status_text(v, 0.0)
+            ))
+            offset_settle = wait_for_settled_offset(
+                lambda: device.read_offset_voltage(waveform_range_v=waveform_range_v),
+                start_v=settled_start_v,
+                on_read=lambda value, elapsed_s: push(
+                    lambda text=offset_settle_status_text(value, elapsed_s):
+                    self.set_measure_status(token, text)
+                ),
+                cancelled=lambda: token != self.measure_token,
+            )
+            offset_v = offset_settle.final_v
+            self.last_offset_settle = offset_settle
 
         if stability_analysis.report.measurement_complete:
             metrics = analyze_v6_stable_measurement(
@@ -5491,6 +6215,8 @@ class EmitterTesterApp(tk.Tk):
             )
         else:
             raise Esp32BackendError("Adaptive capture ended without a complete result.")
+        # Drift is recorded and warned about, never gated (2026-09-03).
+        final = apply_offset_settle_warning(final, offset_settle)
         host_pwm_on_seconds = None
         if emitter_on_time is not None and emitter_off_time is not None:
             host_pwm_on_seconds = emitter_off_time - emitter_on_time
@@ -5523,6 +6249,8 @@ class EmitterTesterApp(tk.Tk):
             filter_setup,
             sim_case,
         )
+        offset_initial_v = offset_v
+        push(lambda v=offset_initial_v: self.on_initial_offset(token, v))
         push(lambda v=offset_v: self.on_offset_update(token, v))
         push(lambda: self.set_measure_status(
             token,
@@ -5567,6 +6295,23 @@ class EmitterTesterApp(tk.Tk):
             wf = waveform[-STREAM_PREVIEW_MAX_SAMPLES:].copy()
             sy = sync[-STREAM_PREVIEW_MAX_SAMPLES:].copy()
             push(lambda: self.on_preview_frame(token, wf, sy))
+        # Settled-offset verification, mirroring the hardware path so the
+        # simulator exercises the same wait (SIM_CASE_OFFSET_SETTLES starts
+        # above the band and decays into it; every other case holds its level).
+        push(lambda: self.set_measure_status(
+            token, "Capture done (simulated). Re-reading the settled offset…"
+        ))
+        offset_settle = wait_for_settled_offset(
+            simulated_offset_reader(sim_case, offset_initial_v),
+            start_v=offset_initial_v,
+            on_read=lambda value, elapsed_s: push(
+                lambda text=offset_settle_status_text(value, elapsed_s):
+                self.set_measure_status(token, text)
+            ),
+            cancelled=lambda: token != self.measure_token,
+        )
+        offset_v = offset_settle.final_v
+        self.last_offset_settle = offset_settle
         if stability_analysis.report.measurement_complete:
             push(lambda: self.set_measure_status(
                 token,
@@ -5596,6 +6341,7 @@ class EmitterTesterApp(tk.Tk):
             )
         else:
             raise RuntimeError("Simulator capture did not reach a complete v6.1 decision.")
+        final = apply_offset_settle_warning(final, offset_settle)
         report = StabilityCaptureReport.from_analysis(stability_analysis, data_source="simulator")
         self.last_capture_report = report
         return metrics, final, offset_v
@@ -5603,6 +6349,17 @@ class EmitterTesterApp(tk.Tk):
     def set_measure_status(self, token: int, text: str) -> None:
         if token == self.measure_token:
             self.measure_status_var.set(text)
+
+    def on_initial_offset(self, token: int, offset_v: float) -> None:
+        """Record the insertion-time offset read (diagnostic; see the CSV).
+
+        The verdict uses the settled re-read taken after the sensitivity
+        capture; keeping the first read beside it makes each part's settling
+        behaviour visible in the batch data.
+        """
+        if token != self.measure_token:
+            return
+        self.last_offset_initial_v = offset_v
 
     def on_offset_update(self, token: int, offset_v: float) -> None:
         if token != self.measure_token:
@@ -5631,13 +6388,23 @@ class EmitterTesterApp(tk.Tk):
         if outcome == OUTCOME_PASS and is_sensitivity_near_limit(final):
             self.status_var.set(
                 f"{self.current_sensor_id}: PASS — sensitivity is near the limit (within the "
-                "conversion-factor margin). Re-measure is suggested; saving records a PASS."
+                "conversion-factor margin). Next saves it and takes the next number."
+            )
+        elif outcome == OUTCOME_PASS and is_offset_still_settling(final):
+            self.status_var.set(
+                f"{self.current_sensor_id}: PASS — the offset was still settling when it "
+                "was recorded. Next saves it and takes the next number."
             )
         elif outcome == OUTCOME_PASS:
-            self.status_var.set(f"{self.current_sensor_id}: {OUTCOME_PASS}.")
+            self.status_var.set(
+                f"{self.current_sensor_id}: {OUTCOME_PASS} — Next saves it and reads the "
+                "sensor now in the rig as "
+                f"{self.batch_number}-{self.current_sensor_number + 1}."
+            )
         else:
             self.status_var.set(
-                f"{self.current_sensor_id}: FAIL — confirm the failure mode, then save the sensor."
+                f"{self.current_sensor_id}: FAIL — confirm the failure mode, then Next saves "
+                f"it and reads the sensor now in the rig as {self.current_sensor_id} again."
             )
         self.write_autosave("measurement_complete")
         self.render_step()
@@ -5665,7 +6432,7 @@ class EmitterTesterApp(tk.Tk):
             return
         self.measuring = False
         self.busy = False
-        self.step = self.LOAD_STEP
+        self.step = self.RESULT_STEP
         self.status_var.set("Reference-unit lockout — the sensor was not read.")
         self.measure_status_var.set("")
         self.render_step()
@@ -5678,7 +6445,7 @@ class EmitterTesterApp(tk.Tk):
                 "Is a sensor loaded?",
                 f"AIN0 reads {exc.offset_v:.3f} V — the same as an empty slot.\n\n"
                 f"Is a sensor loaded in the rig?\n\n"
-                "Yes = record {self.current_sensor_id} as a bad (no-offset) sensor.\n"
+                f"Yes = record {self.current_sensor_id} as a bad (no-offset) sensor.\n"
                 "No = nothing is recorded; seat the sensor and measure again.",
             )
         )
@@ -5864,9 +6631,8 @@ class EmitterTesterApp(tk.Tk):
             "sensor_number": self.current_sensor_number,
             "sensor_id": self.current_sensor_id,
             "filter_setup": self.filter_setup,
-            "resuming_skipped": self.resuming_skipped,
             "measure_attempts": self.measure_attempts,
-            "skip_count": self.skip_count,
+            "number_attempt": self.number_attempt,
             "offset_v": None if self.last_result is None else self.last_result.offset_v,
             "sensitivity_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
             "sensitivity_raw_mv": None if self.last_result is None else self.last_result.sensitivity_mv,
@@ -5943,20 +6709,6 @@ class EmitterTesterApp(tk.Tk):
         ]
         for chip_text, chip_fg, chip_bg in chip_specs:
             tk.Label(chips, text=chip_text, bg=chip_bg, fg=chip_fg, font=self.fm(10, "bold"), padx=12, pady=5).pack(side="left", padx=(0, 8))
-        waiting = attempt_history.skipped_queue(
-            attempt_history.attempts_path_for(csv_path), csv_path
-        )
-        if waiting:
-            tk.Label(
-                head,
-                text=f"Skipped, not measured yet ({len(waiting)}): {attempt_history.format_queue(waiting)}",
-                bg=PAGE_BG,
-                fg="#8a5a00",
-                font=self.fb(12, "bold"),
-                wraplength=S(860),
-                justify="left",
-            ).pack(anchor="w", pady=(10, 0))
-
         frame = tk.Frame(summary, bg=PAGE_BG)
         frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(8, 0))
         summary.rowconfigure(1, weight=1)

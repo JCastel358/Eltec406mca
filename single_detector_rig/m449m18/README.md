@@ -29,8 +29,11 @@ simulator) with the model layer replaced.
 | Order | all parts at 5 Hz first, then all at 18 Hz (blade speed is changed by hand) | both drives back to back per part (electronic switch); each reading is recorded per frequency anyway |
 
 Notes carried from TP443: a failing detector is removed and retested
-(note 1) — that is the **Re-measure** button; only parts failing specs 1–3
-are failures, the tray flag is a sampling instruction, not a verdict.
+(note 1) — which is exactly the flow since 2026-09-02, since a FAIL does not
+spend its sensor number: save it, load the part again (or its replacement),
+press **Next**, and it is tested under the same number until one passes.
+Only parts failing specs 1–3 are failures; the tray flag is a sampling
+instruction, not a verdict.
 
 ### Why two calibration factors
 
@@ -138,7 +141,7 @@ known-good peak-delta evidence per drive if the 0.100 mV threshold in
   `sensitivity_calibration_id`, `sensitivity_gate_enabled`, polarity and
   SNR per frequency, measured sync per frequency, reference audit columns,
   `stab5_*` and `stab18_*` stability telemetry, `measure_attempts`,
-  `skip_count`. Sibling `*_attempts.csv` as in the other models.
+  `number_attempt`. Sibling `*_attempts.csv` as in the other models.
 - Snapshots (`Capture waveforms`, and automatically for an unstable drive):
   one PNG (+ cycle CSV sidecars) per drive, suffixed `_5hz` / `_18hz`.
 
@@ -165,6 +168,17 @@ disabled as on the whole fixture.
 `High 18 Hz ratio` (1.45). Each case is generated per frequency with a 20 %
 ON pulse response; with the gate off they all PASS except polarity and
 stability, with the gate on they exercise every spec.
+
+## Serial-stream reliability
+
+This build carries the 405 M22's stream machinery (drain-thread backend,
+bounded micro-gap tolerance and refill, bounded retries) - see that README's
+"Serial-stream reliability" sections for the bench history. Since 2026-09-03
+a stalled stream (2 s without a sample) is stopped first and attributed from
+the board's `STREAM,END` reply - `[host-stall]`, `[board-reset]`,
+`[board-silent]` or `[no-reply]` - then restarted like any other transient
+failure, up to `REFERENCE_READING_STREAM_RETRIES` times with nothing
+recorded; each restart is a `stream_retry` row in the batch's `_attempts.csv`.
 
 ## Tests
 

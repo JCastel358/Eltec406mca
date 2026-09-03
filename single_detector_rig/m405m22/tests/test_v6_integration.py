@@ -1078,6 +1078,43 @@ class ContinuousCaptureTests(unittest.TestCase):
         self.assertIsNotNone(rig.last_stream_tolerance_note)
         self.assertIn("2 serial micro-gap", rig.last_stream_tolerance_note)
 
+    def test_noise_stream_that_goes_silent_is_a_retryable_attributed_stall(self):
+        # The bank ends 2.5 s in - before the 3 s minimum quiet wait - so
+        # read_stream() returns nothing: the 2026-09-02 bench symptom. The
+        # capture stops the stream itself, reads the STREAM,END count and
+        # raises the retryable, attributed error (2026-09-03).
+        rig = FakeLowLevelRig()
+        rig._samples = self.flat_noise_bank(2500)
+        with self.assertRaises(app.StreamStalledError) as caught:
+            rig.read_noise_capture()
+        self.assertEqual(rig.stop_calls, 1)
+        self.assertFalse(rig.is_streaming)
+        self.assertIsInstance(caught.exception, app.StreamIntegrityError)
+        self.assertEqual(caught.exception.received, 2500)
+        self.assertIn("noise stream stalled after 2500 samples", str(caught.exception))
+        # FakeDiagnostics answers STREAM,STOP with the host count: the board
+        # is alive but produced nothing more.
+        self.assertEqual(caught.exception.kind, app.STALL_KIND_BOARD_SILENT)
+
+    def test_driven_stream_that_goes_silent_is_a_retryable_attributed_stall(self):
+        rig = FakeLowLevelRig()
+        rig._samples = rig._samples[:3000]  # ends long before stability
+        with self.assertRaises(app.StreamStalledError) as caught:
+            rig.read_waveform_until_stable(
+                waveform_range_v=app.WAVEFORM_INPUT_RANGE_V,
+                settings=SETTINGS,
+                pwm_started_monotonic=time.monotonic(),
+            )
+        self.assertEqual(rig.stop_calls, 1)
+        self.assertIn("waveform stream stalled after 3000/", str(caught.exception))
+        self.assertEqual(caught.exception.kind, app.STALL_KIND_BOARD_SILENT)
+
+        frame_rig = FakeLowLevelRig()
+        frame_rig._samples = frame_rig._samples[:500]
+        with self.assertRaises(app.StreamStalledError):
+            frame_rig.read_waveform_frame(3, app.WAVEFORM_INPUT_RANGE_V)
+        self.assertEqual(frame_rig.stop_calls, 1)
+
     @staticmethod
     def flat_noise_bank(samples: int, *, offset_v: float = 1.2):
         """A settled bank: constant offset plus a ±10 µV alternation."""
@@ -1174,6 +1211,131 @@ class ContinuousCaptureTests(unittest.TestCase):
         self.assertEqual(len(noise), int(app.NOISE_CAPTURE_SECONDS * 1000))
 
 
+class StallRig(app.EmitterEsp32Rig):
+    """EmitterEsp32Rig whose STREAM,STOP reply is scripted, for _stall_error."""
+
+    def __init__(self, diagnostics, *, streaming=True):
+        self._diagnostics = diagnostics
+        self._active = streaming
+        self.stop_calls = 0
+        self.stop_kwargs = None
+
+    @property
+    def is_streaming(self):
+        return self._active
+
+    @property
+    def stream_diagnostics(self):
+        return self._diagnostics
+
+    def stop_stream(self, *, timeout_s=2.0, raise_on_timeout=True):
+        self.stop_calls += 1
+        self.stop_kwargs = dict(timeout_s=timeout_s, raise_on_timeout=raise_on_timeout)
+        self._active = False
+        return self._diagnostics
+
+
+def stall_diagnostics(**overrides):
+    """What the backend hands back after STREAM,STOP: a healthy board by default."""
+    fields = dict(
+        received_samples=37624,
+        drained_samples=0,
+        firmware_samples_sent=37624,
+        ignored_lines=0,
+        ignored_line_samples=[],
+        last_sample_monotonic=None,
+        expected_rate_hz=1000.0,
+    )
+    fields.update(overrides)
+    return SimpleNamespace(**fields)
+
+
+class StreamStallAttributionTests(unittest.TestCase):
+    """_stall_error (2026-09-03): the STREAM,STOP reply says which side went quiet."""
+
+    def stall(self, diagnostics, **kwargs):
+        rig = StallRig(diagnostics)
+        error = rig._stall_error(37624, **kwargs)
+        # The stream is stopped BEFORE the error is built (that is where the
+        # numbers come from), without raising on a missing STREAM,END.
+        self.assertEqual(rig.stop_calls, 1)
+        self.assertFalse(rig.stop_kwargs["raise_on_timeout"])
+        self.assertFalse(rig.is_streaming)
+        # Retryable: the bounded restart replaces the technician's Re-measure.
+        self.assertIsInstance(error, app.StreamIntegrityError)
+        self.assertEqual(error.received, 37624)
+        self.assertIn(f"[{error.kind}]", str(error))
+        return error
+
+    def test_no_stop_reply_means_the_board_or_link_is_gone(self):
+        error = self.stall(stall_diagnostics(firmware_samples_sent=None), what="noise")
+        self.assertEqual(error.kind, app.STALL_KIND_NO_REPLY)
+        self.assertIn("ESP32 noise stream stalled after 37624 samples", str(error))
+        self.assertIn("did not answer STREAM,STOP", str(error))
+
+    def test_restarted_counter_or_ready_banner_means_the_board_rebooted(self):
+        error = self.stall(
+            stall_diagnostics(
+                firmware_samples_sent=0,
+                ignored_lines=3,
+                ignored_line_samples=["???rst", "READY,ELTEC-ESP32-ADS1256"],
+            )
+        )
+        self.assertEqual(error.kind, app.STALL_KIND_BOARD_RESET)
+        self.assertIn("restarted during the capture", str(error))
+        self.assertIn("READY banner arrived mid-stream", str(error))
+        # The restarted counter alone is decisive - the boot text arrives
+        # garbled (ROM output at 115200 baud) and may not include READY.
+        error = self.stall(stall_diagnostics(firmware_samples_sent=0))
+        self.assertEqual(error.kind, app.STALL_KIND_BOARD_RESET)
+        self.assertIn("came back at 0", str(error))
+
+    def test_backlog_or_firmware_ahead_means_the_computer_froze(self):
+        # The samples were queued in the OS buffer all along: draining the
+        # stop reply collected 2.3 s of them.
+        error = self.stall(
+            stall_diagnostics(
+                received_samples=39900, drained_samples=2276, firmware_samples_sent=39905
+            )
+        )
+        self.assertEqual(error.kind, app.STALL_KIND_HOST)
+        self.assertIn("firmware 39905 vs host 37624", str(error))
+        self.assertIn("2276 samples = 2.3 s were still waiting", str(error))
+        self.assertIn("the rig did not stop", str(error))
+        # Or the buffer overflowed and they are gone - the board still
+        # counted them, which is what matters for the attribution.
+        error = self.stall(stall_diagnostics(firmware_samples_sent=40100))
+        self.assertEqual(error.kind, app.STALL_KIND_HOST)
+        self.assertIn("computer stopped reading", str(error))
+
+    def test_matching_counts_mean_the_board_went_silent(self):
+        error = self.stall(
+            stall_diagnostics(
+                received_samples=37626, drained_samples=2, firmware_samples_sent=37626
+            ),
+            target=40310,
+        )
+        self.assertEqual(error.kind, app.STALL_KIND_BOARD_SILENT)
+        self.assertIn("stalled after 37624/40310 samples", str(error))
+        self.assertIn("data-ready signal stopped", str(error))
+
+    def test_silence_is_measured_against_the_last_live_sample(self):
+        error = self.stall(
+            stall_diagnostics(last_sample_monotonic=time.monotonic() - 2.2)
+        )
+        self.assertRegex(str(error), r"no sample for 2\.[0-9] s")
+
+    def test_a_dead_port_is_not_a_stall(self):
+        rig = StallRig(stall_diagnostics())
+
+        def dead(**_kwargs):
+            raise app.Esp32BackendError("Could not send STREAM,STOP: port gone")
+
+        rig.stop_stream = dead
+        with self.assertRaisesRegex(app.Esp32BackendError, "port gone"):
+            rig._stall_error(10)
+
+
 class StreamIntegrityBudgetTests(unittest.TestCase):
     """_validate_stream_diagnostics: bounded micro-gap loss vs corruption."""
 
@@ -1252,11 +1414,37 @@ class ReferenceCalibrationTests(unittest.TestCase):
                 raise app.StreamIntegrityError("17 timestamp gaps")
             return 5.5
 
-        notified: list[int] = []
-        result = app.call_with_stream_retries(flaky, on_retry=notified.append)
+        notified: list[tuple[int, str]] = []
+        result = app.call_with_stream_retries(
+            flaky, on_retry=lambda attempt, exc: notified.append((attempt, str(exc)))
+        )
         self.assertEqual(result, 5.5)
         self.assertEqual(attempts, [0, 1])
-        self.assertEqual(notified, [1])
+        self.assertEqual(notified, [(1, "17 timestamp gaps")])
+
+        # A stall (2026-09-03) is a StreamIntegrityError too: restarted the
+        # same bounded way, and the callback receives the attributed error.
+        stalls: list[int] = []
+        seen: list[Exception] = []
+
+        def stalled_once(attempt: int) -> float:
+            stalls.append(attempt)
+            if len(stalls) == 1:
+                raise app.StreamStalledError(
+                    "ESP32 noise stream stalled after 37624 samples. [host-stall]",
+                    kind=app.STALL_KIND_HOST,
+                    received=37624,
+                )
+            return 6.5
+
+        self.assertEqual(
+            app.call_with_stream_retries(
+                stalled_once, on_retry=lambda _attempt, exc: seen.append(exc)
+            ),
+            6.5,
+        )
+        self.assertEqual(stalls, [0, 1])
+        self.assertEqual([exc.kind for exc in seen], [app.STALL_KIND_HOST])
 
         # A persistent stream problem still fails after the bounded retries.
         persistent: list[int] = []
@@ -1266,7 +1454,7 @@ class ReferenceCalibrationTests(unittest.TestCase):
             raise app.StreamIntegrityError("80 duplicate timestamps")
 
         with self.assertRaises(app.StreamIntegrityError):
-            app.call_with_stream_retries(always_bad, on_retry=lambda _n: None)
+            app.call_with_stream_retries(always_bad, on_retry=lambda _n, _e: None)
         self.assertEqual(
             len(persistent), app.REFERENCE_READING_STREAM_RETRIES + 1
         )
@@ -1279,7 +1467,9 @@ class ReferenceCalibrationTests(unittest.TestCase):
             raise app.Esp32BackendError("Measurement was cancelled.")
 
         with self.assertRaisesRegex(app.Esp32BackendError, "cancelled"):
-            app.call_with_stream_retries(cancelled, on_retry=other.append)
+            app.call_with_stream_retries(
+                cancelled, on_retry=lambda attempt, _exc: other.append(attempt)
+            )
         self.assertEqual(other, [0])
 
     def test_five_readings_create_average_and_twenty_five_percent_window(self):
@@ -1421,8 +1611,12 @@ class FakeMeasurementDevice:
         reference_mv=100.0,
         reference_error=None,
         noisy_windows=0,
+        noise_errors=None,
     ):
         self.battery = battery
+        # Exceptions raised by successive read_noise_capture() calls before
+        # a capture succeeds (a stall or integrity failure the app restarts).
+        self.noise_errors = list(noise_errors) if noise_errors else []
         self.offset = offset
         # Successive read_offset_voltage() values (last one repeats), for
         # parts whose offset drifts/rails between the offset gate and the
@@ -1478,6 +1672,8 @@ class FakeMeasurementDevice:
 
     def read_noise_capture(self, **kwargs):
         self.calls.append("noise")
+        if self.noise_errors:
+            raise self.noise_errors.pop(0)
         rate = 1000.0
         wait_s = app.NOISE_WAIT_BEFORE_CAPTURE_S
         capture_seconds = float(
@@ -1532,6 +1728,7 @@ class MeasurementHarness:
         self.callback_events = []
         self.progress_events = []
         self.preview_count = 0
+        self.stream_retries = []
         self.reference_progress_var = SimpleNamespace(
             set=lambda value: self.callback_events.append(("reference_progress", value))
         )
@@ -1544,6 +1741,9 @@ class MeasurementHarness:
 
     def _fresh_battery_reading(self):
         return None
+
+    def _log_stream_retry(self, phase, attempt, exc):
+        self.stream_retries.append((phase, attempt, exc))
 
     def _capture_reference_reading(self, device, **_kwargs):
         device.calls.append("reference")
@@ -1890,6 +2090,44 @@ class HardwareWorkflowTests(unittest.TestCase):
                 "noise", "pwm_on", "capture", "pwm_off",
             ],
         )
+
+    def test_stalled_capture_is_restarted_by_the_app_and_logged(self):
+        # 2026-09-03: a stall used to be a dead end (the technician pressed
+        # Re-measure); it is now a StreamIntegrityError and gets the same
+        # bounded restart as a micro-gap failure, with the attributed error
+        # on the status line and in the attempts log.
+        stall = app.StreamStalledError(
+            "ESP32 noise stream stalled after 37624 samples (no sample for 2.3 s). "
+            "The board kept sampling [host-stall]",
+            kind=app.STALL_KIND_HOST,
+            received=37624,
+        )
+        device = FakeMeasurementDevice(noise_errors=[stall])
+        harness, (_metrics, final, _offset) = self.run_hardware(device)
+        self.assertTrue(final.passed)
+        self.assertEqual(device.calls.count("noise"), 2)
+        statuses = [
+            event[2] for event in harness.callback_events if event[0] == "status"
+        ]
+        self.assertTrue(
+            any(text.startswith("Stream stalled during the noise capture") for text in statuses),
+            statuses,
+        )
+        self.assertEqual(harness.stream_retries, [("noise capture", 1, stall)])
+
+    def test_persistent_stall_fails_after_the_bounded_restarts_with_pwm_off(self):
+        stall = app.StreamStalledError(
+            "ESP32 waveform stream stalled after 3000/72001 samples. [board-silent]",
+            kind=app.STALL_KIND_BOARD_SILENT,
+            received=3000,
+        )
+        device = FakeMeasurementDevice(error=stall)
+        with self.assertRaises(app.StreamStalledError):
+            self.run_hardware(device)
+        self.assertEqual(
+            device.calls.count("capture"), app.REFERENCE_READING_STREAM_RETRIES + 1
+        )
+        self.assertEqual(device.calls[-1], "pwm_off")
 
     def test_pwm_activation_error_still_turns_pwm_off(self):
         device = FakeMeasurementDevice(configure_error=RuntimeError("PWM acknowledgement lost"))
@@ -2364,7 +2602,7 @@ class RawNoiseCaptureTests(unittest.TestCase):
             last_result=final,
             last_metrics=None,
             measure_attempts=1,
-            skip_count=0,
+            number_attempt=1,
             _log_attempt=lambda *args, **kwargs: None,
             last_capture_report=None,
             last_noise_report=measure.last_noise_report,
@@ -2802,7 +3040,7 @@ class NotMeasuredSkipTests(unittest.TestCase):
             filter_setup=app.DEFAULT_FILTER_SETUP,
             last_offset_initial_v=None,
             measure_attempts=1,
-            skip_count=0,
+            number_attempt=1,
             _log_attempt=lambda *args, **kwargs: None,
             failure_mode_var=FakeVar(""),
             notes_var=FakeVar(""),
@@ -2815,8 +3053,8 @@ class NotMeasuredSkipTests(unittest.TestCase):
         harness.save_current_sensor = (
             lambda: app.EmitterTesterApp.save_current_sensor(harness)
         )
-        harness.can_skip_sensor = (
-            lambda: app.EmitterTesterApp.can_skip_sensor(harness)
+        harness.can_record_not_measured = (
+            lambda: app.EmitterTesterApp.can_record_not_measured(harness)
         )
         for name, value in overrides.items():
             setattr(harness, name, value)
@@ -2838,12 +3076,12 @@ class NotMeasuredSkipTests(unittest.TestCase):
             self.assertNotIn(reason, app.FAILURE_MODE_CHOICES)
             self.assertEqual(app.split_failure_mode(reason)[0], app.NOT_MEASURED_TAG)
 
-    def test_skipped_sensor_row_carries_a_reason_and_no_measurements(self):
+    def test_not_measured_row_carries_a_reason_and_no_measurements(self):
         harness = self.skip_harness()
         with tempfile.TemporaryDirectory() as temp_dir:
             csv_path = Path(temp_dir) / "B1.csv"
             with mock.patch.object(app, "batch_results_path", return_value=csv_path):
-                saved = app.EmitterTesterApp.save_skipped_sensor(
+                saved = app.EmitterTesterApp.save_not_measured_sensor(
                     harness, app.DEFAULT_NOT_MEASURED_REASON, "swapped the USB cable"
                 )
             self.assertTrue(saved)
@@ -2860,9 +3098,10 @@ class NotMeasuredSkipTests(unittest.TestCase):
         self.assertTrue(row["fail_reasons"].startswith(app.NOT_MEASURED_REASON_PREFIX))
         self.assertIn("timestamp gaps", row["fail_reasons"])
         self.assertEqual(row["operator_comments"], "swapped the USB cable")
+        self.assertEqual(row["number_attempt"], "1")
         self.assertTrue(harness.result_saved)
 
-    def test_skip_is_refused_once_a_real_verdict_exists(self):
+    def test_not_measured_is_refused_once_a_real_verdict_exists(self):
         measured = app.FinalResult(
             passed=False,
             offset_v=0.7,
@@ -2873,15 +3112,19 @@ class NotMeasuredSkipTests(unittest.TestCase):
             waveform_metrics=None,
         )
         self.assertFalse(
-            app.EmitterTesterApp.can_skip_sensor(self.skip_harness(last_result=measured))
+            app.EmitterTesterApp.can_record_not_measured(
+                self.skip_harness(last_result=measured)
+            )
         )
-        # ...and with no failed attempt behind it there is nothing to skip.
+        # ...and with no failed attempt behind it there is nothing to record.
         self.assertFalse(
-            app.EmitterTesterApp.can_skip_sensor(
+            app.EmitterTesterApp.can_record_not_measured(
                 self.skip_harness(last_measure_error=None)
             )
         )
-        self.assertTrue(app.EmitterTesterApp.can_skip_sensor(self.skip_harness()))
+        self.assertTrue(
+            app.EmitterTesterApp.can_record_not_measured(self.skip_harness())
+        )
 
     def test_a_failed_write_leaves_the_sensor_unsaved_and_measurable(self):
         harness = self.skip_harness()
@@ -2889,7 +3132,7 @@ class NotMeasuredSkipTests(unittest.TestCase):
             app, "append_result_csv", side_effect=OSError("batch CSV is open in Excel")
         ), mock.patch.object(app, "batch_results_path", return_value=Path("B1.csv")), \
                 mock.patch.object(app.messagebox, "showerror") as showerror:
-            saved = app.EmitterTesterApp.save_skipped_sensor(
+            saved = app.EmitterTesterApp.save_not_measured_sensor(
                 harness, app.DEFAULT_NOT_MEASURED_REASON, ""
             )
         self.assertFalse(saved)
@@ -2899,7 +3142,7 @@ class NotMeasuredSkipTests(unittest.TestCase):
         self.assertEqual(harness.notes_var.get(), "")
         showerror.assert_called_once()
 
-    def test_batch_summary_keeps_skipped_sensors_out_of_the_yield(self):
+    def test_batch_summary_keeps_not_measured_sensors_out_of_the_yield(self):
         counts = app.summarize_batch_outcomes(
             [
                 app.OUTCOME_PASS,
@@ -2929,7 +3172,9 @@ class FooterFitTests(unittest.TestCase):
 
     Regression: with the v2.0 six-button footer at full size, "Save + Next
     Sensor (Enter)" needed more width than the content column has once the
-    window was maximized, and was clipped off the right edge.
+    window was maximized, and was clipped off the right edge. The bar is two
+    buttons now (Stop, Next), but the blocked-measure labels are still long
+    enough to need the same ladder.
     """
 
     class FakeButton:
@@ -2939,20 +3184,19 @@ class FooterFitTests(unittest.TestCase):
 
     def test_label_tiers_shorten_in_the_documented_order(self):
         label = app.EmitterTesterApp._footer_label
-        save = self.FakeButton("Save + Next Sensor (Enter)")
-        self.assertEqual(label(save, "full"), "Save + Next Sensor (Enter)")
-        self.assertEqual(label(save, "nohint"), "Save + Next Sensor")
-        self.assertEqual(label(save, "short"), "Save + Next")
-        exit_batch = self.FakeButton("Save + Exit Batch (Esc)")
-        self.assertEqual(label(exit_batch, "nohint"), "Save + Exit Batch")
-        self.assertEqual(label(exit_batch, "short"), "Save + Exit")
-        # The skipped counter has to survive the compact wording.
-        skipped = self.FakeButton("Measure skipped (3)")
-        self.assertEqual(label(skipped, "short"), "Skipped (3)")
+        nxt = self.FakeButton("Next sensor (Enter)")
+        self.assertEqual(label(nxt, "full"), "Next sensor (Enter)")
+        self.assertEqual(label(nxt, "nohint"), "Next sensor")
+        self.assertEqual(label(nxt, "short"), "Next")
+        stop = self.FakeButton("Stop batch (Esc)")
+        self.assertEqual(label(stop, "nohint"), "Stop batch")
+        self.assertEqual(label(stop, "short"), "Stop")
+        blocked = self.FakeButton("Calibrate reference unit to test")
+        self.assertEqual(label(blocked, "short"), "Calibrate reference first")
         # A label with no hint and no compact form is left alone at every tier.
-        plain = self.FakeButton("Skip part")
+        plain = self.FakeButton("Stop")
         for tier in ("full", "nohint", "short"):
-            self.assertEqual(label(plain, tier), "Skip part")
+            self.assertEqual(label(plain, tier), "Stop")
 
     def test_variant_ladder_keeps_the_buttons_big_before_shrinking(self):
         variants = app.EmitterTesterApp.FOOTER_VARIANTS
@@ -2981,10 +3225,15 @@ class FooterFitTests(unittest.TestCase):
         return worst
 
     def _drive_to_result(self, root):
-        """Reach a result step with an unsaved verdict (all six buttons)."""
+        """Reach a result step with an unsaved verdict.
+
+        start_batch now reads the sensor straight away, so the measurement
+        is stubbed out - this test is about the footer geometry.
+        """
         root.batch_var.set("FIT")
         root.tester_var.set("tester")
-        root.start_batch()
+        with mock.patch.object(app.EmitterTesterApp, "run_measurement", lambda self: None):
+            root.start_batch()
         root.show_step(root.RESULT_STEP)
         final = app.FinalResult(
             passed=True, fail_reasons=[], warnings=[], offset_v=1.2,
@@ -3056,15 +3305,254 @@ class FooterFitTests(unittest.TestCase):
         root.update_idletasks()
         with self.subTest(step="setup"):
             self.assertLessEqual(self._footer_overflow(root), 0)
-            # Only Back + the primary action exist on the setup step.
-            self.assertFalse(root.skip_button.winfo_manager())
-            self.assertFalse(root.remeasure_button.winfo_manager())
+            # Stop has no meaning before a batch starts.
+            self.assertFalse(root.stop_button.winfo_manager())
         self._drive_to_result(root)
-        for step in ("load", "result"):
-            root.show_step(root.LOAD_STEP if step == "load" else root.RESULT_STEP)
-            root.update_idletasks()
-            with self.subTest(step=step):
-                self.assertLessEqual(self._footer_overflow(root), 0)
+        root.update_idletasks()
+        with self.subTest(step="result"):
+            self.assertLessEqual(self._footer_overflow(root), 0)
+            # ...and both buttons are on the bar once a batch is running.
+            self.assertTrue(root.stop_button.winfo_manager())
+            self.assertTrue(root.primary_button.winfo_manager())
+
+
+class SensorNumberingTests(unittest.TestCase):
+    """2026-09-02: a sensor number is only spent by a PASS.
+
+    A failed part is put aside on the bench and another one takes its place,
+    so the replacement is tested under the same number until one passes.
+    The batch CSV therefore holds one row per TEST.
+    """
+
+    def _row(self, csv_path, number, passed, outcome=None):
+        final = app.FinalResult(
+            passed=passed,
+            offset_v=1.2,
+            sensitivity_mv=40.0 if passed else 2.0,
+            polarity=app.POSITIVE_POLARITY,
+            fail_reasons=[] if passed else ["Sensitivity too low: raw 2.000 mV"],
+            warnings=[],
+            waveform_metrics=None,
+        )
+        if outcome == app.OUTCOME_NOT_MEASURED:
+            final = app.build_not_measured_result("stream stalled")
+        app.append_result_csv(
+            csv_path,
+            batch_number="B9",
+            sensor_number=number,
+            sensor_id=f"B9-{number}",
+            tester_name="Operator",
+            filter_setup=app.DEFAULT_FILTER_SETUP,
+            pwm_channel=app.EMITTER_PWM_CHANNEL,
+            pwm_hz=app.EMITTER_PWM_FREQUENCY_HZ,
+            pwm_duty=app.EMITTER_PWM_DUTY_CYCLE,
+            final_result=final,
+            comment="",
+            snapshot_paths=[],
+            failure_mode=(
+                "" if passed else app.suggest_failure_mode(final)
+            ),
+            number_attempt=app.number_attempt_for_batch(csv_path, f"B9-{number}"),
+        )
+
+    def test_a_failed_part_leaves_its_number_open(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "B9.csv"
+            self.assertEqual(app.next_sensor_number_for_batch(path), 1)
+            self._row(path, 1, passed=True)
+            self.assertEqual(app.next_sensor_number_for_batch(path), 2)
+            # Two bad parts in a row: 2 stays the number on offer.
+            self._row(path, 2, passed=False)
+            self.assertEqual(app.next_sensor_number_for_batch(path), 2)
+            self._row(path, 2, passed=False)
+            self.assertEqual(app.next_sensor_number_for_batch(path), 2)
+            # NOT MEASURED is not a pass either.
+            self._row(path, 2, passed=False, outcome=app.OUTCOME_NOT_MEASURED)
+            self.assertEqual(app.next_sensor_number_for_batch(path), 2)
+            # ...and the part that finally passes earns it.
+            self._row(path, 2, passed=True)
+            self.assertEqual(app.next_sensor_number_for_batch(path), 3)
+            with path.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+        ids = [row["sensor_id"] for row in rows]
+        self.assertEqual(ids, ["B9-1", "B9-2", "B9-2", "B9-2", "B9-2"])
+        self.assertEqual(
+            [row["pass_fail"] for row in rows],
+            [
+                app.OUTCOME_PASS,
+                app.OUTCOME_FAIL,
+                app.OUTCOME_FAIL,
+                app.OUTCOME_NOT_MEASURED,
+                app.OUTCOME_PASS,
+            ],
+        )
+        # number_attempt keeps the repeated ids readable without row order.
+        self.assertEqual(
+            [row["number_attempt"] for row in rows], ["1", "1", "2", "3", "4"]
+        )
+
+    def test_batches_written_before_the_rule_are_not_renumbered(self):
+        # Numbers used to be handed out per row, so a pre-2026-09-02 file can
+        # hold a FAIL at a number ABOVE its last pass. Continuing from the
+        # highest pass (not from a count of passes) never re-uses one of them.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "legacy.csv"
+            self._row(path, 1, passed=True)
+            self._row(path, 2, passed=False)
+            self._row(path, 3, passed=True)
+            self.assertEqual(app.next_sensor_number_for_batch(path), 4)
+
+    def test_number_attempt_counts_the_parts_tried_under_one_number(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "B9.csv"
+            self.assertEqual(app.number_attempt_for_batch(path, "B9-4"), 1)
+            self._row(path, 4, passed=False)
+            self.assertEqual(app.number_attempt_for_batch(path, "B9-4"), 2)
+            self.assertEqual(app.number_attempt_for_batch(path, "B9-5"), 1)
+            self.assertEqual(app.number_attempt_for_batch(path, ""), 1)
+
+    def test_row_sensor_number_reads_either_column(self):
+        self.assertEqual(app.row_sensor_number({"sensor_number": "12"}), 12)
+        self.assertEqual(app.row_sensor_number({"sensor_id": "B9-7"}), 7)
+        self.assertIsNone(app.row_sensor_number({"sensor_id": "no-number-x"}))
+        self.assertIsNone(app.row_sensor_number({}))
+
+
+class StopAndNextTests(unittest.TestCase):
+    """The two-button action bar: Stop is always live, Next always reads."""
+
+    def _harness(self, **overrides):
+        harness = SimpleNamespace(
+            SETUP_STEP=app.EmitterTesterApp.SETUP_STEP,
+            RESULT_STEP=app.EmitterTesterApp.RESULT_STEP,
+            step=app.EmitterTesterApp.RESULT_STEP,
+            busy=False,
+            measuring=False,
+            result_saved=False,
+            last_result=None,
+            last_metrics=None,
+            last_measure_error=None,
+            measure_token=7,
+            batch_number="B9",
+            current_sensor_number=3,
+            current_sensor_id="B9-3",
+            preview_waveform=np.zeros(4),
+            preview_sync=np.zeros(4),
+            measure_status_var=FakeVar(""),
+            status_var=FakeVar(""),
+            calls=[],
+        )
+        harness._log_attempt = lambda event, **kw: harness.calls.append(("log", event))
+        harness._reset_measure_progress = lambda: harness.calls.append(("reset",))
+        harness.render_step = lambda: harness.calls.append(("render",))
+        harness.run_measurement = lambda: harness.calls.append(("measure",))
+        harness.abort_measurement = lambda: harness.calls.append(("abort",))
+        harness._end_batch = lambda: harness.calls.append(("end",))
+        harness._advance_to_next_sensor = lambda: harness.calls.append(("advance",))
+        harness.start_batch = lambda: harness.calls.append(("start",))
+        harness.save_current_sensor = lambda: (
+            harness.calls.append(("save",)) or True
+        )
+        for name, value in overrides.items():
+            setattr(harness, name, value)
+        return harness
+
+    # ----- Next ----- #
+    def test_next_saves_a_verdict_then_reads_the_replacement(self):
+        harness = self._harness(last_result=SimpleNamespace(passed=False))
+        app.EmitterTesterApp.go_next(harness)
+        self.assertEqual(harness.calls, [("save",), ("advance",)])
+
+    def test_next_does_not_advance_when_the_write_fails(self):
+        harness = self._harness(
+            last_result=SimpleNamespace(passed=False),
+            save_current_sensor=lambda: False,
+        )
+        app.EmitterTesterApp.go_next(harness)
+        self.assertEqual(harness.calls, [])
+
+    def test_next_with_nothing_to_save_reads_the_same_number_again(self):
+        harness = self._harness(last_measure_error="stream stalled")
+        app.EmitterTesterApp.go_next(harness)
+        self.assertEqual(harness.calls, [("measure",)])
+        self.assertEqual(harness.current_sensor_id, "B9-3")
+
+    def test_next_is_inert_while_a_capture_is_running(self):
+        app.EmitterTesterApp.go_next(self._harness(measuring=True, calls=[]))
+        harness = self._harness(measuring=True)
+        app.EmitterTesterApp.go_next(harness)
+        self.assertEqual(harness.calls, [])
+
+    # ----- Stop ----- #
+    def test_stop_during_a_capture_aborts_it(self):
+        harness = self._harness(measuring=True)
+        app.EmitterTesterApp.stop(harness)
+        self.assertEqual(harness.calls, [("abort",)])
+
+    def test_abort_records_nothing_and_keeps_the_number(self):
+        harness = self._harness(
+            measuring=True, busy=True, last_result=SimpleNamespace(passed=True)
+        )
+        app.EmitterTesterApp.abort_measurement(harness)
+        # The token bump is what stops the capture: every callback the worker
+        # posts from here on is ignored, and the loops raise at their next
+        # chunk boundary (cancelled=lambda: token != self.measure_token).
+        self.assertEqual(harness.measure_token, 8)
+        self.assertFalse(harness.measuring)
+        self.assertFalse(harness.busy)
+        self.assertIsNone(harness.last_result)
+        self.assertIsNone(harness.last_measure_error)
+        self.assertEqual(harness.current_sensor_id, "B9-3")
+        self.assertIn(("log", app.attempt_history.EVENT_STOPPED), harness.calls)
+
+    def test_stop_when_idle_ends_the_batch(self):
+        harness = self._harness()
+        app.EmitterTesterApp.stop(harness)
+        self.assertEqual(harness.calls, [("end",)])
+
+    def test_stop_saves_an_unsaved_verdict_without_asking(self):
+        # 2026-09-03: Stop used to ask "save it before ending the batch?".
+        # The part has already been judged, so it is written and the batch
+        # ends - no confirmation to mis-answer.
+        harness = self._harness(last_result=SimpleNamespace(passed=True))
+        with mock.patch.object(app.messagebox, "askyesnocancel") as prompt:
+            app.EmitterTesterApp.stop(harness)
+        prompt.assert_not_called()
+        self.assertEqual(harness.calls, [("save",), ("end",)])
+
+    def test_stop_keeps_the_batch_running_when_the_write_fails(self):
+        # save_current_sensor has already shown its own error dialog; the
+        # verdict stays on screen instead of leaving with the batch.
+        harness = self._harness(
+            last_result=SimpleNamespace(passed=True),
+            save_current_sensor=lambda: False,
+        )
+        app.EmitterTesterApp.stop(harness)
+        self.assertEqual(harness.calls, [])
+
+    def test_stop_does_nothing_before_a_batch_starts(self):
+        harness = self._harness(step=app.EmitterTesterApp.SETUP_STEP)
+        app.EmitterTesterApp.stop(harness)
+        self.assertEqual(harness.calls, [])
+
+    # ----- the loop between parts ----- #
+    def test_advance_takes_the_next_number_and_reads_immediately(self):
+        harness = self._harness()
+        harness.prepare_current_sensor = lambda: harness.calls.append(("prepare",))
+        harness.show_step = lambda step: harness.calls.append(("step", step))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "B9.csv"
+            with mock.patch.object(app, "batch_results_path", return_value=path), \
+                    mock.patch.object(
+                        app, "next_sensor_number_for_batch", return_value=3
+                    ):
+                app.EmitterTesterApp._advance_to_next_sensor(harness)
+        # No load screen in between: the part is already in the rig.
+        self.assertEqual(
+            harness.calls,
+            [("prepare",), ("step", app.EmitterTesterApp.RESULT_STEP), ("measure",)],
+        )
+        self.assertEqual(harness.current_sensor_number, 3)
 
 
 if __name__ == "__main__":

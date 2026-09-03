@@ -31,10 +31,10 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
    author, never commit `.npz`/result CSVs, never delete or rename files
    there — they are evidence.
 6. **Run `python run_all_tests.py` before claiming anything is done.**
-   Baseline: glue 38, 405 175 (4 skipped), 406 109 (on Windows exactly two
-   known environment-only cases: `test_launcher_installation_uses_only_v6_1_identities`
-   and `test_auto_connect_validates_candidates_and_is_idempotent`), 449 111,
-   array glue 31, 40623 array 241 — 705 tests. Any other failure is yours.
+   Baseline: glue 45, 405 201 (4 skipped), 406 179 (on Windows exactly one
+   known environment-only case: `test_launcher_installation_uses_only_v6_1_identities`),
+   449 136, array glue 31, 40623 array 241 — 833 tests. Any other failure
+   is yours.
 7. **Commit and push before restructuring; tag before deleting.** Retired
    code is at `archive/pre-cleanup-2026-08-28` — recover with
    `git show <tag>:<path>`, do not re-create from memory.
@@ -52,6 +52,22 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
 
 ## Things that are easy to get wrong
 
+- On the single-detector rigs a sensor number is **only spent by a PASS**
+  (2026-09-02): `next_sensor_number_for_batch` is one past the highest PASSED
+  number, so a FAIL or NOT MEASURED row leaves the number open and the batch
+  CSV holds one row per TEST (`500-7` can repeat, `number_attempt` says
+  which try). Their action bar is two buttons — **Stop** (live mid-capture,
+  bumps `measure_token`, which the capture loops poll through `cancelled=`)
+  and **Next** (saves any verdict, then reads the part already in the rig).
+  There is no load step, no Skip part, no Re-measure. The ARRAY rig kept its
+  own tray flow — do not port either change into it.
+- On the 405 M22 (since 2026-08-17) and the 406 MCA (since 2026-09-03) the
+  offset **verdict is a re-read taken after the sensitivity capture**, not the
+  insertion read (`offset_initial_v` keeps that one). The 406 additionally
+  **holds** an out-of-band level for up to 20 s (`OFFSET_SETTLE_*`), stopping
+  early when it is back in band or has stopped moving without improving; an
+  in-band level that is still moving is a PASS **with a warning, never a
+  failure**. A high/railed AIN0 is never "no sensor" on either model.
 - "GPIO25" in old text is the pre-2026-08-25 gate pin; the rig uses **GPIO33** and the apps send `PIN,33`.
 - The 405 noise limit is 300 mV ÷ **700** (≈429 µV at the pin), not ÷ 4000.
 - The ±0.10 mV near-limit band is a **PASS with a warning**, not a retest/quarantine.
@@ -66,3 +82,4 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
 - `daq_rig_readout.py` / `daq_live_waveform.py` are engineering tools: no verdicts, output files only at explicit paths (never `Documents`), and only one program on the DAQ at a time (tester, probe, readout or viewer).
 - The two rigs each have a `sensor_versions.py`; they must never be imported into one process (the runner uses one interpreter per suite).
 - `Arduino/Eltec/Eltec.ino` and the frozen snapshots still say `tech_app/` in a comment — leave them (byte-frozen).
+- A stream "stall" is a host-side 2 s silence. Since 2026-09-03 the capture stops the stream FIRST and the `STREAM,END` numbers pick a tag (`host-stall` / `board-reset` / `board-silent` / `no-reply`) that goes into the message and the batch's `_attempts.csv` (`stream_retry` rows); `StreamStalledError` is a `StreamIntegrityError`, so it is retried like a micro-gap. Never turn it back into a plain error and never move the stop after the raise — the attribution depends on it. The 406 re-reads `FE?` before every measurement because `FE,V19` is session state that a board reset silently drops.

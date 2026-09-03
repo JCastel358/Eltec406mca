@@ -1,22 +1,32 @@
 """
-Per-batch attempt history for the unified Eltec test rig (v2.0).
+Per-batch attempt history for the unified Eltec test rig.
 
-Every model tester writes ONE verdict row per sensor into its batch CSV. That
-row alone cannot explain why a part was re-measured or set aside, so each
-batch now also keeps a sibling ``*_attempts.csv`` with one row per EVENT:
+Every model tester writes ONE verdict row per TEST into its batch CSV. That
+row alone cannot explain why a part was read more than once, so each batch
+also keeps a sibling ``*_attempts.csv`` with one row per EVENT:
 
     measured        a measurement finished (verdict + key readings)
     measure_error   an attempt recorded nothing (rig / stream fault)
-    remeasure       the technician discarded the shown verdict and re-ran
-    skipped         the part was set aside to be measured later (reason)
-    resumed         a skipped part was loaded again, in skip order
+    stream_retry    a capture inside an attempt was restarted by the app
+                    itself (serial glitch or stall, 2026-09-03); the reason
+                    column carries the stall attribution tag. Evidence, not
+                    a read of its own - it never moves the attempt count
+    rig_note        something the app noticed and put right on the rig
+                    before reading (2026-09-03: the 406 MCA front end had
+                    reverted, i.e. the ESP32 restarted). Evidence only
+    stopped         the technician pressed Stop during a capture
     saved           the verdict row was written to the batch CSV
 
-Skipping never consumes a fresh sensor number: the part keeps its id, comes
-back in first-skipped-first-measured order via "Measure skipped", and the
-next fresh number is derived from BOTH files so a skipped id is never handed
-out twice. Everything here is pure stdlib so it stays importable from each
-model directory (they add this package's directory to ``sys.path``).
+2026-09-02 (rule change): the skip queue is gone. A sensor number is only
+spent when a part PASSES, so a failed or unreadable part simply leaves its
+number open and the next part loaded into the rig is tested under the same
+number - which is what the bench already did physically. There is no set-
+aside pile to walk any more, so ``skipped``/``resumed``/``remeasure`` events
+and the queue helpers that ordered them were removed with the Skip part,
+Re-measure and Measure skipped buttons.
+
+Everything here is pure stdlib so it stays importable from each model
+directory (they add this package's directory to ``sys.path``).
 """
 
 from __future__ import annotations
@@ -28,31 +38,19 @@ from pathlib import Path
 
 EVENT_MEASURED = "measured"
 EVENT_MEASURE_ERROR = "measure_error"
-EVENT_REMEASURE = "remeasure"
-EVENT_SKIPPED = "skipped"
-EVENT_RESUMED = "resumed"
+EVENT_STREAM_RETRY = "stream_retry"
+EVENT_RIG_NOTE = "rig_note"
+EVENT_STOPPED = "stopped"
 EVENT_SAVED = "saved"
 
 ATTEMPT_EVENTS = (
     EVENT_MEASURED,
     EVENT_MEASURE_ERROR,
-    EVENT_REMEASURE,
-    EVENT_SKIPPED,
-    EVENT_RESUMED,
+    EVENT_STREAM_RETRY,
+    EVENT_RIG_NOTE,
+    EVENT_STOPPED,
     EVENT_SAVED,
 )
-
-# Why a part was set aside. Short on purpose - the technician picks one in
-# two clicks; the attempt rows around it carry the numbers.
-SKIP_REASON_CHOICES = (
-    "Bad contact / would not seat",
-    "Reading drifting or not settling",
-    "Rig or stream fault",
-    "Interrupted / no time now",
-    "Result looked wrong",
-    "Other",
-)
-DEFAULT_SKIP_REASON = SKIP_REASON_CHOICES[0]
 
 ATTEMPT_FIELDS = [
     "timestamp",
@@ -61,9 +59,9 @@ ATTEMPT_FIELDS = [
     "sensor_id",
     "event",
     "attempt",          # 1-based measurement attempt this row belongs to
-    "outcome",          # verdict shown for measured/remeasure/saved rows
-    "reason",           # skip reason, or the rig error for measure_error
-    "note",             # free text (skip note / operator comment)
+    "outcome",          # verdict shown for measured/saved rows
+    "reason",           # the rig error for measure_error rows
+    "note",             # free text (operator comment)
     "tester_name",
     "offset_v",
     "sensitivity_mv",
@@ -193,7 +191,11 @@ def read_attempts(attempts_path: Path) -> list[AttemptEvent]:
 
 
 def saved_sensor_ids(results_csv_path: Path) -> set[str]:
-    """Sensor ids that already have a verdict row in the batch CSV."""
+    """Sensor ids that already have at least one verdict row in the batch CSV.
+
+    A reused number writes several rows under one id, so this is a set of
+    ids that have been WRITTEN, not a count of parts.
+    """
     ids: set[str] = set()
     if not results_csv_path.exists():
         return ids
@@ -208,50 +210,24 @@ def saved_sensor_ids(results_csv_path: Path) -> set[str]:
     return ids
 
 
-def skipped_queue(attempts_path: Path, results_csv_path: Path) -> list[tuple[int, str]]:
-    """Skipped parts still without a verdict, first-skipped first.
-
-    A part that was resumed and skipped AGAIN goes to the back (its latest
-    skip is what orders it), so the physical pile and the queue agree.
-    """
-    saved = saved_sensor_ids(results_csv_path)
-    last_skip_order: dict[str, tuple[int, int]] = {}
-    for index, event in enumerate(read_attempts(attempts_path)):
-        if event.event == EVENT_SKIPPED and event.sensor_id:
-            last_skip_order[event.sensor_id] = (index, event.sensor_number)
-    queue = [
-        (number, sensor_id)
-        for sensor_id, (index, number) in sorted(
-            last_skip_order.items(), key=lambda item: item[1][0]
-        )
-        if sensor_id not in saved
-    ]
-    return queue
-
-
-def highest_sensor_number(attempts_path: Path) -> int:
-    highest = 0
-    for event in read_attempts(attempts_path):
-        highest = max(highest, event.sensor_number)
-    return highest
-
-
-def attempt_counts(attempts_path: Path, sensor_id: str) -> tuple[int, int]:
-    """(measurement attempts so far, times skipped) for one sensor id."""
-    measured = 0
-    skipped = 0
-    for event in read_attempts(attempts_path):
-        if event.sensor_id != sensor_id:
-            continue
-        if event.event in (EVENT_MEASURED, EVENT_MEASURE_ERROR):
-            measured += 1
-        elif event.event == EVENT_SKIPPED:
-            skipped += 1
-    return measured, skipped
-
-
-def format_queue(queue: list[tuple[int, str]], limit: int = 8) -> str:
-    ids = [sensor_id for _number, sensor_id in queue]
+def format_sensor_ids(sensor_ids, limit: int = 8) -> str:
+    """A short "a, b, c, ... (+n)" list of sensor ids for a summary line."""
+    ids = list(sensor_ids)
     if len(ids) <= limit:
         return ", ".join(ids)
     return ", ".join(ids[:limit]) + f", … (+{len(ids) - limit})"
+
+
+def measure_attempt_count(attempts_path: Path, sensor_id: str) -> int:
+    """Reads logged against one sensor id: measured + errored + stopped.
+
+    Across a whole batch this spans every part that was tested under a
+    reused number; each tester counts the part in front of it from zero.
+    """
+    counted = 0
+    for event in read_attempts(attempts_path):
+        if event.sensor_id != sensor_id:
+            continue
+        if event.event in (EVENT_MEASURED, EVENT_MEASURE_ERROR, EVENT_STOPPED):
+            counted += 1
+    return counted

@@ -23,8 +23,27 @@ runs that must not leave rows in the production folder).
 ```
 detector (row r, column c)  ->  unity-gain buffer  ->  DAQ single-ended input CH((r-1)*10 + (c-1))
 5 rows x 10 columns                                    ACCES USB-AIO16-64MA DAQ-PACK, USB 2.0
-positions labelled row-col (TP120: "1-3" = row 1, part 3)   J2/J1 DB37: CH0-CH49
+positions labelled row-col (TP120: "1-3" = row 1, part 3)   two DB37s: CH0-CH49
 ```
+
+The two DB37 cables are **not** a contiguous split of the fifty channels, and
+this is the easiest thing on the rig to get wrong. The DAQ splits its 64
+single-ended inputs across the two connectors in two blocks of sixteen each
+(DAQ-PACK M Series guide, tables 5-1 and 5-2), so each cable carries two
+disjoint blocks of the tray rather than one half of it:
+
+| DAQ DB37 | DB37 pins 1-8, 10-17 | DB37 pins 20-35 | array positions |
+| --- | --- | --- | --- |
+| J2 (AIMUX-64 J3) | CH0-CH15 | CH32-CH47 | 1-1 .. 2-6 and 4-3 .. 5-8 |
+| J1 (AIMUX-64 J4) | CH16-CH31 | CH48, CH49, rest unused | 2-7 .. 4-2 and 5-9, 5-10 |
+
+Pins 9, 18, 19 and 36 of each DB37 are AGND, so the channel numbers step over
+them. The breakout PCB already follows this pinout - the mapping above is the
+board as fabricated, traced from the KiCad netlist - which is why the software
+needs no remap: it asks the DAQ for the contiguous scan CH0-CH49 and the
+driver returns them in channel order whichever cable each one arrived on. The
+connector split matters when you meter a pin by hand, not when you read a
+capture.
 
 DAQ facts the code is built around (`docs/daq_usb_aio16_64ma/`, bench-verified
 2026-09-02): 16-bit SAR behind two multiplexer stages; the input range is

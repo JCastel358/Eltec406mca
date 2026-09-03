@@ -66,6 +66,18 @@ import numpy as np
 # ----------------------------------------------------------------------
 # Fixture geometry (the array PCB wiring)
 # ----------------------------------------------------------------------
+# The breakout PCB buffers each detector and drives one single-ended DAQ
+# input, in row order, so position row-col is CH((row-1)*10 + (col-1)).
+#
+# The two DB37 cables between the PCB and the DAQ are NOT a contiguous
+# split of those fifty channels: the DAQ hands out its 64 single-ended
+# inputs in blocks of sixteen, CH0-15 and CH32-47 on one connector,
+# CH16-31 and CH48-63 on the other (DAQ-PACK M Series guide tables 5-1 and
+# 5-2; the PCB follows that pinout, traced from the KiCad netlist). Nothing
+# below has to know that. The scan is asked for as the contiguous range
+# CH0-CH49 and the driver returns the channels in channel order regardless
+# of which cable each one arrived on, so the connector split is a
+# bench-metering fact, not a software one - do not add a remap here.
 ROWS = 5
 COLS = 10
 CHANNEL_COUNT = ROWS * COLS

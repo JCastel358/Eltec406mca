@@ -55,9 +55,9 @@ the lot-500 pairwise fixture calibration
   regression-through-origin slope 4.2853 (agreement within 0.3%, spread
   4.4% sd), so `SENSITIVITY_LEGACY_EQUIVALENT_FACTOR = 4.30`.
 * Raw near-limit band for -625: FAIL below **1.29 mV**, clean PASS above
-  **1.49 mV**, and **PASS · NEAR LIMIT** (passes, with a re-measure
-  suggestion; no quarantine since 2026-08-25) between (5.99 / 4.30 = 1.393
-  center ± 0.10 raw).
+  **1.49 mV**, and **PASS · NEAR LIMIT** (passes and keeps its number; no
+  quarantine since 2026-08-25) between (5.99 / 4.30 = 1.393 center ± 0.10
+  raw).
 * Validation on the same lot: the old fixture's one low-sensitivity failure
   (500-10) computes to 4.03 mV legacy-equivalent vs its old reading of
   4.08 and fails; the closest passer (500-15) computes to 6.52 — the exact
@@ -443,28 +443,76 @@ USB selective suspend was also set to Disabled (AC and DC) in the Balanced
 power plan on the Windows laptop, 2026-08-17. Operator guidance: keep the
 tester window visible during captures when on battery.
 
-### Skipping a sensor that cannot be measured (NOT MEASURED rows)
+### Serial-stream reliability, part 3: stalls are attributed and restarted (2026-09-03)
+
+The Xubuntu bench reported "ESP32 noise stream stalled after 37624 samples"
+on part after part (2026-09-02), each cured by Re-measure. A stall is the
+host seeing no sample line for `STREAM_TIMEOUT_S` (2 s); until now the
+capture raised from inside its loop and the `finally` sent `STREAM,STOP` -
+reading, and discarding, the one reply that tells a rebooted board from a
+laptop that froze while the board kept streaming. Now:
+
+- `EmitterEsp32Rig._stall_error` stops the stream *first* and reads the
+  reply. Firmware count vs the host's live count, the backlog drained after
+  the stop, and any `READY` banner among the non-protocol lines pick a tag
+  that ends the message:
+
+  | tag | meaning | advice in the message |
+  | --- | --- | --- |
+  | `[host-stall]` | the board kept sampling; the samples were still queued in the OS buffer (or lost when it overflowed) - the laptop stopped reading | window visible, AC power, close other programs |
+  | `[board-reset]` | the firmware counter restarted (usually with its READY banner mid-stream) - the ESP32 rebooted | USB power and cable (a brownout resets it) |
+  | `[board-silent]` | the board answered with the same count the host has - the ADS1256 data-ready stopped | power-cycle the rig |
+  | `[no-reply]` | no `STREAM,END` at all | cable, power |
+
+  The message also states how long the silence was ("no sample for 2.3 s").
+  The reset *reason* is not readable: the ESP32 ROM prints its banner at
+  115200 baud, which arrives garbled at our 500000; only the firmware's own
+  READY line is legible (a future firmware could put the reset reason in
+  that line - handover §10).
+- `StreamStalledError` is a `StreamIntegrityError`, so every production
+  capture restarts a stalled stream through `call_with_stream_retries`
+  (fresh `STREAM,START`, PWM re-armed) up to `REFERENCE_READING_STREAM_RETRIES`
+  times with nothing recorded, the way the technician did by hand. A dead
+  port (`Esp32ConnectionError`) is still never retried.
+- Every restart writes a `stream_retry` row to the batch's `_attempts.csv`
+  (reason = phase + the attributed error), so the tag survives even when
+  the retry succeeds. That file is the evidence for the "every morning"
+  question: `[host-stall]` rows make the laptop the suspect (what else runs
+  at that hour? was the tester left open overnight? on battery?),
+  `[board-reset]` points at the rig's USB power, `[board-silent]` at the
+  ADS1256. A clean bench check before opening the tester is
+  `python Arduino/Eltec/esp32_rig_readout.py stream` for a minute.
+- What the ESP32 cannot be: nothing on the board accumulates (one latched
+  sample, static buffers, no heap use while streaming, `micros()` wrap
+  handled), and opening the port resets it, so a night of uptime is wiped
+  when the app starts. Only a tester left open all night keeps the board
+  un-reset - and even then the wrap is harmless.
+
+### Recording a sensor that cannot be measured (NOT MEASURED rows)
 
 When an attempt ends with nothing recorded — the stream integrity check
 rejecting every retry, a stalled or busy serial port, a rig pre-flight
-failure — the result step now shows the error on a red card with **two**
-options: *Measure again* and *Skip sensor (not measured)*. Before this, a
-retry was the only way forward and one unreadable sensor could hold up the
-whole batch.
+failure — the result step shows the error on a red card. **Next** reads the
+same sensor again (nothing was written, so the number has not moved), and
+**Record as NOT MEASURED** closes it out when the rig cannot be fixed on the
+spot.
 
-Skipping opens a small dialog that asks for a reason
+Recording it opens a small dialog that asks for a reason
 (`NOT_MEASURED_REASON_CHOICES`: ESP32 stream/rig fault, sensor could not be
 loaded, or skipped by technician) plus an optional note, and then saves the
-sensor and moves to the next one (or ends the batch). The row it writes is
-deliberately **not** a verdict:
+sensor and moves on (*Record + Next sensor*) or ends the batch (*Record +
+Stop batch*). The row it writes is deliberately **not** a verdict:
 
 * `pass_fail` = `NOT MEASURED`, not `FAIL`.
-* `offset_v`, `sensitivity_*`, and `polarity` stay **empty** — a skipped
+* `offset_v`, `sensitivity_*`, and `polarity` stay **empty** — an unmeasured
   sensor must never look like a 0 V offset or a 0 mV sensitivity in the
   analysis.
 * `failure_mode_tag` = `NM`, `failure_mode_reason` = the chosen reason.
 * `fail_reasons` starts with `Not measured:` and carries the rig error text
-  verbatim, so the CSV records *why* the sensor was skipped.
+  verbatim, so the CSV records *why* the sensor was not measured.
+* It is **not a pass**, so it does not spend the sensor number: the next part
+  loaded is tested under the same number (see the rig README, "A sensor
+  number is only spent by a PASS").
 * The optional note goes to `operator_comments`.
 
 The `NM` reasons are kept out of `FAILURE_MODE_CHOICES`, so the failure-mode
@@ -555,7 +603,7 @@ installer test and (headless) the display-only GUI tests.
 2. The sensitivity gate is ON with the lot-500 pairwise calibration
    (`405m22_tp412_lot500_pairwise_v1`); it fails over-max as well as
    under-min, and a reading inside the ±0.10 mV raw near-limit band passes
-   with a re-measure warning (no quarantine since 2026-08-25).
+   with a warning card (no quarantine since 2026-08-25).
 3. With the ±5 V unbuffered front end, a floating AIN0 no longer reads as an
    obvious ~2.5 V rail; the 0.05 V plausibility floor (with the 5 s wake-up
    poll) is the only no-sensor guard — a railed ~5 V input is a genuine

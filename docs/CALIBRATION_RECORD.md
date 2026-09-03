@@ -218,7 +218,9 @@ policy build). Detailed mechanics:
 | Constant | Value | Where | Provenance |
 | --- | --- | --- | --- |
 | Healthy offset | 0.3–1.2 V (`OFFSET_MIN_V` / `OFFSET_MAX_V`) | vendored engine `single_detector_rig/v1_single_sensor/eltec_406mca_tester.py` l.46 | 406MCA production limit (carried from the LabJack era). |
-| `SENSOR_OFFSET_MIN_PLAUSIBLE_V` / `_MAX_PLAUSIBLE_V` | 0.05 / 2.5 V | tester ≈ l.208 | Outside = no sensor / no buffer. |
+| `SENSOR_OFFSET_MIN_PLAUSIBLE_V` / `_MAX_PLAUSIBLE_V` | 0.05 / 2.5 V | tester ≈ l.218 | **Low side only** is a pre-flight abort (near-0 V = empty slot / dead buffer). Since 2026-09-03 a high or railed AIN0 is *not* "no sensor" — it is a real part whose offset has not settled, so it runs the full test and records HO from the settled reading (same lesson as the 405's 2026-08-13 change). `_MAX_PLAUSIBLE_V` still bounds the high-offset/reference interference check. |
+| Offset policy | verdict on a **settled re-read** after the sensitivity capture; an out-of-band reading is held up to `OFFSET_SETTLE_MAX_WAIT_S` = 20 s | tester ≈ l.220 | 2026-09-03, bench report: parts failing HO on the insertion read that are inside 0.3–1.2 V once they settle (these parts drift *down*; the 405's drift *up*). The re-read costs no bench time — the part has been powered in the rig through the whole capture — and is the level TP120's band describes. CSV keeps both: `offset_initial_v` and `offset_v`. |
+| `OFFSET_SETTLE_DELTA_FRACTION` / `_POLL_S` / `_QUIET_READS` | 10 % of the current reading / 1.0 s / 2 | tester ≈ l.220 | "Stopped moving" rule for the hold (62 mV at 0.624 V). ~1000× the read-to-read scatter of an `OFFSET?` median-of-24 (tens of µV at gain 2), so only real drift breaches it — hence no noise estimation in this path. A reading still moving *toward* the band never ends the wait early. **Not a gate:** an in-band part that is still moving PASSES with a warning; the numbers are recorded (`offset_settle_delta_v`, `offset_settled`) so a real drift limit can be derived from a lot instead of invented. |
 | Frequency setup | 10.0 ± 0.1 Hz (first three cycles validated) | tester / backend | 406MCA production limit. |
 | Filter sensitivity minimums (legacy-scope mV) | -3: 25 · -27: 25 · -266: 30.9 · -273 + blackened tube: 2.3 · **-284 + extra -6 + blackened tube: 4.0 (default)** | tester | 406MCA production limits. |
 | `SENSITIVITY_LEGACY_EQUIVALENT_FACTOR` | **1.582** | tester ≈ l.227 | Provisional paired-fixture factor from **lot 520** (`SENSITIVITY_CALIBRATION_ID = lot_520_paired_v1`), derived during the v6.1 build (July 2026). **Documentation gap:** the lot-520 pair data and statistics are not in this repository — locate and file them under `analysis/` when found. |
@@ -379,6 +381,8 @@ reference gates are off (§2.4).
 | 405 DUT peak-delta 0.100 mV | 0.500 mV | 2026-08-12 — high-gain parts timed out Unstable |
 | 405 high-side "no sensor" rail at 3.5 V | removed; railed ~5 V = HO failure | 2026-08-13 — real high-offset parts were blocked as "no sensor" |
 | 405 offset verdict on the insertion read | settled re-read after sensitivity | 2026-08-17 — offsets rise for tens of seconds after insertion |
+| 406 offset verdict on the insertion read | settled re-read after the capture, with a ≤ 20 s hold for an out-of-band level | 2026-09-03 — parts failed HO on a level that was still coming down |
+| 406 high-side plausibility abort at 2.5 V ("no sensor") | removed; a railed AIN0 is measured and recorded as HO | 2026-09-03 — same reasoning as the 405's 2026-08-13 change |
 | `RETEST / QUARANTINE` verdict for the ±0.10 mV band (both models) | `PASS · NEAR LIMIT` + re-measure suggestion | 2026-08-25 — "if it passes it passes"; old CSVs with RETEST rows are shown as failures in the summary (they were quarantine records) |
 | 406 reference tolerance ±10 % | ±25 % | v6.1 (July 2026) |
 | Reference / battery gates ON | OFF | 2026-08-17 / 08-24 (crosstalk) and 2026-08-12 (no battery on AIN7) |

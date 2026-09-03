@@ -8,11 +8,13 @@ root - because the model directories deliberately share module names
 rigs each have a ``sensor_versions``) and must never be imported into one
 process together.
 
-Exit status: 0 when every suite is clean, 1 otherwise. Two cases in the
-406 MCA suite are known environment-only failures on Windows (they exercise
-the bash installer and the POSIX exclusive-tty flag, and pass on Xubuntu);
-on Windows they are reported as "known" and do not fail the run. Any other
-failure or error does. See docs/ENGINEER_HANDOVER.md section 7.
+Exit status: 0 when every suite is clean, 1 otherwise. One case in the
+406 MCA suite is a known environment-only failure on Windows (it runs the
+bash installer, and passes on Xubuntu); on Windows it is reported as "known"
+and does not fail the run. Any other failure or error does. See
+docs/ENGINEER_HANDOVER.md section 7. (The POSIX exclusive-tty assertion
+used to be a second known case; it gained the 405's os.name guard with the
+2026-09-03 stream port.)
 
 Usage:
     python run_all_tests.py            # all suites
@@ -43,7 +45,6 @@ SUITES = (
 KNOWN_WINDOWS_ENVIRONMENT_CASES = {
     "406 MCA": {
         "test_launcher_installation_uses_only_v6_1_identities",
-        "test_auto_connect_validates_candidates_and_is_idempotent",
     },
 }
 

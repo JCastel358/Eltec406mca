@@ -1,10 +1,15 @@
-"""Tests for the v2.0 per-batch attempt log and the skip / resume queue.
+"""Tests for the per-batch attempt log and the sensor-numbering rule.
 
 Pure-file tests for ``attempt_history`` plus flow tests that drive the real
-``EmitterTesterApp`` methods of BOTH model testers against a bare harness
-(no Tk, no hardware): skipping never spends a sensor number, skipped parts
-come back first-skipped-first, re-measure and save leave an audit trail,
-and the verdict row reports the attempt counts.
+``EmitterTesterApp`` methods of ALL THREE model testers against a bare
+harness (no Tk, no hardware).
+
+2026-09-02: the skip queue is gone. A sensor number is only spent when a
+part PASSES, so a failed or unreadable part leaves its number open and the
+replacement loaded into the rig is tested under the same number. What is
+checked here is that rule, the two-button flow around it (Stop abandons a
+capture and records nothing; Next writes the verdict and reads the part
+already in the rig), and the audit trail both leave behind.
 """
 
 from __future__ import annotations
@@ -33,26 +38,6 @@ class AttemptLogTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
-
-    def _skip(self, number, reason="Other"):
-        ah.append_attempt(
-            self.attempts,
-            batch_number="B1",
-            sensor_number=number,
-            sensor_id=f"B1-{number}",
-            event=ah.EVENT_SKIPPED,
-            attempt=0,
-            reason=reason,
-        )
-
-    def _save(self, number):
-        self.results.parent.mkdir(parents=True, exist_ok=True)
-        new = not self.results.exists()
-        with self.results.open("a", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["sensor_number", "sensor_id"])
-            if new:
-                writer.writeheader()
-            writer.writerow({"sensor_number": number, "sensor_id": f"B1-{number}"})
 
     def test_attempts_file_sits_next_to_the_batch_csv(self):
         self.assertEqual(self.attempts.name, "lot_B1_attempts.csv")
@@ -88,40 +73,72 @@ class AttemptLogTests(unittest.TestCase):
                 event="bogus", attempt=1,
             )
 
-    def test_queue_is_first_skipped_first_and_drops_saved_parts(self):
-        self._skip(3)
-        self._skip(7)
-        self._skip(5)
-        self.assertEqual(ah.skipped_queue(self.attempts, self.results), [(3, "B1-3"), (7, "B1-7"), (5, "B1-5")])
-        self._save(7)
-        self.assertEqual(ah.skipped_queue(self.attempts, self.results), [(3, "B1-3"), (5, "B1-5")])
-        # Skipped again after being resumed -> back of the pile.
-        self._skip(3, reason="Result looked wrong")
-        self.assertEqual(ah.skipped_queue(self.attempts, self.results), [(5, "B1-5"), (3, "B1-3")])
+    def test_the_retired_skip_events_are_gone(self):
+        # The skip pile no longer exists; writing one of its events must be
+        # rejected rather than silently logged into a file nothing reads.
+        self.assertEqual(
+            ah.ATTEMPT_EVENTS,
+            ("measured", "measure_error", "stream_retry", "rig_note", "stopped", "saved"),
+        )
+        for retired in ("skipped", "resumed", "remeasure"):
+            with self.assertRaises(ValueError):
+                ah.append_attempt(
+                    self.attempts, batch_number="B1", sensor_number=1,
+                    sensor_id="B1-1", event=retired, attempt=1,
+                )
 
-    def test_counts_and_highest_number(self):
-        self._skip(9)
-        for attempt in (1, 2):
+    def test_stream_retry_is_logged_but_is_not_a_read(self):
+        # 2026-09-03: a capture the app restarted by itself (serial glitch
+        # or stall) is evidence of what the rig did - it must be accepted,
+        # keep its attribution tag, and must not move the attempt count.
+        ah.append_attempt(
+            self.attempts, batch_number="B1", sensor_number=4, sensor_id="B1-4",
+            event=ah.EVENT_STREAM_RETRY, attempt=1,
+            reason="noise capture, restart 1/2: ESP32 noise stream stalled [host-stall]",
+        )
+        ah.append_attempt(
+            self.attempts, batch_number="B1", sensor_number=4, sensor_id="B1-4",
+            event=ah.EVENT_MEASURED, attempt=1, outcome="PASS",
+        )
+        ah.append_attempt(
+            self.attempts, batch_number="B1", sensor_number=4, sensor_id="B1-4",
+            event=ah.EVENT_RIG_NOTE, attempt=1,
+            reason="ESP32 front end had reverted to the boot default",
+        )
+        self.assertEqual(ah.measure_attempt_count(self.attempts, "B1-4"), 1)
+        events = ah.read_attempts(self.attempts)
+        self.assertEqual(
+            [event.event for event in events], ["stream_retry", "measured", "rig_note"]
+        )
+        self.assertIn("[host-stall]", events[0].reason)
+
+    def test_measure_attempt_count_covers_every_read_of_one_id(self):
+        for event in (ah.EVENT_MEASURED, ah.EVENT_STOPPED, ah.EVENT_MEASURE_ERROR):
             ah.append_attempt(
                 self.attempts, batch_number="B1", sensor_number=9, sensor_id="B1-9",
-                event=ah.EVENT_MEASURED, attempt=attempt, outcome="PASS",
+                event=event, attempt=1,
             )
+        # A saved row is bookkeeping, not a read.
         ah.append_attempt(
-            self.attempts, batch_number="B1", sensor_number=2, sensor_id="B1-2",
-            event=ah.EVENT_MEASURE_ERROR, attempt=1, reason="stream fault",
+            self.attempts, batch_number="B1", sensor_number=9, sensor_id="B1-9",
+            event=ah.EVENT_SAVED, attempt=3, outcome="PASS",
         )
-        self.assertEqual(ah.attempt_counts(self.attempts, "B1-9"), (2, 1))
-        self.assertEqual(ah.attempt_counts(self.attempts, "B1-2"), (1, 0))
-        self.assertEqual(ah.attempt_counts(self.attempts, "B1-99"), (0, 0))
-        self.assertEqual(ah.highest_sensor_number(self.attempts), 9)
-        self.assertEqual(ah.highest_sensor_number(Path(self.tmp.name) / "missing.csv"), 0)
+        self.assertEqual(ah.measure_attempt_count(self.attempts, "B1-9"), 3)
+        self.assertEqual(ah.measure_attempt_count(self.attempts, "B1-2"), 0)
+        self.assertEqual(
+            ah.measure_attempt_count(Path(self.tmp.name) / "missing.csv", "B1-9"), 0
+        )
 
-    def test_format_queue_is_short(self):
-        queue = [(n, f"B1-{n}") for n in range(1, 12)]
-        text = ah.format_queue(queue)
-        self.assertTrue(text.startswith("B1-1, B1-2"))
-        self.assertIn("(+3)", text)
-        self.assertEqual(ah.format_queue(queue[:2]), "B1-1, B1-2")
+    def test_saved_sensor_ids_reads_the_batch_csv(self):
+        self.results.parent.mkdir(parents=True, exist_ok=True)
+        with self.results.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=["sensor_id"])
+            writer.writeheader()
+            # A reused number writes the same id more than once.
+            for sensor_id in ("B1-1", "B1-2", "B1-2"):
+                writer.writerow({"sensor_id": sensor_id})
+        self.assertEqual(ah.saved_sensor_ids(self.results), {"B1-1", "B1-2"})
+        self.assertEqual(ah.saved_sensor_ids(Path(self.tmp.name) / "none.csv"), set())
 
 
 class FakeVar:
@@ -158,7 +175,7 @@ def _load_app(module_dir: str, module_name: str):
     return importlib.import_module(module_name)
 
 
-class _SkipFlowMixin:
+class _NumberingFlowMixin:
     """Drives the real app methods on a SimpleNamespace stand-in."""
 
     MODULE_DIR = ""
@@ -181,211 +198,257 @@ class _SkipFlowMixin:
     def harness(self):
         app = self.app
         h = SimpleNamespace(
-            step="load",
-            LOAD_STEP="load",
+            step="result",
             RESULT_STEP="result",
             SETUP_STEP="setup",
             busy=False,
             measuring=False,
             result_saved=False,
-            resuming_skipped=False,
             measure_attempts=0,
-            skip_count=0,
+            number_attempt=1,
+            measure_token=4,
             batch_number="B7",
             tester_name="Tech",
             current_sensor_number=0,
             current_sensor_id="",
             last_result=None,
+            last_metrics=None,
+            last_measure_error=None,
             last_noise_report=None,
+            preview_waveform=None,
+            preview_sync=None,
             notes_var=FakeVar(""),
             status_var=FakeVar(""),
+            measure_status_var=FakeVar(""),
             shown=[],
             prepared=[],
+            reads=[],
         )
         cls = app.EmitterTesterApp
         h._attempts_path = lambda: cls._attempts_path(h)
-        h.skipped_parts_queue = lambda: cls.skipped_parts_queue(h)
-        h._next_fresh_sensor_number = lambda: cls._next_fresh_sensor_number(h)
-        h.can_skip_part = lambda: cls.can_skip_part(h)
         h._log_attempt = lambda event, **kw: cls._log_attempt(h, event, **kw)
-        h.skip_current_part = lambda reason, note="": cls.skip_current_part(h, reason, note)
         h._advance_to_next_sensor = lambda: cls._advance_to_next_sensor(h)
-        h._load_skipped_part = lambda n, s: cls._load_skipped_part(h, n, s)
+        h.abort_measurement = lambda: cls.abort_measurement(h)
+        h.stop = lambda: cls.stop(h)
+        h.go_next = lambda: cls.go_next(h)
         h.delete_autosave = lambda: None
+        h.render_step = lambda: None
+        h._reset_measure_progress = lambda: None
         h.show_step = lambda step: h.shown.append(step)
+        h.run_measurement = lambda: h.reads.append(h.current_sensor_id)
 
         def prepare():
+            # The real prepare_current_sensor also clears a dozen tk vars and
+            # capture buffers; what matters to the numbering rule is this.
             h.current_sensor_id = f"{h.batch_number}-{h.current_sensor_number}"
             h.result_saved = False
             h.last_result = None
-            h.measure_attempts, h.skip_count = app.attempt_history.attempt_counts(
-                h._attempts_path(), h.current_sensor_id
+            h.measure_attempts = 0
+            h.number_attempt = app.number_attempt_for_batch(
+                app.batch_results_path(h.batch_number), h.current_sensor_id
             )
             h.prepared.append(h.current_sensor_id)
 
         h.prepare_current_sensor = prepare
         return h
 
-    def _write_verdict_row(self, h):
-        """Stand-in for save_current_sensor's CSV write + saved event."""
-        path = self.app.batch_results_path(h.batch_number)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        new = not path.exists()
-        with path.open("a", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=["sensor_number", "sensor_id", "measure_attempts", "skip_count"])
-            if new:
-                writer.writeheader()
-            writer.writerow({
-                "sensor_number": h.current_sensor_number,
-                "sensor_id": h.current_sensor_id,
-                "measure_attempts": h.measure_attempts,
-                "skip_count": h.skip_count,
-            })
-        h._log_attempt(self.app.attempt_history.EVENT_SAVED)
+    def _verdict(self, passed: bool):
+        app = self.app
+        return app.FinalResult(
+            passed=passed,
+            fail_reasons=[] if passed else ["sensitivity too low"],
+            warnings=[],
+            offset_v=1.4,
+            sensitivity_mv=30.0 if passed else 5.0,
+            polarity=app.POSITIVE_POLARITY,
+        )
+
+    def _write_verdict_row(self, h, passed: bool):
+        """Stand-in for save_current_sensor: the real CSV write, no Tk."""
+        app = self.app
+        result = self._verdict(passed)
+        app.append_result_csv(
+            app.batch_results_path(h.batch_number),
+            batch_number=h.batch_number,
+            sensor_number=h.current_sensor_number,
+            sensor_id=h.current_sensor_id,
+            tester_name=h.tester_name,
+            filter_setup=app.DEFAULT_FILTER_SETUP,
+            pwm_channel="DAC0",
+            pwm_hz=1.0,
+            pwm_duty=50.0,
+            final_result=result,
+            comment="",
+            snapshot_paths=[],
+            failure_mode="" if passed else "LS - Low sensitivity",
+            measure_attempts=h.measure_attempts,
+            number_attempt=h.number_attempt,
+        )
+        h._log_attempt(app.attempt_history.EVENT_SAVED, result=result)
         h.result_saved = True
 
-    def test_skip_keeps_the_number_and_resume_walks_the_pile_in_order(self):
+    def test_a_number_is_only_spent_by_a_pass(self):
+        app = self.app
         h = self.harness()
-        h.current_sensor_number = h._next_fresh_sensor_number()
+        h.current_sensor_number = app.next_sensor_number_for_batch(
+            app.batch_results_path(h.batch_number)
+        )
         h.prepare_current_sensor()
         self.assertEqual(h.current_sensor_id, "B7-1")
 
-        self.assertTrue(h.skip_current_part("Bad contact / would not seat", "loose pin"))
-        self.assertEqual(h.current_sensor_id, "B7-2")       # fresh number, 1 stays open
-        self._write_verdict_row(h)
+        # Part 1 passes -> the number is earned and the next one is 2.
+        self._write_verdict_row(h, passed=True)
+        h._advance_to_next_sensor()
+        self.assertEqual(h.current_sensor_id, "B7-2")
+        self.assertEqual(h.number_attempt, 1)
+
+        # Two bad parts under number 2: the number does not move, and each
+        # replacement is recorded as another attempt at the same id.
+        self._write_verdict_row(h, passed=False)
+        h._advance_to_next_sensor()
+        self.assertEqual(h.current_sensor_id, "B7-2")
+        self.assertEqual(h.number_attempt, 2)
+        self._write_verdict_row(h, passed=False)
+        h._advance_to_next_sensor()
+        self.assertEqual(h.current_sensor_id, "B7-2")
+        self.assertEqual(h.number_attempt, 3)
+
+        # The part that finally passes takes number 2 with it.
+        self._write_verdict_row(h, passed=True)
         h._advance_to_next_sensor()
         self.assertEqual(h.current_sensor_id, "B7-3")
-        self.assertTrue(h.skip_current_part("Interrupted / no time now"))
-        self.assertEqual(h.current_sensor_id, "B7-4")
-        self.assertEqual(h.skipped_parts_queue(), [(1, "B7-1"), (3, "B7-3")])
-        self.assertIn("2 skipped", h.status_var.get())
-        # B7-4 is on the bench with nothing logged yet, so it is still the
-        # next fresh number; the skipped ids are never re-issued.
-        self.assertEqual(h._next_fresh_sensor_number(), 4)
-        self.assertNotIn(h._next_fresh_sensor_number(), [n for n, _ in h.skipped_parts_queue()])
 
-        # Technician reaches the pile: first skipped comes back first.
-        h._load_skipped_part(*h.skipped_parts_queue()[0])
-        self.assertTrue(h.resuming_skipped)
-        self.assertEqual(h.current_sensor_id, "B7-1")
-        self.assertEqual(h.skip_count, 1)
-        self._write_verdict_row(h)
-        h._advance_to_next_sensor()
-        self.assertEqual(h.current_sensor_id, "B7-3")       # next in the pile
-        self.assertTrue(h.resuming_skipped)
-        self._write_verdict_row(h)
-        h._advance_to_next_sensor()
-        self.assertFalse(h.resuming_skipped)                # pile empty -> fresh
-        # B7-4 was on the bench untouched when the pile was started, so its
-        # number was never spent and is handed out again.
-        self.assertEqual(h.current_sensor_id, "B7-4")
-        self.assertEqual(h.skipped_parts_queue(), [])
-
-        events = [(e.sensor_id, e.event) for e in self.app.attempt_history.read_attempts(h._attempts_path())]
+        with app.batch_results_path("B7").open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
         self.assertEqual(
-            events,
+            [(row["sensor_id"], row["pass_fail"], row["number_attempt"]) for row in rows],
             [
-                ("B7-1", "skipped"), ("B7-2", "saved"), ("B7-3", "skipped"),
-                ("B7-1", "resumed"), ("B7-1", "saved"), ("B7-3", "resumed"), ("B7-3", "saved"),
+                ("B7-1", app.OUTCOME_PASS, "1"),
+                ("B7-2", app.OUTCOME_FAIL, "1"),
+                ("B7-2", app.OUTCOME_FAIL, "2"),
+                ("B7-2", app.OUTCOME_PASS, "3"),
             ],
         )
-        skip_rows = [e for e in self.app.attempt_history.read_attempts(h._attempts_path()) if e.event == "skipped"]
-        self.assertEqual(skip_rows[0].reason, "Bad contact / would not seat")
-        self.assertEqual(skip_rows[0].note, "loose pin")
 
-    def test_skip_is_only_offered_for_an_unsaved_part_when_idle(self):
-        h = self.harness()
-        h.current_sensor_number = 1
-        h.prepare_current_sensor()
-        self.assertTrue(h.can_skip_part())
-        h.measuring = True
-        self.assertFalse(h.can_skip_part())
-        h.measuring = False
-        h.result_saved = True
-        self.assertFalse(h.can_skip_part())
-        self.assertFalse(h.skip_current_part("Other"))
-        h.result_saved = False
-        h.step = "setup"
-        self.assertFalse(h.can_skip_part())
-
-    def test_measured_and_remeasure_events_keep_the_discarded_verdict(self):
+    def test_next_reads_the_replacement_with_no_screen_in_between(self):
         app = self.app
         h = self.harness()
         h.current_sensor_number = 1
         h.prepare_current_sensor()
-        failing = app.FinalResult(
-            passed=False, fail_reasons=["sensitivity too low"], warnings=[], offset_v=1.5,
-            sensitivity_mv=10.0, polarity="POSITIVE",
+        h.last_result = self._verdict(passed=False)
+        h.save_current_sensor = lambda: (
+            self._write_verdict_row(h, passed=False) or True
         )
-        h._log_attempt(app.attempt_history.EVENT_MEASURED, result=failing)
+        h.go_next()
+        # The verdict was written, the same number came back, and the rig was
+        # read again straight away - no "load the next sensor" step.
+        self.assertEqual(h.current_sensor_id, "B7-1")
+        self.assertEqual(h.reads, ["B7-1"])
+        self.assertEqual(h.shown, ["result"])
+
+    def test_stop_during_a_capture_records_nothing_and_keeps_the_number(self):
+        app = self.app
+        h = self.harness()
+        h.current_sensor_number = 5
+        h.prepare_current_sensor()
+        h.measuring = True
+        h.busy = True
+        h.last_result = self._verdict(passed=True)
+        h.stop()
+        self.assertFalse(h.measuring)
+        self.assertFalse(h.busy)
+        self.assertEqual(h.measure_token, 5)  # bumped: the capture is orphaned
+        self.assertIsNone(h.last_result)
+        self.assertEqual(h.current_sensor_id, "B7-5")
+        self.assertFalse(app.batch_results_path("B7").exists())
+        events = [e.event for e in app.attempt_history.read_attempts(h._attempts_path())]
+        self.assertEqual(events, ["stopped"])
         self.assertEqual(h.measure_attempts, 1)
-        h.last_result = failing
-        # Re-measure discards the shown verdict -> audit row, then a new attempt.
-        h._log_attempt(app.attempt_history.EVENT_REMEASURE, result=failing)
-        passing = app.FinalResult(passed=True, fail_reasons=[], warnings=[], offset_v=1.4, sensitivity_mv=30.0, polarity="POSITIVE")
-        h._log_attempt(app.attempt_history.EVENT_MEASURED, result=passing)
+
+    def test_stop_when_idle_ends_the_batch(self):
+        h = self.harness()
+        h.current_sensor_number = 2
+        h.prepare_current_sensor()
+        h.ended = []
+        h._end_batch = lambda: h.ended.append("end")
+        h.stop()
+        self.assertEqual(h.ended, ["end"])
+
+    def test_attempt_log_counts_every_read_of_the_part_in_the_rig(self):
+        app = self.app
+        h = self.harness()
+        h.current_sensor_number = 1
+        h.prepare_current_sensor()
+        failing = self._verdict(passed=False)
+        h._log_attempt(app.attempt_history.EVENT_MEASURED, result=failing)
+        h._log_attempt(app.attempt_history.EVENT_MEASURE_ERROR, reason="stream fault")
         self.assertEqual(h.measure_attempts, 2)
         rows = app.attempt_history.read_attempts(h._attempts_path())
-        self.assertEqual([r.event for r in rows], ["measured", "remeasure", "measured"])
+        self.assertEqual([r.event for r in rows], ["measured", "measure_error"])
         self.assertEqual(rows[0].outcome, app.OUTCOME_FAIL)
         self.assertEqual(rows[0].fail_reasons, "sensitivity too low")
-        self.assertEqual(rows[1].attempt, 1)
-        self.assertEqual(rows[2].attempt, 2)
-        self.assertEqual(rows[2].outcome, app.OUTCOME_PASS)
+        self.assertEqual(rows[1].reason, "stream fault")
+        # A replacement part under the same number starts its count over.
+        self._write_verdict_row(h, passed=False)
+        h._advance_to_next_sensor()
+        self.assertEqual(h.current_sensor_id, "B7-1")
+        self.assertEqual(h.measure_attempts, 0)
 
-    def test_verdict_csv_carries_attempt_and_skip_counts(self):
+    def test_verdict_csv_carries_number_attempt_and_not_skip_count(self):
         app = self.app
+        self.assertIn("measure_attempts", app.CSV_FIELDS)
+        self.assertIn("number_attempt", app.CSV_FIELDS)
+        self.assertNotIn("skip_count", app.CSV_FIELDS)
         path = app.batch_results_path("B9")
-        result = app.FinalResult(passed=True, fail_reasons=[], warnings=[], offset_v=1.0, sensitivity_mv=25.0, polarity="POSITIVE")
-        kwargs = dict(
+        app.append_result_csv(
+            path,
             batch_number="B9", sensor_number=2, sensor_id="B9-2", tester_name="Tech",
-            filter_setup=app.DEFAULT_FILTER_SETUP, pwm_channel="DAC0", pwm_hz=1.0, pwm_duty=50.0,
-            final_result=result, comment="", snapshot_paths=[], measure_attempts=3, skip_count=1,
+            filter_setup=app.DEFAULT_FILTER_SETUP, pwm_channel="DAC0", pwm_hz=1.0,
+            pwm_duty=50.0, final_result=self._verdict(passed=True), comment="",
+            snapshot_paths=[], measure_attempts=3, number_attempt=2,
         )
-        app.append_result_csv(path, **kwargs)
         with path.open(newline="", encoding="utf-8") as handle:
             row = next(csv.DictReader(handle))
         self.assertEqual(row["measure_attempts"], "3")
-        self.assertEqual(row["skip_count"], "1")
-        self.assertIn("measure_attempts", app.CSV_FIELDS)
-        self.assertIn("skip_count", app.CSV_FIELDS)
-        # A skipped id above the saved ones still blocks the next fresh number.
-        attempts = app.attempt_history.attempts_path_for(path)
-        app.attempt_history.append_attempt(
-            attempts, batch_number="B9", sensor_number=5, sensor_id="B9-5",
-            event=app.attempt_history.EVENT_SKIPPED, attempt=0, reason="Other",
-        )
-        h = self.harness()
-        h.batch_number = "B9"
-        self.assertEqual(h._next_fresh_sensor_number(), 6)
+        self.assertEqual(row["number_attempt"], "2")
 
 
-class SkipFlow405M22Tests(_SkipFlowMixin, unittest.TestCase):
+class NumberingFlow405M22Tests(_NumberingFlowMixin, unittest.TestCase):
     MODULE_DIR = "m405m22"
     MODULE_NAME = "eltec_405m22_esp32_tester"
 
 
-class SkipFlow406MCATests(_SkipFlowMixin, unittest.TestCase):
+class NumberingFlow406MCATests(_NumberingFlowMixin, unittest.TestCase):
     MODULE_DIR = "m406mca"
     MODULE_NAME = "eltec_406mca_esp32_tester"
 
 
-class SkipFlow449M18Tests(_SkipFlowMixin, unittest.TestCase):
+class NumberingFlow449M18Tests(_NumberingFlowMixin, unittest.TestCase):
     MODULE_DIR = "m449m18"
     MODULE_NAME = "eltec_449m18_esp32_tester"
 
 
 class FooterButtonTests(unittest.TestCase):
-    """The v2.0 footer palette exists in every model."""
+    """The footer palette and the two-button bar exist in every model."""
 
-    def test_success_and_warn_palettes_and_xl_size(self):
+    def test_palettes_sizes_and_the_two_buttons(self):
         for module_dir, module_name in _MODEL_MODULES:
             with self.subTest(model=module_dir):
                 app = _load_app(module_dir, module_name)
                 self.assertIn("success", app.RoundButton.PALETTES)
                 self.assertIn("warn", app.RoundButton.PALETTES)
+                # Stop is red so it is findable mid-capture without reading it.
+                self.assertIn("danger", app.RoundButton.PALETTES)
                 self.assertIn("xl", app.RoundButton.SIZE_PADS)
                 self.assertGreater(app.RoundButton.SIZE_PADS["xl"][0], app.RoundButton.SIZE_PADS["lg"][0])
+                # The load step is gone with the skip queue.
+                self.assertFalse(hasattr(app.EmitterTesterApp, "LOAD_STEP"))
+                self.assertFalse(hasattr(app.EmitterTesterApp, "render_load_step"))
+                for retired in (
+                    "open_skip_window", "skip_current_part", "measure_skipped",
+                    "_load_skipped_part", "go_back", "save_and_end_batch",
+                ):
+                    self.assertFalse(hasattr(app.EmitterTesterApp, retired), retired)
 
 
 if __name__ == "__main__":

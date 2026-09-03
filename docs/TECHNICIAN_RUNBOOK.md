@@ -44,8 +44,9 @@ If the tester refuses to connect with a **firmware** message (for example
 
 ## 3. Run a batch
 
-The screens are the same for every model: **Batch information → Load sensor →
-Measuring → Result**. Enter moves forward.
+The screens are the same for every model: **Batch information → Measuring →
+Result**. Enter moves forward. There is no screen asking you to load a
+sensor: load it, then press Start (first part) or Next (every part after).
 
 ### Batch information
 
@@ -56,10 +57,18 @@ Measuring → Result**. Enter moves forward.
   (405 M22: -625 / -628 / -629; 406 MCA: the -284 default unless told
   otherwise). Wrong filter = wrong limits.
 
-### Load sensor
+### Sensor numbers: a number is only used up by a PASS
 
-- Seat the part in the test slot, wait a moment, press **Enter**.
-- 405 M22 only: the **60 s noise soak** toggle. Leave it off for normal parts;
+The number on screen (`500-7`) is the number the part will ship under, so it
+is only spent when a part **passes**. If `500-7` fails, put it aside, load
+the next part, press **Next** — it is `500-7` again. Whichever part finally
+passes is `500-7`; only then does the app move to `500-8`. The failures are
+still recorded (they count in the yield), they just do not take a number.
+
+- Seat the first part in the test slot before you press **Start** — it is
+  read straight away.
+- 405 M22 only: the **noise soak** toggle (on the setup card, and on the
+  result card for the part Next will read). Leave it off for normal parts;
   switch it on for a part you suspect of intermittent noise or that has a
   noise history. It resets after every sensor.
 
@@ -68,7 +77,7 @@ Measuring → Result**. Enter moves forward.
 | Model | Steps on the progress bar | Typical time | Keep in mind |
 | --- | --- | --- | --- |
 | 405 M22 | 1 offset → 2 noise (emitter off) → 3 sensitivity (1 Hz) → settled offset re-read | 1–2 min (up to 3 attempts of 60 s if the part is slow to stabilise) | Do not touch the fixture during the noise step. |
-| 406 MCA | offset → 10 Hz capture | 15–60 s (up to 3 attempts of 20 s) | |
+| 406 MCA | offset → 10 Hz capture → settled offset re-read | 15–60 s (up to 3 attempts of 20 s), plus up to 20 s more if the offset is still settling | If the status line says the part is being held while its offset settles, leave it alone — it is being given a chance to pass. |
 | 449 M18 | offset → 5 Hz capture → 18 Hz capture → settled offset | 1–2 min | Both drives run back to back per part. |
 
 **Keep the app window visible and the laptop awake while it measures.** A
@@ -82,11 +91,12 @@ The banner tells you the verdict:
 | Banner | Meaning | What to do |
 | --- | --- | --- |
 | **PASS** (green) | Good part | Save. |
-| **PASS · NEAR LIMIT** (green banner, amber card) | Passed, but sensitivity is within the measurement margin of the limit | The part **passes**. Re-measure once if you want a second reading; save either way. No quarantine. |
+| **PASS · NEAR LIMIT** (green banner, amber card) | Passed, but sensitivity is within the measurement margin of the limit | The part **passes** and keeps its number. No quarantine. |
 | **PASS · CALIBRATION PENDING** (449 M18) | Normal for this model until its calibration is done | Save; the numbers are recorded. |
+| **PASS** with an amber **OFFSET WAS STILL SETTLING** card (406 MCA) | Passed, but the offset had not stopped moving when it was recorded | The part **passes** and keeps its number. Re-measure only if that number matters to you. |
 | **FAIL** (red) | Bad part | The failure mode is preselected (HO high offset, LO low offset, LS low sensitivity, RP reversed polarity, N noisy, Unstable, SB sensor bad, FT frequency tracking). Confirm or correct it, add a comment if useful, save. |
 | Amber **TP443 SPEC 4 — MEASURE THE WHOLE TRAY** (449 M18) | Sampling instruction, not a verdict | Test every part of that tray. |
-| Red card **"nothing was recorded"** | The rig, not the part, had a problem | **Measure again**. If it keeps failing, **Record as NOT MEASURED** (the row says why) and tell the engineer. |
+| Red card **"nothing was recorded"** | The rig, not the part, had a problem | Press **Next** to read it again (nothing was written, so the number has not moved). If it keeps failing, **Record as NOT MEASURED** (the row says why) and tell the engineer. |
 | Dialog **"Is a sensor loaded?"** | The input reads like an empty slot | If a part really is loaded, answer **Yes** — it is recorded as FAIL / SB (shorted or dead). If the slot is empty or the part is badly seated, answer **No**, reseat, measure again. |
 
 Optional on the result screen: **Show test details** (numbers), **Show
@@ -95,18 +105,24 @@ waveform**, **Comment**, **Capture waveform** (saves a picture), 405 M22
 
 ### The buttons at the bottom
 
-`Back` · `Measure skipped (N)` │ `Skip part` · `Re-measure` · `Save + Exit
-Batch (Esc)` · `Save + Next Sensor (Enter)`
+There are two: `Stop` (red, left) and `Next` (green, right).
 
-- **Save + Next Sensor (Enter)** — records the row and loads the next number.
-- **Save + Exit Batch (Esc)** — records the row and shows the batch summary.
-- **Re-measure** — runs the test again on the same part (the first result is
-  discarded but logged in the attempt history).
-- **Skip part** — sets the part aside *without using up its number*
-  (optional comment). Use it when a part is missing, will be looked at later,
-  or the tray order must be kept.
-- **Measure skipped (N)** — appears when skipped parts are waiting; loads
-  them in the order they were skipped, then fresh numbers continue.
+- **Next (Enter)** — reads the sensor that is in the rig **now**. If a
+  verdict is on screen it records that row first. So the rhythm is: read the
+  banner → swap the part in the fixture → press Next. The number that comes
+  back is the next one if the part passed, and the **same one** if it did
+  not.
+- **Stop (Esc)** — press it at any time, including in the middle of a
+  measurement. During a measurement it stops the reading immediately:
+  nothing is recorded and the number does not move, so press Next when you
+  are ready to read that part again. With no measurement running it ends the
+  batch and shows the summary; a verdict that is still on screen is written
+  first, without asking.
+
+There is no Re-measure button: a reading you do not like is saved as what it
+says (on a FAIL that costs nothing — the number stays open and you test the
+part again), or stopped with **Stop** before it finishes so nothing is
+written at all.
 
 ## 3b. Run a tray on the array rig (model 40623)
 
@@ -170,7 +186,8 @@ folders** — the engineer backs them up.
 | "No ESP32 rig found" / no serial port | USB unplugged, another program holds the port, or a second tester is open | Check the cable, close the Arduino Serial Monitor / other rig tools, make sure only one tester is running, try again. |
 | Firmware version message at connect | Board runs the wrong firmware for this model | Engineer (reflash — one command). |
 | "Front end" mismatch (406 MCA) | Board did not accept the 406 front-end setting | Engineer. |
-| "timestamp gaps", "duplicate timestamps", "stream integrity" | Laptop on battery, window minimised, USB hub, charger EMI | Plug into AC, keep the window visible, avoid hubs, **Measure again**. Persistent → engineer. |
+| "timestamp gaps", "duplicate timestamps", "stream integrity" | Laptop on battery, window minimised, USB hub, charger EMI | The app restarts the capture by itself (up to twice; nothing is recorded from a bad one). If it still fails: plug into AC, keep the window visible, avoid hubs, **Measure again**. Persistent → engineer. |
+| "ESP32 … stream stalled" | The stream went quiet for 2 s. The app restarts the capture by itself; if it keeps failing, the message ends with a tag that says who stopped: `[host-stall]` = the laptop stopped reading (window minimised, battery, another program); `[board-reset]` = the ESP32 rebooted (USB power or cable); `[board-silent]` = the ADC stopped (power-cycle the rig); `[no-reply]` = board or USB gone | Do what the tag says, **Measure again**. If it happens first thing in the morning, tell the engineer whether the tester was left open overnight and where the laptop was plugged in; the batch's `_attempts.csv` keeps every restart with its tag. |
 | Several **LS (low sensitivity)** failures in a row | Possibly the **emitter**, not the parts (automatic emitter monitoring is currently off) | Stop, tell the engineer before condemning the parts. |
 | Every part fails **N (noisy)** (405 M22) | Fan, vibration, charger, or a fixture fault | Remove fans/chargers, retest one known-good part; still failing → engineer. |
 | **Unstable** | Part never settled within the time limit | Re-measure once; if it repeats, save it as Unstable. |

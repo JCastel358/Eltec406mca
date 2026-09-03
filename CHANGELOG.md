@@ -13,6 +13,236 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Single-detector rigs: Stop writes the verdict on screen without asking (2026-09-03)
+
+Bench report: ending a batch with **Stop** (or Esc) put up a "save it before
+ending the batch?" box for the part still on screen - a third question at
+the end of every batch, on a verdict the technician had already judged, with
+a wrong answer (or an Esc on the dialog itself) throwing the reading away.
+
+- `stop()` on all three models (405 M22, 406 MCA, 449 M18) now calls
+  `save_current_sensor()` directly when a verdict is unsaved, then ends the
+  batch. The `askyesnocancel` prompt is gone; there is no way to leave a
+  batch and discard a measured part any more. To end a batch *without*
+  recording the part in the rig, press Stop **during** the capture - that
+  path is unchanged (nothing recorded, the number does not move).
+- A write that cannot complete still holds the batch open: `save_current_sensor`
+  returns False for a cleared failure mode or a results-folder error and puts
+  up its own dialog, so `stop()` returns and the verdict stays on screen.
+  A FAIL always arrives with a failure mode pre-selected (`suggest_failure_mode`),
+  so this is only reachable if the technician clears the box by hand.
+- Ported by hand model by model per `docs/ENGINEER_HANDOVER.md` §4; the array
+  rig's tray flow is untouched.
+- Docs: `docs/TECHNICIAN_RUNBOOK.md` §3 and `single_detector_rig/README.md`
+  action-bar table.
+- Tests: `test_stop_offers_to_save_an_unsaved_verdict_first` replaced by
+  `test_stop_saves_an_unsaved_verdict_without_asking` (asserts the prompt is
+  never called) plus `test_stop_keeps_the_batch_running_when_the_write_fails`,
+  in all three suites. Full run: 833 tests, one known Windows-only 406 case.
+
+## 406 MCA: the offset verdict moves to a settled re-read after the capture (2026-09-03)
+
+Bench report: parts failing `HO - High offset` that are inside the
+0.3-1.2 V band if they are simply left in the rig a little longer. The 406
+was reading the offset once, before the emitter even started, and judging
+the part on that number 30-60 s later - while the 405 M22 has judged on a
+settled re-read since 2026-08-17 (lot 500: 35 of 48 parts read 0.15-1.1 V
+away from their settled value on the insertion read). The 406's parts drift
+the other way (down), which is why this shows up as HO rather than LO.
+
+What changed, model 406 MCA only (the 405 and 449 are untouched):
+
+- **The verdict uses an `OFFSET?` re-read taken after the sensitivity
+  capture.** No bench time is added: the part has already been powered in
+  the rig through the whole stabilization plus the 20-cycle measurement, so
+  this is the level TP120's 0.3-1.2 V band describes. The insertion read is
+  kept as `offset_initial_v` in the batch CSV.
+- **An out-of-band re-read is held, not failed.** The app keeps reading
+  (1 s apart, `OFFSET_SETTLE_MAX_WAIT_S` = 20 s) and stops as soon as the
+  level is back in band; as soon as it has stopped moving without improving
+  (so a genuinely high part still fails in ~2 s); or at the deadline, where
+  the last reading is used. "Stopped moving" is a **relative** delta,
+  `OFFSET_SETTLE_DELTA_FRACTION` = 10 % of the current reading (62 mV at
+  0.624 V) - about 1000x the read-to-read scatter of an `OFFSET?`
+  median-of-24, so only real drift can breach it. **A reading still moving
+  toward the band never ends the wait early**: "it changed for the better"
+  is the case this exists to catch.
+- **No noise estimation in this path** (considered and rejected): the
+  firmware read is already a median of 24 samples over ~100 ms, so what
+  remains is the sensor's own slow wander - the thing being measured - and
+  the threshold has three orders of magnitude of margin over the read
+  noise. If the wait ever ends early on wander, average three consecutive
+  reads per sample before tightening the fraction.
+- **In band but still moving = PASS with a warning**, never a failure
+  (user decision): a drift limit would be an invented number until a lot's
+  worth of `offset_settle_delta_v` exists to derive one from. The result
+  card shows an amber "OFFSET WAS STILL SETTLING" note. Note this rig has
+  no emitter-off noise test, so that warning is where a drifting part shows
+  up.
+- **The pre-flight "no sensor" check is low side only.** A high or railed
+  AIN0 is a real part whose offset has not settled - it now runs the full
+  test and records HO from the settled reading instead of raising the
+  empty-slot dialog (the same lesson as the 405's 2026-08-13 change). Near
+  0 V still blocks before anything is captured.
+- New batch CSV columns: `offset_initial_v`, `offset_settle_s`,
+  `offset_settle_delta_v`, `offset_settled`, `offset_settle_reads`. Batch
+  files started before today keep their header and stay aligned.
+- Simulator: new `Offset settles into band` case (starts at 1.35 V, decays
+  into band) exercises the hold without hardware. Stop is honoured inside
+  the wait like every capture loop.
+- Also fixed in passing: the "Is a sensor loaded?" dialog was missing an
+  `f` prefix and printed `{self.current_sensor_id}` literally.
+
+Suite: 830 tests (406 MCA 160 -> 178), one known Windows-only case.
+
+## Single-detector rig: a stalled stream now says which side stopped and restarts itself; the 406 MCA gets the stream-tolerance port and a front-end guard (2026-09-03)
+
+Bench report (Xubuntu, 405 M22, 2026-09-02): "ESP32 noise stream stalled
+after 37624 samples" on part after part, the technician pressing Re-measure
+each time, and suspected to follow nights the rig stayed powered. The 406
+MCA had separately failed a 12 s capture on "1 timestamp gaps (~2 missing
+samples); host/firmware sample counts differ (12047/12049)" (2026-08-31).
+What the code review found, and what changed:
+
+- **The ESP32 holds no state that ages.** The firmware keeps one latched
+  sample and a 48-byte command buffer, allocates nothing while streaming,
+  and its 71-minute `micros()` wrap is handled on both sides; every sample
+  lives on the laptop. Opening the port resets the board, so the app start
+  each morning wipes its uptime anyway. If the overnight correlation is
+  real it points at the laptop/USB side - and until today the error could
+  not say which. No firmware change.
+- **"Stalled" is attributed** (405 M22, 449 M18, 406 MCA). A stall is the
+  host seeing no sample for `STREAM_TIMEOUT_S` (2 s). The capture now stops
+  the stream *first* and reads the board's `STREAM,END` reply, whose
+  numbers (firmware count vs host count, the backlog drained after the
+  stop, any READY banner) pick a tag that ends the message: `[host-stall]`
+  (the board kept sampling, the laptop stopped reading), `[board-reset]`
+  (the counter restarted - the ESP32 rebooted), `[board-silent]` (counts
+  match - the ADS1256 data-ready stopped) or `[no-reply]`. The message also
+  states the seconds of silence and the advice for that case. The backends
+  record `last_sample_monotonic`, the first non-protocol lines
+  (`ignored_line_samples`) and `live_samples` for this. The reset *reason*
+  is not readable: the ROM banner is emitted at 115200 baud (handover §10).
+- **A stall is retried like a micro-gap failure.** `StreamStalledError` is a
+  `StreamIntegrityError`, so `call_with_stream_retries` restarts the capture
+  (fresh `STREAM,START`, PWM re-armed) up to `REFERENCE_READING_STREAM_RETRIES`
+  (2) times - exactly what the technician did by hand - with nothing
+  recorded from the silent capture. A dead port is still never retried.
+  The status line says "Stream stalled during the noise capture; nothing
+  was recorded - restarting the capture (1/2)".
+- **Every automatic restart is evidence.** New attempts-log events
+  (`attempt_history.py`): `stream_retry` (one row per restart, reason =
+  phase + the attributed error) and `rig_note` (something the app put right
+  on the rig). Neither moves the attempt count. `on_retry` callbacks now
+  receive `(attempt, error)`.
+- **406 MCA: the 405's stream work, ported by hand** (handover §4). Its
+  backend was the pre-2026-08-12 build (no drain thread, no overflow
+  attribution, no power-throttling opt-out) and its validator rejected any
+  gap and any count mismatch - the 2026-08-31 failure was a 2 ms USB hiccup
+  the 405 and 449 tolerate. The 406 now carries the same bounded budget
+  (`STREAM_MAX_MICRO_GAPS` 3 / `STREAM_MAX_MISSING_SAMPLES` 20, refilled by
+  `StreamGapFiller`), the same bounded retries around the calibration
+  readings, the reference gate and the driven capture, and the
+  405-generation backend. Policy decision, user-approved 2026-09-03: the
+  same budget as the other two models; 20 ms cannot move a robust
+  per-cycle peak. No 406 threshold changed.
+- **406 MCA: front-end guard.** `FE,V19` is session state the board drops on
+  a reset. `Esp32Rig.ensure_qualified_front_end()` re-reads `FE?` before
+  every measurement and calibration and before every stream retry; a
+  reverted board is re-programmed and verified as at connect, the status
+  line says the board restarted, and a `rig_note` row records it.
+- **Tests**: glue 45, 405 M22 200 (4 skipped), 406 MCA 160, 449 M18 135,
+  array glue 31, 40623 array 241 - **812**. The 406 backend test
+  `test_auto_connect_validates_candidates_and_is_idempotent` gained the
+  405's POSIX guard, so on Windows only the bash-installer case remains
+  environment-only (`run_all_tests.py` updated).
+- Docs: 405/406/449 READMEs (serial-stream reliability), technician runbook
+  §5 (the tags, what to tell the engineer), firmware README troubleshooting,
+  handover §7/§10, CLAUDE.md. Not changed: thresholds, timeouts, the 2 s
+  stall budget, the firmware.
+
+## Single-detector rig: two buttons, and a number only a PASS can spend (2026-09-02)
+
+Behaviour change in all three single-detector testers (405 M22, 406 MCA,
+449 M18). The array rig is untouched.
+
+**A sensor number is now earned, not issued.** The skip queue assumed the app
+was tracking one physical part through the batch, but the bench does not work
+that way: a part that fails is put aside and another one takes its place. So
+the number no longer advances on a FAIL - `next_sensor_number_for_batch` is
+one past the highest **PASSED** number, and a FAIL or a NOT MEASURED row
+leaves its number open for the replacement. Fail on 500-7 and the next part
+tested is 500-7 again, whether it is the same part re-seated or a new one out
+of the tray; whichever finally passes is the part that ships as 500-7.
+
+Consequences in the data:
+
+- A batch CSV is **one row per test**, not one row per number. `500-7` can
+  appear several times, the last of them the PASS. Yield still counts rows,
+  so failures are all still in it.
+- The `skip_count` column is replaced by **`number_attempt`** (1 = the first
+  part tried under this number, 2 = the one loaded after it failed, ...), in
+  the same column position. `measure_attempts` now counts the reads of the
+  part in front of the technician and starts over for each replacement.
+- Reading the highest PASSED number (rather than counting passes) leaves
+  batches written before today intact: their numbers were handed out per row,
+  so a file whose last pass is 500-9 continues at 500-10 as it always did.
+
+**The action bar is two buttons: Stop and Next.**
+
+- **Next** reads the sensor that is in the rig now. With a verdict on screen
+  it writes the row first. There is no "load the next sensor" screen in
+  between any more - the technician loads the replacement, then presses Next.
+  Start does the same for the first part of a batch, so the load STEP is gone
+  entirely and its card (rig picture, and the 405's noise-soak toggle) moved
+  onto the setup screen; the 405 soak toggle is also on the result card, where
+  it arms the read Next is about to take.
+- **Stop** (red) is live at *every* moment, including mid-capture: it bumps
+  the measurement token, which the capture loops already poll through
+  `cancelled=`, so the reading is abandoned at the next chunk boundary with
+  the stream stopped and the emitter switched off by the worker's own
+  finally-blocks. Nothing is recorded and the number does not move. With no
+  capture running it ends the batch, offering to save an unsaved verdict
+  first. Esc is the same control.
+- Gone with the skip queue: **Skip part**, **Re-measure**, **Measure
+  skipped**, **Back**, **Save + Exit Batch**, and the `skipped` / `resumed` /
+  `remeasure` attempt events. A new `stopped` event records an abandoned
+  capture. Recording a sensor as NOT MEASURED after a rig fault stays (405 and
+  449), renamed off the word "skip" in the UI and in the code
+  (`open_not_measured_window`, `save_not_measured_sensor`).
+
+Trade-off, stated because it is a real loss: with Re-measure gone there is no
+way to discard a verdict that is already on screen. A suspect reading is
+saved as what it says and the part re-tested - which under the new rule costs
+nothing on a FAIL, since the number stays open. To abandon a reading without
+recording it, press Stop while it is still measuring.
+
+Tests: 753 (glue 44, 405 189, 406 123, 449 125, array glue 31, 40623 241).
+
+## Array rig: DB37 connector split written down (2026-09-02)
+
+Documentation only — no constant, threshold or behaviour changed.
+
+The two DB37 cables between the array PCB and the DAQ carry the fifty
+channels in four blocks, not two halves: CH0-CH15 and CH32-CH47 on the DAQ
+connector that the guide calls J2, CH16-CH31 and CH48-CH49 on J1 (DAQ-PACK M
+Series guide tables 5-1 and 5-2, pins 9/18/19/36 AGND). The breakout PCB was
+built to that pinout; its KiCad netlist was re-traced end to end on this date
+(sensor-box pin N -> buffer -> series resistor -> DAQ_CH(N-1) -> the DB37 pin
+the datasheet assigns to that channel) and agrees with it for all fifty
+positions, as does the pre-`norcomp_db37_merge` backup of the board.
+
+Nothing in the software ever assumed a contiguous 0-24 / 25-49 split — the
+scan is requested as the one contiguous range CH0-CH49 and the driver returns
+the channels in channel order whichever cable each arrived on — but the model
+README said only "J2/J1 DB37: CH0-CH49", which reads as though the two cables
+divide the tray in half and misled a bench check. The README now carries the
+per-connector pin table and the affected array positions, and
+`daq_backend.py`'s fixture-geometry block says why no remap belongs there.
+
+The connector split is a bench-metering fact: it matters when probing a DB37
+pin by hand, not when reading a capture. `(row-1)*10 + (col-1)` is unchanged.
+
 ## Array rig: ESP32-style bench readout and live viewer for the DAQ (2026-09-02)
 
 The bench habits of the single-detector rig (`Arduino/Eltec/esp32_rig_readout.py`'s

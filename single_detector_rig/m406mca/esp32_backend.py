@@ -1,4 +1,4 @@
-"""Serial backend for the Eltec ESP32 + ADS1256 emitter-test rig.
+"""Serial backend for the Eltec ESP32 + ADS1256 emitter-test rig - 406 MCA build.
 
 This module intentionally contains no Tkinter or NumPy dependencies.  It is
 the small hardware boundary used by the Xubuntu GUI: pyserial discovers and
@@ -8,9 +8,16 @@ the returned samples into NumPy arrays for the existing analysis engine.
 The firmware protocol is defined in ``Arduino/Eltec/Eltec.ino``. Firmware
 v1.7 is the first supported production build because it verifies the ADC's
 1000 SPS configuration and emits exactly one sample for each real ADS1256
-DRDY edge. Importing this module is safe when
-pyserial is absent; a
-normal, actionable exception is raised only when serial hardware is requested.
+DRDY edge. On a unified-rig board (v2.1+) the connect handshake also restores
+the 406MCA-qualified front end (FE,V19), and ``ensure_qualified_front_end``
+re-checks it before every measurement (2026-09-03). Importing this module is
+safe when pyserial is absent; a normal, actionable exception is raised only
+when serial hardware is requested.
+
+2026-09-03: the streaming machinery (blocking drain thread, driver-overflow
+attribution, Windows power-throttling opt-out, stall diagnostics) was ported
+by hand from the 405 M22 backend. The two files stay separate copies on
+purpose (docs/ENGINEER_HANDOVER.md section 4); port by hand, never import.
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ import math
 import os
 import re
 import statistics
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Sequence
@@ -37,6 +45,34 @@ else:
 BAUD_RATE = 500_000
 SAMPLE_RATE_HZ = 1_000.0
 STREAM_READ_BLOCK_BYTES = 1_024
+# Requested OS/driver receive buffer. CAUTION (measured 2026-08-17): the
+# Windows CP210x driver IGNORES this request — GetCommProperties reports a
+# granted receive queue of 512 bytes before and after SetupComm, i.e. only
+# ~16 ms of the 1,000-line/s stream. The request is kept because it is
+# harmless and other drivers honor it, but the real defense is the drain
+# thread below: it must simply never stall for more than a few milliseconds.
+# POSIX pyserial has no set_buffer_size and keeps the kernel's default.
+RECEIVE_BUFFER_BYTES = 1 << 20
+# Fallback poll period for the streaming drain thread. On real hardware the
+# drain thread blocks inside the driver read and wakes when bytes arrive, so
+# this period only paces test doubles and empty-timeout turnarounds; it is
+# deliberately NOT the primary wake mechanism because Windows 11 coarsens
+# sleep timers to ~15.6 ms for backgrounded windows (and on battery may
+# throttle the whole process), which overflows the 512-byte driver queue.
+DRAIN_POLL_S = 0.002
+# Win32 ClearCommError flags meaning receive data was lost in the driver.
+_CE_RXOVER = 0x0001
+_CE_OVERRUN = 0x0002
+# How many non-protocol lines seen mid-stream are kept verbatim on the
+# diagnostics (2026-09-03). A board that resets during a capture prints its
+# boot output and then its READY line into the stream; keeping the text lets
+# a stalled capture say "the board rebooted" instead of only "no data". (The
+# ROM banner itself is emitted at 115200 baud and arrives garbled at our
+# 500000, so the reset REASON is not readable - the READY line is.)
+IGNORED_LINE_SAMPLES_KEPT = 4
+# Model 406 MCA: the qualified drive is the firmware's 10 Hz / 50 % boot
+# default, so no PWM,FREQ is ever sent (v1.7 boards do not have it) and the
+# permanently mounted 406MCA reference unit on AIN1 runs at the same rate.
 PWM_FREQUENCY_HZ = 10.0
 PWM_DUTY_CYCLE_PERCENT = 50.0
 # Emitter gate. Moved D25 -> D33 on 2026-08-25 (firmware v3.1 boots on 33 too;
@@ -53,9 +89,12 @@ EXPECTED_FIRMWARE_PREFIX = "ELTEC-ESP32-ADS1256,v"
 # handshake MUST put the board back on the qualified front end with FE,V19 and
 # verify the read-back before any measurement. The switch is session-only:
 # every port open resets the ESP32 to the v2.0 front end, which is exactly why
-# it is (re)applied on every connect. Boards older than v2.1 (the legacy
-# standalone 406MCA rigs on v1.9) already run the qualified front end natively
-# and do not understand FE commands, so they are left alone.
+# it is (re)applied on every connect - and why ``ensure_qualified_front_end``
+# re-checks it before every measurement (2026-09-03): a board that resets
+# while the port stays open (brownout, watchdog) would otherwise keep
+# streaming on the wrong front end unnoticed. Boards older than v2.1 (the
+# legacy standalone 406MCA rigs on v1.9) already run the qualified front end
+# natively and do not understand FE commands, so they are left alone.
 FRONT_END_SWITCH_FIRMWARE_VERSION = (2, 1, 0)
 QUALIFIED_FRONT_END_COMMAND = "FE,V19"
 QUALIFIED_FRONT_END_GAIN = 2
@@ -206,9 +245,33 @@ class StreamDiagnostics:
     last_timestamp_us: int | None = None
     firmware_samples_sent: int | None = None
     firmware_adc_overruns: int | None = None
+    #: Times the Windows serial driver reported CE_RXOVER/CE_OVERRUN during
+    #: this stream — receive data was lost INSIDE the driver because the host
+    #: stalled. Attributes gap/duplicate corruption to the host environment
+    #: (power throttling, backgrounded window) rather than cable/firmware.
+    driver_rx_overflow_events: int = 0
     stop_marker_seen: bool = False
+    #: Host monotonic time at which the most recent live (not drained)
+    #: record was consumed. A stall is measured against it ("no sample for
+    #: N s"). None until the first record arrives.
+    last_sample_monotonic: float | None = None
+    #: The first IGNORED_LINE_SAMPLES_KEPT non-protocol lines seen while
+    #: streaming, printable ASCII only, truncated. Normally empty; a
+    #: mid-capture board reset leaves its boot output and READY line here.
+    ignored_line_samples: list[str] = field(default_factory=list, repr=False)
     _elapsed_device_us: int = field(default=0, repr=False)
     _valid_intervals_us: list[int] = field(default_factory=list, repr=False)
+
+    @property
+    def live_samples(self) -> int:
+        """Records the capture loop consumed before STREAM,STOP was sent.
+
+        The rest (``drained_samples``) arrived only while the stop reply was
+        being drained. After a stall that split says who went quiet: a large
+        drained tail means the board kept streaming into the OS buffer while
+        the host was not reading.
+        """
+        return max(0, self.received_samples - self.drained_samples)
 
     @property
     def device_span_seconds(self) -> float | None:
@@ -284,12 +347,165 @@ class StreamDiagnostics:
             count_text += f"/{self.firmware_samples_sent} records"
         else:
             count_text += " records"
-        return (
+        text = (
             f"{count_text}, {rate_text}, {self.torn_lines} torn, "
             f"{self.timestamp_gap_count} gaps "
             f"(~{self.estimated_missing_samples} missing), "
             f"{self.firmware_adc_overruns or 0} ADC overruns"
         )
+        if self.driver_rx_overflow_events:
+            text += (
+                f", {self.driver_rx_overflow_events} driver receive-queue overflows"
+            )
+        if self.ignored_line_samples:
+            text += (
+                f", {self.ignored_lines} non-protocol line(s) e.g. "
+                f"{self.ignored_line_samples[0]!r}"
+            )
+        return text
+
+
+def _opt_out_of_windows_power_throttling() -> bool:
+    """Exempt this process from Windows 11 battery QoS and timer coarsening.
+
+    Root cause of the 2026-08-17 capture failures: on battery, Windows demotes
+    a backgrounded/occluded GUI process to EcoQoS (efficient cores at minimum
+    frequency) and coarsens its sleep timers to ~15.6 ms. The CP210x driver's
+    real receive queue is 512 bytes (~16 ms of stream), so those stalls
+    overflow it — timestamp gaps plus ring-wrap duplicate records. This call
+    turns both behaviors off for the whole process. No-op off Windows.
+    """
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+
+        class _PowerThrottlingState(ctypes.Structure):
+            _fields_ = [
+                ("Version", ctypes.c_ulong),
+                ("ControlMask", ctypes.c_ulong),
+                ("StateMask", ctypes.c_ulong),
+            ]
+
+        POWER_THROTTLING_CURRENT_VERSION = 1
+        EXECUTION_SPEED = 0x1
+        IGNORE_TIMER_RESOLUTION = 0x4
+        PROCESS_POWER_THROTTLING = 4  # PROCESS_INFORMATION_CLASS value
+        state = _PowerThrottlingState(
+            POWER_THROTTLING_CURRENT_VERSION,
+            EXECUTION_SPEED | IGNORE_TIMER_RESOLUTION,
+            0,  # StateMask 0 = disable those throttling policies
+        )
+        kernel32 = ctypes.windll.kernel32
+        return bool(
+            kernel32.SetProcessInformation(
+                kernel32.GetCurrentProcess(),
+                PROCESS_POWER_THROTTLING,
+                ctypes.byref(state),
+                ctypes.sizeof(state),
+            )
+        )
+    except Exception:
+        return False
+
+
+def _raise_current_thread_priority() -> None:
+    """Raise the calling thread to THREAD_PRIORITY_HIGHEST (Windows only).
+
+    The drain thread is a tiny I/O pump; higher priority both shortens its
+    scheduling latency against the 512-byte driver queue and signals the
+    Windows QoS classifier not to park it on an efficiency core.
+    """
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetThreadPriority(kernel32.GetCurrentThread(), 2)
+    except Exception:
+        pass
+
+
+def _query_granted_rx_queue(serial_port: Any) -> int | None:
+    """Return the driver's actually-granted receive queue size, if knowable.
+
+    Windows only: GetCommProperties.dwCurrentRxQueue. The CP210x driver
+    reports 512 regardless of SetupComm requests (measured 2026-08-17), which
+    is why the drain thread, not the buffer request, carries the reliability.
+    """
+    if os.name != "nt":
+        return None
+    handle = getattr(serial_port, "_port_handle", None)
+    if handle is None:
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _CommProp(ctypes.Structure):
+            _fields_ = [
+                ("wPacketLength", wintypes.WORD),
+                ("wPacketVersion", wintypes.WORD),
+                ("dwServiceMask", wintypes.DWORD),
+                ("dwReserved1", wintypes.DWORD),
+                ("dwMaxTxQueue", wintypes.DWORD),
+                ("dwMaxRxQueue", wintypes.DWORD),
+                ("dwMaxBaud", wintypes.DWORD),
+                ("dwProvSubType", wintypes.DWORD),
+                ("dwProvCapabilities", wintypes.DWORD),
+                ("dwSettableParams", wintypes.DWORD),
+                ("dwSettableBaud", wintypes.DWORD),
+                ("wSettableData", wintypes.WORD),
+                ("wSettableStopParity", wintypes.WORD),
+                ("dwCurrentTxQueue", wintypes.DWORD),
+                ("dwCurrentRxQueue", wintypes.DWORD),
+                ("dwProvSpec1", wintypes.DWORD),
+                ("dwProvSpec2", wintypes.DWORD),
+                ("wcProvChar", wintypes.WCHAR * 1),
+            ]
+
+        props = _CommProp()
+        ok = ctypes.windll.kernel32.GetCommProperties(
+            wintypes.HANDLE(handle), ctypes.byref(props)
+        )
+        return int(props.dwCurrentRxQueue) if ok else None
+    except Exception:
+        return None
+
+
+def _query_comm_status(serial_port: Any) -> tuple[int, int]:
+    """Return (driver_error_mask, bytes_in_receive_queue) in one call.
+
+    Windows: a direct ClearCommError, which reports CE_RXOVER/CE_OVERRUN
+    (receive data lost inside the driver) alongside the queue level. This
+    matters because pyserial's ``in_waiting`` also calls ClearCommError but
+    DISCARDS the error mask — the one hardware-level signal that attributes a
+    corrupted capture to host-side overflow. Elsewhere (POSIX, test doubles)
+    the mask is always 0 and the queue level comes from ``in_waiting``.
+    """
+    handle = getattr(serial_port, "_port_handle", None)
+    if handle is not None and os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            class _ComStat(ctypes.Structure):
+                _fields_ = [
+                    ("Flags", wintypes.DWORD),
+                    ("cbInQue", wintypes.DWORD),
+                    ("cbOutQue", wintypes.DWORD),
+                ]
+
+            errors = wintypes.DWORD()
+            comstat = _ComStat()
+            if ctypes.windll.kernel32.ClearCommError(
+                wintypes.HANDLE(handle), ctypes.byref(errors), ctypes.byref(comstat)
+            ):
+                return int(errors.value), int(comstat.cbInQue)
+        except Exception:
+            pass
+    return 0, int(getattr(serial_port, "in_waiting", 0) or 0)
 
 
 def _require_pyserial() -> None:
@@ -405,6 +621,11 @@ class Esp32Rig:
 
         self.ser: Any | None = None
         self.identity: FirmwareIdentity | None = None
+        # Filled in at connect: what the driver actually granted for its
+        # receive queue (512 on Windows CP210x regardless of the request) and
+        # whether the Windows power-throttling opt-out succeeded.
+        self.granted_rx_queue_bytes: int | None = None
+        self.power_throttling_exempt = False
         self.pwm_enabled = False
         self.last_pwm_activation_monotonic: float | None = None
         self.last_pwm_deactivation_monotonic: float | None = None
@@ -417,7 +638,14 @@ class Esp32Rig:
         # ASCII sample lines/second that can consume the CP210x backlog more
         # slowly than the ESP32 produces it during a full timeout capture.
         # Keep a user-space buffer so one bulk read supplies many parsed lines.
+        # While streaming, a dedicated drain thread feeds this buffer so the
+        # OS receive queue never overflows while the GUI thread is busy; the
+        # condition serializes buffer access and wakes waiting readers.
         self._read_buffer = bytearray()
+        self._buffer_cond = threading.Condition()
+        self._drain_thread: threading.Thread | None = None
+        self._drain_stop = threading.Event()
+        self._drain_error: Exception | None = None
 
     @property
     def connected(self) -> bool:
@@ -531,7 +759,27 @@ class Esp32Rig:
         serial_port = factory(**serial_options)
         self.ser = serial_port
         self.port_name = port_name
-        self._read_buffer.clear()
+        with self._buffer_cond:
+            self._read_buffer.clear()
+            self._drain_error = None
+
+        # Request a large OS receive buffer, then measure what was actually
+        # granted. The Windows CP210x driver IGNORES the request: it grants a
+        # 512-byte queue (~16 ms of the 1,000-line/s stream) no matter what is
+        # asked (GetCommProperties, measured 2026-08-17). Reliability therefore
+        # rests on the drain thread never stalling, so the process is also
+        # exempted here from Windows 11 battery power throttling and timer
+        # coarsening — the mechanisms that caused every capture to fail with
+        # timestamp gaps + duplicate records when the tester ran backgrounded
+        # on battery power.
+        try:
+            set_buffer_size = getattr(serial_port, "set_buffer_size", None)
+            if callable(set_buffer_size):
+                set_buffer_size(rx_size=RECEIVE_BUFFER_BYTES)
+        except Exception:
+            pass
+        self.granted_rx_queue_bytes = _query_granted_rx_queue(serial_port)
+        self.power_throttling_exempt = _opt_out_of_windows_power_throttling()
 
         # Release both modem-control lines after open.  The open itself supplies
         # the CP210x reset edge on the production DevKit; leaving either asserted
@@ -552,6 +800,13 @@ class Esp32Rig:
         if identity.version >= FRONT_END_SWITCH_FIRMWARE_VERSION:
             self._select_qualified_front_end()
 
+    @staticmethod
+    def _qualified_front_end_text() -> str:
+        return (
+            f"gain={QUALIFIED_FRONT_END_GAIN},"
+            f"buf={1 if QUALIFIED_FRONT_END_BUFFERED else 0}"
+        )
+
     def _select_qualified_front_end(self) -> None:
         """Put a v2.1+ board back on the 406MCA-qualified ADS1256 front end.
 
@@ -562,10 +817,7 @@ class Esp32Rig:
         produce numbers the qualified thresholds do not apply to.
         """
 
-        expected = (
-            f"gain={QUALIFIED_FRONT_END_GAIN},"
-            f"buf={1 if QUALIFIED_FRONT_END_BUFFERED else 0}"
-        )
+        expected = self._qualified_front_end_text()
         ack = self._command(QUALIFIED_FRONT_END_COMMAND, "OK,FE")
         if expected not in ack:
             raise Esp32ProtocolError(
@@ -578,6 +830,36 @@ class Esp32Rig:
                 "ADS1256 front-end read-back does not match the qualified "
                 f"406MCA configuration: {readback!r} (need {expected})."
             )
+
+    def ensure_qualified_front_end(self) -> bool:
+        """Re-check the front end before a measurement; re-apply it if it reverted.
+
+        2026-09-03. FE,V19 is applied at connect and is session-only: an
+        ESP32 that resets while the port stays open (brownout, watchdog - one
+        of the things a stalled stream can mean) boots back on the v2.0
+        gain-1 unbuffered front end, and every later 406MCA reading would
+        silently be taken on the wrong front end. One ``FE?`` round trip
+        before each measurement closes that hole: a mismatch is re-applied
+        and verified exactly as at connect, and True tells the caller the
+        board had reverted (i.e. restarted) so it can say so and log it.
+        Boards without FE commands (v1.9 legacy rigs) are left alone (False).
+        FE commands are rejected by the firmware while streaming, so this is
+        refused while a stream is active.
+        """
+
+        self._require_connected()
+        identity = self.identity
+        if identity is None or identity.version < FRONT_END_SWITCH_FIRMWARE_VERSION:
+            return False
+        if self._stream_active:
+            raise StreamStateError(
+                "Stop the waveform stream before checking the front end."
+            )
+        readback = self._command("FE?", "FE,")
+        if self._qualified_front_end_text() in readback:
+            return False
+        self._select_qualified_front_end()
+        return True
 
     @staticmethod
     def _release_modem_control_lines(serial_port: Any) -> None:
@@ -690,7 +972,10 @@ class Esp32Rig:
             self.identity = None
             self.pwm_enabled = False
             self._stream_active = False
-            self._read_buffer.clear()
+            self._stop_drain_thread()
+            with self._buffer_cond:
+                self._read_buffer.clear()
+                self._drain_error = None
 
     def _discard_serial(self) -> None:
         serial_port = self.ser
@@ -699,7 +984,10 @@ class Esp32Rig:
         self.identity = None
         self._stream_active = False
         self.pwm_enabled = False
-        self._read_buffer.clear()
+        self._stop_drain_thread()
+        with self._buffer_cond:
+            self._read_buffer.clear()
+            self._drain_error = None
         if serial_port is not None:
             try:
                 serial_port.close()
@@ -725,14 +1013,42 @@ class Esp32Rig:
             self._discard_serial()
             raise Esp32ConnectionError(f"Could not send {command!r}: {exc}") from exc
 
+    def _pop_line_locked(self) -> str | None:
+        """Remove and return one complete line; the caller holds the lock."""
+
+        newline_index = self._read_buffer.find(b"\n")
+        if newline_index < 0:
+            return None
+        raw_line = bytes(self._read_buffer[:newline_index])
+        del self._read_buffer[: newline_index + 1]
+        return raw_line.decode("ascii", errors="replace").strip()
+
+    def _raise_drain_error(self, error: Exception) -> None:
+        self._discard_serial()
+        raise Esp32ConnectionError(f"Serial read failed: {error}") from error
+
     def _readline(self) -> str:
         serial_port = self._require_connected()
         while True:
-            newline_index = self._read_buffer.find(b"\n")
-            if newline_index >= 0:
-                raw_line = bytes(self._read_buffer[:newline_index])
-                del self._read_buffer[: newline_index + 1]
-                return raw_line.decode("ascii", errors="replace").strip()
+            with self._buffer_cond:
+                line = self._pop_line_locked()
+                if line is not None:
+                    return line
+                drain_thread = self._drain_thread
+                drain_alive = drain_thread is not None and drain_thread.is_alive()
+                drain_error = self._drain_error
+                if drain_error is None and drain_alive:
+                    # The drain thread owns the serial read; wait for it to
+                    # deliver more bytes (or for one read-timeout period).
+                    self._buffer_cond.wait(self.read_timeout_s)
+                    line = self._pop_line_locked()
+                    if line is not None:
+                        return line
+                    drain_error = self._drain_error
+                    if drain_error is None:
+                        return ""
+            if drain_error is not None:
+                self._raise_drain_error(drain_error)
 
             try:
                 read = getattr(serial_port, "read", None)
@@ -759,7 +1075,84 @@ class Esp32Rig:
                 return ""
             if isinstance(raw, str):
                 raw = raw.encode("ascii", errors="replace")
-            self._read_buffer.extend(bytes(raw))
+            with self._buffer_cond:
+                self._read_buffer.extend(bytes(raw))
+
+    # ------------------------------------------------------------------
+    # Streaming drain thread
+    # ------------------------------------------------------------------
+    def _drain_loop(self, serial_port: Any) -> None:
+        """Continuously move bytes from the OS receive queue to _read_buffer.
+
+        Runs only while a stream is active. Windows motivation: the CP210x
+        driver grants only a 512-byte receive queue (~16 ms at 1,000 lines/s;
+        the 1 MiB SetupComm request is ignored) and drops — and around ring
+        wrap even re-delivers — receive data once it overflows. This thread
+        must therefore never stall: it BLOCKS inside the driver read so it
+        wakes the moment bytes arrive (no sleep timers, which Windows 11
+        coarsens to ~15.6 ms for backgrounded windows), runs at raised
+        priority, and captures the driver's own CE_RXOVER/CE_OVERRUN flags so
+        an overflow that still happens is attributed in the error dialog
+        instead of masquerading as a cable problem.
+        """
+
+        _raise_current_thread_priority()
+        try:
+            while not self._drain_stop.is_set():
+                error_mask, waiting = _query_comm_status(serial_port)
+                if error_mask & (_CE_RXOVER | _CE_OVERRUN):
+                    with self._buffer_cond:
+                        diagnostics = self._stream_diagnostics
+                        if diagnostics is not None:
+                            diagnostics.driver_rx_overflow_events += 1
+                if waiting <= 0:
+                    # Block in the driver for the next byte; pyserial's read
+                    # timeout (read_timeout_s) bounds the wait so stop
+                    # requests are still honored promptly. Test doubles that
+                    # return empty immediately fall through to the short poll
+                    # below so they are not spun hot.
+                    raw = serial_port.read(1)
+                    if not raw:
+                        self._drain_stop.wait(DRAIN_POLL_S)
+                        continue
+                else:
+                    raw = serial_port.read(waiting)
+                    if not raw:
+                        continue
+                if isinstance(raw, str):
+                    raw = raw.encode("ascii", errors="replace")
+                with self._buffer_cond:
+                    self._read_buffer.extend(bytes(raw))
+                    self._buffer_cond.notify_all()
+        except Exception as exc:
+            with self._buffer_cond:
+                self._drain_error = exc
+                self._buffer_cond.notify_all()
+
+    def _start_drain_thread(self) -> None:
+        if self._drain_thread is not None and self._drain_thread.is_alive():
+            return
+        self._drain_error = None
+        self._drain_stop.clear()
+        thread = threading.Thread(
+            target=self._drain_loop,
+            args=(self.ser,),
+            name="eltec-esp32-serial-drain",
+            daemon=True,
+        )
+        self._drain_thread = thread
+        thread.start()
+
+    def _stop_drain_thread(self) -> None:
+        thread = self._drain_thread
+        self._drain_thread = None
+        self._drain_stop.set()
+        if (
+            thread is not None
+            and thread.is_alive()
+            and thread is not threading.current_thread()
+        ):
+            thread.join(timeout=2.0)
 
     def _command(
         self,
@@ -974,6 +1367,7 @@ class Esp32Rig:
         )
         self._last_sample_timestamp_us = None
         self._drained_samples = []
+        self._start_drain_thread()
         return header
 
     @staticmethod
@@ -1028,6 +1422,8 @@ class Esp32Rig:
         diagnostics.received_samples += 1
         if drained:
             diagnostics.drained_samples += 1
+        else:
+            diagnostics.last_sample_monotonic = self._monotonic()
 
     def _consume_stream_line(
         self, line: str, *, drained: bool
@@ -1071,6 +1467,10 @@ class Esp32Rig:
             raise Esp32ProtocolError(f"Firmware stream error: {line}")
         if line:
             diagnostics.ignored_lines += 1
+            if len(diagnostics.ignored_line_samples) < IGNORED_LINE_SAMPLES_KEPT:
+                diagnostics.ignored_line_samples.append(
+                    "".join(ch if 32 <= ord(ch) < 127 else "?" for ch in line)[:96]
+                )
         return None, False
 
     def _finish_stream(self) -> None:
@@ -1078,6 +1478,7 @@ class Esp32Rig:
         if diagnostics is not None and diagnostics.stopped_monotonic is None:
             diagnostics.stopped_monotonic = self._monotonic()
         self._stream_active = False
+        self._stop_drain_thread()
 
     def read_stream(
         self,
@@ -1196,6 +1597,10 @@ __all__: Sequence[str] = (
     "SAMPLE_RATE_HZ",
     "PWM_FREQUENCY_HZ",
     "PWM_DUTY_CYCLE_PERCENT",
+    "FRONT_END_SWITCH_FIRMWARE_VERSION",
+    "QUALIFIED_FRONT_END_COMMAND",
+    "QUALIFIED_FRONT_END_GAIN",
+    "QUALIFIED_FRONT_END_BUFFERED",
     "PWM_GPIO",
     "MINIMUM_FIRMWARE_VERSION",
     "EXPECTED_FIRMWARE_PREFIX",

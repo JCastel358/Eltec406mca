@@ -23,13 +23,19 @@ The apps create these on first save. A batch started on Windows is readable on
 Xubuntu and vice versa (same CSV format, same layout). Re-entering an existing
 batch number resumes it at the next sensor.
 
+On the single-detector rigs a sensor number is only spent by a **PASS**
+(2026-09-02), so a batch CSV holds **one row per test**: `500-7` appears once
+for each part tried under that number, the last of them the pass that earns
+it. `number_attempt` says which of those a row is.
+
 ### Inside each root
 
 ```
 <root>\
-├── <prefix>_lot_<lot>.csv              one verdict row per saved sensor (the production record)
-├── <prefix>_lot_<lot>_attempts.csv     one row per event: measured / measure_error / remeasure /
-│                                       skipped / resumed / saved  (v2.0 attempt history)
+├── <prefix>_lot_<lot>.csv              one verdict row per TEST (the production record); a number
+│                                       that has not been passed yet repeats until a part earns it
+├── <prefix>_lot_<lot>_attempts.csv     one row per event: measured / measure_error / stopped /
+│                                       saved  (attempt history)
 ├── autosave\                           in-progress batch state (crash recovery)
 ├── waveform_snapshots\lot_<lot>\       PNG per "Capture waveform" (+ cycle CSV sidecars);
 │                                       automatic for failing noise captures / unstable drives

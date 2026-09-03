@@ -58,6 +58,13 @@ DRAIN_POLL_S = 0.002
 # Win32 ClearCommError flags meaning receive data was lost in the driver.
 _CE_RXOVER = 0x0001
 _CE_OVERRUN = 0x0002
+# How many non-protocol lines seen mid-stream are kept verbatim on the
+# diagnostics (2026-09-03). A board that resets during a capture prints its
+# boot output and then its READY line into the stream; keeping the text lets
+# a stalled capture say "the board rebooted" instead of only "no data". (The
+# ROM banner itself is emitted at 115200 baud and arrives garbled at our
+# 500000, so the reset REASON is not readable - the READY line is.)
+IGNORED_LINE_SAMPLES_KEPT = 4
 # Model 449 M18 frequency tracking (TP443): the DUT is measured at 5 Hz and
 # then at 18 Hz, both with the legacy fixture's 20/80 blade duty (20 % ON).
 # The firmware boots at 10 Hz / 50 %, so this backend sends PWM,FREQ,<hz> and
@@ -233,8 +240,27 @@ class StreamDiagnostics:
     #: (power throttling, backgrounded window) rather than cable/firmware.
     driver_rx_overflow_events: int = 0
     stop_marker_seen: bool = False
+    #: Host monotonic time at which the most recent live (not drained)
+    #: record was consumed. A stall is measured against it ("no sample for
+    #: N s"). None until the first record arrives.
+    last_sample_monotonic: float | None = None
+    #: The first IGNORED_LINE_SAMPLES_KEPT non-protocol lines seen while
+    #: streaming, printable ASCII only, truncated. Normally empty; a
+    #: mid-capture board reset leaves its boot output and READY line here.
+    ignored_line_samples: list[str] = field(default_factory=list, repr=False)
     _elapsed_device_us: int = field(default=0, repr=False)
     _valid_intervals_us: list[int] = field(default_factory=list, repr=False)
+
+    @property
+    def live_samples(self) -> int:
+        """Records the capture loop consumed before STREAM,STOP was sent.
+
+        The rest (``drained_samples``) arrived only while the stop reply was
+        being drained. After a stall that split says who went quiet: a large
+        drained tail means the board kept streaming into the OS buffer while
+        the host was not reading.
+        """
+        return max(0, self.received_samples - self.drained_samples)
 
     @property
     def device_span_seconds(self) -> float | None:
@@ -319,6 +345,11 @@ class StreamDiagnostics:
         if self.driver_rx_overflow_events:
             text += (
                 f", {self.driver_rx_overflow_events} driver receive-queue overflows"
+            )
+        if self.ignored_line_samples:
+            text += (
+                f", {self.ignored_lines} non-protocol line(s) e.g. "
+                f"{self.ignored_line_samples[0]!r}"
             )
         return text
 
@@ -1342,6 +1373,8 @@ class Esp32Rig:
         diagnostics.received_samples += 1
         if drained:
             diagnostics.drained_samples += 1
+        else:
+            diagnostics.last_sample_monotonic = self._monotonic()
 
     def _consume_stream_line(
         self, line: str, *, drained: bool
@@ -1385,6 +1418,10 @@ class Esp32Rig:
             raise Esp32ProtocolError(f"Firmware stream error: {line}")
         if line:
             diagnostics.ignored_lines += 1
+            if len(diagnostics.ignored_line_samples) < IGNORED_LINE_SAMPLES_KEPT:
+                diagnostics.ignored_line_samples.append(
+                    "".join(ch if 32 <= ord(ch) < 127 else "?" for ch in line)[:96]
+                )
         return None, False
 
     def _finish_stream(self) -> None:

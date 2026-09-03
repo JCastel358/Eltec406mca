@@ -1,13 +1,14 @@
-# Eltec Test Rig — unified sensor tester (v2.0)
+# Eltec Test Rig — unified sensor tester
 
-**v2.0 (2026-08-24) — Skip part, footer Re-measure, attempt history.** Every
+**2026-09-02 — two buttons (Stop, Next) and a number only a PASS can spend.**
+See [Test flow](#test-flow) below; the v2.0 skip queue it replaced is in
+`CHANGELOG.md`. Every
 older app (`405m22_esp32`, `v6_1_esp32`, `v6_esp32`, `v5_esp32`, the v1–v4
 LabJack apps, `v6_1_failure_calibration`) and a frozen snapshot of this app
 as it was before v2.0 (`eltec_rig_v1`) were removed from the working tree on
 2026-08-28; they are preserved in full at git tag
 `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:tech_app/deprecated/<app>/<file>`).
-See [What changed in v2.0](#what-changed-in-v20) below.
 
 One desktop application for every sensor model the ESP32/ADS1256 rig can
 test. It opens **maximized** and shows a **sensor version dropdown**; picking a
@@ -20,7 +21,7 @@ sessions.
 single_detector_rig/
 ├── eltec_rig_tester.py          # the selector GUI (this app's entry point)
 ├── sensor_versions.py           # registry: one entry per testable model
-├── attempt_history.py           # v2.0: per-batch *_attempts.csv log + skipped-parts queue (shared by all models)
+├── attempt_history.py           # per-batch *_attempts.csv event log (shared by all models)
 ├── m405m22/                     # Model 405 M22 (1 Hz, TP412) tester + its 165-test suite
 ├── m406mca/                     # Model 406 MCA (10 Hz, v6.1 policy) tester + its 99-test suite
 ├── m449m18/                     # Model 449 M18 (5 Hz + 18 Hz, TP443 frequency tracking) tester + suite
@@ -129,73 +130,89 @@ The selector remembers the last-used sensor version in
 `%LOCALAPPDATA%\eltec-rig\state.json` (Windows). Only one tester can run at a
 time — both models share the same board and serial port.
 
-## What changed in v2.0
+## Test flow
 
-### Footer (both models)
+### Two screens and two buttons (2026-09-02)
 
-The action bar at the bottom is now the only place the technician acts on a
-part, laid out left → right:
+There are two steps — **Batch information** and **Measure & result** — and
+the action bar carries exactly two controls:
 
 | Button | Colour | When shown | What it does |
 | --- | --- | --- | --- |
-| **Back** | grey | always | as before |
-| **Measure skipped (N)** | blue outline | when skipped parts are waiting | loads the skipped pile, first skipped first |
-| **Skip part** | amber | load + result steps | sets the part aside **without spending its number** |
-| **Re-measure** | blue outline | result step | runs the test again (moved here from the small tools row) |
-| **Save + Exit Batch (Esc)** | blue outline | result step | as before |
-| **Save + Next Sensor (Enter)** | **green** | result step | as before |
+| **Stop** / **Stop batch (Esc)** | **red** | every moment of a batch, never disabled | mid-capture: abandons the reading (nothing recorded, the number does not move). Idle: writes an unsaved verdict (no prompt since 2026-09-03), then ends the batch |
+| **Start (Enter)** → **Next sensor (Enter)** | blue → **green** | setup → result | reads the sensor that is in the rig now; on a verdict it writes the row first |
 
-Buttons are one size larger than before; the tools row under the verdict
-keeps only Comment / Capture waveform / Save noise capture and the two
-toggles.
+The technician loads a part, presses Start (first) or Next (every one after)
+and the read begins immediately — there is no "load the next sensor" screen
+in between, because the part is loaded before the button is pressed. The old
+load STEP's card (rig picture, and the 405's noise-soak toggle) moved onto
+the setup screen; the 405 soak toggle also sits on the result card, where it
+arms the read **Next** is about to take, and `run_measurement` clears it as
+it starts so it never carries into a second part.
 
-**The bar always fits the window** (`_fit_footer`, both models). At full size
-the six buttons need more width than the content column has on a maximized
-1366-wide screen or at 150% Windows scaling, which used to clip *Save + Next
-Sensor* off the right edge. The bar now measures what the visible buttons
-need and takes the first `FOOTER_VARIANTS` step that fits, preferring big
-buttons over spelled-out labels:
+**Stop is the only control that is never disabled.** It works mid-capture
+because it bumps `measure_token`, which the capture loops already poll
+through their `cancelled=` callback: the loop raises at its next chunk
+boundary, the worker's own `finally` blocks stop the stream and switch the
+emitter off, and every callback that worker posts afterwards is ignored by
+the token guard. A `stopped` row goes into the attempt log; no verdict row is
+written.
+
+**The bar always fits the window** (`_fit_footer`, all models). Two full-size
+buttons fit any rig screen, but the blocked-measure labels ("Calibrate
+reference unit to test") still need the ladder the six-button bar did: it
+measures what the visible buttons need and takes the first
+`FOOTER_VARIANTS` step that fits, preferring big buttons over spelled-out
+labels:
 
 1. full labels, one row;
 2. drop the `(Enter)` / `(Esc)` hints (the shortcuts still work);
-3. compact wording — *Save + Next*, *Save + Exit*, *Skipped (3)*;
+3. compact wording — *Next*, *Stop*, *Calibrate reference first*;
 4. wrap the action buttons onto their own row, still full size;
 5. only then step the buttons down a size.
 
 It is bound to the footer's `<Configure>`, so it re-fits when the window is
 maximized or resized — including growing back to full labels — and it works
 the same on Windows and Xubuntu (the fit is measured from the actual font
-metrics, not a hardcoded width). The "nothing was recorded" view keeps its **Record as NOT
-MEASURED** option (writes the NOT MEASURED verdict row) next to the new Skip.
+metrics, not a hardcoded width). The "nothing was recorded" view keeps its
+**Record as NOT MEASURED** option (writes the NOT MEASURED verdict row);
+Next there simply reads the same sensor again.
 
-### Skip part → Measure skipped
+There is no Re-measure button, which is a real trade-off: a verdict already
+on screen cannot be discarded. It is saved as what it says — on a FAIL that
+costs nothing, because the number stays open — or the reading is stopped
+before it finishes so nothing is written at all.
 
-- **Skip part** asks only for an optional comment (no reason list — two
-  clicks), then moves on to the next fresh number. The skipped id stays open: it is
-  never handed out again (`_next_fresh_sensor_number` looks at both the
-  batch CSV and the attempt log), so a part is never counted twice.
-- The skipped parts form a **first-skipped-first-measured pile**. When the
-  technician reaches it, **Measure skipped (N)** shows the ids in order and
-  loads the first one; after each save the next skipped id loads
-  automatically (heading shows "(skipped part)") until the pile is empty,
-  then fresh numbers resume. A part skipped again goes to the back of the
-  pile. The batch summary lists anything still skipped, and re-opening a
-  batch shows the waiting pile in the status line.
-- Skipping does not write a verdict row; nothing about the CSV format of a
-  saved sensor changed except two new trailing columns (below).
+### A sensor number is only spent by a PASS
 
-### Attempt history (why was it re-measured / skipped?)
+`next_sensor_number_for_batch` returns one past the highest **PASSED** number
+in the batch CSV. A FAIL, or a NOT MEASURED row, leaves the number open: the
+next part loaded into the rig is tested as the same number, which is what the
+bench already does physically — a bad part is set aside and another takes its
+place. Whichever part finally passes is the one that ships under that number.
 
-Each batch now has a sibling **`<lot>_attempts.csv`** next to its results
-CSV with one row per event: `measured` (every finished measurement with its
+Consequences:
+
+- A batch CSV is **one row per test**, not one row per number. `500-7` can
+  appear several times, the last of them the PASS. Yield counts rows, so the
+  failures are still all in it.
+- **`number_attempt`** (1-based) says which part under that number a row is;
+  **`measure_attempts`** counts the reads of one part and starts over for
+  each replacement. Both are the last two CSV columns; `number_attempt`
+  replaced `skip_count` in the same position on 2026-09-02.
+- Deriving from the highest PASSED number (not from a count of passes) leaves
+  batches written before the rule intact: their numbers were handed out per
+  row, so a file whose last pass is `500-9` continues at `500-10`.
+
+### Attempt history (what happened to this part?)
+
+Each batch has a sibling **`<lot>_attempts.csv`** next to its results CSV
+with one row per event: `measured` (every finished measurement with its
 verdict, offset, sensitivity, polarity, noise worst pk-pk, fail reasons),
-`measure_error` (nothing recorded + the rig error), `remeasure` (the verdict
-that was discarded), `skipped` (the comment + whatever verdict was on
-screen), `resumed`, `saved`. The verdict row gains **`measure_attempts`**
-and **`skip_count`** so the count is visible without opening the log. Older
-batch CSVs keep their header (rows stay aligned, the two columns are simply
-absent). Autosave payloads carry `resuming_skipped`, `measure_attempts`,
-`skip_count`.
+`measure_error` (nothing recorded + the rig error), `stopped` (the
+technician pressed Stop during a capture), `saved`. Older batch CSVs keep
+their header (rows stay aligned, newer columns are simply absent). Autosave
+payloads carry `measure_attempts` and `number_attempt`.
 
 ### Shorted / dead sensor vs. empty slot (both models)
 
@@ -229,11 +246,12 @@ card. Type is a step larger to stay readable full screen.
 
 ### Tests
 
-`tests/test_attempt_history.py` (14 tests: the log/queue module and the
-skip → resume → fresh-number flow driven through BOTH models' real
-`EmitterTesterApp` methods, plus the footer palette); the model suites'
-harnesses gained the three v2.0 attributes. Existing verdict logic,
-thresholds and calibrations are untouched.
+`tests/test_attempt_history.py` (23 tests: the attempt-log module, and the
+earned-number rule plus the Stop / Next flow driven through ALL THREE
+models' real `EmitterTesterApp` methods, plus the footer palette). Each
+model suite carries the same numbering / Stop / Next checks against its own
+copy of the app. Existing verdict logic, thresholds and calibrations are
+untouched.
 
 ## Tests
 
@@ -244,9 +262,8 @@ python3 -m unittest discover -s single_detector_rig/m406mca/tests    # run from 
 python3 -m unittest discover -s single_detector_rig/m449m18/tests    # run from the repo root
 ```
 
-On Windows the m406mca suite reports the two long-standing environment-only
-failures (POSIX bash-installer test and the POSIX-exclusive tty flag
-assertion); both pass on Xubuntu.
+On Windows the m406mca suite reports one long-standing environment-only
+error (the POSIX bash-installer test); it passes on Xubuntu.
 
 ## Adding the next sensor version
 

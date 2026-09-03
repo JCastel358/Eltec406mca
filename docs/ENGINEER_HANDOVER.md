@@ -99,7 +99,8 @@ block after every immediate read and before every stream (found and fixed
 single_detector_rig/
   eltec_rig_tester.py      selector GUI: dropdown → launches the model app as a SUBPROCESS
   sensor_versions.py       registry (one SensorVersion per model) + REQUIRED_FIRMWARE
-  attempt_history.py       shared: <lot>_attempts.csv writer + skipped-parts queue
+  attempt_history.py       shared: <lot>_attempts.csv writer (measured / measure_error /
+                           stopped / saved)
   v1_single_sensor/        vendored 406MCA signal-math / pass-fail engine (all models import it)
   m405m22/  m406mca/  m449m18/
       eltec_<model>_esp32_tester.py   the GUI + test flow + limits (5–8k lines)
@@ -247,14 +248,13 @@ python -m unittest discover -s array_rig/tests                     # array selec
 python -m unittest discover -s array_rig/m40623/tests              # DAQ backend (fake DLL), analysis (golden parity), tester flow, readout, live viewer (Agg), engineer tools
 ```
 
-Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-09-02:
-glue 38, 405 M22 175 (4 skipped), 406 MCA 109, 449 M18 111, array glue 31,
-40623 array 241 — **705 tests**.
+Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-09-03
+(after the stall attribution / 406 stream port): glue 45, 405 M22 200 (4
+skipped), 406 MCA 160, 449 M18 135, array glue 31, 40623 array 241 —
+**812 tests**.
 Known and accepted on Windows: the 406 suite reports one error
 (`test_launcher_installation_uses_only_v6_1_identities`, runs the bash
-installer) and one failure
-(`test_auto_connect_validates_candidates_and_is_idempotent`, asserts the
-POSIX-only exclusive-tty flag); both pass on Xubuntu. Display-only GUI tests
+installer); it passes on Xubuntu. Display-only GUI tests
 skip headless. Every app has a **Simulator** mode (opt-in, amber badge) that
 exercises the full flow without hardware — use it after any UI or flow change.
 
@@ -327,12 +327,13 @@ then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
 6. **405 noise anchor**: the 15 % window rule and the 60 s soak rest on part 500-44 — refine with more failing parts.
 7. **406 MCA**: the 1.582 factor's lot-520 pair data is not in the repository — locate and file it. The 0.100 mV threshold and the SNR ≥ 1.5 gate still lack broad qualification with known-good/bad parts.
 8. **405 DUT threshold 0.500 mV / 0.250 mV reference / 60 s deadline** are provisional (2026-08-12).
-9. Low priority: `500-27_noise_raw.npz` and its `_2` twin are byte-identical — check whether Re-measure can save a stale buffer; adaptive noise-capture length; repeatability across temperature, emitter replacement and battery state.
+9. Low priority: `500-27_noise_raw.npz` and its `_2` twin are byte-identical — a stale-buffer save, from the days when Re-measure could re-run a part without clearing the raw capture (that button is gone since 2026-09-02, and every read now starts from a fresh `prepare_current_sensor`); adaptive noise-capture length; repeatability across temperature, emitter replacement and battery state.
 10. Housekeeping: the GitHub repository is still named `Eltec406mca` — rename it to `Eltec_TestRig` in the repository settings (old URLs redirect).
 11. **Array rig bench spike** — done 2026-09-02 for the DAQ alone (CALIBRATION_RECORD §6: stream integrity clean at 400 KB/s, floor 49 µV median / 79 µV worst pk-pk in the judged band, slot 0 unsettled → drop stays). **Found and fixed the same day:** the DLL's immediate reads clear the trigger byte, so the tester's order (offsets polled, then the stream) delivered 0 scans — the backend now re-asserts its block after every immediate read and before every stream, and the tester abandons a silent stream after 5 s into the retry / NOT MEASURED path (never remove either). **Still open with the PCB:** the -HG scaling question — only a known, metered ~1.5 V on CH0 decides it (`daq_bench_probe.py scan`; the probe's "driver V" column cannot, it uses the same formula) — and crosstalk (`crosstalk --source-channel N` with a 10 Hz source).
 12. **Array rig hardware questions** (§4b.3): PCB supply/loading vs TP120's 9000054 (+8 V, 100 kΩ) and 9000233 (±5 V, vacuum); amplifier 9000232 gain/passband; vacuum for the paired lot.
 13. **Array rig noise limits**: the paired lot and `array_noise_parity.py` (§8); until then every noise verdict is NO_LIMIT and every row says PENDING.
 14. **Emitter board for the array**: TP120 sensitivity/polarity at 3 Hz — the tester has the disabled "Sensitivity" step and the `drive` slot; the ESP32 firmware's `PWM,FREQ` can drive it.
+15. **Stall root cause (405 M22 mornings, reported 2026-09-02)**: since 2026-09-03 every stall is tagged (`[host-stall]` / `[board-reset]` / `[board-silent]` / `[no-reply]`, 405 README part 3) and every automatic restart is a `stream_retry` row in the batch's `_attempts.csv`. Collect those rows from the Xubuntu rig after the next bad morning, ask whether the tester was left open overnight (a port open resets the board; only a held port keeps its uptime) and where the laptop was plugged in, and run `python Arduino/Eltec/esp32_rig_readout.py stream` for a minute before opening the tester. The reset *reason* is not readable (ROM banner at 115200 baud): a v3.3 firmware could append it to the READY line.
 
 ## 11. Working conventions
 
