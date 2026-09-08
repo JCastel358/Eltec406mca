@@ -567,7 +567,7 @@ class CaptureTests(HomeGuardMixin, unittest.TestCase):
         self.assert_home_untouched()
 
     def test_npz_replays_in_the_replot_tool(self):
-        spec = importlib.util.spec_from_file_location("replot_noise_capture", REPO_ROOT / "engineer_tools" / "replot_noise_capture.py")
+        spec = importlib.util.spec_from_file_location("replot_noise_capture", REPO_ROOT / "engineer_tools" / "noise_band" / "replot_noise_capture.py")
         tool = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(tool)
         rig, _ = make_rig()

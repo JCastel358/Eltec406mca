@@ -73,8 +73,11 @@ Arduino/Eltec/               firmware (single rig today; the array rig's emitter
   flash_firmware.py          one-command compile/upload/verify (+ run_flash_firmware.cmd/.sh)
   esp32_rig_readout.py, live_waveform.py   bench tools
   ESP32_ADS1256_Wiring_v2_0.md             current wiring (…_legacy_v1_9.md = retired standalone 406 rigs)
-engineer_tools/              replot_noise_capture.py (replay raw noise captures), filter_response_analysis.py,
-                             array_noise_parity.py (derive the array rig's pin-level noise limits from a paired lot)
+engineer_tools/              engineering-only tools, one folder per topic (README.md inside lists them)
+  noise_band/                replot_noise_capture.py (replay raw noise captures under any band), filter_response_analysis.py
+  array_parity/              array_noise_parity.py (derive the array rig's pin-level noise limits from a paired lot)
+  emitter/                   emitter_waveform_comparison.py (legacy chopper vs rig emitter waveform shape)
+  reference_unit/            reference_candidate_qualifier.py (pick the detector to mount as the AIN1 reference unit)
 analysis/
   405M22_Data/               lot-500 paired-fixture data behind the 4.30 factor
   reports/                   noise-filtering explainer, historical buffer/SNR write-ups

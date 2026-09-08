@@ -32,7 +32,7 @@ behind the legacy amplifier box 9000232 and rectifier-hold circuit
 9000272, NOT pin-level numbers. No pin-level equivalent exists yet, so the
 noise limit constants below are ``None`` until a paired lot (the same
 parts on the legacy fixture and on this rig, ``engineer_tools/
-array_noise_parity.py``) derives the chain factor - exactly how the 405
+array_parity/array_noise_parity.py``) derives the chain factor - exactly how the 405
 M22's 300 mV / 700 limit was derived. With ``None`` limits every noise
 verdict is ``NO_LIMIT``: measured, recorded, never a failure. Everything
 this module emits is stamped PROVISIONAL / CALIBRATION PENDING.

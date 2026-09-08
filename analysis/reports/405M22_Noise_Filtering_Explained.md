@@ -359,19 +359,19 @@ are unchanged on every synthetic fixture.
 
 ## 8. Reproducing everything in this report
 
-Two tools in `engineer_tools/` (repo root):
+Two tools in `engineer_tools/noise_band/` (repo root):
 
 ```bash
 # Replay saved captures through the production pipeline and/or custom bands.
 # Writes a PNG per capture (raw trace, judged traces vs limit, spectrum)
 # plus a verdict-comparison table.
-python engineer_tools/replot_noise_capture.py                    # all captures
-python engineer_tools/replot_noise_capture.py --band 0.5 5       # custom band
-python engineer_tools/replot_noise_capture.py --boxcar 20        # pre-08-20 pipeline
+python engineer_tools/noise_band/replot_noise_capture.py                    # all captures
+python engineer_tools/noise_band/replot_noise_capture.py --band 0.5 5       # custom band
+python engineer_tools/noise_band/replot_noise_capture.py --boxcar 20        # pre-08-20 pipeline
 
 # Measure the pipeline's passband, its aliasing, and test legacy-amp
 # passband hypotheses against a real capture's spectrum.
-python engineer_tools/filter_response_analysis.py [CAPTURE.npz]
+python engineer_tools/noise_band/filter_response_analysis.py [CAPTURE.npz]
 ```
 
 Captures live under

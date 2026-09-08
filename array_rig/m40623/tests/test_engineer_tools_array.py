@@ -1,6 +1,7 @@
 """The engineer tools that read the array rig's captures: parity derivation and the replot tool.
 
-Both tools live in ``engineer_tools/`` (shared across rigs); they are exercised
+Both tools live under ``engineer_tools/`` (shared across rigs; ``array_parity/``
+and ``noise_band/``); they are exercised
 here on synthetic tray captures in a temporary directory so the array suite
 proves they still understand the tester's ``.npz`` / CSV formats.
 """
@@ -22,6 +23,8 @@ TESTS_DIR = Path(__file__).resolve().parent
 MODEL_DIR = TESTS_DIR.parent
 REPO_ROOT = MODEL_DIR.parents[1]
 TOOLS_DIR = REPO_ROOT / "engineer_tools"
+# Tool name -> folder under engineer_tools/ (the tools are grouped by topic).
+TOOL_FOLDERS = {"array_noise_parity": "array_parity", "replot_noise_capture": "noise_band"}
 for entry in (str(MODEL_DIR), str(MODEL_DIR.parent)):
     if entry not in sys.path:
         sys.path.insert(0, entry)
@@ -32,7 +35,7 @@ import eltec_40623_array_tester as app  # noqa: E402
 
 
 def load_tool(name: str):
-    spec = importlib.util.spec_from_file_location(name, TOOLS_DIR / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(name, TOOLS_DIR / TOOL_FOLDERS[name] / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

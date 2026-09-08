@@ -70,13 +70,14 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
             "test on the DAQ array rig. CALIBRATION PENDING."
         ),
         details=(
-            "Flow: power on -> live offsets (high offsets turn red: pull them) -> lock the "
-            "tray -> 5 min stabilisation -> 60 s noise capture -> save.",
+            "Flow: tech name + batch -> physical power switch -> Measure offset "
+            "(replace red parts and repeat) -> confirm vacuum -> Measure noise. "
+            "Five-minute stabilisation, 60-second capture and saving are automatic.",
             "Offset: TP120 0.3-1.2 V, PROVISIONAL until the PCB loading is confirmed "
             "against fixture 9000054 (+8 V, 100 kOhm).",
             "Noise: measured at the pin in the single rig's 0.85-22 Hz band and recorded; "
             "no pin-level limit yet (TP120's 10.0-37.9 mV are DMM readings behind the "
-            "legacy amplifier + rectifier-hold) - tiles show 'no limit yet'.",
+            "legacy amplifier + rectifier-hold) - sockets show amber 'NO LIMIT'.",
             "The raw 1000 SPS capture of all 50 channels is saved with every tray so the "
             "limits can be derived later without re-measuring.",
             "Sensitivity / polarity (3 Hz chopper) is not implemented yet: no emitter board.",

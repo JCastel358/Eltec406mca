@@ -13,6 +13,111 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array rig: show pass/fail first, measurements on request (2026-09-08)
+
+- Simplify the round sockets to pass/fail and current state by default,
+  keeping row-column position labels visible. **Show more** reveals numeric
+  measurements and assigned sensor numbers; **Show less** hides them again.
+- Keep **WAITING**, **EMPTY**, **RECHECK**, **NO LIMIT** and **NOT READ**
+  visible where no pass/fail verdict exists. Update the array READMEs and
+  technician runbook to describe the optional details view.
+
+## Array rig: two-step operator workflow and hardware-free demo (2026-09-08)
+
+- Replace the crowded 40623 tray controls with an Eltec-branded screen:
+  tech name, batch number, **Measure offset**, **Measure noise**, and a
+  numbered 5 × 10 map of round detector sockets. Tray and sensor numbers,
+  the five-minute stabilisation, sixty-second capture and saving are
+  automatic; **Next tray** waits for a successful save. **Stop** permits retry.
+- Read offsets on demand and retain every screening read for audit. Repeat
+  while replacing red out-of-range detectors, or mark physically empty
+  sockets when replacements run out. Low/dead readings can settle and should
+  be rechecked; near-zero voltage never automatically means empty. Reloaded
+  sockets require a new offset read before noise.
+- Prompt for the physical rig power switch immediately before offset and
+  require operator confirmation of the vacuum gauge before noise. The app
+  observes signals; it does not switch power or vacuum, measure pressure,
+  or invent a vacuum setpoint.
+- Record vacuum confirmation in the tray history. Retrying a failed save
+  reuses completed artifacts and commits CSV/history appends atomically,
+  so a storage error followed by **Retry save** does not duplicate rows.
+- Add selector **Simulation** and a fast virtual-clock demo via `--simulate`,
+  with simulated replacements and red/green noise results. Demo limits are
+  isolated to the simulator instance. Results carry a simulation flag and
+  demo provenance, with files under the system temp folder's `eltec-array-simulation` directory
+  (or `<ELTEC_ARRAY_RESULTS_ROOT>/simulation`). Production noise limits
+  remain `None`, shown as amber **NO LIMIT** instead of a pass.
+- Update the array READMEs, selector flow description, technician runbook,
+  data map and calibration policy notes. Preserve the controller's legacy engineering API and the existing
+  acquisition settings, offset limits and production noise calibration.
+
+## Reference candidate retest: seated AIN0 precision sessions (2026-09-08)
+
+- Add `capture --precision` and `compare --precision` to the reference-unit
+  qualifier. Keep each candidate seated on AIN0 for 30 readings at 10 Hz /
+  50% duty; settle insertion once, then alternate minimum 2/10/60 s emitter-off
+  intervals. Preserve production 20-cycle captures and a 20 s driven hold.
+- Replay the actual five-cycle reference algorithm on each early AIN0
+  waveform. Report between-reading CV, worst deviation, completion times,
+  pause-group shifts and early/late differences; rank precision before speed
+  without rewarding insertion settling or sub-millisecond timing differences.
+- Store retests in `<out>/precision`, separate from prior reseating runs;
+  record actual intervals, retries and planned sessions, reject incomplete
+  sessions and incompatible acquisition settings from ranking. Preserve raw
+  waveforms, production quality checks and per-reading results on interruption.
+- Add replay, seated-session, comparison-isolation, timing and failure tests;
+  correct virtual simulation elapsed time when an adaptive capture stops early.
+  Update the bench instructions and qualification provenance. Production
+  gates, thresholds, calibration factors and firmware are unchanged.
+
+## Engineer tools: reference-unit candidate qualifier; folder per topic (2026-09-04)
+
+The channel-isolated buffer board is in, so the AIN1 reference gate can come
+back once a reference detector is chosen. Five candidate 406MCA parts are on
+the bench; the question is which one settles fastest and reads the same
+every time - not which one is most sensitive.
+
+- New `engineer_tools/reference_unit/reference_candidate_qualifier.py`
+  (`capture --label <part> --runs 3`, `compare`). Each run walks one
+  candidate through the production 406 MCA path with the production code
+  imported headless: (A) `OFFSET?` polled at the production 1 s poll from a
+  re-seat until quiet (up to 60 s), with the production settle rule
+  (`wait_for_settled_offset`) replayed on the reads; (B) `PIN,33` /
+  `PWM,ON` 10 Hz / 50 %, `read_waveform_until_stable` with the DUT
+  settings, stream retries and front-end re-checks as in the app,
+  `analyze_v6_stable_measurement` + `evaluate_result` for the production
+  sensitivity, SNR, polarity and PASS/FAIL; (C) a 20 s drive hold for the
+  amplitude drift; (D) `PWM,OFF`, the production settled-offset wait live,
+  then polling until quiet (recovery time, heat shift). One `.json` (every
+  number + the offset and per-cycle series) and one `.npz` (raw waveforms)
+  per run under `~/Documents/Eltec_ReferenceCandidates/<label>/` - its own
+  folder; an `Eltec_*_Test_Results` path is refused. `compare` aggregates
+  per candidate (medians, run-to-run CV), disqualifies a production FAIL /
+  never-stabilized / never-in-band / polarity flip, ranks the rest on
+  weighted metric ranks (`SCORE_WEIGHTS`, printed with the table), writes
+  `comparison_<stamp>.csv|.png` and prints a recommendation. `--channel ref`
+  measures a part already on the AIN1 mount (`REF?`, `STREAM,START,REF`).
+  `--simulate` runs candidate personalities on a virtual clock.
+- `engineer_tools/` reorganised one folder per topic: `noise_band/`
+  (`replot_noise_capture.py`, `filter_response_analysis.py`),
+  `array_parity/` (`array_noise_parity.py`), `emitter/`
+  (`emitter_waveform_comparison.py`), `reference_unit/` (new). `git mv`;
+  `REPO_ROOT` in each tool is now `parents[2]`; every path reference in
+  `README.md`, `docs/`, the array README / tester / analysis comments, the
+  array tests and `analysis/reports/` updated. Older entries below keep the
+  paths that were true at the time. `engineer_tools/README.md` is the index.
+- Docs: `engineer_tools/reference_unit/README.md` (bench procedure, what a
+  reference is judged on, the weights, the steps after choosing),
+  CALIBRATION_RECORD §2.4 (how the reference part is chosen; baseline still
+  to be recorded when the gate is re-enabled), ENGINEER_HANDOVER §9 / §10.3,
+  DATA_MAP §4, the 406 README.
+- Tests: `single_detector_rig/m406mca/tests/test_reference_candidate_qualifier.py`
+  (24 cases: settle metrics on synthetic series, the production replay
+  against `wait_for_settled_offset` itself, cycle series / hold trend,
+  aggregation, disqualifiers, ranking with ties and missing values, the
+  results-folder guard, a simulated capture -> compare round trip in a temp
+  dir, the fake rig's contract). Baseline 857 (406 MCA 203).
+
 ## Single-detector rigs: Stop writes the verdict on screen without asking (2026-09-03)
 
 Bench report: ending a batch with **Stop** (or Esc) put up a "save it before

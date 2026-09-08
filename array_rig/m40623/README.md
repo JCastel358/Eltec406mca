@@ -15,8 +15,14 @@ array_rig\m40623\run_eltec_40623_array_tester.cmd          (Windows)
 python array_rig/m40623/eltec_40623_array_tester.py --simulate   (no hardware; ELTEC_ARRAY_SIMULATE=1 does the same)
 ```
 
-`ELTEC_ARRAY_RESULTS_ROOT=<dir>` redirects the results folder (engineering
-runs that must not leave rows in the production folder).
+`ELTEC_ARRAY_RESULTS_ROOT=<dir>` redirects the results folder. For a
+hardware-free demonstration, check **Simulation** in the array selector or
+use `--simulate` above. The demo uses a fast virtual clock and isolated
+example noise limits to show red and green results; production noise limits
+remain unset. The badge reads **SIMULATION**; files carry a simulation flag
+and **SIMULATION ONLY** noise-limit provenance. Demo files go under
+`tempfile.gettempdir()/eltec-array-simulation`, or `<dir>/simulation` when
+`ELTEC_ARRAY_RESULTS_ROOT` is set.
 
 ## Hardware chain
 
@@ -89,38 +95,58 @@ rate / pool / leftover, `crosstalk`). Its numbers go into
 
 ## The flow (what the technician sees)
 
-1. **Lot** — lot number, tray number, tester name; *Start lot* connects the
-   DAQ, writes the configuration, runs the self-calibration.
-2. **Load & offset** — every position's DC offset is polled twice a second.
-   A part over 1.2 V or railed turns **red** immediately ("HO – pull"): pull
-   it now, before any time is spent on noise. A tile reading ~0 V is
-   **yellow** ("empty? click"): click it to say EMPTY or LOADED — the app
-   cannot tell an empty socket from a dead part. Low reads are **amber**
-   ("settling"): not a verdict yet, offsets settle upward after power-on.
-3. **Lock tray** — occupancy frozen, sensor numbers assigned **row-major over
-   the loaded positions** starting after the highest number already in the
-   lot (editable), the HO parts get their FAIL rows written **now**.
-4. **Noise** — TP120's 5-minute stabilisation countdown (skippable; the
-   actual wait is recorded on every row), then an adaptive quiet wait (3–20 s,
-   never a verdict), then the capture: 60 s (TP120's hold time) or 20 s
-   (engineering) of all fifty channels at 1000 scans/s, plus 310 samples of
-   real history on each side to seat the anti-alias filter. Integrity is
-   checked; a bad stream is retried.
-5. **Judged** — tiles coloured (legend under the grid). The **settled
-   offset** (mean of the last 2 s of the capture) is the offset verdict:
-   HO / LO / D fail; the insertion read is recorded separately. Noise is
-   judged per channel in the single rig's band; with no limit derived yet the
-   tile shows the value and "no limit yet".
-6. **Save tray** — one CSV row per loaded position, the raw capture
-   (`.npz`), the grid snapshot (`.png`), the tray event log. *Re-measure*
-   runs the noise phase again as attempt n+1 with the same sensor numbers.
+The Eltec-branded screen has two entry fields, **Tech name** and **Batch
+number**, and a 5 × 10 map of round sockets. Each socket keeps its row-column
+position label visible and shows pass/fail or its current state by default.
+**Show more** reveals numerical measurements and assigned sensor numbers;
+**Show less** returns to the simple view. Shading gives the sockets depth
+while keeping every row and column visible.
+
+1. **Load the tray.** Click physically empty sockets to mark them grey.
+   The app never infers an empty socket from a near-zero signal. Tray and
+   sensor numbers are assigned automatically.
+2. **Measure offset.** Switch the rig's physical power on immediately
+   before pressing the button. The app connects, configures and calibrates
+   the DAQ on demand, then reads all fifty offsets. Green means in range;
+   red means out of range. Low or dead-looking readings may still be
+   settling after power-on: recheck before discarding a detector. Every
+   offset read is retained for audit, including reads before replacements.
+3. **Replace and repeat.** Replace red detectors and press **Measure
+   offset** again until the loaded sockets are green. If replacements run
+   out, remove the remaining bad detectors and mark their sockets empty.
+   Marking a socket loaded again requires a new offset read before noise.
+   In simulation, click a red or empty socket to simulate loading a
+   replacement; right-click to mark a socket empty.
+4. **Confirm vacuum.** Turn on the vacuum yourself and wait for the gauge
+   to reach the required setting, then check **Vacuum is at the required
+   setting**. This records operator confirmation; there is no pressure
+   telemetry or configured setpoint. The app only observes detector signals
+   and does not switch rig power or vacuum.
+5. **Measure noise.** This becomes available only after successful offsets
+   for every loaded socket and vacuum confirmation. The app runs TP120's
+   five-minute stabilisation, an adaptive quiet wait (3–20 s), then a
+   sixty-second capture at 1000 scans/s per channel, with 310 samples of real
+   context on either side for the anti-alias filter. Integrity failures are
+   retried. **Stop** interrupts the run and allows a retry.
+6. **Read the results.** The map shows failures in red and passes in green
+   when limits are defined. Production noise limits are pending, so a part
+   with no other failure shows amber **NO LIMIT**. **Show more** displays
+   the measured values and assigned sensor numbers.
+   The settled offset (mean of the last two seconds) is checked again;
+   HO / LO / D fail. Results save automatically: CSV rows, raw capture
+   (`.npz`), grid snapshot (`.png`) and the tray event log. **Next tray** is
+   available after saving completes.
+
+The operator does not need separate connect, lock, save, capture-duration or
+skip-wait controls. `TrayController` retains its legacy engineering API;
+the desktop workflow above applies the fixed operator procedure.
 
 ## Limits and what "provisional" means
 
 | Test | Applied now | Provenance | Status |
 | --- | --- | --- | --- |
 | Offset | 0.3–1.2 V; < 0.05 V on a loaded socket = D; ≥ 4.9 V = HO (railed) | TP120 rev W offset check (fixture 9000054: +8 V, 100 kΩ source resistor) | **PROVISIONAL** until the PCB loading is confirmed to match 9000054 |
-| Noise | none — `NOISE_PP_LIMIT_LOW_MV = NOISE_PP_LIMIT_HIGH_MV = None` | TP120's 10.0–37.9 mV are DMM readings behind amplifier 9000232 + rectifier-hold 9000272 (under vacuum, 60 s hold); no pin-level equivalent exists | **PENDING** — derive with a paired lot (`engineer_tools/array_noise_parity.py`), then fill the constants, update the record, bump `CALIBRATION_ID` |
+| Noise | none — `NOISE_PP_LIMIT_LOW_MV = NOISE_PP_LIMIT_HIGH_MV = None` | TP120's 10.0–37.9 mV are DMM readings behind amplifier 9000232 + rectifier-hold 9000272 (under vacuum, 60 s hold); no pin-level equivalent exists | **PENDING** — derive with a paired lot (`engineer_tools/array_parity/array_noise_parity.py`), then fill the constants, update the record, bump `CALIBRATION_ID` |
 
 The noise *measurement* is the single rig's: Kaiser anti-alias FIR decimating
 1000 → 50 SPS, per-1-s-window least-squares detrend, windowed peak-to-peak,
@@ -133,34 +159,38 @@ limit (or clipped), LOW if the **median** window pk-pk is under the low limit
 rules are carried from the 405 M22 and marked "re-decide with the paired lot".
 
 Because the raw wideband capture of every tray is saved, any band or limit
-decided later can be replayed on real parts (`engineer_tools/replot_noise_capture.py`).
+decided later can be replayed on real parts (`engineer_tools/noise_band/replot_noise_capture.py`).
 
 ## Colours
 
-| Tile | Meaning |
+| Socket | Meaning |
 | --- | --- |
-| blue | loaded (Phase A) / locked |
-| red | offset FAIL — HO or railed (immediately, pull the part), LO or D (after the capture) |
-| purple | noise FAIL (N) — only once a high limit exists |
-| dark purple, hatched | noise low (NL) — only once a low limit exists |
-| green | PASS (limits defined) |
-| blue-grey | measured, **no noise limit yet** (today's normal "good" tile) |
-| amber | low / settling read in Phase A (judged later) |
-| yellow | reads ~0 V: click to mark EMPTY or LOADED |
-| grey | empty socket |
-| grey, hatched | not measured (rig fault after the retries) |
+| neutral, **WAITING** / **RECHECK** | loaded, awaiting its first or a fresh measurement |
+| red | offset out of range (HO / LO / D), or failed noise when limits are defined |
+| green | offset OK during screening; overall PASS after noise when limits are defined |
+| amber, **NO LIMIT** | noise measured, but production noise limits are not set; not a noise pass |
+| grey, **EMPTY** | empty socket |
+| **NOT READ** | incomplete measurement or rig fault; retry after resolving the cause |
 
 ## Files written (outside the repository — `docs/DATA_MAP.md`)
 
 ```
 Documents\Eltec_40623_Test_Results\40623_array_daq\
-├── 40623_array_lot_<lot>.csv               one row per position per tray attempt (HO rows at lock time)
-├── 40623_array_lot_<lot>_attempts.csv      tray events: locked / stabilisation_shortened / capture_started /
-│                                           capture_retry / capture_error / judged / saved / remeasure
+├── 40623_array_lot_<lot>.csv               one row per loaded position per tray attempt
+├── 40623_array_lot_<lot>_attempts.csv      tray events, offset-read audit and capture/save history
 ├── noise_captures\lot_<lot>\tray_<n>_raw.npz   waveform_v float32 [50, N] + left/right_context_v [50, 310],
 │                                               channels, positions, sensor_numbers, occupancy, metadata strings
 └── grid_snapshots\lot_<lot>\tray_<n>.png       the coloured grid as a data sheet
 ```
+
+The GUI calls the lot identifier **Batch number**; filenames and CSV fields
+retain `lot` for compatibility. Every screening read remains in the offset
+audit even when the detector is replaced before noise. Each
+`offset_measured` event stores all fifty position readings, occupancy,
+offset class and applied bounds in its JSON `detail`, together with the
+read number, out-of-range positions and simulation flag. Screening reads
+do not reserve sensor numbers; the final loaded sockets receive their
+numbers when noise starts.
 
 CSV columns (`CSV_FIELDS`): identity (lot, tray, attempt, position, row,
 col, DAQ channel, sensor number/id, tester, model, procedure, occupancy),
@@ -178,8 +208,8 @@ Older files keep their header when columns are added.
 
 HO high offset, LO low offset, SH shorted FET, D dead / no output (→ replace
 FET); N noisy (→ replace crystal); NL noise low (this rig's name for "under
-the low limit"); NM not measured (rig fault); Drop (handling). The app
-suggests the tag from the verdict; the technician can change it.
+the low limit"); NM not measured (rig fault); Drop (handling). The saved
+failure tag is derived from the measurement verdict.
 
 ## Engineering
 
@@ -212,7 +242,7 @@ readout and the viewer also `--no-selfcal`).
   `band_limited_pp_mv()` = the tester's judged-band pipeline, `subset()`,
   `to_csv()` = `t_us,<position>,…` volts to 6 decimals, `to_npz()` = the
   bench probe's key layout + `drop_first`, replayable by
-  `engineer_tools/replot_noise_capture.py` given the file path),
+  `engineer_tools/noise_band/replot_noise_capture.py` given the file path),
   `set_range(code)`, `live_stream(buffer_s=60)` → `LiveStream` (a thread
   owning every device call: `start()`, `wait_ready()`, `snapshot()`,
   `latest()`, `stats()` — the delivery rate between the first and the newest
@@ -270,9 +300,9 @@ readout and the viewer also `--no-selfcal`).
   Both tools were verified on the real unit 2026-09-02 (every command,
   integrity OK at 999–1000 scans/s; the inputs read ~0 V because the array
   PCB was not connected).
-- `engineer_tools/array_noise_parity.py` — pairs legacy-fixture readings with
+- `engineer_tools/array_parity/array_noise_parity.py` — pairs legacy-fixture readings with
   array captures and proposes the pin-level limits.
-- `engineer_tools/replot_noise_capture.py --position 2-4` — replays a saved
+- `engineer_tools/noise_band/replot_noise_capture.py --position 2-4` — replays a saved
   tray capture through the production pipeline or alternative bands.
 
 ## Tests

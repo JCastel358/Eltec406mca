@@ -279,7 +279,7 @@ not enough (`m449m18/README.md`).
 
 **Noise limit / window rule (405 M22):** anchored on a single part (500-44).
 When more known-noisy parts exist, replay their raw captures with
-`engineer_tools/replot_noise_capture.py` before changing
+`engineer_tools/noise_band/replot_noise_capture.py` before changing
 `NOISE_MAX_OVER_FRACTION` or the band; any band change means re-deriving the
 limit.
 
@@ -295,7 +295,7 @@ voltage → `slots → floor 20 → stream 60 → crosstalk`; numbers into §6).
 the paired lot: 30–50 parts on the legacy 9000233 fixture per TP120 (DMM
 reading per position, under vacuum) and on the array rig the same day;
 type the legacy readings into `legacy_readings.csv` and run
-`engineer_tools/array_noise_parity.py --legacy legacy_readings.csv --array
+`engineer_tools/array_parity/array_noise_parity.py --legacy legacy_readings.csv --array
 <lot csv or npz dir>`; it proposes the chain factor and the pin-level
 limits for the worst-window and median metrics and can replay other bands
 from the saved captures. Require identical decisions to the legacy fixture,
@@ -310,18 +310,19 @@ then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
 | `Arduino/Eltec/flash_firmware.py` (`--list`, `--check`, `--port`, `--sketch versions/Eltec_vX_Y`) | flash / identify the board |
 | `Arduino/Eltec/esp32_rig_readout.py ports\|offset\|ref\|pwm on\|gate on\|stream\|test\|noisecmp` (`--freq`, `--fe v19\|v20`) | serial-level checks without the GUI; `gate on` holds the port open so the drive survives while you measure |
 | `Arduino/Eltec/live_waveform.py --pwm --freq 1` | rolling scope view, SPACE toggles the emitter, `lag` readout must stay ~0 |
-| `engineer_tools/replot_noise_capture.py` | replay saved raw noise captures under any band; verdict comparison |
-| `engineer_tools/filter_response_analysis.py` | passband / aliasing characterisation of the noise pipeline |
+| `engineer_tools/noise_band/replot_noise_capture.py` | replay saved raw noise captures under any band; verdict comparison |
+| `engineer_tools/noise_band/filter_response_analysis.py` | passband / aliasing characterisation of the noise pipeline |
 | `array_rig/m40623/daq_bench_probe.py info\|selfcal\|config\|scan\|slots\|floor\|stream\|capture\|crosstalk` (`--simulate`, `--oneshot`) | the array rig's DAQ on the bench: identity, self-cal, config read-back, own-scale scan (the -HG question is settled only by a known, metered voltage on CH0 — the "driver V" column checks the arithmetic, not the gain), unsettled slot, instrument floor (onboard full-scale reference), 60 s integrity, crosstalk |
 | `array_rig/m40623/daq_rig_readout.py info\|offset\|stream\|noise\|watch\|test` (`--simulate`, `-p 2-4`, `-o cap.csv`, `--npz cap.npz`) | the array rig's `esp32_rig_readout.py`: offsets of any or all positions, captures of all fifty channels to CSV / npz (replayable in the replot tool), text-mode live readout; no verdicts, files only at explicit paths |
 | `array_rig/m40623/daq_live_waveform.py --position 2-4 -w 8` (`--simulate`, `--exit-after`, `--save-dir`, `--grid-metric noise`) | the array rig's `live_waveform.py`: rolling scope of any position switched live (arrow keys / `n` / `p` / a click on the 5 × 10 grid), tiles by offset band or judged-band pk-pk (`g`), judged-band trace; SPACE = Hold/Run, `s` saves the buffer as `daq_live_<stamp>.npz`; `lag` readout must stay ~0 |
-| `engineer_tools/array_noise_parity.py` | derive the array rig's pin-level noise limits from a paired lot (CALIBRATION_RECORD §4b.2) |
+| `engineer_tools/array_parity/array_noise_parity.py` | derive the array rig's pin-level noise limits from a paired lot (CALIBRATION_RECORD §4b.2) |
+| `engineer_tools/reference_unit/reference_candidate_qualifier.py capture --label refA --runs 3` / `compare` | pick the 406MCA part to mount as the AIN1 reference unit: production-path measurement of each candidate (offset settle, stabilization, repeatability, hold drift, post-emitter recovery), ranked with printed weights; `--simulate` without hardware; bench procedure in `engineer_tools/reference_unit/README.md` |
 
 ## 10. Known hardware issues and open work
 
 1. **Flash and bench-verify firmware v3.2** (`IDN? -> v3.2`, `PWM,DUTY,20 -> OK,PWM,DUTY,20.0`); until then the 449 M18 mode cannot connect.
 2. **449 M18 calibration**: derive `K_5`/`K_18`, fill the TP443 offset band (`OFFSET_GATE_ENABLED`), confirm polarity on real parts, revisit the 0.100 mV peak-delta threshold once real amplitudes are known.
-3. **Channel-isolated buffer board** → re-enable the reference gates on all models and recalibrate fresh.
+3. **Channel-isolated buffer board** (installed 2026-09) → choose the reference part (`engineer_tools/reference_unit/`), re-check crosstalk with a DUT driven (`REF?` / AIN1 stream must not follow the DUT), then re-enable the reference gates on all models and recalibrate fresh.
 4. **Sensor-battery monitoring on AIN6** (≥ 4:1 divider + firmware mux entry + host thresholds) → re-enable the battery gates. Plan: step the sensor supply to ~8 V to match TP412's bench supply.
 5. **Legacy amplifier question** (405 noise): confirm the ~700× effective chain factor by checking the legacy scope's CH2 probe (1×/10×) and the amplifier's range switch, or obtain its true gain and passband corners; the factor rests on one part.
 6. **405 noise anchor**: the 15 % window rule and the 60 s soak rest on part 500-44 — refine with more failing parts.

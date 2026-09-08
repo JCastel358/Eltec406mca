@@ -31,9 +31,9 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
    author, never commit `.npz`/result CSVs, never delete or rename files
    there — they are evidence.
 6. **Run `python run_all_tests.py` before claiming anything is done.**
-   Baseline: glue 45, 405 201 (4 skipped), 406 179 (on Windows exactly one
+   Baseline: glue 45, 405 201 (4 skipped), 406 203 (on Windows exactly one
    known environment-only case: `test_launcher_installation_uses_only_v6_1_identities`),
-   449 136, array glue 31, 40623 array 241 — 833 tests. Any other failure
+   449 136, array glue 31, 40623 array 241 — 857 tests. Any other failure
    is yours.
 7. **Commit and push before restructuring; tag before deleting.** Retired
    code is at `archive/pre-cleanup-2026-08-28` — recover with

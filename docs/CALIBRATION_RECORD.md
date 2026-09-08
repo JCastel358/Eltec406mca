@@ -70,7 +70,7 @@ Detailed mechanics: [`m405m22/README.md`](../single_detector_rig/m405m22/README.
 | `NOISE_EFFECTIVE_CHAIN_FACTOR` | **700** | tester ≈ l.390 | See §2.2. |
 | `NOISE_PP_LIMIT_MV` | 300 / 700 ≈ **0.429 mV (429 µV) pk-pk at the sensor pin** | tester ≈ l.391 | Derived. Displayed as red cutoff lines at ±214 µV. |
 | `NOISE_DECIMATION_FACTOR` | 20 (1000 → 50 SPS, passband flat to ~22 Hz) | tester ≈ l.392 | Chosen 2026-08-13 (fixture floor 5.6 % of limit at 20:1; ≥10:1 suffices; raw is unusable at 36 %). Since **2026-08-20** the decimator is a Kaiser windowed-sinc anti-alias FIR (`stability_analysis.decimate_antialiased`, ≥ 60 dB stopband from 28 Hz) — the original boxcar's −13 dB sidelobes folded 60 Hz mains to 10 Hz at only −16 dB (41 % phantom energy on the interference-heavy `test-22` capture). Same passband and timeline; all nine archived raw captures replay to identical verdicts. **2026-08-31:** precision — the Kaiser's passband edge is 22.15 Hz but its −3 dB corner is **24.4 Hz** (22.17 Hz was the boxcar's; with the detrend the verdict's −3 dB band is 0.852–24.4 Hz), and the FIR now seats on **real edge context** (0.31 s per side: quiet-wait tail + extra streamed samples, archived in the capture NPZ) instead of reflection padding, which had let out-of-band interference into the first/last judged window at only ~11–21 dB. No-context replays (all pre-existing captures) are bit-identical. |
-| Judged band | ≈ **0.85–22 Hz** | analysis | Per-window detrend = high-pass −3 dB at 0.85 Hz; decimation = low-pass at 22.17 Hz (`engineer_tools/filter_response_analysis.py`, 2026-08-20). |
+| Judged band | ≈ **0.85–22 Hz** | analysis | Per-window detrend = high-pass −3 dB at 0.85 Hz; decimation = low-pass at 22.17 Hz (`engineer_tools/noise_band/filter_response_analysis.py`, 2026-08-20). |
 | `NOISE_WINDOW_S` | 1 s windows | tester ≈ l.385 | |
 | `NOISE_MAX_OVER_FRACTION` | **0.15 → PASS iff ≤ 3 of 20 windows exceed the limit** | tester ≈ l.410 | Tightened from 20 % on **2026-08-17** (lot 500): the one part the legacy fixture failed for noise (500-44, 496 mV on the old scope) measured 4/20 windows over and was slipping through at 20 %; every other part was 0/20 except 500-3's isolated 2-window environmental spike, which must stay tolerated. 4 over fails, 2 passes. **Single-part anchor — refine with more known-noisy parts.** |
 | `NOISE_CAPTURE_SECONDS` | 20 s | tester ≈ l.411 | Fixed for now; adaptive length is future work. |
@@ -111,7 +111,7 @@ The **effective** end-to-end factor is therefore ~620–830×; **700** was
 adopted. Two further scope photos (50 and 100 mV/div, spans ~150–250 mV) are
 consistent with 600–800.
 
-The 2026-08-20 passband analysis (`engineer_tools/filter_response_analysis.py`)
+The 2026-08-20 passband analysis (`engineer_tools/noise_band/filter_response_analysis.py`)
 showed no physically sensible 1 Hz-centred band-pass can turn 4000 into 700
 (best achievable ratio 0.235 vs the required 0.175, order-1 models), so the
 gap was attributed to a **real gain difference** (10:1 probe setting, an
@@ -207,6 +207,28 @@ The contaminated baseline was archived as
 405 results folder. The gate code is kept and unit-tested with the flag forced
 on. The same crosstalk disabled the 406 MCA (2026-08-24) and 449 M18 gates.
 
+**Choosing the reference part (2026-09-04).** The isolated buffer board is
+installed; the reference unit is picked from candidate 406MCA parts with
+`engineer_tools/reference_unit/reference_candidate_qualifier.py`, which runs
+each candidate through the production 406 MCA path (offset settling from
+insertion, the 10 Hz / 50 % stabilization and sensitivity, a drive hold, the
+post-emitter offset recovery) and ranks on settling time, stabilization time
+and run-to-run repeatability — never on the sensitivity value itself. The
+chosen part, the crosstalk re-check on the new board and the fresh baseline
+go here when the gate is turned back on; the ±25 % window (§3) and the
+0.250 mV reference threshold are unchanged by the choice.
+
+**Precision retest (2026-09-08):** `capture --precision` leaves each candidate
+seated on AIN0 for 30 readings at 10 Hz / 50% duty. Each retains the production
+20-cycle measurement and 20 s hold, plus an early five-cycle replay using the
+existing reference algorithm. After one insertion settle, minimum emitter-off
+intervals alternate 2/10/60 s. These are engineering test defaults, not new
+acceptance limits. `compare --precision` ranks five-cycle CV / worst deviation
+ahead of timing and keeps the retests separate from original reseating data.
+See `engineer_tools/reference_unit/README.md` for the procedure and outputs.
+The selected detector still needs verification and fresh calibration on AIN1;
+the production gate remains disabled pending that work.
+
 ---
 
 ## 3. Model 406 MCA (10 Hz)
@@ -281,17 +303,17 @@ Added 2026-09-02.
 | --- | --- | --- | --- |
 | `OFFSET_MIN_V` / `OFFSET_MAX_V` | 0.3 / 1.2 V | `array_analysis.py` | TP120 rev W "40623 Offset Check": test box 9000054, **+8 V supply, 100 kΩ source resistor**, DMM 20 V scale, "let detectors stand for ten to fifteen minutes, if needed". **PROVISIONAL**: the array PCB's supply/loading must be confirmed to match 9000054 before these transfer without a correction. |
 | `OFFSET_SETTLE_DELTA_V` | 0.05 V | `array_analysis.py` | TP120 sensitivity pages: "wait until reading does not shift more than ± 0.05 V". Applied as a recorded warning (early vs settled reading), never a verdict. |
-| `OFFSET_DEAD_V` | 0.05 V | `array_analysis.py` | A loaded socket under this = D (dead / no output). Same value as the 405's wake-up floor; bench-tunable. Empty vs loaded at ~0 V is the technician's call at lock time (the rig cannot tell them apart). |
+| `OFFSET_DEAD_V` | 0.05 V | `array_analysis.py` | A loaded socket under this = D (dead / no output). Same value as the 405's wake-up floor; bench-tunable. The technician marks physically empty sockets; a near-zero reading never automatically excludes a position. |
 | `OFFSET_RAIL_V` | 4.9 V (0.98 × 5 V range) | `array_analysis.py` | A railed part = HO (405 lesson: never a wiring error). |
-| Offset policy | HO / railed fail fast at insertion; LO / D judged on the **settled** reading (mean of the last 2 s of the capture); insertion read recorded as `offset_initial_v` | tester | Carried from the 405 M22 lot-500 observation (offsets settle upward for tens of seconds). |
+| Offset policy | Explicit **Measure offset** checks the full existing band before noise. Recheck or replace out-of-range loaded parts, or remove them and mark sockets empty; every check is audited. The accepted reading becomes `offset_initial_v`; the final verdict still checks the mean of the capture's last 2 s. | tester | Operator workflow updated 2026-09-08. Low/dead readings may settle upward after power-on: recheck before rejecting. Limits remain provisional and unchanged. |
 | `NOISE_LEGACY_PP_LIMIT_LOW_MV` / `_HIGH_MV` | 10.0 / 37.9 mV | `array_analysis.py` | TP120 rev W "40623 Noise": fixture 9000233 (50 sockets, 5×10 switch box), **±5 V** supply, **under vacuum**, 5 min stabilisation, 15–20 s settle per position, amplifier box **9000232** → rectifier-hold **9000272** (Reset until < 1.0 mV, release, **≥ 60 s** hold) → DMM 200 mV DC. "Noise level must be between 10.0 mV and 37.9 mV." A LOW limit exists (dead crystal/FET). **These are DMM readings behind an amplifier of unknown gain/passband — never pin-level.** |
-| `NOISE_LEGACY_CHAIN_FACTOR` | **None** | `array_analysis.py` | Not derived. Derivation = the 405's §2.2/§2.3 recipe: the same parts on the legacy 9000233 fixture (DMM readings per position) and on this rig; `engineer_tools/array_noise_parity.py` pairs them and proposes the factor. |
+| `NOISE_LEGACY_CHAIN_FACTOR` | **None** | `array_analysis.py` | Not derived. Derivation = the 405's §2.2/§2.3 recipe: the same parts on the legacy 9000233 fixture (DMM readings per position) and on this rig; `engineer_tools/array_parity/array_noise_parity.py` pairs them and proposes the factor. |
 | `NOISE_PP_LIMIT_LOW_MV` / `_HIGH_MV` | **None** | `array_analysis.py` | = legacy limit ÷ chain factor once derived. With `None` every noise verdict is `NO_LIMIT` (measured, recorded, never a failure); tiles show the value and "no limit yet". |
 | `NOISE_MAX_OVER_FRACTION` | 0.15 (structural default) | `array_analysis.py` | Copied from the 405 M22's lot-500 rule. **Re-decide with the paired lot.** |
 | Low-side rule | MEDIAN window pk-pk below the low limit → NOISE_LOW | `array_analysis.py` | Structural choice: a dead crystal is quiet in every window; the median ignores one environmental bang. Re-decide with the paired lot. |
 | `NOISE_DECIMATION_FACTOR` / `NOISE_WINDOW_S` | 20 / 1.0 s | `array_analysis.py` | The single rig's pipeline unchanged (1000 → 50 SPS Kaiser FIR, 621 taps, 310-sample edge context, per-window detrend): judged band ≈ 0.85–22 Hz. Frozen oracle: `tests/golden_noise_reference.py` (from `single_detector_rig/m405m22/stability_analysis.py` at d7526b5). |
-| `NOISE_CAPTURE_SECONDS` | 60 s (20 s engineering option) | tester | TP120's ≥ 60 s hold → 60 one-second windows. |
-| `NOISE_STABILISATION_S` | 300 s (skippable, actual wait recorded per row) | tester | TP120: "Let detectors stand for five minutes". |
+| `NOISE_CAPTURE_SECONDS` | 60 s (20 s remains available to engineering callers) | tester | TP120's ≥ 60 s hold → 60 one-second windows. No capture-length control in the operator screen. |
+| `NOISE_STABILISATION_S` | 300 s after operator vacuum confirmation, actual wait recorded per row | tester | TP120: "Let detectors stand for five minutes". No skip control in the operator screen; simulation skips the wall-clock wait and records that fact. |
 | Adaptive quiet wait | 3–20 s, 2 blocks within 0.1 mV | tester | Carried from the 405; `NOISE_BASELINE_SETTLE_DELTA_MV = 0.1` is the 405's derived value rounded — only affects wait time, never a verdict. |
 | `CALIBRATION_STATUS` / `CALIBRATION_ID` / `VERDICT_STATUS` | PENDING / `40623_array50_daq_PENDING` / PROVISIONAL | `array_analysis.py` | Stamped on every CSV row and every raw capture. Bump the id when the limits are derived. |
 | DAQ range / rate / oversample | 0–5 V (code 2, 76.3 µV/LSB) / 1000 scans/s / 3 (first conversion dropped) | tester | See §6. Recorded per row (`daq_range_code`, `daq_oversample`, `daq_drop_conversions`, `daq_scan_rate_hz`, `daq_actual_timer_hz`). |
@@ -307,7 +329,7 @@ Added 2026-09-02.
    measured on the legacy 9000233 fixture per TP120 (DMM reading per
    position, under vacuum) and on this rig (60 s capture, same day); type
    the legacy readings into `legacy_readings.csv` (`sensor_id, position,
-   legacy_noise_mv`) and run `engineer_tools/array_noise_parity.py`. It
+   legacy_noise_mv`) and run `engineer_tools/array_parity/array_noise_parity.py`. It
    reports the median ratio and regression-through-origin slope for the
    worst-window and median-window metrics, replays alternative bands from
    the saved `.npz`, and proposes `NOISE_PP_LIMIT_LOW/HIGH = 10.0/37.9 ÷

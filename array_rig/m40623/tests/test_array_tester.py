@@ -482,21 +482,34 @@ class LauncherIdentityTests(unittest.TestCase):
 
 class GuiSmokeTests(unittest.TestCase):
     def test_app_builds_with_the_simulator(self):
+        import tkinter as tk
+
+        # Only the display probe may skip; application construction errors
+        # must fail this test instead of being mistaken for a headless host.
         try:
-            _grid, app_class = app.build_gui_classes()
-            window = app_class(device=daq.SimulatedDaq(real_time=False), simulate=True)
-        except Exception as exc:  # no display
+            probe = tk.Tk()
+        except tk.TclError as exc:
             self.skipTest(f"Tk unavailable: {exc}")
+        probe.destroy()
+        _grid, app_class = app.build_gui_classes()
+        window = app_class(device=daq.SimulatedDaq(real_time=False), simulate=True)
         try:
             window.update_idletasks()
             self.assertEqual(len(window.grid._items), 50)
             self.assertIn("PENDING", window.banner.cget("text"))
-            self.assertTrue(any("Sensitivity" in label.cget("text") and "no emitter" in label.cget("text") for label in window.step_labels))
+            self.assertEqual(len(window.entries), 2)
+            self.assertEqual(window.offset_button.cget("text"), "Measure offset")
+            self.assertEqual(window.noise_button.cget("text"), "Measure noise")
+            self.assertIsNotNone(window.logo_image)
             self.assertIsNone(window.drive)
             window.grid.set_tile("2-4", state=aa.TileState.OFFSET_FAIL, headline="1.620 V", detail="HO", sensor_number=13)
             self.assertEqual(window.grid.itemcget(window.grid._items["2-4"]["number"], "text"), "#13")
+            self.assertEqual(window.grid.type(window.grid._items["2-4"]["rect"]), "oval")
         finally:
             window.on_close()
+            del window
+            import gc
+            gc.collect()
 
 
 if __name__ == "__main__":

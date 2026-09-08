@@ -129,7 +129,7 @@ CAPTURE_EXTRA_TIMEOUT_S = 5.0
 STREAM_START_TIMEOUT_S = 5.0
 # Keys of the .npz a Capture writes: the bench probe's save_capture() set
 # without its probe_command, plus drop_first (which the probe passes as an
-# extra). engineer_tools/replot_noise_capture.py reads waveform_v [K, N],
+# extra). engineer_tools/noise_band/replot_noise_capture.py reads waveform_v [K, N],
 # sample_rate_hz and positions and ignores the rest, so a readout capture
 # replays there exactly like a probe capture (pass the file path; without
 # an occupancy array every channel counts as LOADED).

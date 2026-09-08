@@ -14,7 +14,41 @@ repository, the docs and (later) the ESP32 firmware for the emitter board.
 | **40623** | TP120 rev W | offset check (0.3–1.2 V) and noise, fifty at a time | **CALIBRATION PENDING** — noise limits not derived, offset limits provisional | `Eltec_40623_Test_Results\40623_array_daq` |
 
 Sensitivity / polarity (TP120's 3 Hz chopper test) waits for the emitter
-board; the app shows the step greyed out.
+board. The operator screen focuses on offset and noise, with the Eltec logo
+and a 5 × 10 map of round detector sockets labelled by row and column.
+Sockets show pass/fail or their current state by default. **Show more**
+reveals measurements and assigned sensor numbers; **Show less** hides them.
+
+## Technician flow
+
+1. Enter **Tech name** and **Batch number**. Load up to fifty detectors;
+   click any physically empty socket on the map to mark it grey.
+2. Use the rig's **physical power switch immediately before pressing
+   Measure offset**. The app connects to the DAQ and reads the signals; it
+   does not switch detector power or vacuum. Green means offset in range;
+   red means out of range. Low or dead-looking readings can still settle:
+   recheck before discarding a part.
+3. Replace red parts and press **Measure offset** again, as often as needed.
+   If replacements run out, remove the remaining bad parts and mark their
+   sockets empty. A socket marked loaded again requires a fresh offset read.
+4. Turn on the vacuum, wait for the gauge to reach the required setting,
+   and check **Vacuum is at the required setting**. Press **Measure noise**
+   once all loaded sockets have good offsets. The app automatically waits
+   five minutes for stabilisation, then captures sixty seconds of noise.
+5. Read the socket colours and status. Use **Show more** for measurements
+   and assigned sensor numbers. Results save automatically; use
+   **Next tray** after the save completes. **Stop** interrupts a measurement
+   so it can be retried.
+
+Tray and sensor numbers are automatic. Every offset read is retained for
+audit, including reads taken before a detector is replaced. Empty sockets
+are an operator choice: a near-zero reading is never assumed to mean empty.
+The vacuum check is the operator's gauge confirmation; the app has no
+pressure telemetry or configured vacuum setpoint.
+
+Production noise limits are still pending: measured parts with no other
+failure show amber **NO LIMIT**, which is not a noise pass. Defined limits
+produce green passes and red failures; simulation demonstrates both.
 
 ## Run it
 
@@ -27,8 +61,9 @@ board; the app shows the step greyed out.
   / `~/.local/state/eltec-array-rig/state.json`) and launches the model app
   as a **subprocess** with the model directory as cwd. Launcher logs:
   `…\eltec-array-rig\launcher.log`. The model app can also be started
-  directly (`array_rig\m40623\run_eltec_40623_array_tester.cmd`) and with
-  `--simulate` (or `ELTEC_ARRAY_SIMULATE=1`) it runs without hardware.
+  directly (`array_rig\m40623\run_eltec_40623_array_tester.cmd`). Check
+  **Simulation** in the selector, or use `--simulate` (or
+  `ELTEC_ARRAY_SIMULATE=1`), to run without hardware.
 - Hardware: the ACCES **"USB-AIO16-64MA Install"** driver package must be
   installed (it provides `AIOUSB.dll`; the DAQ loads its firmware from the
   host at every plug-in, so allow a few seconds after connecting). A 64-bit
@@ -45,6 +80,14 @@ board; the app shows the step greyed out.
 
 The single-detector rig and this rig can run at the same time — different
 hardware, different state folders.
+
+Simulation shows a **SIMULATION** badge and runs the same operator flow on
+a fast virtual clock. Click a red or empty socket to simulate loading a
+replacement, then measure offset again; right-click to mark a socket empty.
+Demo noise limits belong only to that simulator instance and results carry
+a simulation flag and **SIMULATION ONLY** noise-limit provenance. Demo
+files go under `tempfile.gettempdir()/eltec-array-simulation`, or the
+`simulation` subfolder when `ELTEC_ARRAY_RESULTS_ROOT` is set.
 
 ## Layout
 

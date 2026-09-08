@@ -126,42 +126,54 @@ written at all.
 
 ## 3b. Run a tray on the array rig (model 40623)
 
-The array rig tests **offset and noise only** (no sensitivity yet — that step
-is greyed out). Every result is marked **CALIBRATION PENDING**: offsets are
-judged with provisional limits, noise is **measured and recorded but not yet
-failed** (there is no limit for this rig yet). Red tiles are real failures.
+The array rig tests **offset and noise only**. Its Eltec-branded screen
+shows fifty round sockets in the same five rows and ten columns as the
+fixture. Row-column position labels stay visible. Sockets show pass/fail or
+their current state; **Show more** reveals measurements and assigned sensor
+numbers, and **Show less** hides them. Offset limits are provisional;
+production noise limits are still **CALIBRATION PENDING**. Amber **NO LIMIT** means the noise was
+measured and recorded, but has no pass/fail limit yet.
 
-1. Power the array PCB, plug the DAQ's USB in, wait five seconds (it loads
-   its own program on plug-in). Double-click **Eltec Array Rig**, pick
-   **Model 40623 array**, press **Start tester**.
-2. **Lot** — lot number, tray number, your name → **Start lot (connect DAQ)**.
-3. **Load & offset** — load the parts (tab orientation as on the legacy
-   fixture). The grid shows every position's offset live:
-   - **red "HO – pull"** = high offset. Pull the part now (it is already
-     recorded as a failure with its sensor number).
-   - **yellow "empty? click"** = reads 0 V: click the tile to say **empty**
-     (grey) or **loaded** (blue). The rig cannot tell an empty socket from a
-     dead part — you can.
-   - **amber** = low reading. Leave it: offsets rise for a while after
-     power-on; it is judged at the end.
-4. **Lock tray** — sensor numbers are assigned across the loaded positions
-   row by row (the first number continues the lot; you can change it).
-5. **Start noise test** — a 5-minute stabilisation countdown (TP120), then
-   about 20 s of settling, then the **60 s** capture. Keep the window
-   visible, no fans, no vibration, laptop on AC. *Skip the rest of the
-   stabilisation wait* is allowed only when the parts have already been
-   powered for five minutes (the shortened wait is recorded).
-6. **Read the tiles**: green / blue-grey = good (blue-grey means "measured,
-   no noise limit yet" — normal today), **red** = offset failure (HO, LO,
-   D), **purple** = noisy (only once a noise limit exists), grey hatched =
-   not measured (rig fault — see §5).
-7. **Save tray** — writes one row per part, the raw capture and a picture of
-   the grid. **Re-measure tray** runs the noise test again as a new attempt
-   (same sensor numbers). **Next tray** clears the grid.
+1. Plug in the DAQ's USB and wait five seconds for it to initialise. Open
+   **Eltec Array Rig**, choose **Model 40623 array**, and press **Start
+   tester**. Enter only **Tech name** and **Batch number**. Tray and sensor
+   numbers are automatic.
+2. Load up to fifty parts, with tab orientation as on the legacy fixture.
+   Click any physically empty socket on the map to mark it grey. A reading
+   near zero does not tell the app whether a socket is empty: mark it yourself.
+3. Use the rig's **physical power switch immediately before pressing
+   Measure offset**. Green means offset OK; red means out of range. Low or
+   dead-looking readings can still settle after power-on, so recheck them
+   before discarding a detector. Every offset read is retained for audit.
+4. Replace red parts and press **Measure offset** again. Repeat until all
+   loaded sockets are green, or no replacements remain. In that case,
+   remove the remaining bad parts and click their sockets to mark them empty;
+   a tray can have fewer than fifty parts. Marking an empty socket loaded
+   again requires another offset measurement.
+5. Turn on the vacuum, watch the gauge and wait until it reaches the
+   required setting. Check **Vacuum is at the required setting**, then
+   press **Measure noise**. The app relies on your gauge check; it does not
+   measure vacuum pressure. It reads detector signals and does not switch
+   rig power or vacuum.
+6. The app automatically waits **five minutes** for stabilisation, checks
+   settling, then captures **sixty seconds** of noise. Keep the laptop on
+   AC, the window visible, and the fixture free of fans and vibration.
+   Do not pull or insert parts while it measures. **Stop** interrupts a
+   run so you can retry with **Measure noise**.
+7. Read the socket results: **red** = failure, **green** = pass when noise
+   limits are defined, **amber NO LIMIT** = measured without a noise
+   verdict, **grey** = empty. **WAITING**, **RECHECK** and **NOT READ** mean
+   a measurement is still needed. Use **Show more** when you need the
+   numerical readings or assigned sensor numbers. Results, raw readings and
+   the grid picture save automatically. **Next tray** becomes available
+   after saving.
 
-Rejects go on the reject tray with the failure mode from the tile (HO, LO,
-D, N); good parts go back on the original tray. Do not pull or insert parts
-during the capture.
+To practise without hardware, check **Simulation** in the selector or run
+`python array_rig/m40623/eltec_40623_array_tester.py --simulate`. The demo
+shows a **SIMULATION** badge and runs the waits on a fast virtual clock.
+Click a red or empty socket to simulate loading a replacement, then measure
+offset again; right-click to mark a socket empty. Example noise limits
+demonstrate red and green results, with simulation labels and separate files.
 
 ## 4. Where the results go
 
@@ -174,9 +186,14 @@ One folder per model under your `Documents`:
 | 449 M18 | `Documents\Eltec_449M18_Test_Results\449m18_esp32\` |
 | 40623 array | `Documents\Eltec_40623_Test_Results\40623_array_daq\` (one row per position per tray; `noise_captures\` holds the raw tray captures — never delete) |
 
+Array simulation files go to `eltec-array-simulation` under the operating
+system's temporary folder. If an engineer sets `ELTEC_ARRAY_RESULTS_ROOT`,
+simulation uses a `simulation` subfolder there.
+
 The batch file is `<model>_lot_<number>.csv`; next to it `…_attempts.csv`
-lists every measure / re-measure / skip. Waveform pictures go to
-`waveform_snapshots\`. **Do not rename, move or delete anything in these
+keeps the measurement history. Single-detector waveform pictures go to
+`waveform_snapshots\`; array tray pictures go to `grid_snapshots\`.
+**Do not rename, move or delete anything in the production results
 folders** — the engineer backs them up.
 
 ## 5. If something goes wrong
@@ -193,9 +210,10 @@ folders** — the engineer backs them up.
 | **Unstable** | Part never settled within the time limit | Re-measure once; if it repeats, save it as Unstable. |
 | App does not start | Missing Python or package | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-rig\launcher.log` (Windows) / `~/.local/state/eltec-rig/launcher.log` (Xubuntu). |
 | "Battery: not monitored" | Normal | Nothing — neither battery is measured on this fixture. |
-| Array rig: "No ACCES device found" | DAQ USB unplugged, or plugged in less than five seconds ago (it loads its program first) | Check the cable, wait five seconds, **Start lot** again. Still nothing → engineer (driver package). |
-| Array rig: "stream integrity", "buffer pool exhausted", "no data from the stream", tray NOT MEASURED | Laptop on battery or window minimised during the capture, USB hub, another program hogging the laptop, another program using the DAQ (the engineer's tools); "no data" can also be the DAQ's USB cable | The app retries by itself, then marks the tray NOT MEASURED. AC power, keep the window visible, no hub, close any other DAQ program, check the DAQ's USB cable, **Re-measure tray**. Persistent → engineer. |
-| Array rig: every tile yellow "empty? click" | PCB not powered, or the ribbon cable is off | Power the PCB, check the DB37 cables, wait for the tiles to update. |
+| Array rig: "No ACCES device found" | DAQ USB unplugged, or plugged in less than five seconds ago (it loads its program first) | Check the cable, wait five seconds, press **Measure offset** again. Still nothing → engineer (driver package). |
+| Array rig: "stream integrity", "buffer pool exhausted", "no data from the stream", tray NOT MEASURED | Laptop on battery or window minimised during the capture, USB hub, another program hogging the laptop, another program using the DAQ (the engineer's tools); "no data" can also be the DAQ's USB cable | The app retries by itself, then marks the tray NOT MEASURED. AC power, keep the window visible, no hub, close any other DAQ program, check the DAQ's USB cable, press **Measure noise** again. Persistent → engineer. |
+| Array rig: all loaded sockets read near zero | PCB not powered, or a cable is off | Check the physical power switch and DB37 cables, then press **Measure offset** again. Do not mark loaded sockets empty to bypass the reading. |
+| Array rig: **Measure noise** unavailable | Missing good offset reads, a red loaded socket, or vacuum not confirmed | Recheck or replace red parts, mark physically empty sockets, measure offset after loading a socket, and confirm vacuum only after checking the gauge. |
 | Array rig: a whole row red or 0 V | Cable / row supply | Engineer — do not fail the parts. |
 | Array rig app does not start | Missing Python or the ACCES driver | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-array-rig\launcher.log` (selector) / `%LOCALAPPDATA%\eltec-40623-array\launcher.log` (tester). |
 
@@ -205,13 +223,12 @@ folders** — the engineer backs them up.
 - Do not reflash the ESP32 or open the Arduino IDE unless the engineer asks.
 - Do not change the filter setup mid-batch (start a new batch instead).
 - Do not run the old standalone apps — they were retired on 2026-08-28.
-- Do not use **Simulator** mode for real parts (it shows an amber SIMULATOR
-  badge and tags the rows `data_source=simulator`; the array tester shows a red
-  SIMULATOR badge and writes `simulated=YES`).
-- Array rig: do not treat a blue-grey "no limit yet" tile as a noise pass or
+- Do not use **Simulator** mode for real parts (single-detector rigs show
+  an amber SIMULATOR badge and tag rows `data_source=simulator`; array
+  simulation shows a **SIMULATION** badge and labels its saved results).
+- Array rig: do not treat an amber **NO LIMIT** socket as a noise pass or
   fail — the noise limit for this rig has not been set. Do not pull or insert
-  parts during the capture. Do not skip the stabilisation wait on parts that
-  were just powered.
+  parts during the measurement.
 - Array rig: do not run the engineer's DAQ tools (the bench probe, the
   readout, the live viewer) while the tester is open — only one program can
   use the DAQ at a time. Close one before starting the other.

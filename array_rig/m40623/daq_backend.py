@@ -1321,6 +1321,29 @@ class SimulatedDaq:
     def is_streaming(self) -> bool:
         return self._streaming
 
+    def replace_simulated_positions(self, positions: Sequence[str]) -> None:
+        """Put healthy replacement detectors into selected simulated sockets.
+
+        Only this device's immutable profile is replaced, leaving the shared
+        defaults and any unreplaced noisy detectors intact for the demo.
+        """
+
+        if self._streaming:
+            raise StreamStateError("Stop the stream before replacing simulated detectors.")
+        replaced = frozenset(positions)
+        for position in replaced:
+            channel_for_position(position)
+        profile = self.profile
+        self.profile = replace(
+            profile,
+            offsets_v={p: v for p, v in profile.offsets_v.items() if p not in replaced},
+            empty_positions=profile.empty_positions - replaced,
+            dead_positions=profile.dead_positions - replaced,
+            railed_positions=profile.railed_positions - replaced,
+            noise_rms_uv={p: v for p, v in profile.noise_rms_uv.items() if p not in replaced},
+            burst_positions={p: v for p, v in profile.burst_positions.items() if p not in replaced},
+        )
+
     def connect(self, *, timeout_s: float = 10.0) -> DaqInfo:
         del timeout_s
         self.info = DaqInfo(

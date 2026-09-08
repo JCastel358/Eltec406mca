@@ -5,26 +5,26 @@ TP120 rev W, ``docs/TP120(40623).pdf``). It is normally launched from the
 array selector (``array_rig/eltec_array_tester.py``) and runs standalone with
 this directory as cwd. It measures the two TP120 tests that need no emitter:
 
-* **Offset check** - as soon as the rig is powered every position's DC
-  offset is read continuously (Phase A, "Load & offset"). Parts over the
-  TP120 maximum (1.2 V) or railed turn RED immediately, so the technician
-  pulls them BEFORE the noise capture and no time is wasted on them.
-  Low reads are not a verdict at this point: offsets settle upward for tens
-  of seconds after power-on (405 M22 lot-500 observation), so LO and D are
-  judged on the SETTLED reading at the end of the noise capture.
-* **Noise** - after "Lock tray" (occupancy frozen, sensor numbers assigned,
-  HO parts recorded) the rig waits the TP120 stabilisation time, then
-  streams all fifty channels wideband (1000 scans/s per channel) for the
-  TP120 hold time (60 s) and judges each channel's windowed pk-pk in the
-  single rig's 0.85-22 Hz band (``array_analysis``). The raw capture of all
-  fifty channels is saved with every tray so any band or limit decided
-  later can be replayed on real parts without re-measuring.
+* **Offset check** - the technician powers the rig and presses "Measure
+  offset". Every loaded detector is checked against the full provisional
+  offset window; low/dead values are shown for rechecking after settling.
+  Repeated checks let the technician replace bad parts or mark sockets
+  empty. Every check is retained in the tray history without consuming
+  sensor numbers. The legacy continuous-poll/lock API remains available
+  to engineering callers.
+* **Noise** - after all loaded offsets pass, the technician turns on the
+  vacuum, waits for the required setting, then presses "Measure noise".
+  The accepted offset snapshot is frozen and sensor numbers assigned.
+  The rig streams all fifty channels wideband (1000 scans/s per channel)
+  for the TP120 hold time (60 s), judging each channel's windowed pk-pk
+  in the single rig's 0.85-22 Hz band (``array_analysis``). Raw captures
+  are saved so future calibrated bands or limits can be replayed.
 
 Verdict status: **CALIBRATION PENDING / PROVISIONAL**. TP120's noise limits
 (10.0-37.9 mV) are DMM readings behind the legacy amplifier 9000232 and
 rectifier-hold 9000272; no pin-level equivalent exists yet, so noise tiles
 show the measured value and "no limit yet" until the paired lot derives the
-chain factor (``engineer_tools/array_noise_parity.py``). The offset limits
+chain factor (``engineer_tools/array_parity/array_noise_parity.py``). The offset limits
 (0.3-1.2 V) are applied, stamped provisional until the PCB loading is
 confirmed against fixture 9000054. Every CSV row carries
 ``calibration_status`` / ``calibration_id`` / ``verdict_status``.
@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as _dt
+import json
 import os
 import sys
 import threading
@@ -68,9 +69,9 @@ import tray_history  # noqa: E402
 # Identity
 # --------------------------------------------------------------------------- #
 APP_TITLE = "Eltec 40623 Array Tester"
-# 0.1 (2026-09-02): first build. Offset + noise per TP120 on the DAQ array,
-# CALIBRATION PENDING (noise limits None, offset limits provisional).
-APP_VERSION = "0.1"
+# 0.2 (2026-09-08): explicit repeatable offset checks before noise; the
+# calibration remains pending (noise limits None, offsets provisional).
+APP_VERSION = "0.2"
 MODEL_NAME = "40623"
 PROCEDURE = "TP120 rev W"
 RESULTS_ROOT_NAME = "Eltec_40623_Test_Results"
@@ -130,8 +131,8 @@ OFFSET_SETTLED_WINDOW_S = 2.0
 # Noise phase (TP120 timing; the analysis constants live in array_analysis)
 # --------------------------------------------------------------------------- #
 # TP120: "Let detectors stand for five minutes for detectors to stabilize"
-# after power-on. The countdown can be shortened by the technician; the actual
-# wait is recorded on every row, so a short wait is visible in the data.
+# after power-on. The operator screen starts this wait after vacuum confirmation;
+# the actual wait is recorded on every row. Simulation skips the wall-clock wait.
 NOISE_STABILISATION_S = 300.0
 # TP120: rectifier-hold read after "a minimum of 60 seconds" -> 60 one-second
 # windows. 20 s is the engineering option (same rule, fewer windows).
@@ -869,6 +870,13 @@ class TrayController:
         self.hardware_lock = threading.RLock()
         self.occupancy_choice: dict[str, aa.Occupancy] = {}
         self.live_offsets: np.ndarray | None = None
+        # Explicit operator checks keep their own immutable measurement basis.
+        # The legacy polling/lock API remains available to engineering callers.
+        self.offset_checked = False
+        self.offset_measurement_count = 0
+        self._operator_offset_workflow = False
+        self._measured_offsets: np.ndarray | None = None
+        self._measured_loaded: frozenset[str] = frozenset()
         self.phase = Phase.LOT_INFO
         self.drive: DriveDevice | None = None  # emitter board slot (sensitivity phase, later)
 
@@ -907,6 +915,8 @@ class TrayController:
         chosen = self.occupancy_choice.get(position)
         if chosen is not None:
             return chosen
+        if self._operator_offset_workflow:
+            return aa.Occupancy.LOADED
         if volts is None and self.live_offsets is not None:
             volts = float(self.live_offsets[daq.channel_for_position(position)])
         if volts is not None and volts < self.offset_limits.dead_v:
@@ -914,29 +924,156 @@ class TrayController:
         return aa.Occupancy.LOADED
 
     def set_occupancy(self, position: str, occupancy: aa.Occupancy | None) -> None:
+        daq.channel_for_position(position)
+        if self._operator_offset_workflow:
+            if self.phase is not Phase.LOAD_OFFSET:
+                raise RuntimeError("Tray positions cannot change during or after a noise measurement.")
+            if occupancy is aa.Occupancy.UNKNOWN:
+                raise ValueError("Mark a position loaded or empty.")
+        previous = self.effective_occupancy(position)
         if occupancy is None:
             self.occupancy_choice.pop(position, None)
         else:
             self.occupancy_choice[position] = occupancy
+        # Removing a detector keeps the remaining checked readings valid. A
+        # newly loaded detector always needs another explicit offset check.
+        if previous is not aa.Occupancy.LOADED and self.effective_occupancy(position) is aa.Occupancy.LOADED:
+            self.offset_checked = False
 
     def toggle_occupancy(self, position: str) -> aa.Occupancy:
         """UNKNOWN/LOADED -> EMPTY -> LOADED -> EMPTY ... (technician click)."""
 
         current = self.effective_occupancy(position)
         new = aa.Occupancy.LOADED if current is aa.Occupancy.EMPTY else aa.Occupancy.EMPTY
-        self.occupancy_choice[position] = new
+        self.set_occupancy(position, new)
         return new
 
     def live_tile_state(self, position: str) -> aa.TileState:
         if self.live_offsets is None:
             return aa.TileState.LOADED if self.effective_occupancy(position) is aa.Occupancy.LOADED else aa.TileState.EMPTY
         volts = float(self.live_offsets[daq.channel_for_position(position)])
+        if self._operator_offset_workflow:
+            occupancy = self.effective_occupancy(position)
+            if occupancy is aa.Occupancy.EMPTY:
+                return aa.TileState.EMPTY
+            offset_class = aa.classify_offset(volts, occupancy=occupancy, limits=self.offset_limits)
+            return aa.TileState.LOADED if offset_class is aa.OffsetClass.OK else aa.TileState.OFFSET_FAIL
         return aa.tile_state_for_live_offset(volts, occupancy=self.effective_occupancy(position, volts), limits=self.offset_limits)
 
     def unknown_positions(self) -> tuple[str, ...]:
         return tuple(p for p in daq.POSITIONS if self.effective_occupancy(p) is aa.Occupancy.UNKNOWN)
 
+    def measure_offsets(self) -> np.ndarray:
+        """Check the current tray, retaining every check before replacements.
+
+        The operator starts with all fifty positions loaded and explicitly
+        marks absent parts empty. Low/dead values are visible recheck failures,
+        not a prompt to guess whether a detector is present. No final sensor
+        numbers or result rows are assigned until ``prepare_noise``.
+        """
+
+        if self.phase is not Phase.LOAD_OFFSET:
+            raise RuntimeError("Measure offsets before starting the noise measurement.")
+        self._operator_offset_workflow = True
+        self.offset_checked = False
+        # A legacy UNKNOWN choice must not silently exclude a zero-volt part.
+        self.occupancy_choice = {
+            p: occ for p, occ in self.occupancy_choice.items() if occ is not aa.Occupancy.UNKNOWN
+        }
+        with self.hardware_lock:
+            volts = np.asarray(self.device.read_scan_volts_median(reads=OFFSET_POLL_READS), dtype=np.float64)
+        if volts.shape != (daq.CHANNEL_COUNT,) or not np.all(np.isfinite(volts)):
+            raise ValueError("Offset measurement did not return fifty finite readings; measure offset again.")
+        loaded = frozenset(p for p in daq.POSITIONS if self.effective_occupancy(p) is aa.Occupancy.LOADED)
+        readings = {
+            p: {
+                "occupancy": self.effective_occupancy(p).value,
+                "offset_v": float(volts[c]),
+                "offset_class": aa.classify_offset(
+                    float(volts[c]), occupancy=self.effective_occupancy(p), limits=self.offset_limits,
+                ).value,
+            }
+            for c, p in enumerate(daq.POSITIONS)
+        }
+        bad = tuple(p for p in daq.POSITIONS if p in loaded and readings[p]["offset_class"] != aa.OffsetClass.OK.value)
+        check_number = self.offset_measurement_count + 1
+        tray_history.append_tray_event(
+            self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
+            tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_OFFSET_MEASURED,
+            phase=Phase.LOAD_OFFSET.value, tester_name=self.state.tester_name, loaded_count=len(loaded),
+            detail=json.dumps({
+                "offset_measurement": check_number, "bad_positions": bad, "readings": readings,
+                "offset_min_v": self.offset_limits.min_v, "offset_max_v": self.offset_limits.max_v,
+                "simulated": bool(self.device.info and self.device.info.simulated),
+            }, separators=(",", ":")),
+        )
+        self._measured_offsets = volts.copy()
+        self._measured_loaded = loaded
+        self.live_offsets = volts.copy()
+        self.offset_measurement_count = check_number
+        self.offset_checked = True
+        return volts.copy()
+
+    def offset_bad_positions(self) -> tuple[str, ...]:
+        """Currently loaded positions outside the full offset window."""
+
+        if self._measured_offsets is None:
+            return ()
+        return tuple(
+            p for c, p in enumerate(daq.POSITIONS)
+            if self.effective_occupancy(p) is aa.Occupancy.LOADED
+            and aa.classify_offset(float(self._measured_offsets[c]), occupancy=aa.Occupancy.LOADED,
+                                   limits=self.offset_limits) is not aa.OffsetClass.OK
+        )
+
+    def offset_good_positions(self) -> tuple[str, ...]:
+        """Currently loaded positions that passed their last explicit check."""
+
+        if self._measured_offsets is None:
+            return ()
+        bad = set(self.offset_bad_positions())
+        return tuple(p for p in daq.POSITIONS if p in self._measured_loaded and p not in bad
+                     and self.effective_occupancy(p) is aa.Occupancy.LOADED)
+
+    def prepare_noise(self, *, start_number: int | None = None) -> LockSnapshot:
+        """Freeze the accepted offset measurement without reading the DAQ again."""
+
+        if self.phase is not Phase.LOAD_OFFSET:
+            raise RuntimeError("Prepare noise after measuring offsets and before starting noise.")
+        if not self.offset_checked or self._measured_offsets is None:
+            raise ValueError("Measure offset for the currently loaded detectors first.")
+        occupancy = [self.effective_occupancy(p) for p in daq.POSITIONS]
+        loaded = tuple(p for p, occ in zip(daq.POSITIONS, occupancy) if occ is aa.Occupancy.LOADED)
+        if not loaded:
+            raise ValueError("Load at least one detector, then measure offset.")
+        if any(p not in self._measured_loaded for p in loaded):
+            raise ValueError("Newly loaded detectors need another offset measurement.")
+        bad = self.offset_bad_positions()
+        if bad:
+            raise ValueError("Recheck, replace, or mark these offset positions empty before noise: " + " ".join(bad))
+        start = start_number if start_number is not None else next_sensor_number_for_lot(self.state.lot, self.results_root)
+        numbers = assign_sensor_numbers(occupancy, start)
+        lock = LockSnapshot(
+            occupancy=occupancy, sensor_numbers=numbers, offset_initial_v=self._measured_offsets.copy(),
+            ho_positions=(), start_number=start, locked_at=_dt.datetime.now().isoformat(timespec="seconds"),
+        )
+        tray_history.append_tray_event(
+            self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
+            tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_LOCKED, phase=Phase.LOCKED.value,
+            tester_name=self.state.tester_name, loaded_count=len(loaded),
+            first_sensor_number=min(numbers.values()), last_sensor_number=max(numbers.values()),
+            detail=f"Accepted offset measurement {self.offset_measurement_count}; all loaded offsets within limits",
+        )
+        self.state.lock = lock
+        self.state.lock_results = []
+        self.state.report = None
+        self.state.saved = False
+        self.phase = Phase.LOCKED
+        return lock
+
     def lock_tray(self, *, start_number: int | None = None) -> LockSnapshot:
+        if self._operator_offset_workflow:
+            return self.prepare_noise(start_number=start_number)
         if self.phase is not Phase.LOAD_OFFSET:
             raise RuntimeError("Lock is only possible in the Load & offset phase.")
         volts = self.poll_offsets()
@@ -1075,40 +1212,84 @@ class TrayController:
         )
 
     def save_tray(self) -> dict[str, Any]:
+        import shutil
+        import tempfile
+
         lock = self.state.lock
         report = self.state.report
         if lock is None or report is None:
             raise RuntimeError("Nothing to save: lock the tray and run the noise phase first.")
         if self.state.saved:
             raise RuntimeError("This tray attempt is already saved; use Re-measure for another attempt.")
-        raw_path = ""
-        if report.capture is not None:
-            raw_path = str(save_tray_raw_capture(
-                raw_capture_path(self.state.lot, self.state.tray_number, self.results_root), report.capture, lock,
-                lot=self.state.lot, tray_number=self.state.tray_number, tray_attempt=self.state.tray_attempt,
-                daq_info=self.device.info, plan=self.plan,
-            ))
-        all_results = list(self.state.lock_results) + list(report.results)
-        png = save_grid_snapshot(
-            all_results, path=grid_snapshot_path(self.state.lot, self.state.tray_number, self.results_root),
-            title=f"{APP_TITLE} - lot {self.state.lot} tray {self.state.tray_number} attempt {self.state.tray_attempt} "
-                  f"({aa.CALIBRATION_STATUS}, {aa.VERDICT_STATUS})",
-        )
-        ctx = self._row_context(report, raw_path=raw_path, png_path=str(png) if png else "")
-        rows = [
-            position_row(r, ctx, comment=self.state.comments.get(r.position, ""), failure_tag=self.state.failure_tags.get(r.position))
-            for r in report.results
-        ]
-        written = append_position_rows(self.csv_path, rows)
-        tray_history.append_tray_event(
-            self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
+        # Retry save resumes completed stages for this exact measurement. In
+        # particular, an attempts-log failure after writing the result rows
+        # must never append those fifty result rows a second time.
+        pending = getattr(self, "_pending_save", None)
+        if pending is None or pending["report"] is not report or pending["attempt"] != self.state.tray_attempt:
+            pending = {"report": report, "attempt": self.state.tray_attempt}
+            self._pending_save = pending
+
+        def atomic_append(path: Path, append: Callable[[Path], Any]) -> Any:
+            """Preserve the existing file if an append or disk flush fails."""
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+            temporary_path = Path(temporary_name)
+            try:
+                with os.fdopen(fd, "wb") as target:
+                    if path.exists():
+                        with path.open("rb") as source:
+                            shutil.copyfileobj(source, target)
+                value = append(temporary_path)
+                with temporary_path.open("ab") as target:
+                    target.flush()
+                    os.fsync(target.fileno())
+                os.replace(temporary_path, path)
+                return value
+            finally:
+                try:
+                    temporary_path.unlink(missing_ok=True)
+                except OSError:
+                    pass  # Never mask the storage error that the operator needs.
+
+        if "raw" not in pending:
+            raw_path = ""
+            if report.capture is not None:
+                if "raw_target" not in pending:
+                    pending["raw_target"] = raw_capture_path(self.state.lot, self.state.tray_number, self.results_root)
+                raw_path = str(save_tray_raw_capture(
+                    pending["raw_target"], report.capture, lock,
+                    lot=self.state.lot, tray_number=self.state.tray_number, tray_attempt=self.state.tray_attempt,
+                    daq_info=self.device.info, plan=self.plan,
+                ))
+            pending["raw"] = raw_path
+        raw_path = pending["raw"]
+        if "png" not in pending:
+            if "png_target" not in pending:
+                pending["png_target"] = grid_snapshot_path(self.state.lot, self.state.tray_number, self.results_root)
+            pending["png"] = save_grid_snapshot(
+                list(self.state.lock_results) + list(report.results), path=pending["png_target"],
+                title=f"{APP_TITLE} - lot {self.state.lot} tray {self.state.tray_number} attempt {self.state.tray_attempt} "
+                      f"({aa.CALIBRATION_STATUS}, {aa.VERDICT_STATUS})",
+            )
+        png = pending["png"]
+        if "rows" not in pending:
+            ctx = self._row_context(report, raw_path=raw_path, png_path=str(png) if png else "")
+            rows = [
+                position_row(r, ctx, comment=self.state.comments.get(r.position, ""), failure_tag=self.state.failure_tags.get(r.position))
+                for r in report.results
+            ]
+            pending["rows"] = atomic_append(self.csv_path, lambda path: append_position_rows(path, rows)) if rows else 0
+        written = pending["rows"]
+        atomic_append(self.attempts_path, lambda path: tray_history.append_tray_event(
+            path, lot_number=self.state.lot, tray_number=self.state.tray_number,
             tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_SAVED, phase=Phase.SAVED.value,
             tester_name=self.state.tester_name, loaded_count=len(lock.loaded_positions), ho_positions=" ".join(lock.ho_positions),
             first_sensor_number=min(lock.sensor_numbers.values()) if lock.sensor_numbers else 0,
             last_sensor_number=max(lock.sensor_numbers.values()) if lock.sensor_numbers else 0,
             detail=f"{written} rows; raw {raw_path or '-'}; grid {png or '-'}",
             stabilisation_wait_s=report.stabilisation_wait_s, capture_seconds=self.state.capture_seconds,
-        )
+        ))
         self.state.saved = True
         self.phase = Phase.SAVED
         return {"csv": self.csv_path, "rows": written, "raw": raw_path, "png": png}
@@ -1199,402 +1380,684 @@ def enable_windows_dpi_awareness() -> None:
         pass
 
 
-def build_gui_classes():
-    """Tk classes are built lazily so the core (and the tests) never import tkinter."""
+# Strong, consistent verdict colours; labels carry the meaning as well as colour.
+OPERATOR_TILE_COLOURS = {
+    aa.TileState.EMPTY: ("#e8edf4", "#67758c"),
+    aa.TileState.LOADED: ("#e1e9fa", ELTEC_BLUE),
+    aa.TileState.UNKNOWN: ("#e1e9fa", ELTEC_BLUE),
+    aa.TileState.SETTLING: ("#fff0c2", "#815500"),
+    aa.TileState.OFFSET_FAIL: ("#c72f46", "#ffffff"),
+    aa.TileState.NOISE_FAIL: ("#c72f46", "#ffffff"),
+    aa.TileState.NOISE_LOW: ("#c72f46", "#ffffff"),
+    aa.TileState.PASS: ("#16824f", "#ffffff"),
+    aa.TileState.NO_LIMIT: ("#fff0c2", "#815500"),
+    aa.TileState.NOT_MEASURED: ("#e8edf4", "#67758c"),
+}
 
+
+def simulation_results_root() -> Path:
+    """Practice data never shares production numbering or result files."""
+    import tempfile
+
+    override = os.environ.get(RESULTS_ROOT_ENV, "").strip()
+    return Path(override).expanduser() / "simulation" if override else Path(tempfile.gettempdir()) / "eltec-array-simulation"
+
+
+def operator_simulator() -> daq.SimulatedDaq:
+    """A fast practice tray with offset rejects and repeatable noise examples."""
+    from dataclasses import replace
+
+    profile = replace(daq.default_sim_profile(), settle_drop_v=0.0,
+                      noise_rms_uv={"3-6": 1800.0, "4-3": 0.0})
+    return daq.SimulatedDaq(profile, real_time=False)
+
+
+def simulation_noise_limits() -> aa.NoiseLimits:
+    # Illustrative ONLY: these must never become the production pin limits.
+    return aa.NoiseLimits(low_mv=0.01, high_mv=0.3,
+                          provenance="SIMULATION ONLY: illustrative demo limits, not calibrated for hardware")
+
+
+def build_gui_classes():
+    """Tk classes are built lazily so the acquisition core stays headless."""
+    import math
+    import queue
     import tkinter as tk
+    import tkinter.font as tkfont
     from tkinter import messagebox, ttk
 
     class TrayGrid(tk.Canvas):
-        """The 5 x 10 tile grid."""
+        """Responsive top view of the fixture, with round, labelled sockets."""
 
-        TILE_W, TILE_H, GAP = 118, 78, 8
-
-        def __init__(self, master, *, on_tile_click: Callable[[str], None]) -> None:
-            width = daq.COLS * (self.TILE_W + self.GAP) + self.GAP
-            height = daq.ROWS * (self.TILE_H + self.GAP) + self.GAP
-            super().__init__(master, width=S(width), height=S(height), bg=PAGE_BG, highlightthickness=0)
+        def __init__(self, master, *, on_tile_click: Callable[[str], None], on_empty_click=None) -> None:
+            super().__init__(master, width=S(1000), height=S(400), bg=CARD_BG, highlightthickness=0)
             self._on_tile_click = on_tile_click
+            self._on_empty_click = on_empty_click or on_tile_click
             self._items: dict[str, dict[str, int]] = {}
+            self._tile_data = {}
+            self.show_details = False
+            self._radius = 25
+            self._fonts = {}
+            self._board = self.create_rectangle(0, 0, 1, 1, fill="#f2f5fa", outline=CARD_BORDER)
+            self._columns = [self.create_text(0, 0, text=str(c + 1), fill=MUTED_FG) for c in range(daq.COLS)]
+            self._rows = [self.create_text(0, 0, text=str(r + 1), fill=MUTED_FG) for r in range(daq.ROWS)]
+            for position in daq.POSITIONS:
+                tag = f"socket-{position}"
+                items = {
+                    "shadow": self.create_oval(0, 0, 1, 1, fill="#ccd5e3", outline="", tags=tag),
+                    "rim": self.create_oval(0, 0, 1, 1, fill="#ffffff", outline="#b9c7db", width=2, tags=tag),
+                    "rect": self.create_oval(0, 0, 1, 1, fill="#e1e9fa", outline="", tags=tag),
+                    "label": self.create_text(0, 0, text=position, tags=tag),
+                    "headline": self.create_text(0, 0, text="", tags=tag),
+                    "detail": self.create_text(0, 0, text="", tags=tag),
+                    "number": self.create_text(0, 0, text="", fill=MUTED_FG, tags=tag),
+                }
+                self._items[position] = items
+                self.tag_bind(tag, "<Button-1>", lambda _e, p=position: self._on_tile_click(p))
+                self.tag_bind(tag, "<Button-3>", lambda _e, p=position: self._on_empty_click(p))
+            self.bind("<Configure>", self._layout)
+
+        def _layout(self, event=None) -> None:
+            width, height = (event.width, event.height) if event is not None else (self.winfo_width(), self.winfo_height())
+            left, top = S(30), S(25)
+            cw = (width - left - S(12)) / daq.COLS
+            ch = (height - top - S(8)) / daq.ROWS
+            radius = max(18, min(cw * .40, ch * .40, S(43)))
+            self._radius = radius
+            self.coords(self._board, left - S(10), top - S(8), width - S(4), height - S(4))
+            for c, item in enumerate(self._columns):
+                self.coords(item, left + (c + .5) * cw, S(10))
+            for r, item in enumerate(self._rows):
+                self.coords(item, S(10), top + (r + .5) * ch)
             for channel, position in enumerate(daq.POSITIONS):
-                row, col = divmod(channel, daq.COLS)
-                x0 = S(self.GAP + col * (self.TILE_W + self.GAP))
-                y0 = S(self.GAP + row * (self.TILE_H + self.GAP))
-                x1, y1 = x0 + S(self.TILE_W), y0 + S(self.TILE_H)
-                rect = self.create_rectangle(x0, y0, x1, y1, fill=GRID_COLOURS[aa.TileState.EMPTY][0], outline="#9aa5b8", width=1)
-                label = self.create_text(x0 + S(6), y0 + S(10), text=position, anchor="w", font=("TkDefaultFont", 9))
-                number = self.create_text(x1 - S(6), y0 + S(10), text="", anchor="e", font=("TkDefaultFont", 9))
-                headline = self.create_text((x0 + x1) // 2, (y0 + y1) // 2, text="", font=("TkDefaultFont", 12, "bold"))
-                detail = self.create_text((x0 + x1) // 2, y1 - S(12), text="", font=("TkDefaultFont", 8))
-                self._items[position] = {"rect": rect, "label": label, "number": number, "headline": headline, "detail": detail}
-                for item in self._items[position].values():
-                    self.tag_bind(item, "<Button-1>", lambda _e, p=position: self._on_tile_click(p))
+                r, c = divmod(channel, daq.COLS)
+                x, y = left + (c + .5) * cw, top + (r + .5) * ch - 2
+                items = self._items[position]
+                self.coords(items["shadow"], x-radius-2, y-radius+2, x+radius+2, y+radius+6)
+                self.coords(items["rim"], x-radius-2, y-radius-2, x+radius+2, y+radius+2)
+                self.coords(items["rect"], x-radius+1, y-radius+1, x+radius-1, y+radius-1)
+                self.coords(items["label"], x, y-radius*.49)
+                self.coords(items["headline"], x, y+1 if self.show_details else y+radius*.20)
+                self.coords(items["detail"], x, y+radius*.51)
+                self.coords(items["number"], x, y+radius+11)
+                self._fit_text(items)
+
+        def _fit_text(self, items) -> None:
+            # Pixel fonts and measured widths keep readings inside the socket at
+            # both Windows DPI scales and the minimum supported window size.
+            for name in ("label", "headline", "detail", "number"):
+                size = max(9, min(18, int(self._radius * (.45 if name in ("label", "headline") else .34))))
+                if name == "headline" and not self.show_details:
+                    size = max(10, min(22, int(self._radius * .58)))
+                width = self._radius * (1.55 if name != "headline" else 1.85)
+                value = self.itemcget(items[name], "text")
+                while True:
+                    key = (size, name == "number")
+                    if key not in self._fonts:
+                        self._fonts[key] = tkfont.Font(self, family="TkDefaultFont", size=-size,
+                                                       weight="normal" if name == "number" else "bold")
+                    font = self._fonts[key]
+                    if size <= 8 or font.measure(value) <= width:
+                        break
+                    size -= 1
+                self.itemconfigure(items[name], font=font)
 
         def set_tile(self, position: str, *, state: aa.TileState, headline: str = "", detail: str = "", sensor_number: int | None = None) -> None:
-            bg, fg = GRID_COLOURS[state]
+            self._tile_data[position] = (state, headline, detail, sensor_number)
+            self._paint_tile(position)
+
+        def _paint_tile(self, position: str) -> None:
+            state, headline, detail, sensor_number = self._tile_data[position]
+            bg, fg = OPERATOR_TILE_COLOURS[state]
             items = self._items[position]
-            stipple = "gray50" if state is aa.TileState.NOT_MEASURED else ("gray25" if state is aa.TileState.NOISE_LOW else "")
-            self.itemconfigure(items["rect"], fill=bg, stipple=stipple)
+            status = {
+                aa.TileState.PASS: "PASS",
+                aa.TileState.OFFSET_FAIL: "FAIL",
+                aa.TileState.NOISE_FAIL: "FAIL",
+                aa.TileState.NOISE_LOW: "FAIL",
+                aa.TileState.NO_LIMIT: "NO LIMIT",
+                aa.TileState.NOT_MEASURED: "NOT READ",
+                aa.TileState.EMPTY: "EMPTY",
+            }.get(state, detail or "WAITING")
+            self.itemconfigure(items["rect"], fill=bg)
             self.itemconfigure(items["label"], fill=fg)
-            self.itemconfigure(items["number"], text="" if sensor_number is None else f"#{sensor_number}", fill=fg)
-            self.itemconfigure(items["headline"], text=headline, fill=fg)
-            self.itemconfigure(items["detail"], text=detail, fill=fg)
+            self.itemconfigure(items["headline"], text=headline if self.show_details else status, fill=fg)
+            visibility = "normal" if self.show_details else "hidden"
+            self.itemconfigure(items["detail"], text=detail, fill=fg, state=visibility)
+            self.itemconfigure(items["number"], text="" if sensor_number is None else f"#{sensor_number}", state=visibility)
+            self._fit_text(items)
+
+        def set_details_visible(self, visible: bool) -> None:
+            self.show_details = visible
+            for position in self._tile_data:
+                self._paint_tile(position)
+            if self.winfo_width() > 1:
+                self._layout()
 
     class ArrayTesterApp(tk.Tk):
         def __init__(self, *, device: daq.DaqDevice | None = None, simulate: bool = False) -> None:
             super().__init__()
             self.title(f"{APP_TITLE} v{APP_VERSION}")
             self.configure(bg=PAGE_BG)
-            self.minsize(S(1180), S(760))
-            self.simulate = simulate or device is not None and getattr(device.info, "simulated", False)
-            self.device: daq.DaqDevice = device or (daq.SimulatedDaq(real_time=True) if simulate else daq.AiousbDaq())
+            self.minsize(S(1000), S(720))
+            self.simulate = simulate or isinstance(device, daq.SimulatedDaq) or bool(getattr(getattr(device, "info", None), "simulated", False))
+            self.device = device or (operator_simulator() if self.simulate else daq.AiousbDaq())
             self.controller: TrayController | None = None
             self.drive: DriveDevice | None = None
-            self._poll_job: str | None = None
-            self._polling = False
+            self._tray_number = 1
+            self._last_lot = ""
+            self._busy = False
+            self._closing = False
             self._worker: threading.Thread | None = None
             self._cancel = threading.Event()
-            self._skip_stabilisation = threading.Event()
+            self._callbacks = queue.Queue()
+            self._save_error = False
+            self._empty_positions: set[str] = set()
             self._build()
+            self._queue_job = self.after(40, self._drain_callbacks)
             self.protocol("WM_DELETE_WINDOW", self.on_close)
+            self.bind("<Escape>", lambda _e: self.stop())
             self.start_maximized()
 
-        # -- window -----------------------------------------------------------
         def start_maximized(self) -> None:
             try:
                 if self.tk.call("tk", "windowingsystem") == "x11":
                     self.after(0, lambda: self.attributes("-zoomed", True))
-                    return
-                self.state("zoomed")
+                else:
+                    self.state("zoomed")
             except tk.TclError:
                 pass
 
         def _post(self, callback: Callable[[], None]) -> None:
-            try:
-                self.after(0, callback)
-            except (RuntimeError, tk.TclError):
-                pass
+            # Workers never call Tk, including after(); the main thread drains this queue.
+            self._callbacks.put(callback)
 
-        # -- construction -----------------------------------------------------
+        def _drain_callbacks(self) -> None:
+            for _ in range(100):
+                try:
+                    callback = self._callbacks.get_nowait()
+                except queue.Empty:
+                    break
+                callback()
+            if self._closing:
+                if not self._busy and self._callbacks.empty() and (self._worker is None or not self._worker.is_alive()):
+                    if self._save_error:
+                        self._closing = False
+                        self.status_var.set("Could not save the completed measurement. Press Retry save before closing.")
+                        self._queue_job = self.after(40, self._drain_callbacks)
+                        return
+                    self.device.close()
+                    self.destroy()
+                    return
+            self._queue_job = self.after(40, self._drain_callbacks)
+
         def _build(self) -> None:
             header = tk.Frame(self, bg=ELTEC_BLUE_DEEP)
             header.pack(fill="x")
-            tk.Label(header, text=APP_TITLE, bg=ELTEC_BLUE_DEEP, fg=HEADER_FG, font=("TkDefaultFont", 20, "bold")).pack(side="left", padx=S(18), pady=S(10))
-            tk.Label(header, text=f"v{APP_VERSION} · {PROCEDURE} · 50-position DAQ array", bg=ELTEC_BLUE_DEEP, fg="#bcd0f7",
-                     font=("TkDefaultFont", 11)).pack(side="left", padx=S(6))
-            if self.simulate:
-                tk.Label(header, text="SIMULATOR", bg=ELTEC_RED, fg="#ffffff", font=("TkDefaultFont", 10, "bold"), padx=S(10), pady=S(3)).pack(side="right", padx=S(18))
-            self.banner = tk.Label(
-                self, bg=WARN_BG, fg=WARN_FG, font=("TkDefaultFont", 10, "bold"), anchor="w", padx=S(18), pady=S(6),
-                text=(f"CALIBRATION PENDING - noise limits not derived yet (tiles show the measured value, 'no limit yet'); "
-                      f"offset limits {aa.OFFSET_MIN_V:.1f}-{aa.OFFSET_MAX_V:.1f} V are PROVISIONAL. Every row is stamped {aa.CALIBRATION_ID}."),
-            )
+            badge = tk.Frame(header, bg="white", padx=S(10), pady=S(3))
+            badge.pack(side="left", padx=S(22), pady=S(10))
+            self.logo_image = None
+            logo_path = find_logo_path()
+            if logo_path:
+                try:
+                    source = tk.PhotoImage(file=str(logo_path))
+                    factor = max(1, math.ceil(source.width()/130), math.ceil(source.height()/54))
+                    self.logo_image = source.subsample(factor, factor)
+                    self.iconphoto(True, source)
+                except tk.TclError:
+                    pass
+            tk.Label(badge, image=self.logo_image, text="ELTEC" if self.logo_image is None else "", bg="white",
+                     fg=ELTEC_RED, font=("TkDefaultFont", 22, "bold italic")).pack()
+            title = tk.Frame(header, bg=ELTEC_BLUE_DEEP)
+            title.pack(side="left", pady=S(10))
+            tk.Label(title, text="40623 ARRAY TESTER", bg=ELTEC_BLUE_DEEP, fg="white",
+                     font=("TkDefaultFont", 21, "bold")).pack(anchor="w")
+            tk.Label(title, text="OFFSET  /  NOISE     ·     50 DETECTORS", bg=ELTEC_BLUE_DEEP, fg="#bcd0f7",
+                     font=("TkDefaultFont", 10)).pack(anchor="w", pady=(S(3), 0))
+            tk.Label(header, text="SIMULATION" if self.simulate else "ARRAY RIG", bg=ELTEC_RED if self.simulate else ELTEC_BLUE,
+                     fg="white", padx=S(12), pady=S(6), font=("TkDefaultFont", 10, "bold")).pack(side="right", padx=S(24))
+            self.banner = tk.Label(self, text=(
+                "SIMULATION · No hardware needed · Demo pass/fail limits only · Production calibration PENDING"
+                if self.simulate else "CALIBRATION PENDING · Offset limits provisional · Noise is recorded; pass/fail awaits calibrated limits"),
+                bg=WARN_BG, fg=WARN_FG, font=("TkDefaultFont", 10), anchor="w", padx=S(24), pady=S(5))
             self.banner.pack(fill="x")
 
-            rail = tk.Frame(self, bg=PAGE_BG)
-            rail.pack(fill="x", padx=S(18), pady=(S(8), 0))
-            self.step_labels: list[tk.Label] = []
-            for label, implemented in STEP_RAIL:
-                text = label if implemented else f"{label} (no emitter board yet)"
-                widget = tk.Label(rail, text=text, bg=PAGE_BG, fg="#93a1bd" if implemented else "#c7d0e2", font=("TkDefaultFont", 10, "bold"), padx=S(10))
-                widget.pack(side="left")
-                self.step_labels.append(widget)
+            # Reserve the action bar first so it stays visible on smaller screens.
+            footer = tk.Frame(self, bg=CARD_BG, padx=S(24), pady=S(12))
+            footer.pack(side="bottom", fill="x")
+            self.footer_var = tk.StringVar(value="Results save automatically after noise measurement.")
+            tk.Label(footer, textvariable=self.footer_var, bg=CARD_BG, fg=MUTED_FG,
+                     font=("TkDefaultFont", 10), anchor="w", justify="left", wraplength=S(390)).pack(side="left")
+            self.noise_button = self._button(footer, "Measure noise", self.start_noise_phase, "#16824f")
+            self.noise_button.pack(side="right", padx=(S(10), 0))
+            self.offset_button = self._button(footer, "Measure offset", self.measure_offset, ELTEC_BLUE)
+            self.offset_button.pack(side="right", padx=(S(10), 0))
+            self.stop_button = self._button(footer, "Stop", self.stop, "#c72f46")
 
-            body = tk.Frame(self, bg=PAGE_BG)
-            body.pack(fill="both", expand=True, padx=S(18), pady=S(8))
-            left = tk.Frame(body, bg=CARD_BG, highlightbackground=CARD_BORDER, highlightthickness=1)
-            left.pack(side="left", fill="y", padx=(0, S(12)))
-            right = tk.Frame(body, bg=PAGE_BG)
-            right.pack(side="left", fill="both", expand=True)
+            body = tk.Frame(self, bg=PAGE_BG, padx=S(24), pady=S(10))
+            body.pack(fill="both", expand=True)
+            setup = tk.Frame(body, bg=PAGE_BG)
+            setup.pack(fill="x", pady=(0, S(10)))
+            self.tester_var, self.lot_var = tk.StringVar(), tk.StringVar()
+            self.entries = []
+            for label, var in (("Technician name", self.tester_var), ("Batch number", self.lot_var)):
+                field = tk.Frame(setup, bg=PAGE_BG)
+                field.pack(side="left", padx=(0, S(24)))
+                tk.Label(field, text=label, bg=PAGE_BG, fg=MUTED_FG, font=("TkDefaultFont", 10)).pack(anchor="w")
+                entry = ttk.Entry(field, textvariable=var, font=("TkDefaultFont", 14), width=23)
+                entry.pack(pady=(S(3), 0))
+                self.entries.append(entry)
+            self.tray_var = tk.StringVar(value="Tray 1  ·  up to 50 detectors")
+            tk.Label(setup, textvariable=self.tray_var, bg=PAGE_BG, fg=MUTED_FG,
+                     font=("TkDefaultFont", 11)).pack(side="right", anchor="s", pady=S(5))
 
-            # lot card
-            tk.Label(left, text="Lot / tray", bg=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 12, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", padx=S(14), pady=(S(12), S(4)))
-            self.lot_var, self.tray_var, self.tester_var = tk.StringVar(), tk.StringVar(value="1"), tk.StringVar()
-            self.start_number_var = tk.StringVar()
-            for index, (label, var) in enumerate((("Lot number", self.lot_var), ("Tray number", self.tray_var), ("Tester name", self.tester_var), ("First sensor #", self.start_number_var))):
-                tk.Label(left, text=label, bg=CARD_BG, fg=MUTED_FG, font=("TkDefaultFont", 10)).grid(row=1 + index, column=0, sticky="w", padx=S(14), pady=S(2))
-                tk.Entry(left, textvariable=var, width=14, font=("TkDefaultFont", 11)).grid(row=1 + index, column=1, sticky="w", padx=(0, S(14)), pady=S(2))
-            self.start_button = tk.Button(left, text="Start lot (connect DAQ)", command=self.start_lot, bg=ELTEC_BLUE, fg="#ffffff", relief="flat", font=("TkDefaultFont", 11, "bold"), padx=S(10), pady=S(6))
-            self.start_button.grid(row=5, column=0, columnspan=2, sticky="ew", padx=S(14), pady=(S(8), S(4)))
-            self.lock_button = tk.Button(left, text="Lock tray", command=self.lock_tray, state="disabled", relief="flat", bg=ELTEC_BLUE, fg="#ffffff", disabledforeground="#ffffff", font=("TkDefaultFont", 11, "bold"), padx=S(10), pady=S(6))
-            self.lock_button.grid(row=6, column=0, columnspan=2, sticky="ew", padx=S(14), pady=S(4))
+            guide = tk.Frame(body, bg=CARD_BG, padx=S(18), pady=S(10), highlightthickness=1, highlightbackground=CARD_BORDER)
+            guide.pack(fill="x", pady=(0, S(8)))
+            self.step_var = tk.StringVar(value="1  /  Measure offset")
+            tk.Label(guide, textvariable=self.step_var, bg=CARD_BG, fg=ELTEC_BLUE,
+                     font=("TkDefaultFont", 17, "bold")).pack(anchor="w")
+            self.status_var = tk.StringVar(value="")
+            self.status_label = tk.Label(guide, textvariable=self.status_var, bg=CARD_BG, fg=TEXT_DARK,
+                                        font=("TkDefaultFont", 11), justify="left", anchor="w", wraplength=S(1150))
+            self.status_label.pack(fill="x", pady=(S(4), 0))
+            guide.bind("<Configure>", lambda e: self.status_label.configure(wraplength=max(100, e.width-S(40))))
+            self.vacuum_var = tk.BooleanVar(value=False)
+            self.vacuum_check = tk.Checkbutton(guide, text="Vacuum is at the required setting (checked on the rig gauge)",
+                                              variable=self.vacuum_var, command=self._refresh_controls, bg=CARD_BG,
+                                              activebackground=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 11), anchor="w")
 
-            tk.Label(left, text="Noise capture", bg=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 12, "bold")).grid(row=7, column=0, columnspan=2, sticky="w", padx=S(14), pady=(S(12), S(4)))
-            self.capture_choice = tk.DoubleVar(value=NOISE_CAPTURE_SECONDS)
-            for index, (seconds, label) in enumerate(CAPTURE_LENGTH_CHOICES):
-                tk.Radiobutton(left, text=label, variable=self.capture_choice, value=seconds, bg=CARD_BG, anchor="w").grid(row=8 + index, column=0, columnspan=2, sticky="w", padx=S(14))
-            self.noise_button = tk.Button(left, text="Start noise test", command=self.start_noise_phase, state="disabled", relief="flat", bg=ELTEC_BLUE, fg="#ffffff", disabledforeground="#ffffff", font=("TkDefaultFont", 11, "bold"), padx=S(10), pady=S(6))
-            self.noise_button.grid(row=10, column=0, columnspan=2, sticky="ew", padx=S(14), pady=S(4))
-            self.skip_button = tk.Button(left, text="Skip the rest of the stabilisation wait", command=self._skip_stabilisation.set, state="disabled", relief="flat", font=("TkDefaultFont", 9))
-            self.skip_button.grid(row=11, column=0, columnspan=2, sticky="ew", padx=S(14), pady=S(2))
-            self.cancel_button = tk.Button(left, text="Cancel capture", command=self._cancel.set, state="disabled", relief="flat", font=("TkDefaultFont", 9))
-            self.cancel_button.grid(row=12, column=0, columnspan=2, sticky="ew", padx=S(14), pady=S(2))
+            tray_card = tk.Frame(body, bg=CARD_BG, padx=S(12), pady=S(5), highlightthickness=1, highlightbackground=CARD_BORDER)
+            tray_card.pack(fill="both", expand=True)
+            summary = tk.Frame(tray_card, bg=CARD_BG)
+            summary.pack(fill="x")
+            tk.Label(summary, text="DETECTOR TRAY", bg=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 10, "bold")).pack(side="left")
+            self.show_more_button = tk.Button(summary, text="Show more", command=self.toggle_details,
+                                             bg=CARD_BG, fg=ELTEC_BLUE, activebackground=CARD_BG,
+                                             activeforeground=ELTEC_BLUE_DEEP, relief="flat", borderwidth=0,
+                                             font=("TkDefaultFont", 10), cursor="hand2", padx=S(12))
+            self.show_more_button.pack(side="right")
+            self.summary_var = tk.StringVar(value="50 positions  ·  waiting for offset measurement")
+            tk.Label(summary, textvariable=self.summary_var, bg=CARD_BG, fg=MUTED_FG, font=("TkDefaultFont", 10)).pack(side="right")
+            self.grid = TrayGrid(tray_card, on_tile_click=self.on_tile_click, on_empty_click=self.toggle_empty)
+            self.grid.pack(fill="both", expand=True)
+            self.map_hint_var = tk.StringVar(value="Positions are row-column, viewed from above. Click a physically empty socket to exclude it.")
+            tk.Label(tray_card, textvariable=self.map_hint_var, bg=CARD_BG, fg=MUTED_FG,
+                     font=("TkDefaultFont", 9), anchor="w").pack(fill="x", pady=(S(3), 0))
+            self.progress = ttk.Progressbar(body, mode="determinate")
+            self.progress.pack(fill="x", pady=(S(7), 0))
+            self._reset_grid()
+            self._offset_instructions()
+            self._refresh_controls()
+            self.entries[0].focus_set()
 
-            tk.Label(left, text="Record", bg=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 12, "bold")).grid(row=13, column=0, columnspan=2, sticky="w", padx=S(14), pady=(S(12), S(4)))
-            self.save_button = tk.Button(left, text="Save tray", command=self.save_tray, state="disabled", relief="flat", bg="#17a34a", fg="#ffffff", disabledforeground="#ffffff", font=("TkDefaultFont", 11, "bold"), padx=S(10), pady=S(6))
-            self.save_button.grid(row=14, column=0, columnspan=2, sticky="ew", padx=S(14), pady=S(4))
-            self.remeasure_button = tk.Button(left, text="Re-measure tray", command=self.remeasure_tray, state="disabled", relief="flat", font=("TkDefaultFont", 10))
-            self.remeasure_button.grid(row=15, column=0, columnspan=2, sticky="ew", padx=S(14), pady=S(4))
-            self.next_tray_button = tk.Button(left, text="Next tray", command=self.next_tray, state="disabled", relief="flat", font=("TkDefaultFont", 10))
-            self.next_tray_button.grid(row=16, column=0, columnspan=2, sticky="ew", padx=S(14), pady=(S(4), S(14)))
+        def _button(self, parent, text, command, colour):
+            return tk.Button(parent, text=text, command=command, bg=colour, fg="white", activebackground=colour,
+                             activeforeground="white", disabledforeground="#e5e9f0", relief="flat", borderwidth=0,
+                             font=("TkDefaultFont", 13, "bold"), padx=S(20), pady=S(13), cursor="hand2")
 
-            self.grid = TrayGrid(right, on_tile_click=self.on_tile_click)
-            self.grid.pack(anchor="nw")
-            legend = tk.Frame(right, bg=PAGE_BG)
-            legend.pack(anchor="w", pady=(S(6), 0))
-            for state, label in GRID_LEGEND:
-                bg, fg = GRID_COLOURS[state]
-                tk.Label(legend, text=label, bg=bg, fg=fg, font=("TkDefaultFont", 8), padx=S(6), pady=S(2)).pack(side="left", padx=(0, S(4)))
-            self.progress = ttk.Progressbar(right, orient="horizontal", mode="determinate", length=S(600))
-            self.progress.pack(anchor="w", pady=(S(8), 0))
-            self.status_var = tk.StringVar(value="Enter the lot, tray and your name, then Start lot.")
-            tk.Label(right, textvariable=self.status_var, bg=PAGE_BG, fg=TEXT_DARK, font=("TkDefaultFont", 11), anchor="w", justify="left", wraplength=S(900)).pack(anchor="w", pady=(S(6), 0))
-            self.summary_var = tk.StringVar(value="")
-            tk.Label(right, textvariable=self.summary_var, bg=PAGE_BG, fg=MUTED_FG, font=("TkDefaultFont", 10), anchor="w", justify="left", wraplength=S(900)).pack(anchor="w")
-            self._set_step(0)
+        def toggle_details(self) -> None:
+            self.grid.set_details_visible(not self.grid.show_details)
+            self.show_more_button.configure(text="Show less" if self.grid.show_details else "Show more")
 
-        def _set_step(self, index: int) -> None:
-            for i, (widget, (label, implemented)) in enumerate(zip(self.step_labels, STEP_RAIL)):
-                if not implemented:
-                    continue
-                widget.configure(fg=ELTEC_BLUE if i == index else ("#14532d" if i < index else "#93a1bd"))
+        def _reset_grid(self) -> None:
+            for position in daq.POSITIONS:
+                self.grid.set_tile(position, state=aa.TileState.LOADED, headline="—", detail="WAITING")
 
-        def set_status(self, text: str) -> None:
-            self.status_var.set(text)
+        def _offset_instructions(self) -> None:
+            self.step_var.set("1  /  Measure offset")
+            self.status_var.set("Enter your name and batch number. Load the detectors, turn ON the rig's power switch, then press Measure offset."
+                                if not self.simulate else "Enter your name and batch number, then press Measure offset. This practice run needs no hardware.")
 
-        # -- flow ---------------------------------------------------------------
-        def start_lot(self) -> None:
-            lot = self.lot_var.get().strip()
-            tester = self.tester_var.get().strip()
-            try:
-                tray = int(self.tray_var.get().strip() or "1")
-            except ValueError:
-                messagebox.showerror(APP_TITLE, "Tray number must be a whole number.")
+        def _can_noise(self) -> bool:
+            c = self.controller
+            return bool(c and c.offset_checked and c.offset_good_positions() and not c.offset_bad_positions() and self.vacuum_var.get())
+
+        def _refresh_controls(self) -> None:
+            c = self.controller
+            has_report = bool(c and c.state.report)
+            saved = bool(c and c.state.saved)
+            for entry in self.entries:
+                entry.configure(state="disabled" if self._busy or c else "normal")
+            self.offset_button.configure(text="Retry save" if self._save_error else "Next tray" if saved else "Measure offset",
+                                         command=self.retry_save if self._save_error else self.next_tray if saved else self.measure_offset,
+                                         state="disabled" if self._busy else "normal", bg=PRIMARY_DISABLED if self._busy else ELTEC_BLUE)
+            noise_ready = self._can_noise() and not has_report
+            if saved and c.state.report.rig_fault:
+                noise_ready = self.vacuum_var.get()
+            noise_enabled = noise_ready and not self._busy
+            self.noise_button.configure(state="normal" if noise_enabled else "disabled",
+                                        bg="#16824f" if noise_enabled else PRIMARY_DISABLED)
+            if saved and not c.state.report.rig_fault:
+                self.noise_button.pack_forget()
+            elif not self.noise_button.winfo_manager():
+                self.noise_button.pack(side="right", before=self.offset_button, padx=(S(10), 0))
+            self.vacuum_check.configure(state="disabled" if self._busy or has_report else "normal")
+            if self._busy:
+                self.stop_button.pack(side="right", padx=(S(10), 0))
+                self.stop_button.configure(state="normal", text="Stop")
+            else:
+                self.stop_button.pack_forget()
+
+        def _run_worker(self, function) -> None:
+            if self._busy:
                 return
-            if not lot or not tester:
-                messagebox.showerror(APP_TITLE, "Lot number and tester name are required.")
-                return
-            self.controller = TrayController(self.device, lot=lot, tray_number=tray, tester_name=tester)
-            try:
-                info = self.controller.start()
-            except daq.DaqError as exc:
-                messagebox.showerror(APP_TITLE, f"DAQ not ready:\n{exc}")
-                self.controller = None
-                return
-            self.start_number_var.set(str(next_sensor_number_for_lot(lot)))
-            self.set_status(f"Connected: {info.summary()}. Load the tray: high offsets turn red - pull them. Click a 0 V tile to mark it empty.")
-            self.start_button.configure(state="disabled")
-            self.lock_button.configure(state="normal")
-            self._set_step(1)
-            self._start_polling()
-
-        def _start_polling(self) -> None:
-            self._polling = True
-            threading.Thread(target=self._poll_worker, name="offset-poll", daemon=True).start()
-
-        def _poll_worker(self) -> None:
-            while self._polling and self.controller is not None:
-                try:
-                    volts = self.controller.poll_offsets()
-                except daq.DaqError as exc:
-                    self._post(lambda exc=exc: self.set_status(f"Offset poll failed: {exc}"))
-                    time.sleep(1.0)
-                    continue
-                self._post(lambda volts=volts: self._render_live(volts))
-                time.sleep(1.0 / OFFSET_POLL_HZ)
-
-        def _render_live(self, volts: np.ndarray) -> None:
-            controller = self.controller
-            if controller is None:
-                return
-            for channel, position in enumerate(daq.POSITIONS):
-                state = controller.live_tile_state(position)
-                headline, detail = tile_texts(None, live_offset_v=float(volts[channel]))
-                if state is aa.TileState.OFFSET_FAIL:
-                    detail = "HO - pull"
-                elif state is aa.TileState.EMPTY:
-                    headline, detail = "empty", "click if loaded"
-                elif state is aa.TileState.UNKNOWN:
-                    detail = "empty? click"
-                self.grid.set_tile(position, state=state, headline=headline, detail=detail)
-
-        def on_tile_click(self, position: str) -> None:
-            controller = self.controller
-            if controller is None or controller.phase is not Phase.LOAD_OFFSET:
-                return
-            new = controller.toggle_occupancy(position)
-            self.set_status(f"Position {position} marked {new.value}.")
-            if controller.live_offsets is not None:
-                self._render_live(controller.live_offsets)
-
-        def lock_tray(self) -> None:
-            controller = self.controller
-            if controller is None:
-                return
-            try:
-                start = int(self.start_number_var.get().strip()) if self.start_number_var.get().strip() else None
-            except ValueError:
-                messagebox.showerror(APP_TITLE, "First sensor # must be a whole number.")
-                return
-            self._polling = False
-            try:
-                lock = controller.lock_tray(start_number=start)
-            except (ValueError, RuntimeError, daq.DaqError) as exc:
-                messagebox.showerror(APP_TITLE, str(exc))
-                self._start_polling()
-                return
-            self._render_lock(lock)
-            self.lock_button.configure(state="disabled")
-            self.noise_button.configure(state="normal")
-            self._set_step(2)
-            ho = ", ".join(lock.ho_positions) or "none"
-            self.set_status(f"Tray locked: {len(lock.loaded_positions)} loaded, sensor numbers {lock.start_number}-"
-                            f"{lock.start_number + len(lock.loaded_positions) - 1}. High-offset parts recorded and to be pulled: {ho}. "
-                            f"Then Start noise test.")
-
-        def _render_lock(self, lock: LockSnapshot) -> None:
-            for channel, position in enumerate(daq.POSITIONS):
-                occ = lock.occupancy[channel]
-                number = lock.sensor_numbers.get(position)
-                if occ is aa.Occupancy.EMPTY:
-                    self.grid.set_tile(position, state=aa.TileState.EMPTY, headline="empty")
-                elif position in lock.ho_positions:
-                    self.grid.set_tile(position, state=aa.TileState.OFFSET_FAIL, headline=f"{lock.offset_initial_v[channel]:.3f} V", detail="HO - pulled", sensor_number=number)
-                else:
-                    self.grid.set_tile(position, state=aa.TileState.LOADED, headline=f"{lock.offset_initial_v[channel]:.3f} V", detail="locked", sensor_number=number)
-
-        def start_noise_phase(self) -> None:
-            controller = self.controller
-            if controller is None or controller.state.lock is None:
-                return
-            self.noise_button.configure(state="disabled")
-            self.skip_button.configure(state="normal")
-            self.cancel_button.configure(state="normal")
-            self.save_button.configure(state="disabled")
-            self.remeasure_button.configure(state="disabled")
+            self._busy = True
             self._cancel.clear()
-            self._skip_stabilisation.clear()
-            self._set_step(3)
-            seconds = float(self.capture_choice.get())
-            self._worker = threading.Thread(target=self._noise_worker, args=(seconds,), name="noise-phase", daemon=True)
+            self._refresh_controls()
+            self._worker = threading.Thread(target=function, name="array-measurement", daemon=True)
             self._worker.start()
 
-        def _noise_worker(self, capture_seconds: float) -> None:
-            controller = self.controller
-            if controller is None:
+        def measure_offset(self) -> None:
+            if self._busy:
                 return
-            # stabilisation countdown (TP120: 5 min after power-on); Skip shortens it, the actual wait is recorded
-            total = controller.state.stabilisation_s if controller.state.stabilisation_s else NOISE_STABILISATION_S
-            started = time.monotonic()
-            waited = 0.0
-            while waited < total and not self._skip_stabilisation.is_set() and not self._cancel.is_set():
-                time.sleep(0.25)
-                waited = time.monotonic() - started
-                self._post(lambda w=waited: (self.progress.configure(value=100.0 * w / total), self.set_status(f"Stabilising (TP120: {total:.0f} s after power-on) - {total - w:.0f} s left")))
-            if self._cancel.is_set():
-                self._post(self._capture_cancelled)
+            lot, tester = self.lot_var.get().strip(), self.tester_var.get().strip()
+            if not tester or not lot:
+                self.status_var.set("Enter technician name and batch number before measuring.")
+                self.entries[0 if not tester else 1].focus_set()
                 return
-            actual_wait = min(waited, total)
+            self.vacuum_var.set(False)
+            self.vacuum_check.pack_forget()
+            self.progress.configure(value=0)
+            self.step_var.set("1  /  Measuring offset…")
+            self.status_var.set("Reading all 50 positions. Keep the rig powered.")
 
-            def progress(kind: str, fraction: float | None, message: str) -> None:
-                self._post(lambda: (self.progress.configure(value=0.0 if fraction is None else 100.0 * fraction), self.set_status(message)))
+            def work():
+                try:
+                    if self.controller is None:
+                        if lot != self._last_lot:
+                            self._tray_number = 1
+                        self._last_lot = lot
+                        c = TrayController(self.device, lot=lot, tray_number=self._tray_number, tester_name=tester,
+                                           results_root=simulation_results_root() if self.simulate else None,
+                                           noise_limits=simulation_noise_limits() if self.simulate else aa.NoiseLimits())
+                        # Continue an existing batch across app restarts as well as Next tray.
+                        self._tray_number = max(self._tray_number, tray_history.highest_tray_number(c.attempts_path) + 1)
+                        c.state.tray_number = self._tray_number
+                        for position in self._empty_positions:
+                            c.set_occupancy(position, aa.Occupancy.EMPTY)
+                        c.start()
+                        self.controller = c
+                    c = self.controller
+                    if c.state.report is not None:
+                        raise RuntimeError("Save this tray before starting another.")
+                    c.state.lock = None
+                    c.phase = Phase.LOAD_OFFSET
+                    c.measure_offsets()
+                    if self._cancel.is_set():
+                        c.offset_checked = False
+                        self._post(self._stopped)
+                    else:
+                        self._post(self._offset_done)
+                except Exception as exc:
+                    self._post(lambda exc=exc: self._failed("Offset measurement", exc))
+            self._run_worker(work)
 
-            try:
-                report = controller.run_noise_phase(
-                    stabilisation_wait_s=actual_wait, progress=progress, cancelled=self._cancel.is_set, capture_seconds=capture_seconds,
-                )
-            except CaptureCancelled:
-                self._post(self._capture_cancelled)
-                return
-            except daq.DaqError as exc:
-                self._post(lambda exc=exc: (messagebox.showerror(APP_TITLE, f"DAQ error during the noise phase:\n{exc}"), self._capture_cancelled()))
-                return
-            self._post(lambda: self.on_tray_judged(report))
+        def _offset_done(self) -> None:
+            self._busy = False
+            self.progress.configure(value=100)
+            self.tray_var.set(f"Tray {self._tray_number}  ·  up to 50 detectors")
+            self._render_offsets()
 
-        def _capture_cancelled(self) -> None:
-            self.set_status("Capture cancelled. Start noise test again when ready.")
-            self.noise_button.configure(state="normal")
-            self.skip_button.configure(state="disabled")
-            self.cancel_button.configure(state="disabled")
-            self.progress.configure(value=0.0)
-
-        def on_tray_judged(self, report: TrayCaptureReport) -> None:
-            controller = self.controller
-            if controller is None:
+        def _render_offsets(self) -> None:
+            c = self.controller
+            if c is None or c.live_offsets is None:
                 return
-            self.skip_button.configure(state="disabled")
-            self.cancel_button.configure(state="disabled")
-            self.progress.configure(value=100.0)
-            for result in list(controller.state.lock_results) + list(report.results):
-                headline, detail = tile_texts(result)
-                self.grid.set_tile(result.position, state=aa.tile_state_for(result), headline=headline, detail=detail, sensor_number=result.sensor_number)
-            counts = controller.summary_counts()
-            if report.rig_fault:
-                self.set_status(f"Tray NOT MEASURED after {report.attempts_used} attempt(s): {report.rig_fault}. Save records it; Re-measure tries again.")
+            for channel, position in enumerate(daq.POSITIONS):
+                empty = c.effective_occupancy(position) is aa.Occupancy.EMPTY
+                volts = float(c.live_offsets[channel])
+                kind = aa.classify_offset(volts, occupancy=aa.Occupancy.EMPTY if empty else aa.Occupancy.LOADED)
+                if empty:
+                    state, headline, detail = aa.TileState.EMPTY, "—", "EMPTY"
+                elif not c.offset_checked:
+                    state, headline, detail = aa.TileState.LOADED, "—", "RECHECK"
+                else:
+                    state = aa.TileState.PASS if kind is aa.OffsetClass.OK else aa.TileState.OFFSET_FAIL
+                    headline = f"{volts:.3f} V"
+                    detail = {aa.OffsetClass.OK: "OK", aa.OffsetClass.HO: "HIGH", aa.OffsetClass.HO_RAILED: "HIGH",
+                              aa.OffsetClass.LO: "LOW", aa.OffsetClass.DEAD: "ZERO"}[kind]
+                self.grid.set_tile(position, state=state, headline=headline, detail=detail)
+            good, bad = c.offset_good_positions(), c.offset_bad_positions()
+            empty_count = sum(c.effective_occupancy(p) is aa.Occupancy.EMPTY for p in daq.POSITIONS)
+            self.summary_var.set(f"{len(good)} offset OK  ·  {len(bad)} to check  ·  {empty_count} empty")
+            self.map_hint_var.set("Green = offset OK   ·   Red = check offset   ·   Gray = empty   ·   " +
+                                  ("Click red to simulate replacement; right-click to mark empty." if self.simulate else "Click a physically empty socket to exclude it; click again to reload."))
+            if not c.offset_checked:
+                self.step_var.set("1  /  Check the updated tray")
+                self.status_var.set("The tray has changed. Press Measure offset to check the loaded detectors again.")
+            elif bad:
+                self.step_var.set(f"1  /  Check {len(bad)} offset position{'s' if len(bad) != 1 else ''}")
+                self.status_var.set("Replace the red detectors, then press Measure offset again. Low readings may still be settling: recheck before rejecting. "
+                                    "No replacements left? Remove the bad detectors and mark those sockets empty.")
+            elif good:
+                self.step_var.set("2  /  Prepare vacuum")
+                self.status_var.set(f"{len(good)} detectors are ready. Turn on the vacuum and wait until the gauge reaches the required setting. "
+                                    "Confirm below, then press Measure noise. Keep power and vacuum on.")
             else:
-                self.set_status(f"Judged (PROVISIONAL). Save tray writes {len(report.results)} rows + the raw capture; Re-measure runs the noise phase again.")
-            self.summary_var.set(
-                f"loaded {counts['loaded']} · PASS {counts['pass']} · offset FAIL {counts['fail_offset']} · noise FAIL {counts['fail_noise']} · "
-                f"noise low {counts['noise_low']} · measured, no limit {counts['no_limit']} · not measured {counts['not_measured']}"
-            )
-            self.save_button.configure(state="normal")
-            self.remeasure_button.configure(state="normal")
-            self._set_step(5)
+                self.step_var.set("1  /  Load detectors")
+                self.status_var.set("The tray is empty. Load detectors, click their sockets, then press Measure offset.")
+            if c.offset_checked and good and not bad:
+                self.vacuum_check.pack(fill="x", pady=(S(5), 0))
+            else:
+                self.vacuum_var.set(False)
+                self.vacuum_check.pack_forget()
+            self._refresh_controls()
 
-        def save_tray(self) -> None:
-            controller = self.controller
-            if controller is None:
+        def _editable_tray(self) -> bool:
+            return bool(not self._busy and self.controller and self.controller.live_offsets is not None and not self.controller.state.report)
+
+        def on_tile_click(self, position: str) -> None:
+            if not self._busy and self.controller is None:
+                self.toggle_empty(position)
                 return
+            if not self._editable_tray():
+                return
+            c = self.controller
+            c.state.lock = None
+            c.phase = Phase.LOAD_OFFSET
+            if self.simulate and (position in c.offset_bad_positions() or c.effective_occupancy(position) is aa.Occupancy.EMPTY):
+                self.device.replace_simulated_positions((position,))
+                c.set_occupancy(position, aa.Occupancy.LOADED)
+                # Keep other bad positions visible while replacing several parts.
+                self._simulation_replacement(position)
+            else:
+                self.toggle_empty(position)
+
+        def _simulation_replacement(self, position: str) -> None:
+            # The measured snapshot is invalid until Measure offset; don't render invented readings.
+            self.controller.offset_checked = False
+            self.grid.set_tile(position, state=aa.TileState.LOADED, headline="—", detail="RECHECK")
+            self.vacuum_var.set(False)
+            self.vacuum_check.pack_forget()
+            self.status_var.set(f"Simulated replacement at {position}. Replace any other red positions, then press Measure offset.")
+            self._refresh_controls()
+
+        def toggle_empty(self, position: str) -> None:
+            if not self._busy and self.controller is None:
+                if position in self._empty_positions:
+                    self._empty_positions.remove(position)
+                    self.grid.set_tile(position, state=aa.TileState.LOADED, headline="—", detail="WAITING")
+                else:
+                    self._empty_positions.add(position)
+                    self.grid.set_tile(position, state=aa.TileState.EMPTY, headline="—", detail="EMPTY")
+                self.summary_var.set(f"{50-len(self._empty_positions)} loaded  ·  {len(self._empty_positions)} empty  ·  waiting for offset measurement")
+                return
+            if not self._editable_tray():
+                return
+            c = self.controller
+            c.state.lock = None
+            c.phase = Phase.LOAD_OFFSET
+            c.toggle_occupancy(position)
+            self.vacuum_var.set(False)
+            self._render_offsets()
+
+        def start_noise_phase(self) -> None:
+            if self._busy or not self._can_noise():
+                return
+            c = self.controller
+            if c.state.report and not c.state.saved:
+                return
+            self.step_var.set("3  /  Measuring noise")
+            self.status_var.set("Keep power and vacuum on. Leave all detectors in place until measurement finishes.")
+            self.progress.configure(value=0)
+            self._run_worker(self._noise_worker)
+
+        def _noise_worker(self) -> None:
+            c = self.controller
             try:
-                outcome = controller.save_tray()
-            except (RuntimeError, OSError) as exc:
-                messagebox.showerror(APP_TITLE, f"Could not save the tray:\n{exc}")
-                return
-            self.save_button.configure(state="disabled")
-            self.next_tray_button.configure(state="normal")
-            self.set_status(f"Saved {outcome['rows']} rows to {outcome['csv']}; raw capture {outcome['raw'] or '-'}; grid {outcome['png'] or '-'}.")
+                if c.state.report:
+                    c.remeasure()
+                elif c.state.lock is None:
+                    c.prepare_noise()
+                tray_history.append_tray_event(
+                    c.attempts_path, lot_number=c.state.lot, tray_number=c.state.tray_number,
+                    tray_attempt=c.state.tray_attempt, event=tray_history.EVENT_VACUUM_CONFIRMED,
+                    phase=Phase.LOCKED.value, tester_name=c.state.tester_name,
+                    detail="Operator confirmed required vacuum setting on the rig gauge; pressure is not monitored by the app."
+                           + (" SIMULATION ONLY." if self.simulate else ""),
+                )
+                # The app cannot read the vacuum gauge. Confirmation starts the prescribed
+                # wait; no engineering skip control is exposed to the operator.
+                started = time.monotonic()
+                wait_s = 0.0
+                if not self.simulate:
+                    while wait_s < c.plan.stabilisation_s:
+                        if self._cancel.wait(.2):
+                            raise CaptureCancelled("stopped during stabilisation")
+                        wait_s = min(c.plan.stabilisation_s, time.monotonic() - started)
+                        left = max(0, math.ceil(c.plan.stabilisation_s-wait_s))
+                        self._post(lambda w=wait_s, left=left: self._progress_update(
+                            .2*w/max(1, c.plan.stabilisation_s), f"Stabilising under vacuum · {left//60}:{left%60:02d} remaining. Keep the rig powered."))
+                else:
+                    self._post(lambda: self._progress_update(.2, "Simulation: five-minute wait skipped; capturing with a fast virtual clock."))
 
-        def remeasure_tray(self) -> None:
-            controller = self.controller
-            if controller is None:
+                def progress(kind, fraction, message):
+                    self._post(lambda f=fraction, message=message: self._progress_update(.2+.75*(f or 0), message))
+                c.run_noise_phase(stabilisation_wait_s=wait_s, progress=progress, cancelled=self._cancel.is_set)
+                self._post(lambda: self._progress_update(.98, "Measurement complete. Saving results…"))
+                try:
+                    outcome = c.save_tray()
+                except Exception as exc:
+                    self._post(lambda exc=exc: self._save_failed(exc))
+                else:
+                    self._post(lambda: self._noise_done(outcome))
+            except CaptureCancelled:
+                self._post(self._stopped)
+            except Exception as exc:
+                self._post(lambda exc=exc: self._failed("Noise measurement", exc))
+
+        def _progress_update(self, fraction: float, message: str) -> None:
+            self.progress.configure(value=100*fraction)
+            self.status_var.set(message)
+
+        def _render_results(self) -> None:
+            c = self.controller
+            self.vacuum_check.pack_forget()
+            for result in c.state.report.results:
+                state = aa.tile_state_for(result)
+                detail = {aa.TileState.PASS: "PASS", aa.TileState.NOISE_FAIL: "NOISY", aa.TileState.NOISE_LOW: "LOW",
+                          aa.TileState.OFFSET_FAIL: "OFFSET", aa.TileState.NO_LIMIT: "NO LIMIT",
+                          aa.TileState.NOT_MEASURED: "NOT READ", aa.TileState.EMPTY: "EMPTY"}.get(state, "")
+                headline = f"{result.noise.worst_pp_mv*1000:.0f} µV" if result.noise else "—"
+                self.grid.set_tile(result.position, state=state, headline=headline, detail=detail, sensor_number=result.sensor_number)
+            counts = c.summary_counts()
+            failed = counts['fail_offset'] + counts['fail_noise'] + counts['noise_low']
+            self.summary_var.set(f"{counts['pass']} pass  ·  {failed} fail  ·  {counts['no_limit']} no limit  ·  {counts['not_measured']} not read")
+            self.map_hint_var.set("Green = pass   ·   Red = fail   ·   Amber = no calibrated noise limit   ·   Gray = empty / not read")
+
+        def _noise_done(self, outcome) -> None:
+            self._busy = False
+            self._save_error = False
+            self._render_results()
+            self.progress.configure(value=100)
+            c = self.controller
+            self.step_var.set("3  /  Results saved" if not c.state.report.rig_fault else "3  /  Measurement needs attention")
+            if c.state.report.rig_fault:
+                self.status_var.set("The rig could not complete the measurement. Check the connection, power and vacuum, then press Measure noise to retry. " + c.state.report.rig_fault)
+            else:
+                self.status_var.set("Results are saved. Remove the red detectors and keep the green detectors. Press Next tray when ready."
+                                    if self.simulate or c.noise_limits.defined else
+                                    "Results are saved. Amber detectors have a noise reading but no calibrated pass/fail limit yet. Press Next tray when ready.")
+            self.footer_var.set("Simulation results saved separately." if self.simulate else "Results saved automatically.")
+            self._refresh_controls()
+
+        def _save_failed(self, exc) -> None:
+            self._busy = False
+            self._save_error = True
+            self._render_results()
+            self.step_var.set("3  /  Results need saving")
+            self.status_var.set(f"Measurement is complete, but results could not be saved: {exc}. Check storage and press Retry save.")
+            self.footer_var.set("Results are not saved. Keep this tray open.")
+            self._refresh_controls()
+
+        def retry_save(self) -> None:
+            if self._busy or not self._save_error:
                 return
-            attempt = controller.remeasure()
-            self._render_lock(controller.state.lock)
-            self.save_button.configure(state="disabled")
-            self.remeasure_button.configure(state="disabled")
-            self.noise_button.configure(state="normal")
-            self.set_status(f"Attempt {attempt}: Start noise test again (the stabilisation wait can be skipped if the parts stayed powered).")
-            self._set_step(3)
+            def work():
+                try:
+                    outcome = self.controller.save_tray()
+                except Exception as exc:
+                    self._post(lambda exc=exc: self._save_failed(exc))
+                else:
+                    self._post(lambda: self._noise_done(outcome))
+            self._run_worker(work)
+
+        def _failed(self, stage: str, exc: Exception) -> None:
+            self._busy = False
+            if self.controller and self.controller.state.report is None:
+                self.controller.phase = Phase.LOCKED if self.controller.state.lock else Phase.LOAD_OFFSET
+            self.status_var.set(f"{stage} could not finish: {exc}. Check the rig and try again.")
+            self.progress.configure(value=0)
+            self._refresh_controls()
+
+        def stop(self) -> None:
+            if self._busy:
+                self._cancel.set()
+                self.stop_button.configure(text="Stopping…", state="disabled")
+                self.status_var.set("Stopping safely. Keep the rig connected until the measurement stops.")
+
+        def _stopped(self) -> None:
+            self._busy = False
+            if self.controller and self.controller.state.report is None:
+                self.controller.phase = Phase.LOCKED if self.controller.state.lock else Phase.LOAD_OFFSET
+            self.progress.configure(value=0)
+            self.step_var.set("Measurement stopped")
+            self.status_var.set("No noise verdict was recorded. Keep power and vacuum on to retry Measure noise, or use Measure offset after changing detectors."
+                                if self.controller and self.controller.offset_checked else
+                                "Press Measure offset when the rig is powered and ready.")
+            self._refresh_controls()
 
         def next_tray(self) -> None:
-            controller = self.controller
-            if controller is None:
+            if self._busy or not self.controller or not self.controller.state.saved:
                 return
-            self.tray_var.set(str(controller.state.tray_number + 1))
+            self._tray_number += 1
             self.controller = None
-            for position in daq.POSITIONS:
-                self.grid.set_tile(position, state=aa.TileState.EMPTY)
-            self.summary_var.set("")
-            self.progress.configure(value=0.0)
-            self.next_tray_button.configure(state="disabled")
-            self.save_button.configure(state="disabled")
-            self.remeasure_button.configure(state="disabled")
-            self.noise_button.configure(state="disabled")
-            self.start_button.configure(state="normal")
-            self.set_status("Next tray: check the tray number, then Start lot.")
-            self._set_step(0)
+            self.vacuum_var.set(False)
+            self.vacuum_check.pack_forget()
+            self._save_error = False
+            self._empty_positions.clear()
+            if self.simulate:
+                self.device.close()
+                self.device = operator_simulator()
+            self.tray_var.set(f"Tray {self._tray_number}  ·  up to 50 detectors")
+            self.summary_var.set("50 positions  ·  waiting for offset measurement")
+            self.map_hint_var.set("Positions are row-column, viewed from above. Click a physically empty socket to exclude it.")
+            self.footer_var.set("Results save automatically after noise measurement.")
+            self.progress.configure(value=0)
+            self._reset_grid()
+            self._offset_instructions()
+            self._refresh_controls()
 
         def on_close(self) -> None:
-            self._polling = False
+            if self._save_error and not messagebox.askyesno(APP_TITLE, "Results could not be saved. Close and lose the unsaved measurement?"):
+                return
+            self._closing = True
             self._cancel.set()
-            try:
-                if self.controller is not None:
-                    self.controller.close()
-                else:
-                    self.device.close()
-            except Exception:
-                pass
-            self.destroy()
+            if self._busy or self._worker is not None and self._worker.is_alive():
+                self.status_var.set("Stopping the measurement before closing…")
+            else:
+                self.after_cancel(self._queue_job)
+                self.device.close()
+                self.destroy()
 
     return TrayGrid, ArrayTesterApp
 

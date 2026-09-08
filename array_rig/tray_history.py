@@ -7,6 +7,8 @@ per position into its lot CSV; this module keeps the sibling
 ``*_attempts.csv`` with one row per tray EVENT (the mirror of the single
 rig's ``attempt_history.py``):
 
+    offset_measured          explicit offset check, readings retained before replacements
+    vacuum_confirmed         operator checked the rig gauge before noise
     locked                   occupancy frozen, sensor numbers assigned, HO parts recorded
     stabilisation_shortened  the technician cut the TP120 5-minute wait short (actual wait recorded)
     capture_started          the noise stream started (attempt n)
@@ -30,6 +32,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+EVENT_OFFSET_MEASURED = "offset_measured"
+EVENT_VACUUM_CONFIRMED = "vacuum_confirmed"
 EVENT_LOCKED = "locked"
 EVENT_STABILISATION_SHORTENED = "stabilisation_shortened"
 EVENT_CAPTURE_STARTED = "capture_started"
@@ -40,6 +44,8 @@ EVENT_SAVED = "saved"
 EVENT_REMEASURE = "remeasure"
 
 TRAY_EVENTS = (
+    EVENT_OFFSET_MEASURED,
+    EVENT_VACUUM_CONFIRMED,
     EVENT_LOCKED,
     EVENT_STABILISATION_SHORTENED,
     EVENT_CAPTURE_STARTED,

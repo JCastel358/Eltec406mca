@@ -99,7 +99,7 @@ Grid metric and saving
                    history, up to --max-window) to
                    <save-dir>/daq_live_<YYYYmmdd_HHMMSS>.npz in the
                    readout's Capture.to_npz layout (replayable with
-                   engineer_tools/replot_noise_capture.py); prints the path
+                   engineer_tools/noise_band/replot_noise_capture.py); prints the path
     q              close the window (matplotlib's own key, kept)
 
     --save-dir defaults to the current working directory - never Documents;

@@ -54,10 +54,10 @@ snapshots carry `_5hz` / `_18hz` suffixes.
 
 ```
 Eltec_40623_Test_Results\40623_array_daq\
-├── 40623_array_lot_<lot>.csv               one row per POSITION per tray attempt (high-offset parts get their
-│                                           row at lock time, the rest after the noise capture); every row is
+├── 40623_array_lot_<lot>.csv               one row per loaded POSITION per noise attempt; automatically saved
+│                                           after capture; every row is
 │                                           stamped calibration_status / calibration_id / verdict_status
-├── 40623_array_lot_<lot>_attempts.csv      one row per TRAY event: locked / stabilisation_shortened /
+├── 40623_array_lot_<lot>_attempts.csv      one row per TRAY event: offset_measured / locked / vacuum_confirmed / stabilisation_shortened /
 │                                           capture_started / capture_retry / capture_error / judged / saved / remeasure
 ├── noise_captures\lot_<lot>\tray_<n>_raw.npz   the RAW 1000 SPS capture of all 50 channels (float32 [50, N],
 │                                           ~4 MB compressed per 60 s tray) + 310-sample edge contexts, channel/
@@ -66,9 +66,17 @@ Eltec_40623_Test_Results\40623_array_daq\
 └── grid_snapshots\lot_<lot>\tray_<n>.png       the coloured 5x10 grid (the TP120 data sheet equivalent)
 ```
 
-Columns: `array_rig/m40623/README.md`. Sensor numbers are assigned at lock
-time, row-major over the loaded positions, continuing the lot's highest
-number; a re-measured tray keeps them (`tray_attempt` increments).
+Columns: `array_rig/m40623/README.md`. Sensor numbers are assigned when
+**Measure noise** freezes the accepted offset readings, row-major over the
+loaded positions, continuing the batch's highest number. Offset screening
+reserves no numbers: each `offset_measured` event retains JSON with all fifty
+readings, occupancy and classifications, including failures before replacement.
+A noise retry keeps its numbers (`tray_attempt` increments). The legacy
+engineering lock API still records high-offset failure rows at lock time.
+
+Simulation uses a separate root: the system temp directory's
+`eltec-array-simulation`, or `<ELTEC_ARRAY_RESULTS_ROOT>/simulation` when
+overridden. Rows carry `simulated=YES` and demo noise-limit provenance.
 
 CSV columns are documented in each model README
 ([405](../single_detector_rig/m405m22/README.md),
@@ -127,14 +135,15 @@ The raw captures themselves (`.npz`) are **not** in git (they are ignored by
 
 | Tool | Reads | Purpose |
 | --- | --- | --- |
-| `engineer_tools/replot_noise_capture.py` | `noise_captures/**/*_noise_raw.npz|.csv` | Replays a saved raw capture through the exact production pipeline and through alternative bands / boxcars; prints a verdict-comparison table and a PNG per capture. This is why raw captures must never be lost — any future limit or band change can be re-judged on real parts. `--boxcar 20` reproduces the pre-2026-08-20 pipeline. |
-| `engineer_tools/filter_response_analysis.py` | (synthetic + a measured capture spectrum) | Characterises the pipeline's passband and aliasing; tests legacy-amplifier passband hypotheses. |
+| `engineer_tools/noise_band/replot_noise_capture.py` | `noise_captures/**/*_noise_raw.npz|.csv` | Replays a saved raw capture through the exact production pipeline and through alternative bands / boxcars; prints a verdict-comparison table and a PNG per capture. This is why raw captures must never be lost — any future limit or band change can be re-judged on real parts. `--boxcar 20` reproduces the pre-2026-08-20 pipeline. |
+| `engineer_tools/noise_band/filter_response_analysis.py` | (synthetic + a measured capture spectrum) | Characterises the pipeline's passband and aliasing; tests legacy-amplifier passband hypotheses. |
 | `single_detector_rig/<model>/stability_calibration.py` | live rig → `calibration/*_cycles.csv` | Collects known-good peak-delta evidence for the stability threshold (`capture`, `summarize`). Engineering only — never issues verdicts. |
 | `array_rig/m40623/daq_bench_probe.py` | live DAQ → stdout, optional `.npz` (`--save`) | Bench checks of the array rig's acquisition path (identity, self-cal, config read-back, own-scale scan — the -HG question needs a known, metered voltage on an input — unsettled conversion slot, instrument floor, 60 s stream integrity, crosstalk). Engineering only. |
 | `array_rig/m40623/daq_rig_readout.py` | live DAQ → stdout; CSV (`-o`) and `.npz` (`--npz`) only where told | The array rig's bench readout (offsets of any or all positions, captures, text-mode watch). Writes nothing unless given an output path — never under `Documents`. Its `.npz` uses the bench probe's key layout (+ `drop_first`) and replays in `replot_noise_capture.py` given the file path. Engineering only, no verdicts. |
 | `array_rig/m40623/daq_live_waveform.py` | live DAQ → screen; `s` or `--save-on-exit` → `<save-dir>/daq_live_<YYYYmmdd_HHMMSS>.npz` | The array rig's live scope. `--save-dir` defaults to the current working directory (never `Documents`); a saved file holds the whole buffer of all channels (up to `--max-window`) in the readout's layout and replays in `replot_noise_capture.py` given the path. Engineering only, no verdicts. |
-| `engineer_tools/array_noise_parity.py` | `noise_captures/lot_<lot>/tray_*.npz` (or the lot CSV) + a typed legacy data sheet | Pairs legacy-fixture DMM readings with array captures by sensor id (or tray + position), fits the chain factor (median ratio and regression through origin, worst-window and median-window metrics), replays other bands, proposes the pin-level noise limits and writes `calibration/parity_<date>.csv|.png` (CALIBRATION_RECORD §4b.2). |
-| `engineer_tools/replot_noise_capture.py --model 40623 [--position 2-4]` | `noise_captures/lot_<lot>/tray_*_raw.npz` | Replays one or every loaded position of an array tray capture through the production pipeline and alternative bands; "no limit" until the array limits exist. |
+| `engineer_tools/array_parity/array_noise_parity.py` | `noise_captures/lot_<lot>/tray_*.npz` (or the lot CSV) + a typed legacy data sheet | Pairs legacy-fixture DMM readings with array captures by sensor id (or tray + position), fits the chain factor (median ratio and regression through origin, worst-window and median-window metrics), replays other bands, proposes the pin-level noise limits and writes `calibration/parity_<date>.csv|.png` (CALIBRATION_RECORD §4b.2). |
+| `engineer_tools/reference_unit/reference_candidate_qualifier.py` | live rig → `~/Documents/Eltec_ReferenceCandidates/<label>/<label>_run<n>_<stamp>.json|.npz`, `comparison_<stamp>.csv|.png` | Reference-unit candidate selection: each run is the production 406 MCA path on one candidate (offset settle series, the adaptive 10 Hz capture, a drive hold, the post-emitter offset re-read) saved as JSON (numbers + series) and npz (raw waveforms, `waveform_v` + `sample_rate_hz` so the replot tool can read them); `compare` ranks the candidates. Its own folder, never an evidence folder (the tool refuses `Eltec_*_Test_Results`). Engineering only, no verdicts. |
+| `engineer_tools/noise_band/replot_noise_capture.py --model 40623 [--position 2-4]` | `noise_captures/lot_<lot>/tray_*_raw.npz` | Replays one or every loaded position of an array tray capture through the production pipeline and alternative bands; "no limit" until the array limits exist. |
 
 ---
 

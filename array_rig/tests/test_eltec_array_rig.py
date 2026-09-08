@@ -124,6 +124,23 @@ class LaunchTests(unittest.TestCase):
         self.assertEqual(recorded["cwd"], str(version.app_dir_path))
         self.assertEqual(recorded["command"], rig.build_launch_command(version))
 
+    def test_simulation_is_forwarded_only_when_requested(self):
+        version = sensor_versions.SENSOR_VERSIONS[0]
+        self.assertNotIn("--simulate", rig.build_launch_command(version))
+        with unittest.mock.patch.object(rig.subprocess, "Popen") as popen:
+            rig.launch_version(version, simulate=True)
+        popen.assert_called_once_with(
+            [sys.executable, str(version.app_script_path), "--simulate"],
+            cwd=str(version.app_dir_path),
+        )
+
+    def test_cli_simulation_selects_the_matching_start_mode(self):
+        for args, simulate in (([], False), (["--simulate"], True)):
+            with self.subTest(args=args), unittest.mock.patch.object(rig, "EltecArraySelector") as selector:
+                self.assertEqual(rig.main(args), 0)
+                selector.assert_called_once_with(simulate=simulate)
+                selector.return_value.mainloop.assert_called_once_with()
+
 
 class PersistenceTests(unittest.TestCase):
     def test_round_trip_and_default_fallbacks(self):
@@ -198,13 +215,13 @@ class LauncherFileTests(unittest.TestCase):
 
 
 class SelectorGuiSmokeTests(unittest.TestCase):
-    def _open(self):
+    def _open(self, *, simulate=False):
         real_save = rig.save_last_version_key
         rig.save_last_version_key = lambda key, path=None: None
         self.addCleanup(lambda: setattr(rig, "save_last_version_key", real_save))
         try:
-            return rig.EltecArraySelector()
-        except Exception as exc:  # e.g. no display on a headless CI host
+            return rig.EltecArraySelector(simulate=simulate)
+        except rig.tk.TclError as exc:  # e.g. no display on a headless CI host
             self.skipTest(f"Tk unavailable: {exc}")
 
     def test_selector_builds_and_shows_the_model(self):
@@ -216,6 +233,7 @@ class SelectorGuiSmokeTests(unittest.TestCase):
             self.assertEqual(app.selected_version().key, version.key)
             self.assertIn(version.summary, app.summary_label.cget("text"))
             self.assertIn("USB-AIO16-64MA", app.status_var.get())
+            self.assertIsNotNone(app.logo_image)
             app.update_idletasks()
         finally:
             app.destroy()
@@ -242,6 +260,26 @@ class SelectorGuiSmokeTests(unittest.TestCase):
             for index in (0, 2):
                 self.assertEqual(app.grid_rowconfigure(index)["weight"], 1)
                 self.assertEqual(app.grid_columnconfigure(index)["weight"], 1)
+        finally:
+            app.destroy()
+
+    def test_simulation_toggle_changes_the_launch_and_restores_after_exit(self):
+        app = self._open(simulate=True)
+        try:
+            self.assertTrue(app.simulate_var.get())
+            self.assertEqual(app.start_button.cget("text"), "Start simulation")
+            self.assertIn("without connecting", app.status_var.get())
+            with unittest.mock.patch.object(rig, "launch_version") as launch, \
+                    unittest.mock.patch.object(rig.threading, "Thread"):
+                app.start_selected()
+                launch.assert_called_once_with(app.selected_version(), simulate=True)
+                self.assertEqual(str(app.simulation_check.cget("state")), "disabled")
+            app._on_child_exit(0)
+            self.assertEqual(str(app.simulation_check.cget("state")), "normal")
+            self.assertEqual(app.start_button.cget("text"), "Start simulation")
+            app.simulate_var.set(False)
+            app._on_mode_changed()
+            self.assertEqual(app.start_button.cget("text"), "Start tester")
         finally:
             app.destroy()
 

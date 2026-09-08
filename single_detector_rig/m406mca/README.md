@@ -319,6 +319,18 @@ python3 single_detector_rig/m406mca/stability_calibration.py summarize \
   ~/Documents/Eltec_406MCA_Test_Results/v6_1_esp32/calibration/*_cycles.csv
 ```
 
+## Choosing the AIN1 reference unit
+
+`engineer_tools/reference_unit/reference_candidate_qualifier.py` runs candidate
+406MCA parts through this app's measurement path headless (the tester module
+is imported, nothing is copied): insertion offset settling, the adaptive
+10 Hz capture with the DUT stability settings, a drive hold, the
+post-capture settled-offset read, then ranks the candidates for the
+permanently mounted reference. Procedure and ranking rules:
+`engineer_tools/reference_unit/README.md`. The reference gate itself stays
+off until the part is mounted and the crosstalk re-check is done
+(CALIBRATION_RECORD §2.4).
+
 ## Tests
 
 Run the isolated v6.1 suite from the repository root:
@@ -331,4 +343,5 @@ The suite covers the three-attempt state machine, identical 10/20 windows,
 third-kick unstable classification, 20-second retry deadline, direct streaming
 integration, CSV telemetry, launcher isolation, reference behavior, serial
 integrity (micro-gap tolerance and refill, stall attribution and bounded
-restarts, the front-end re-check), simulator behavior, and GUI workflow.
+restarts, the front-end re-check), simulator behavior, GUI workflow, and the
+reference-unit candidate qualifier (`test_reference_candidate_qualifier.py`).
