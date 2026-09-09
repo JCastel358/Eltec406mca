@@ -1,0 +1,59 @@
+{
+  "status": "ALL_DRILL_MAP_PAGES_VISUALLY_REVIEWED",
+  "reviewed_utc": "2026-09-09T15:45:09.059737+00:00",
+  "source_board_sha256": "2ab4937f2ec558227736722549489c8d60b382db2a86436887f104acd336f4e2",
+  "final_fabrication_directory": "exports/fabrication_draft/20260909T154345_189586Z_2ab4937f2ec5_DRAFT",
+  "pdf_count": 2,
+  "total_pages": 2,
+  "pdf_reviews": [
+    {
+      "pdf": "drill/single_detector_usb_master-NPTH-drl_map.pdf",
+      "pdf_sha256": "c4321937017ac6e8924e8aa2ae68471ae244b360dc774ef17d2f34fb7ead127c",
+      "total_pages": 1,
+      "renderer": "Poppler pdftoppm",
+      "render_resolution_dpi": 160,
+      "page_outcomes": [
+        {
+          "page_number": 1,
+          "status": "VISUALLY_REVIEWED_PASS",
+          "rendered_png": "reports/drill_map_visual_review_2ab4937f/single_detector_usb_master-NPTH-drl_map-1.png",
+          "rendered_png_sha256": "6b2daaf7dd2849de55f1035996829e8ba58ce5aec4c849464d5a309c7edcb7bb",
+          "observations": [
+            "Complete rectangular board outline and Drill Map label are visible without clipping or overlapping text.",
+            "No hole symbols or tool rows are present, matching zero NPTH holes in both the native board and native drill report."
+          ]
+        }
+      ]
+    },
+    {
+      "pdf": "drill/single_detector_usb_master-PTH-drl_map.pdf",
+      "pdf_sha256": "5d970933bc56fabc2461b4415fbf7a86b6abe8f1904a3e79bfd99e81394f440e",
+      "total_pages": 1,
+      "renderer": "Poppler pdftoppm",
+      "render_resolution_dpi": 160,
+      "page_outcomes": [
+        {
+          "page_number": 1,
+          "status": "VISUALLY_REVIEWED_PASS",
+          "rendered_png": "reports/drill_map_visual_review_2ab4937f/single_detector_usb_master-PTH-drl_map-1.png",
+          "rendered_png_sha256": "a6beba87313d111c753e49a68f0815902fb4d6ce6642d875e210b83232069e10",
+          "observations": [
+            "Complete board outline and all hole-marker groups fit on the page; no clipping or missing glyphs is visible.",
+            "Legend lists 0.300, 0.800, 1.000, 1.020 and 1.200 mm drill sizes; every legend row is legible and does not overlap the outline.",
+            "The 1.000 mm tool legend shows 12 round holes plus 6 slots; slot markers are visible near both barrel-jack groups. Counts match the native drill report (300 plated holes including 6 slots)."
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_defects": [],
+  "manifest_sha256": "b51a69a18f7effd5333533edd9d7c19a8b947774fd2a8f5b256920d7b0dc2ddf",
+  "zip_sha256": "69d1f18ce2c988bbfae755ee9a1c44e59dabd0d92a6df8c055e82c95a9f19ddd",
+  "zip_name": "20260909T154345_189586Z_2ab4937f2ec5_DRAFT.zip",
+  "sha256_receipt_sha256": "ae504183f70df4bdf1941ad917a8af4632decc31b404b29c1455f7d0634cd277",
+  "manifest_input_and_output_hashes_verified": true,
+  "zip_integrity_and_entry_inventory_verified": true,
+  "payload_PDFs_and_data_unchanged": true,
+  "scope": "Visual legibility/completeness of every generated drill-map PDF page, with native drill-count cross-check. This does not certify mechanical fit or fabrication release.",
+  "sidecar_note": "This review was added after the immutable fabrication package was generated. It is a supplemental sidecar and is not inside the existing ZIP or its payload manifest."
+}

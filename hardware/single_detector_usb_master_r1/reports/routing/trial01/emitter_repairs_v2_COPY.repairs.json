@@ -1,0 +1,206 @@
+{
+  "status": "TWO_POWER_OPENS_REPAIRED_IN_MEMORY_NOT_DRC_QUALIFIED",
+  "added": [
+    {
+      "kind": "via",
+      "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e",
+      "net": "EM_MASTER_GATE",
+      "at_mm": [
+        89.2,
+        -17.5
+      ],
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3
+    },
+    {
+      "kind": "via",
+      "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c",
+      "net": "EM_MASTER_GATE",
+      "at_mm": [
+        89.0625,
+        -24.1
+      ],
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3
+    },
+    {
+      "kind": "track",
+      "uuid": "e9b80a44-0f78-5569-a5b6-94d7b0581461",
+      "net": "EM_MASTER_GATE",
+      "start_mm": [
+        89.3061,
+        -18.1311
+      ],
+      "end_mm": [
+        89.2,
+        -17.5
+      ],
+      "width_mm": 0.25,
+      "layer": "F.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "b4d66fe6-1825-5206-a584-46c7bf34277d",
+      "net": "EM_MASTER_GATE",
+      "start_mm": [
+        89.0625,
+        -22.95
+      ],
+      "end_mm": [
+        89.0625,
+        -24.1
+      ],
+      "width_mm": 0.25,
+      "layer": "F.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "7da6a44b-342a-54ad-a7ac-dd0c99c9c758",
+      "net": "EM_MASTER_GATE",
+      "start_mm": [
+        89.2,
+        -17.5
+      ],
+      "end_mm": [
+        89.0625,
+        -24.1
+      ],
+      "width_mm": 0.25,
+      "layer": "B.Cu"
+    },
+    {
+      "kind": "via",
+      "uuid": "c174a051-c175-57d9-8282-98bf04cc3270",
+      "net": "EM_BAT_FUSED",
+      "at_mm": [
+        90.4,
+        -14.6
+      ],
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3
+    },
+    {
+      "kind": "via",
+      "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338",
+      "net": "EM_BAT_FUSED",
+      "at_mm": [
+        83.9375,
+        -22.2
+      ],
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3
+    },
+    {
+      "kind": "track",
+      "uuid": "e1ec4c2e-9e50-583d-8447-7851ee633601",
+      "net": "EM_BAT_FUSED",
+      "start_mm": [
+        90.4,
+        -16
+      ],
+      "end_mm": [
+        90.4,
+        -14.6
+      ],
+      "width_mm": 1.0,
+      "layer": "F.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "6973078a-2464-5f16-8043-90dabecf2a72",
+      "net": "EM_BAT_FUSED",
+      "start_mm": [
+        83.9375,
+        -21
+      ],
+      "end_mm": [
+        83.9375,
+        -22.2
+      ],
+      "width_mm": 0.4,
+      "layer": "F.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "63fe2ada-45f8-5014-b524-9f9f7eadc8b8",
+      "net": "EM_BAT_FUSED",
+      "start_mm": [
+        90.4,
+        -14.6
+      ],
+      "end_mm": [
+        89.8,
+        -14.6
+      ],
+      "width_mm": 0.4,
+      "layer": "B.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "fa83a4b8-7587-5bb7-8954-214c471ecce2",
+      "net": "EM_BAT_FUSED",
+      "start_mm": [
+        89.8,
+        -14.6
+      ],
+      "end_mm": [
+        88.8,
+        -14.6
+      ],
+      "width_mm": 1.0,
+      "layer": "B.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "03426d79-7e11-51cc-9ef7-2c4d7e4dff73",
+      "net": "EM_BAT_FUSED",
+      "start_mm": [
+        88.8,
+        -14.6
+      ],
+      "end_mm": [
+        83.9375,
+        -19.4625
+      ],
+      "width_mm": 1.0,
+      "layer": "B.Cu"
+    },
+    {
+      "kind": "track",
+      "uuid": "c5abed10-1991-5c06-a54e-0ff89c833d53",
+      "net": "EM_BAT_FUSED",
+      "start_mm": [
+        83.9375,
+        -19.4625
+      ],
+      "end_mm": [
+        83.9375,
+        -22.2
+      ],
+      "width_mm": 1.0,
+      "layer": "B.Cu"
+    }
+  ],
+  "unconnected_before": 5,
+  "unconnected_after": 3,
+  "kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "native_nonrouting_identity_preserved": true,
+  "existing_copper_not_modified": true,
+  "required_followup": "Refill zones if present and run native DRC after integration.",
+  "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb",
+  "source_sha256": "b33a97f84bf1f496620f39c85c54ef9b8a860b96ba0045ccac9a89994dcc416f",
+  "output": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\emitter_repairs_v2_COPY.kicad_pcb",
+  "output_sha256": "5e8048bfc9f75c5f89553e01776213c015055bd2f69c53b452dfdbd768fa130a",
+  "tool_sha256": "4b99c7463355a4197579c7ca2c8a015b08ccfe8a699e60bb5a83606ee6064606"
+}

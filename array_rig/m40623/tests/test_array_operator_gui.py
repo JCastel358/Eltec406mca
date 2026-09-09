@@ -149,7 +149,10 @@ class OperatorGuiTests(unittest.TestCase):
         controller = self.window.controller
         self.assertEqual(len(self.window.entries), 2)
         self.assertEqual(controller.plan.capture_seconds, 60)
-        self.assertEqual(controller.plan.stabilisation_s, 300)
+        self.assertEqual(controller.plan.stabilisation_s, 0)
+        self.assertEqual(self._detail("1-10"), "AUTO")
+        self.assertIs(controller.effective_occupancy("1-10"), aa.Occupancy.EMPTY)
+        self.assertNotIn("1-10", controller.offset_bad_positions())
         self.assertEqual(controller.offset_measurement_count, 1)
         self.assertIn("2-4", controller.offset_bad_positions())
         self.assertIn("4-7", controller.offset_bad_positions())
@@ -172,6 +175,25 @@ class OperatorGuiTests(unittest.TestCase):
         self.assertEqual(str(self.window.noise_button.cget("state")), "disabled")
         self.assertFalse(self.window.vacuum_check.winfo_manager())
 
+    def test_detected_map_confirmation_and_empty_details_fit_minimum_window(self):
+        self._ready()
+        self.window.deiconify()
+        self.window.state("normal")
+        self.window.geometry("1000x720")
+        self.window.show_more_button.invoke()
+        self.window.update()
+        check = self.window.vacuum_check
+        self.assertLessEqual(check.winfo_reqwidth(), check.master.winfo_width())
+        items = self.window.grid._items["1-10"]
+        left, _, right, _ = self.window.grid.coords(items["rect"])
+        for name in ("headline", "detail"):
+            box = self.window.grid.bbox(items[name])
+            self.assertGreaterEqual(box[0], left-2)
+            self.assertLessEqual(box[2], right+2)
+        self.window.toggle_empty("1-1")
+        self.assertFalse(self.window.vacuum_var.get())
+        self.assertEqual(str(self.window.noise_button.cget("state")), "disabled")
+
     def test_empty_slots_can_be_marked_before_first_measurement(self):
         self.window.on_tile_click("1-10")
         self.assertEqual(self._detail("1-10"), "EMPTY")
@@ -185,11 +207,11 @@ class OperatorGuiTests(unittest.TestCase):
     def test_replacement_then_empty_edit_does_not_corrupt_measured_offsets(self):
         self._load()
         self.window.on_tile_click("2-4")
-        self.window.toggle_empty("1-10")
+        self.window.toggle_empty("1-9")
         self.assertFalse(self.window.controller.offset_checked)
         self._measure()
         self.assertNotIn("2-4", self.window.controller.offset_bad_positions())
-        self.assertEqual(self._detail("1-10"), "EMPTY")
+        self.assertEqual(self._detail("1-9"), "EMPTY")
 
     def test_replacements_require_remeasurement_and_vacuum_before_noise(self):
         self._load()
@@ -204,7 +226,8 @@ class OperatorGuiTests(unittest.TestCase):
         self._measure()
         self.assertEqual(self.window.controller.offset_bad_positions(), ())
         self.assertEqual(self.window.controller.offset_measurement_count, 2)
-        self.assertEqual(len(self.window.controller.offset_good_positions()), 50)
+        self.assertEqual(len(self.window.controller.offset_good_positions()), 48)
+        self.assertIn("48 detected positions", self.window.vacuum_check.cget("text"))
         self.assertFalse(self.window.vacuum_var.get())
         self.assertEqual(str(self.window.noise_button.cget("state")), "disabled")
         self.assertTrue(self.window.vacuum_check.winfo_manager())
@@ -229,7 +252,7 @@ class OperatorGuiTests(unittest.TestCase):
             self.window.toggle_empty(position)
         self.assertEqual(controller.offset_good_positions(), ())
         self.assertEqual(str(self.window.noise_button.cget("state")), "disabled")
-        self.assertIn("tray is empty", self.window.status_var.get())
+        self.assertIn("No detectors detected", self.window.status_var.get())
         self.window.on_tile_click("1-1")
         self.assertFalse(controller.offset_checked)
         self._measure()
@@ -267,11 +290,15 @@ class OperatorGuiTests(unittest.TestCase):
         self.assertIs(controller.state.report, saved_report)
         with controller.csv_path.open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle))
-        self.assertEqual(len(rows), 50)
+        self.assertEqual(len(rows), 48)
+        self.assertTrue(all(float(row["stabilisation_wait_s"]) == 0 for row in rows))
+        self.assertTrue(all(row["noise_timing_policy"] == tester.NOISE_TIMING_POLICY for row in rows))
         self.assertTrue(all(row["simulated"] == "YES" for row in rows))
         self.assertTrue(list((self.root / "simulation").rglob("*.npz")))
         events = tray_history.read_tray_events(controller.attempts_path)
         self.assertEqual(sum(e.event == "vacuum_confirmed" for e in events), 1)
+        self.assertIn("physical tray", next(e.detail for e in events if e.event == "vacuum_confirmed"))
+        self.assertEqual(sum(e.event == "noise_settled" for e in events), 1)
         self.assertIn("SIMULATION", self.window.banner.cget("text"))
         self.assertEqual(self.window.offset_button.cget("text"), "Next tray")
         self.window.offset_button.invoke()

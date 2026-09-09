@@ -1,0 +1,41 @@
+{
+  "status": "IMPORTED_NOT_DRC_QUALIFIED",
+  "completed_utc": "2026-09-09T15:15:13.299209+00:00",
+  "backup": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\before_import_d521b5ccd8612cdf.kicad_pcb",
+  "backup_sha256": "d521b5ccd8612cdf9124a9c9deba861d1cd8b8a23226c328b7ebdb7d1327707e",
+  "source_after_sha256": "b8aba916f5bf17d38e75646580d3358245f5783a342c14b3a16379d83a4af60e",
+  "ses_sha256": "106fadd58b35149c37d3ee0aa6dd6ce3e9faa992c3800cddc18309a3c3c65d6a",
+  "unrouted_before": 461,
+  "unrouted_after": 12,
+  "track_segments_by_layer": {
+    "F.Cu": 1379,
+    "In1.Cu": 0,
+    "In2.Cu": 0,
+    "B.Cu": 505
+  },
+  "through_vias": 183,
+  "native_nonrouting_content_preserved": true,
+  "footprint_uuid_paths_pad_geometry_nets_preserved": true,
+  "netclasses_preserved_in_memory_and_project_hash_guarded": true,
+  "reviewed_locked_seed_verification": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "plane_fill_performed": false,
+  "drc_run": false,
+  "required_followup": "Inspect routing, add separate reference planes, refill, and run native KiCad DRC/parity.",
+  "position_roundoff_amendment": {
+    "report": "reports/routing/trial01/import_roundoff_amendment.json",
+    "report_sha256": "2f44128cb07fdcee448b7ea4d5366590ad0d092e5c0dec137a8e1e8d8fca4eb1",
+    "tool": "tools/import_trial01_roundoff.py",
+    "tool_sha256": "73e3be437d780fcf74668dcd34d2ee9399dbcb2f68d747b04df7d27ed7b357aa"
+  }
+}

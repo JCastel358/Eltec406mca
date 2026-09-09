@@ -1,0 +1,52 @@
+{
+  "status": "COMPLETED",
+  "started_utc": "2026-09-09T15:05:29.654742+00:00",
+  "command": [
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\java\\jdk-25.0.4.1+1-jre\\bin\\java.exe",
+    "-jar",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\freerouting-2.2.4.jar",
+    "-de",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\outer_layers.dsn",
+    "-do",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\routed.ses",
+    "--gui.enabled=false",
+    "--api_server.enabled=false",
+    "--user_data_path=C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\router_profile",
+    "-da",
+    "-mp",
+    "8",
+    "-mt",
+    "1",
+    "--logging.console.level=INFO",
+    "--logging.file.level=DEBUG"
+  ],
+  "runtime": {
+    "java": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\java\\jdk-25.0.4.1+1-jre\\bin\\java.exe",
+      "sha256": "5808527e3dfc4eb285c7664ba356bc267055ef906e83ed4660d9f7976da7349b",
+      "version": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+    },
+    "router": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\freerouting-2.2.4.jar",
+      "sha256": "f5ed374182900ccc78e473518bbb9f6b869f4a07159495f663a76f52bb10523b",
+      "version": "2.2.4",
+      "build_revision": "20f1a72e546b9b23c7ba5127086885cfacbdd4be"
+    },
+    "other_project_modified": false
+  },
+  "input_sha256": "a16a89f4bc86072684d5ffe63ba964515274ce38b5b4e825ae77c38e4058f474",
+  "timeout_seconds": 600,
+  "handoff_sha256": "57f7e2c4a3baeef6bb24d672aa2fa0723fe2a4b46e87367cc840e84cba3c3270",
+  "gui_enabled": false,
+  "api_server_enabled": false,
+  "analytics_disabled": true,
+  "hardware_upload": false,
+  "pcb_modified": false,
+  "returncode": 0,
+  "session_bytes": 145671,
+  "routed_wire_paths": 746,
+  "finished_utc": "2026-09-09T15:11:31.410820+00:00",
+  "elapsed_seconds": 361.75,
+  "ses_sha256": "106fadd58b35149c37d3ee0aa6dd6ce3e9faa992c3800cddc18309a3c3c65d6a",
+  "source_unchanged": true
+}

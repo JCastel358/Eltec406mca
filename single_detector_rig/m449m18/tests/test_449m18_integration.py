@@ -500,7 +500,9 @@ class IdentityAndPolicyTests(unittest.TestCase):
         self.assertFalse(app.OFFSET_GATE_ENABLED)
         self.assertTrue(app.POLARITY_GATE_ENABLED)
         self.assertFalse(app.BATTERY_MONITORING_ENABLED)
-        self.assertFalse(app.REFERENCE_GATE_ENABLED)
+        # The emitter-health gate is independent of this model's pending
+        # sensitivity calibration: it judges the fixture, not the part.
+        self.assertTrue(app.REFERENCE_GATE_ENABLED)
 
     def test_csv_fields_carry_both_frequencies_and_no_noise_columns(self):
         for column in (
@@ -903,11 +905,12 @@ class HardwareFlowTests(unittest.TestCase):
         sleep.assert_not_called()
         self.assertEqual(
             device.calls,
-            ["pwm_off", "offset", "pwm_on", "capture", "pwm_off", "pwm_on", "capture", "pwm_off", "offset"],
+            ["pwm_off", "offset", "pwm_on", "reference", "pwm_off",
+             "pwm_on", "capture", "pwm_off", "pwm_on", "capture", "pwm_off", "offset"],
         )
         self.assertEqual(
             [(k["frequency_hz"], k["duty_cycle_percent"], k["channel"]) for k in device.configure_kwargs],
-            [(5.0, 20.0, "GPIO33"), (18.0, 20.0, "GPIO33")],
+            [(10.0, 50.0, "GPIO33"), (5.0, 20.0, "GPIO33"), (18.0, 20.0, "GPIO33")],
         )
         self.assertEqual([k["expected_frequency_hz"] for k in device.capture_kwargs], [5.0, 18.0])
         self.assertEqual([k["measurement_cycles"] for k in device.capture_kwargs], [20, 36])
@@ -929,15 +932,24 @@ class HardwareFlowTests(unittest.TestCase):
         self.assertEqual(tracking.polarity_high, app.POSITIVE_POLARITY)
         self.assertGreaterEqual(harness.preview_count, 2)
         steps = sorted({(step, total, label) for step, total, label, _fraction in harness.progress_events})
-        self.assertEqual(steps, [(1, 3, "Offset"), (2, 3, "5 Hz sensitivity"), (3, 3, "18 Hz sensitivity")])
-        self.assertIsNone(harness.last_reference_check_mv)
-        self.assertNotIn("reference", device.calls)
+        self.assertEqual(
+            steps,
+            [(1, 4, "Offset"), (2, 4, "Reference check"),
+             (3, 4, "5 Hz sensitivity"), (4, 4, "18 Hz sensitivity")],
+        )
+        # The emitter-health gate is live again (2026-09-09): AIN1 is read
+        # before the part, at the reference unit's 10 Hz / 50 %.
+        self.assertEqual(harness.last_reference_check_mv, 100.0)
         self.assertTrue(any("not gated" in text for text in harness.status_texts))
 
     def test_unstable_five_hz_capture_skips_eighteen_hz(self):
         device = FakeMeasurementDevice(case_name="Never stabilizes")
         harness, (metrics, final, offset) = run_hardware(device)
-        self.assertEqual(device.calls, ["pwm_off", "offset", "pwm_on", "capture", "pwm_off", "offset"])
+        self.assertEqual(
+            device.calls,
+            ["pwm_off", "offset", "pwm_on", "reference", "pwm_off",
+             "pwm_on", "capture", "pwm_off", "offset"],
+        )
         self.assertFalse(final.passed)
         self.assertTrue(final.fail_reasons[0].startswith("Unstable at 5 Hz"))
         self.assertIn("18 Hz: waveform was not measured.", final.fail_reasons)
@@ -989,7 +1001,8 @@ class HardwareFlowTests(unittest.TestCase):
         with self.assertRaisesRegex(app.Esp32BackendError, "stream stalled"):
             run_hardware(device)
         self.assertEqual(device.calls[-1], "pwm_off")
-        self.assertEqual(device.calls.count("pwm_on"), 1)
+        # One pwm_on for the reference phase, one for the failed 5 Hz capture.
+        self.assertEqual(device.calls.count("pwm_on"), 2)
 
     def test_stream_integrity_errors_are_retried_per_drive(self):
         class FlakyDevice(FakeMeasurementDevice):
@@ -1008,7 +1021,9 @@ class HardwareFlowTests(unittest.TestCase):
         harness, (metrics, final, offset) = run_hardware(device)
         self.assertTrue(final.passed)
         self.assertEqual(device.calls.count("capture"), 3)
-        self.assertEqual(device.calls.count("pwm_on"), 3)
+        # 3 DUT drives (the retried 5 Hz, the good 5 Hz, the 18 Hz) plus the
+        # reference phase.
+        self.assertEqual(device.calls.count("pwm_on"), 4)
         self.assertTrue(any("glitch" in text for text in harness.status_texts))
 
     def test_stalled_capture_is_restarted_by_the_app_and_logged(self):
@@ -1049,23 +1064,52 @@ class HardwareFlowTests(unittest.TestCase):
         )
         self.assertEqual(device.calls[-1], "pwm_off")
 
-    def test_reference_gate_when_enabled_runs_at_ten_hz_fifty_percent(self):
-        with mock.patch.object(app, "REFERENCE_GATE_ENABLED", True):
+    def test_reference_gate_runs_at_ten_hz_fifty_percent(self):
+        # The AIN1 unit is a 406MCA part, so the reference phase drives its
+        # qualified 10 Hz / 50 % - never this model's 5/18 Hz 20 % blade.
+        device = FakeMeasurementDevice()
+        harness, (metrics, final, offset) = run_hardware(device)
+        self.assertEqual(
+            [(k["frequency_hz"], k["duty_cycle_percent"]) for k in device.configure_kwargs],
+            [(10.0, 50.0), (5.0, 20.0), (18.0, 20.0)],
+        )
+        self.assertEqual(harness.last_reference_check_mv, 100.0)
+        self.assertTrue(final.passed)
+
+    def test_gate_forced_off_skips_ain1_entirely(self):
+        # Fallback path: production ran this way from 2026-08-17 to
+        # 2026-09-09, and the crosstalk re-check on the isolated buffer board
+        # can still send the flag back off.
+        with mock.patch.object(app, "REFERENCE_GATE_ENABLED", False):
             device = FakeMeasurementDevice()
-            harness, (metrics, final, offset) = run_hardware(device)
-            self.assertEqual(
-                device.calls,
-                ["pwm_off", "offset", "pwm_on", "reference", "pwm_off",
-                 "pwm_on", "capture", "pwm_off", "pwm_on", "capture", "pwm_off", "offset"],
-            )
-            self.assertEqual(
-                [(k["frequency_hz"], k["duty_cycle_percent"]) for k in device.configure_kwargs],
-                [(10.0, 50.0), (5.0, 20.0), (18.0, 20.0)],
-            )
-            self.assertEqual(harness.last_reference_check_mv, 100.0)
+            harness, (_metrics, final, _offset) = run_hardware(device)
+            self.assertNotIn("reference", device.calls)
+            self.assertIsNone(harness.last_reference_check_mv)
             self.assertTrue(final.passed)
             steps = sorted({(step, total) for step, total, _l, _f in harness.progress_events})
-            self.assertEqual(steps, [(1, 4), (2, 4), (3, 4), (4, 4)])
+            self.assertEqual(steps, [(1, 3), (2, 3), (3, 3)])
+
+    def test_a_stale_baseline_is_rejected_rather_than_reused(self):
+        # Every v4 baseline was recorded through the shared dual op-amp,
+        # where a loaded DUT dragged AIN1 down: reusing one would gate
+        # production against a crosstalk artefact. The schema bump must make
+        # that file unloadable, and must report a hardware mismatch rather
+        # than a corrupt file.
+        self.assertEqual(app.REFERENCE_CALIBRATION_SCHEMA_VERSION, 5)
+        stale = app.build_reference_calibration([5.0, 5.0, 5.0, 5.0, 5.0]).to_dict()
+        stale["schema_version"] = 4
+        with self.assertRaises(app.ReferenceCalibrationError) as caught:
+            app.ReferenceCalibration.from_dict(stale)
+        message = str(caught.exception)
+        self.assertIn("schema v4", message)
+        self.assertNotIn("malformed", message)
+
+    def test_gate_blocks_measurement_until_a_fresh_baseline_exists(self):
+        harness = SimpleNamespace(
+            simulator_var=SimpleNamespace(get=lambda: False),
+            reference_calibration=None,
+        )
+        self.assertFalse(app.EmitterTesterApp.reference_gate_ready(harness))
 
     def test_high_offset_fails_fast_only_while_the_offset_gate_is_on(self):
         device = FakeMeasurementDevice(offset=4.9)
@@ -1504,6 +1548,27 @@ class StopAndNextTests(unittest.TestCase):
         for name, value in overrides.items():
             setattr(harness, name, value)
         return harness
+
+    # ----- reference lockout ----- #
+    def test_reference_lockout_is_logged_to_the_attempts_csv(self):
+        # 2026-09-09, gate live again: the exact event the old shared-buffer
+        # crosstalk produced (a shorted DUT dragged AIN1 from ~4.94 mV to
+        # ~0.30 mV and the app demanded a recalibration) must leave a row in
+        # the batch's _attempts.csv with the reading and the drift, not just
+        # a warning box that disappears when the technician clicks OK.
+        harness = self._harness(step="measure", RESULT_STEP="result", measuring=True, busy=True)
+        calibration = app.build_reference_calibration([4.94, 4.97, 4.91, 4.95, 4.93])
+        exc = app.ReferenceCheckFailedError(0.30, calibration, dut_offset_v=0.01)
+        with mock.patch.object(app.messagebox, "showwarning") as warn:
+            app.EmitterTesterApp.on_reference_block(harness, 7, exc)
+        warn.assert_called_once()
+        self.assertFalse(harness.measuring); self.assertFalse(harness.busy)
+        self.assertEqual(harness.step, "result")
+        self.assertIn(("log", app.attempt_history.EVENT_MEASURE_ERROR), harness.calls)
+        self.assertIn(("reset",), harness.calls)
+        self.assertIn("0.30 mV", harness.last_measure_error)
+        self.assertIn("-93.9%", harness.last_measure_error)
+        self.assertIn("lockout", harness.status_var.get())
 
     # ----- Next ----- #
     def test_next_saves_a_verdict_then_reads_the_replacement(self):

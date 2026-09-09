@@ -102,29 +102,32 @@ position label visible and shows pass/fail or its current state by default.
 **Show less** returns to the simple view. Shading gives the sockets depth
 while keeping every row and column visible.
 
-1. **Load the tray.** Click physically empty sockets to mark them grey.
-   The app never infers an empty socket from a near-zero signal. Tray and
-   sensor numbers are assigned automatically.
+1. **Load the tray.** Load as many detectors as needed, up to fifty. Tray
+   and sensor numbers are assigned automatically.
 2. **Measure offset.** Switch the rig's physical power on immediately
    before pressing the button. The app connects, configures and calibrates
-   the DAQ on demand, then reads all fifty offsets. Green means in range;
+   the DAQ on demand, then reads all fifty offsets. Empty-looking sockets
+   are rechecked together after two seconds and marked grey automatically.
+   Green means in range;
    red means out of range. Low or dead-looking readings may still be
    settling after power-on: recheck before discarding a detector. Every
    offset read is retained for audit, including reads before replacements.
 3. **Replace and repeat.** Replace red detectors and press **Measure
    offset** again until the loaded sockets are green. If replacements run
-   out, remove the remaining bad detectors and mark their sockets empty.
+   out, remove the remaining bad detectors and measure offset again to
+   detect the newly empty sockets.
    Marking a socket loaded again requires a new offset read before noise.
    In simulation, click a red or empty socket to simulate loading a
    replacement; right-click to mark a socket empty.
 4. **Confirm vacuum.** Turn on the vacuum yourself and wait for the gauge
-   to reach the required setting, then check **Vacuum is at the required
-   setting**. This records operator confirmation; there is no pressure
+   to reach the required setting, then confirm the vacuum setting and that
+   the detected count and socket map match the physical tray. This records
+   operator confirmation; there is no pressure
    telemetry or configured setpoint. The app only observes detector signals
    and does not switch rig power or vacuum.
 5. **Measure noise.** This becomes available only after successful offsets
-   for every loaded socket and vacuum confirmation. The app runs TP120's
-   five-minute stabilisation, an adaptive quiet wait (3–20 s), then a
+   for every loaded socket and vacuum/map confirmation. The app runs an
+   adaptive waveform settling check (3–20 s), then a
    sixty-second capture at 1000 scans/s per channel, with 310 samples of real
    context on either side for the anti-alias filter. Integrity failures are
    retried. **Stop** interrupts the run and allows a retry.
@@ -140,6 +143,34 @@ while keeping every row and column visible.
 The operator does not need separate connect, lock, save, capture-duration or
 skip-wait controls. `TrayController` retains its legacy engineering API;
 the desktop workflow above applies the fixed operator procedure.
+
+Automatic empty detection uses two median-of-three offset reads, separated
+by two seconds on hardware (the simulator advances virtually). Both must
+be at or below one ADC code above zero, about 76 µV on the 0–5 V range.
+This is a provisional empty inference, not proof of physical absence: a
+dead/shorted detector or an unpowered fixture can produce the same signal.
+The existing vacuum confirmation therefore also confirms the detector
+count and map. A manual **loaded** choice always wins over the inference;
+if a grey socket contains a detector, click it and recheck its offset.
+The existing < 0.05 V dead-detector threshold and offset limits are unchanged.
+
+The settling check compares both raw maxima and minima in consecutive
+one-second blocks, on loaded channels only. Capture can begin after three
+seconds when both extrema changed by at most 0.1 mV across two consecutive
+block pairs. Monitoring minima as well as maxima catches changes in
+amplitude or baseline that equal block means could miss. Noise transients
+can use the full twenty seconds; reaching that deadline records a warning
+and starts the full sixty-second capture, without changing the verdict.
+Callback chunks are split at the settling boundary so the final quiet
+samples, captured waveform and filter edge context remain contiguous.
+
+This is an explicit operator-requested timing change dated 2026-09-08.
+TP120's photographed noise procedure specifies five minutes after power-on
+and separately 15–20 seconds after selecting a detector on the switch box.
+The array app now uses `NOISE_STABILISATION_S = 0` and the bounded check
+above rather than another five-minute countdown. The policy is archived as
+`adaptive_extrema_v1_2026-09-08`; the inherited 0.1 mV tolerance schedules
+capture only and is not a calibrated noise acceptance limit.
 
 ## Limits and what "provisional" means
 
@@ -169,7 +200,7 @@ decided later can be replayed on real parts (`engineer_tools/noise_band/replot_n
 | red | offset out of range (HO / LO / D), or failed noise when limits are defined |
 | green | offset OK during screening; overall PASS after noise when limits are defined |
 | amber, **NO LIMIT** | noise measured, but production noise limits are not set; not a noise pass |
-| grey, **EMPTY** | empty socket |
+| grey, **EMPTY** | marked empty or inferred near zero; confirm against the physical tray |
 | **NOT READ** | incomplete measurement or rig fault; retry after resolving the cause |
 
 ## Files written (outside the repository — `docs/DATA_MAP.md`)
@@ -188,7 +219,9 @@ retain `lot` for compatibility. Every screening read remains in the offset
 audit even when the detector is replaced before noise. Each
 `offset_measured` event stores all fifty position readings, occupancy,
 offset class and applied bounds in its JSON `detail`, together with the
-read number, out-of-range positions and simulation flag. Screening reads
+read number, out-of-range positions and simulation flag. The empty-detection
+policy, threshold, both reads, recheck wait, occupancy source and inferred
+empty positions are retained as well. Screening reads
 do not reserve sensor numbers; the final loaded sockets receive their
 numbers when noise starts.
 
@@ -197,12 +230,19 @@ col, DAQ channel, sensor number/id, tester, model, procedure, occupancy),
 offsets (insertion read, settled value, settle delta, class, limits, gate
 status), noise (worst/median pk-pk mV, windows total/over/clipped, limits,
 allowance, provenance, verdict, band note), timing (stabilisation wait,
-quiet wait + settled flag, capture seconds), verdict (pass_fail, verdict,
+quiet wait + settled flag, capture seconds, versioned noise timing policy,
+settling criterion/delta/block count, minimum/maximum wait and stop reason), verdict (pass_fail, verdict,
 verdict_status, structured fail reasons, warnings, failure-mode tag,
 comments), stamps (`calibration_status`, `calibration_id`), DAQ (serial,
 range code, oversample, dropped conversions, scan rate, granted timer Hz,
 pool events, stream attempts), file paths, app version, simulated flag.
 Older files keep their header when columns are added.
+
+The `noise_settled` tray event and raw capture's `quiet_diagnostics_json`
+retain the loaded channel list and every one-second window's maxima,
+minima, corresponding deltas, elapsed time and settled/deadline outcome.
+These records preserve the evidence even when an older batch CSV header
+does not include the new timing columns.
 
 ## Failure modes (TP120 page 7)
 
@@ -316,7 +356,10 @@ side effect and the block re-assert), `test_array_analysis.py` (golden
 parity + verdicts), `test_array_tester.py` (paths, CSV, numbering, lock,
 noise phase with retries and the no-data timeout, save, re-measure, GUI
 smoke; results root redirected to a temporary directory and a guard asserts
-nothing lands in Documents), `test_daq_rig_readout.py` (59: position tokens,
+nothing lands in Documents), `test_adaptive_settling.py` (extrema stability,
+loaded-channel masking, 3–20 s timing, cancellation, contiguous sixty-second
+capture across arbitrary callback sizes, and saved diagnostic evidence),
+`test_daq_rig_readout.py` (59: position tokens,
 connect / configuration / self-cal, immediate reads, captures and their CSV /
 npz files with an npz replay through the replot tool, `LiveStream` fill /
 wrap / stop / error paths and the rate rule, the CLI parser and every command

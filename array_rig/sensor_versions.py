@@ -71,8 +71,9 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
         ),
         details=(
             "Flow: tech name + batch -> physical power switch -> Measure offset "
-            "(replace red parts and repeat) -> confirm vacuum -> Measure noise. "
-            "Five-minute stabilisation, 60-second capture and saving are automatic.",
+            "(empty sockets detected; replace red parts and repeat) -> confirm vacuum "
+            "and tray map -> Measure noise. Automatic 3-20 second settling check, "
+            "60-second capture and saving.",
             "Offset: TP120 0.3-1.2 V, PROVISIONAL until the PCB loading is confirmed "
             "against fixture 9000054 (+8 V, 100 kOhm).",
             "Noise: measured at the pin in the single rig's 0.85-22 Hz band and recorded; "

@@ -1,0 +1,632 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "f210eded-3684-57b5-b379-c4d7eb0e6167")
+	(paper "A2")
+	(title_block
+		(title "Single detector rig - USB master power")
+		(date "2026-09-09")
+		(rev "R1-DRAFT")
+	)
+	(lib_symbols)
+	(text "R1 ENGINEERING CANDIDATE - NOT FOR FABRICATION\nSeparate replacement project; original design preserved.\nUSB-controlled battery power, protected ADC interfaces and isolated emitter supply.\nElectrical corner review, PCB routing, assembly sourcing and physical qualification remain open."
+		(exclude_from_sim no)
+		(at 25.4 20.32 0)
+		(effects
+			(font
+				(size 1.524 1.524)
+			)
+			(justify left top)
+		)
+		(uuid "5bd578fe-653e-5a1b-bb3b-6c55371b97be")
+	)
+	(sheet
+		(at 381 121.92)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "027fcce3-f553-5e56-a81d-f2753cd0fd57")
+		(property "Sheetname" "Power readiness and isolation"
+			(at 455.93 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "power_permission.kicad_sch"
+			(at 455.93 154.94 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "7")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 25.4 297.18)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "04641e39-4245-580d-9ae9-f1314757bdcb")
+		(property "Sheetname" "Three optically isolated emitter PWM channels"
+			(at 100.33 294.64 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "emitter_pwm.kicad_sch"
+			(at 100.33 330.2 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "14")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 63.5)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "07614baf-2677-51c1-97c2-ee67d5b0365e")
+		(property "Sheetname" "ADS1256 removable module and socket mapping"
+			(at 278.13 60.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "adc_interface.kicad_sch"
+			(at 278.13 96.52 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 381 238.76)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "452c08c0-2534-56c5-83b7-28312f02b77c")
+		(property "Sheetname" "Isolated adjustable emitter supply"
+			(at 455.93 236.22 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "emitter_regulator.kicad_sch"
+			(at 455.93 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "13")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 121.92)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "4e00fb40-6744-5b12-8b6c-ca8d3b39e690")
+		(property "Sheetname" "USB and ESP32 supervision with battery-referenced enable"
+			(at 278.13 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "power_supervision.kicad_sch"
+			(at 278.13 154.94 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "6")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 25.4 180.34)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "51444993-0e25-5fd9-aea5-765bd288fff5")
+		(property "Sheetname" "SPI interface across independently switched supplies"
+			(at 100.33 177.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "spi_protection.kicad_sch"
+			(at 100.33 213.36 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "8")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 25.4 121.92)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "83f454b1-7b2c-5cc8-a685-a08fff7825a0")
+		(property "Sheetname" "Quiet held ADC supply and local digital supply"
+			(at 100.33 119.38 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "adc_supply.kicad_sch"
+			(at 100.33 154.94 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 180.34)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "8aca0663-0a70-501a-a789-457027977951")
+		(property "Sheetname" "SPI defaults, decoupling and power-off leakage bounds"
+			(at 278.13 177.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "spi_defaults.kicad_sch"
+			(at 278.13 213.36 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "9")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 25.4 63.5)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "96c545ad-2b94-5309-8a64-0e495ca95eef")
+		(property "Sheetname" "ESP32 USB power and firmware interface"
+			(at 100.33 60.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "esp32_interface.kicad_sch"
+			(at 100.33 96.52 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 297.18)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "c42b95c5-ca46-522a-a7ee-71e74181f8e0")
+		(property "Sheetname" "Existing emitter wire connections"
+			(at 278.13 294.64 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "emitter_connections.kicad_sch"
+			(at 278.13 330.2 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "15")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 381 63.5)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "e006831c-efa4-56c5-b457-5a0b93657d70")
+		(property "Sheetname" "Battery inputs, polarity protection and master switches"
+			(at 455.93 60.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "power_inputs.kicad_sch"
+			(at 455.93 96.52 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 25.4 238.76)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "e157b82e-61fd-533d-94ce-d051a7995ca4")
+		(property "Sheetname" "Detector/reference pair 2 - buffered ADC isolation"
+			(at 100.33 236.22 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "analog_pair_2.kicad_sch"
+			(at 100.33 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "11")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 203.2 238.76)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "e57479d2-53b9-52bb-b82b-61a554438b97")
+		(property "Sheetname" "Detector/reference pair 3 - buffered ADC isolation"
+			(at 278.13 236.22 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "analog_pair_3.kicad_sch"
+			(at 278.13 271.78 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "12")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 381 180.34)
+		(size 149.86 30.48)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "e8a99acd-5793-5ae0-a450-c6651b6aaf41")
+		(property "Sheetname" "Detector/reference pair 1 - buffered ADC isolation"
+			(at 455.93 177.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sheetfile" "analog_pair_1.kicad_sch"
+			(at 455.93 213.36 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167"
+					(page "10")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

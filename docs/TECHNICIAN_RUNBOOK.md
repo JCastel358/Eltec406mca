@@ -15,7 +15,7 @@ screen, stop and tell the rig engineer — do not improvise.
 | ESP32 board | USB cable from the rig's ESP32 to the laptop. Only one program may use it — close the Arduino Serial Monitor or any other rig tool. |
 | Emitter battery (6.5 V) | Connected to the MOSFET module. Powers the emitters only. |
 | Sensor battery (9 V) | Connected to the sensor buffer board. Powers the sensors only. The app shows **"Battery: not monitored"** — that is normal, neither battery is measured. |
-| Fixture | Reference sensor seated in its permanent slot; test slot empty and clean. |
+| Fixture | Reference sensor seated in its permanent slot; test slot empty and clean. Since 2026-09-09 the rig checks this reference sensor before every part, so a loose one stops the batch. |
 | Environment | **No fans** blowing on or near the fixture, no vibration, laptop charger away from the USB cable if possible. The sensors are microphonic — a desk fan shows up as noise. |
 
 ## 2. Start the app
@@ -41,6 +41,37 @@ to the selector.
 
 If the tester refuses to connect with a **firmware** message (for example
 "requires v3.2"), the board needs reflashing — call the engineer.
+
+### 2b. First run after 2026-09-09: calibrate the reference unit
+
+The rig now checks the **reference sensor** (the one permanently seated in
+its own slot) before every part, so a tired or failing emitter is caught by
+the rig instead of showing up as a run of low-sensitivity parts. This check
+was switched off between 2026-08-17 and 2026-09-09 while the fixture's buffer
+board was replaced.
+
+Because the buffer board changed, the old stored baseline no longer describes
+this hardware and the app refuses it. **The first time you open each model
+after this change you will see a red card saying the reference unit needs
+calibrating, and Start will be locked.** That is expected — nothing is
+broken and nothing was lost.
+
+What to do, once per model:
+
+1. Check the reference sensor is properly seated in its permanent slot and
+   the test slot is **empty**.
+2. Press **Calibrate reference unit** on the setup screen.
+3. Wait for the five readings (about a minute). The card turns green and says
+   "Reference unit calibrated".
+4. Start your batch as usual.
+
+If calibration fails as "not repeatable", check the reference sensor is
+seated, the emitter battery is connected, and no fan is blowing on the
+fixture, then try once more. If it still fails, **stop and call the
+engineer** — do not test parts against a reference that will not settle.
+
+If a message mentions a **schema version** ("schema v4, but this build
+requires v5"), that is just this change: run the calibration above.
 
 ## 3. Run a batch
 
@@ -76,9 +107,14 @@ still recorded (they count in the yield), they just do not take a number.
 
 | Model | Steps on the progress bar | Typical time | Keep in mind |
 | --- | --- | --- | --- |
-| 405 M22 | 1 offset → 2 noise (emitter off) → 3 sensitivity (1 Hz) → settled offset re-read | 1–2 min (up to 3 attempts of 60 s if the part is slow to stabilise) | Do not touch the fixture during the noise step. |
-| 406 MCA | offset → 10 Hz capture → settled offset re-read | 15–60 s (up to 3 attempts of 20 s), plus up to 20 s more if the offset is still settling | If the status line says the part is being held while its offset settles, leave it alone — it is being given a chance to pass. |
-| 449 M18 | offset → 5 Hz capture → 18 Hz capture → settled offset | 1–2 min | Both drives run back to back per part. |
+| 405 M22 | 1 offset → 2 reference check → 3 noise (emitter off) → 4 sensitivity (1 Hz) → settled offset re-read | 1–2 min (up to 3 attempts of 60 s if the part is slow to stabilise) | Do not touch the fixture during the noise step. |
+| 406 MCA | 1 reference check → 2 offset → 3 sensitivity (10 Hz) → settled offset re-read | 15–60 s (up to 3 attempts of 20 s), plus up to 20 s more if the offset is still settling | If the status line says the part is being held while its offset settles, leave it alone — it is being given a chance to pass. |
+| 449 M18 | 1 offset → 2 reference check → 3 sensitivity (5 Hz) → 4 sensitivity (18 Hz) → settled offset | 1–2 min | Both drives run back to back per part. |
+
+The **reference check** step is new since 2026-09-09: the rig drives the
+emitter and reads its own permanently seated reference sensor, making sure
+the emitter still produces what it did at calibration. It adds a few seconds
+per part. If it fails, the part you loaded is *not* the problem — see §5.
 
 **Keep the app window visible and the laptop awake while it measures.** A
 minimised window on battery power is the most common cause of a "stream
@@ -139,8 +175,10 @@ measured and recorded, but has no pass/fail limit yet.
    tester**. Enter only **Tech name** and **Batch number**. Tray and sensor
    numbers are automatic.
 2. Load up to fifty parts, with tab orientation as on the legacy fixture.
-   Click any physically empty socket on the map to mark it grey. A reading
-   near zero does not tell the app whether a socket is empty: mark it yourself.
+   **Measure offset** automatically marks sockets reading near zero grey
+   after a brief recheck. Check the detected map against the actual tray:
+   a shorted detector can also read zero, and a floating empty input may
+   read higher. Click a socket to correct loaded/empty when needed.
 3. Use the rig's **physical power switch immediately before pressing
    Measure offset**. Green means offset OK; red means out of range. Low or
    dead-looking readings can still settle after power-on, so recheck them
@@ -151,12 +189,15 @@ measured and recorded, but has no pass/fail limit yet.
    a tray can have fewer than fifty parts. Marking an empty socket loaded
    again requires another offset measurement.
 5. Turn on the vacuum, watch the gauge and wait until it reaches the
-   required setting. Check **Vacuum is at the required setting**, then
+   required setting. Confirm that **the detected positions match the loaded
+   detectors and the vacuum gauge is at the required setting**, then
    press **Measure noise**. The app relies on your gauge check; it does not
    measure vacuum pressure. It reads detector signals and does not switch
    rig power or vacuum.
-6. The app automatically waits **five minutes** for stabilisation, checks
-   settling, then captures **sixty seconds** of noise. Keep the laptop on
+6. The app checks waveform peaks for **3–20 seconds**, starting the full
+   **sixty-second** noise capture as soon as successive peaks are stable.
+   There is no five-minute app countdown. If settling reaches twenty seconds,
+   capture starts with a recorded warning. Keep the laptop on
    AC, the window visible, and the fixture free of fans and vibration.
    Do not pull or insert parts while it measures. **Stop** interrupts a
    run so you can retry with **Measure noise**.
@@ -167,6 +208,13 @@ measured and recorded, but has no pass/fail limit yet.
    numerical readings or assigned sensor numbers. Results, raw readings and
    the grid picture save automatically. **Next tray** becomes available
    after saving.
+
+Timing change (2026-09-08): TP120 page 5 specifies both a five-minute wait
+after power-on and 15–20 seconds after changing the legacy switch position.
+At the user's request, this array app uses the adaptive waveform check in
+place of its added five-minute countdown. This change does not establish
+thermal equilibrium or equivalence to the legacy timing; actual settling
+times and the timing policy are retained with the measurement.
 
 To practise without hardware, check **Simulation** in the selector or run
 `python array_rig/m40623/eltec_40623_array_tester.py --simulate`. The demo
@@ -205,15 +253,18 @@ folders** — the engineer backs them up.
 | "Front end" mismatch (406 MCA) | Board did not accept the 406 front-end setting | Engineer. |
 | "timestamp gaps", "duplicate timestamps", "stream integrity" | Laptop on battery, window minimised, USB hub, charger EMI | The app restarts the capture by itself (up to twice; nothing is recorded from a bad one). If it still fails: plug into AC, keep the window visible, avoid hubs, **Measure again**. Persistent → engineer. |
 | "ESP32 … stream stalled" | The stream went quiet for 2 s. The app restarts the capture by itself; if it keeps failing, the message ends with a tag that says who stopped: `[host-stall]` = the laptop stopped reading (window minimised, battery, another program); `[board-reset]` = the ESP32 rebooted (USB power or cable); `[board-silent]` = the ADC stopped (power-cycle the rig); `[no-reply]` = board or USB gone | Do what the tag says, **Measure again**. If it happens first thing in the morning, tell the engineer whether the tester was left open overnight and where the laptop was plugged in; the batch's `_attempts.csv` keeps every restart with its tag. |
-| Several **LS (low sensitivity)** failures in a row | Possibly the **emitter**, not the parts (automatic emitter monitoring is currently off) | Stop, tell the engineer before condemning the parts. |
+| Several **LS (low sensitivity)** failures in a row | Possibly the **emitter**, not the parts | Since 2026-09-09 the reference check should catch this first — if it has not, stop and tell the engineer before condemning the parts. |
+| "The reference unit has no valid calibration" / red card, Start locked | First run after the 2026-09-09 buffer-board change, or the calibration was invalidated | Run **Calibrate reference unit** (§2b). |
+| "Reference calibration is schema v4/v2, but this build requires …" | The stored baseline was recorded on the old buffer board | Normal after 2026-09-09 — run **Calibrate reference unit** (§2b). Nothing is lost; the old file is kept. |
+| "Reference unit is outside its window" during a part | The emitter has weakened or drifted, the reference sensor moved, or the emitter battery is low — **not** the part in the rig | Do not fail the part. Check the reference sensor is seated and the 6.5 V emitter battery is connected, then recalibrate and measure again. If it repeats, stop and call the engineer — the batch's `_attempts.csv` has recorded the reading, so nothing needs writing down. |
 | Every part fails **N (noisy)** (405 M22) | Fan, vibration, charger, or a fixture fault | Remove fans/chargers, retest one known-good part; still failing → engineer. |
 | **Unstable** | Part never settled within the time limit | Re-measure once; if it repeats, save it as Unstable. |
 | App does not start | Missing Python or package | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-rig\launcher.log` (Windows) / `~/.local/state/eltec-rig/launcher.log` (Xubuntu). |
 | "Battery: not monitored" | Normal | Nothing — neither battery is measured on this fixture. |
 | Array rig: "No ACCES device found" | DAQ USB unplugged, or plugged in less than five seconds ago (it loads its program first) | Check the cable, wait five seconds, press **Measure offset** again. Still nothing → engineer (driver package). |
 | Array rig: "stream integrity", "buffer pool exhausted", "no data from the stream", tray NOT MEASURED | Laptop on battery or window minimised during the capture, USB hub, another program hogging the laptop, another program using the DAQ (the engineer's tools); "no data" can also be the DAQ's USB cable | The app retries by itself, then marks the tray NOT MEASURED. AC power, keep the window visible, no hub, close any other DAQ program, check the DAQ's USB cable, press **Measure noise** again. Persistent → engineer. |
-| Array rig: all loaded sockets read near zero | PCB not powered, or a cable is off | Check the physical power switch and DB37 cables, then press **Measure offset** again. Do not mark loaded sockets empty to bypass the reading. |
-| Array rig: **Measure noise** unavailable | Missing good offset reads, a red loaded socket, or vacuum not confirmed | Recheck or replace red parts, mark physically empty sockets, measure offset after loading a socket, and confirm vacuum only after checking the gauge. |
+| Array rig: **No detectors detected**, but parts are installed | PCB not powered, a cable is off, or zero-output parts were inferred empty | Check the physical power switch and DB37 cables, then press **Measure offset** again. Click installed positions to force loaded if needed; zero-output loaded parts remain failures. |
+| Array rig: **Measure noise** unavailable | Missing good offset reads, a red loaded socket, or tray/vacuum not confirmed | Recheck or replace red parts, correct the detected map, measure offset after loading a socket, and confirm the loaded count and gauge. |
 | Array rig: a whole row red or 0 V | Cable / row supply | Engineer — do not fail the parts. |
 | Array rig app does not start | Missing Python or the ACCES driver | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-array-rig\launcher.log` (selector) / `%LOCALAPPDATA%\eltec-40623-array\launcher.log` (tester). |
 

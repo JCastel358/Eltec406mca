@@ -1,0 +1,94 @@
+{
+  "status": "WIDTHS_REPAIRED_NATIVE_DRC_REQUIRED",
+  "source_sha256": "b8aba916f5bf17d38e75646580d3358245f5783a342c14b3a16379d83a4af60e",
+  "output_sha256": "fad6bd088b9a705895c90298aca01d0d376371b9805369eec672771b68cf23af",
+  "backup": "reports\\routing\\trial01\\before_width_repair_b8aba916f5bf17d3.kicad_pcb",
+  "changed_tracks": [
+    {
+      "uuid": "0ed08acd-57ac-4bdf-9209-4db26582c311",
+      "from_width_mm": 0.2498,
+      "to_width_mm": 0.25,
+      "net": "DET_BAT_PROTECTED",
+      "start_nm": [
+        35650000,
+        -5126000
+      ],
+      "end_nm": [
+        35450000,
+        -5326000
+      ]
+    },
+    {
+      "uuid": "51169567-b9e2-4f19-bb17-9883027f064f",
+      "from_width_mm": 0.2498,
+      "to_width_mm": 0.25,
+      "net": "DET_BAT_PROTECTED",
+      "start_nm": [
+        32550000,
+        -8500000
+      ],
+      "end_nm": [
+        32550000,
+        -8000000
+      ]
+    },
+    {
+      "uuid": "90263893-fb96-4073-a762-fe91f359879d",
+      "from_width_mm": 0.2498,
+      "to_width_mm": 0.25,
+      "net": "DET_BAT_PROTECTED",
+      "start_nm": [
+        32550000,
+        -8000000
+      ],
+      "end_nm": [
+        32550000,
+        -7500000
+      ]
+    },
+    {
+      "uuid": "d3afa155-a16a-4902-b051-f182721b6f16",
+      "from_width_mm": 0.2498,
+      "to_width_mm": 0.25,
+      "net": "DET_BAT_PROTECTED",
+      "start_nm": [
+        32448100,
+        -8000000
+      ],
+      "end_nm": [
+        32550000,
+        -8000000
+      ]
+    },
+    {
+      "uuid": "e71c2db9-e93a-4402-880a-97a65e4d3be4",
+      "from_width_mm": 0.2498,
+      "to_width_mm": 0.25,
+      "net": "DET_BAT_PROTECTED",
+      "start_nm": [
+        35450000,
+        -5326000
+      ],
+      "end_nm": [
+        35450000,
+        -5500000
+      ]
+    }
+  ],
+  "nonrouting_identity_preserved": true,
+  "only_listed_widths_changed": true,
+  "protected_kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "unconnected_count": 12,
+  "tool_sha256": "d99be0fe20cdc5b8898e2fdc271b2448052cc34fa68b97932f5525a017f211f0"
+}

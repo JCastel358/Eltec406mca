@@ -1,0 +1,364 @@
+{
+  "status": "DRAFT_FABRICATION_DATA_NOT_APPROVED_FOR_UPLOAD_OR_ORDER",
+  "started_utc": "2026-09-09T15:39:15.341509+00:00",
+  "finished_utc": "2026-09-09T15:39:25.839328+00:00",
+  "input_sha256": {
+    "single_detector_usb_master/adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master/adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master/analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master/analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master/analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master/emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master/emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master/emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master/esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master/power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master/power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master/power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master/single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master/spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master/spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d",
+    "single_detector_usb_master/single_detector_usb_master.kicad_pro": "efa2f91b4d171408b3a2c3a0256d78477df6e959c0237632494aa48d63b3c473",
+    "single_detector_usb_master/single_detector_usb_master.kicad_dru": "0a68d7ebbf53577634025066fc9f21378e2fa1abb019ac4f199e565bcab3f49f",
+    "single_detector_usb_master/fp-lib-table": "15d72736cb413bf1d62ca9816eb9b4e2b90e5033c6d29dcd8fb7e9928283564e",
+    "single_detector_usb_master/sym-lib-table": "f4833790416c9256d262fb8a16296079f32b5222c610ed54b2c6710af54e075a",
+    "libraries/master.kicad_sym": "9fed7d5ce6a479957f87f3ffa2efdd4c2115bc625d3d7df2e6b9181ccedc0bc1",
+    "libraries/master.pretty/BarrelJack_GCT_DCJ200_10_A.kicad_mod": "b7333718c8e71cd4b09f99e5c11256b1f16292d5e36d52623121c2ebf88e9554",
+    "libraries/master.pretty/CP_EIA-7343-31_Kemet-D.kicad_mod": "ab21cd6d8e6d4e2c9ac4e7a93ae3ad565b229a9064d897d7ec92014892b56df5",
+    "libraries/master.pretty/CP_Elec_10x10.5.kicad_mod": "9adfed611af8618f3005c45a488d77c7ebcc78947e8125e73f9764681feda8f5",
+    "libraries/master.pretty/CP_Elec_8x11.9.kicad_mod": "c81a1160a19e16dcd530eb887ec04f7e217caeefae12d4aaef1cbc2d0b55349d",
+    "libraries/master.pretty/C_0603_1608Metric.kicad_mod": "b2f5ee1c7e9a922f4d9e92b7844668a8154e56e06add385b88baa10a6799095f",
+    "libraries/master.pretty/C_0805_2012Metric.kicad_mod": "90016129533f855682ab39e9908aabc5331916aa5283639498fe052b920967f7",
+    "libraries/master.pretty/C_1206_3216Metric.kicad_mod": "5bc8c68afdd88552646fa8a522715397e2145af27577d07bf50393ee308207c2",
+    "libraries/master.pretty/C_1210_3225Metric.kicad_mod": "7cf9bedbfc2e28f87b669e54514802ed46c5c3b22633d9b013b19ff5c63b26b5",
+    "libraries/master.pretty/Detector_Wire_Lands.kicad_mod": "9e1942bd9bf833175822b97748b1c639f6fea42425b55a0c459c61e398f725d1",
+    "libraries/master.pretty/DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm.kicad_mod": "d7c5688d135afa24857896405ae3ad3c49e9c91dab6752ca971bcc3528a08e45",
+    "libraries/master.pretty/D_SMA.kicad_mod": "e2d049a54ef961e231eb8e7e769078a3c44feb8475a7bdafba01c6646a5144f3",
+    "libraries/master.pretty/D_SOD-123.kicad_mod": "a7a2c6492a58677da0f95fd3a9865974162fc52aa45173a0125135f7ca496a60",
+    "libraries/master.pretty/Emitter_Wire_Lands.kicad_mod": "715ee909e249db690a1726d4a55b057da39d4c49df2d99ea9dcdb5378f819e35",
+    "libraries/master.pretty/Fuse_1206_3216Metric.kicad_mod": "5de78aaa1acbb50ec18e556c08d4e9301eb5d23987149aced87ccc5bbfc65693",
+    "libraries/master.pretty/HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm.kicad_mod": "5b7d63555ed4f92178e31c9234eaf7a0f9a00c216de98d528d31815e2e91074c",
+    "libraries/master.pretty/Potentiometer_Bourns_3296W_Vertical.kicad_mod": "c9f3cfdbcf4a24af5ebf792bb188c3ecfc9c50444f50677cc4cdbd7a5f1f5a33",
+    "libraries/master.pretty/R_0603_1608Metric.kicad_mod": "15dde88a8cd0d4cb8f443678b8c7aaba3459473e58a0c79d392af54021f78e0d",
+    "libraries/master.pretty/R_0805_2012Metric.kicad_mod": "83da7a8a25143d98c2e5aff4b2ee98d5d7477c413eea6ec36e9a0b5e85b5656b",
+    "libraries/master.pretty/SMDIP-16_W9.53mm.kicad_mod": "e6173deb8f5aed5d5eb6cac49906f889f15e8e06f2c2962166408b3a4477b7d1",
+    "libraries/master.pretty/SMDIP-4_W7.62mm.kicad_mod": "817f6128ac0fab550974a026a0799dd782ac8b573b98ededf7b42e639cd0edf2",
+    "libraries/master.pretty/Socket_FG_2x08_P2.54_H8.5.kicad_mod": "fd7b7bba79e173b04fd34c609dbf32da733f16b02285936f9e37f91976a50df0",
+    "libraries/master.pretty/Socket_Kinghelm_1x08_P2.54_H8.5.kicad_mod": "8503863044bec809c3b627d634889414b7a13278eb696b96feff51a59f5872c7",
+    "libraries/master.pretty/Socket_Kinghelm_1x15_P2.54_H8.5.kicad_mod": "98f2b61efb23c96215baa47ddcc5d42f19a5cccdd9a09379d99428366a8b5452",
+    "libraries/master.pretty/SOIC-8_3.9x4.9mm_P1.27mm.kicad_mod": "0031e401b16b841d2d20331a6175ece1a4f10bb80e356286f3d17b56a445133c",
+    "libraries/master.pretty/SOT-23-5.kicad_mod": "724b6b8f1ab209f195e74df2cf0696b3c9b13df5fe8369c85bc21690ea06872f",
+    "libraries/master.pretty/SOT-23.kicad_mod": "50477a63310cc4d2f8ce5859020ebbde2ea5214fbeff07e5328f474b0e62cb18",
+    "libraries/master.pretty/SOT-353_SC-70-5.kicad_mod": "a05fedb991c367cfc25a92e60c7a5cdef88afc3cb559559a81ecab2df6f25feb",
+    "libraries/master.pretty/TI_DCT0008A_SSOP8.kicad_mod": "3b5ef66a4bba9c5893f4380054e9e34b16f394f57ce59f7326b8e9548c1521cd",
+    "libraries/master.pretty/TO-263-5_TabPin3.kicad_mod": "d3c596a0fbe26578c86232ef5cc1b4a3f851f3171b14df3a656d745b522abc18",
+    "libraries/master.pretty/TSSOP-16_4.4x5mm_P0.65mm.kicad_mod": "7ca2eb97c326e29683a118ae503c9165f51128b23c4cdeb0786b78370a911ff2",
+    "reports/routing/trial01/handoff.json": "57f7e2c4a3baeef6bb24d672aa2fa0723fe2a4b46e87367cc840e84cba3c3270",
+    "reports/routing/trial01/import.json": "ed27ddf1fe8901f1adc600257f7048ea8f1ba3d8f7ded6b823dec36289e62969",
+    "tools/validate_board.py": "6587483c576bbde3174a19362ccac59efda34750ad9ff7ca88488ba9cf0c9286",
+    "tools/protected_kelvin.py": "cf35f42f06cae6c89623e2c00ce51839fef76dcb1fede703828639d3f22276ac",
+    "reports/routing/trial01/import_roundoff_amendment.json": "2f44128cb07fdcee448b7ea4d5366590ad0d092e5c0dec137a8e1e8d8fca4eb1",
+    "tools/import_trial01_roundoff.py": "73e3be437d780fcf74668dcd34d2ee9399dbcb2f68d747b04df7d27ed7b357aa",
+    "single_detector_usb_master/single_detector_usb_master.kicad_pcb": "690d80156d71a897e6ca834e49c7fc9674a03378a2d5fc5f3264eae576b5b15f",
+    "reports/board_validation.json": "0064fd216ccea47bc0ce005298af25c299d27ee59d2f125806a480e92a100c3b",
+    "reports/board_drc.json": "7136ff46c1924dbd7f48b53bd12ef2fe324f22ab7895dbfa7738f9f19f1f5453",
+    "reports/design_manifest.json": "6b26cc6bf3a1e90ad549319bc5f5376eb977d27c40787a715dbb07b0aaae15f1",
+    "research/verified_catalog.json": "1d243c2037ee3020e8094d9a55567da258ab72010247f38d83840b620db69dd0",
+    "exports/assembly_draft/customer_install.csv": "19d949aa40c259fa90551558c139cf0f18d919b672e9baa976ec6f8e7b742e60",
+    "exports/assembly_draft/engineering_bom.csv": "23b3e0897947388108594c79e1b0b06fa20769bd0f6f245e965357579f6680ad",
+    "exports/assembly_draft/jlc_bom_DRAFT.csv": "55719d703b9727a61359120578b56a78f5e4285cd74297b25172c55d976bae92",
+    "exports/assembly_draft/jlc_cpl_DRAFT.csv": "8ea7959998906138f2e8d128ce131b4cdeebec9f9594d7e9c0e9b7340046ccbd",
+    "exports/assembly_draft/native_origins.csv": "a682502db361c63fb2b5fa22c3e1e97a98289b55c5784f3fb391c5f79b52bd68",
+    "reports/assembly_export.json": "79a653e1510fb65bf0737021ad7a7525ad9b7c6b6b0cd7ffe1ad0e38eca01a01",
+    "tools/export_fabrication.py": "4188f902d7de2c1358253df304ed6261beac111a7c13c33f2f57dea9ca690e16",
+    "tools/export_assembly.py": "136a5c480e087f0b62e0770df65b010bdc7ccca3f981c0ae219a26dc7ba3ea07",
+    "exports/fabrication_draft/README.md": "81c5c8c674900151406c52d53fb8dfadbb7d2786fcc8b6403cfcb1f00157c013"
+  },
+  "kicad_version": "10.0.6",
+  "toolchain_sha256": {
+    "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe": "393525236969434e24bc710334efe244fb285ef6596a1aea8e74353ef4db5477",
+    "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe": "79826db0c9261339ffe5d410662c8aad2dd210e4211b83ab2f7622da7b34ebcb"
+  },
+  "native_board": {
+    "copper_layers": 4,
+    "footprints": 206,
+    "tracks_and_vias": 2153,
+    "copper_zones": 10,
+    "unconnected_edges": 0,
+    "unexpected_internal_tracks": [],
+    "unexpected_non_through_vias": [],
+    "aux_origin_native_mm": [
+      12.0,
+      115.0
+    ]
+  },
+  "layers": [
+    "F.Cu",
+    "In1.Cu",
+    "In2.Cu",
+    "B.Cu",
+    "F.Mask",
+    "B.Mask",
+    "F.Silkscreen",
+    "B.Silkscreen",
+    "F.Paste",
+    "B.Paste",
+    "Edge.Cuts"
+  ],
+  "routing_run": "trial01",
+  "protected_kelvin_check": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "gerber_x2_functions": {
+    "Copper,L4,Bot": "gerbers/single_detector_usb_master-B_Cu.gbr",
+    "Soldermask,Bot": "gerbers/single_detector_usb_master-B_Mask.gbr",
+    "Paste,Bot": "gerbers/single_detector_usb_master-B_Paste.gbr",
+    "Legend,Bot": "gerbers/single_detector_usb_master-B_Silkscreen.gbr",
+    "Profile": "gerbers/single_detector_usb_master-Edge_Cuts.gbr",
+    "Copper,L1,Top": "gerbers/single_detector_usb_master-F_Cu.gbr",
+    "Soldermask,Top": "gerbers/single_detector_usb_master-F_Mask.gbr",
+    "Paste,Top": "gerbers/single_detector_usb_master-F_Paste.gbr",
+    "Legend,Top": "gerbers/single_detector_usb_master-F_Silkscreen.gbr",
+    "Copper,L2,Inr": "gerbers/single_detector_usb_master-In1_Cu.gbr",
+    "Copper,L3,Inr": "gerbers/single_detector_usb_master-In2_Cu.gbr"
+  },
+  "coordinate_checks": {
+    "references_checked": 195,
+    "origin_native_mm": [
+      12.0,
+      115.0
+    ],
+    "axes": "positive X right, positive Y up; no mirror",
+    "native_plot_origin_and_CPL_body_centers_agree": true,
+    "vendor_library_rotations_verified": false,
+    "fabrication_plot_coordinates": {
+      "gerber_profile_vertices_checked": 4,
+      "excellon_noncollinear_witnesses_mm": [
+        [
+          4.0,
+          33.4975
+        ],
+        [
+          77.0625,
+          139.1
+        ],
+        [
+          74.08,
+          2.5999999999999943
+        ]
+      ],
+      "native_origin_transform_agrees": true,
+      "limitation": "Coordinate witnesses do not replace a complete CAM geometry/slot review"
+    }
+  },
+  "fresh_drc_counts": {
+    "violations": 0,
+    "unconnected_items": 0,
+    "schematic_parity": 0
+  },
+  "native_drc_ignored_checks": [
+    {
+      "description": "Tuning profile track geometries",
+      "key": "tuning_profile_track_geometries"
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "drc",
+        "--format",
+        "json",
+        "--units",
+        "mm",
+        "--severity-all",
+        "--schematic-parity",
+        "--exit-code-violations",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\evidence\\fresh_native_drc_DRAFT.json",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\snapshot\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb"
+      ],
+      "returncode": 0,
+      "stdout": "Found 0 violations\nFound 0 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/exports/fabrication_draft/.work_DRAFT_k7865vnr/payload/evidence/fresh_native_drc_DRAFT.json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pos",
+        "--format",
+        "csv",
+        "--units",
+        "mm",
+        "--use-drill-file-origin",
+        "--exclude-dnp",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\evidence\\native_positions_plot_origin_DRAFT.csv",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\snapshot\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb"
+      ],
+      "returncode": 0,
+      "stdout": "Wrote position data to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\evidence\\native_positions_plot_origin_DRAFT.csv'.\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "gerbers",
+        "--layers",
+        "F.Cu,In1.Cu,In2.Cu,B.Cu,F.Mask,B.Mask,F.Silkscreen,B.Silkscreen,F.Paste,B.Paste,Edge.Cuts",
+        "--use-drill-file-origin",
+        "--precision",
+        "6",
+        "--no-protel-ext",
+        "--subtract-soldermask",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\snapshot\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb"
+      ],
+      "returncode": 0,
+      "stdout": "Plotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-F_Cu.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-In1_Cu.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-In2_Cu.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-B_Cu.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-F_Paste.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-B_Paste.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-F_Silkscreen.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-B_Silkscreen.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-F_Mask.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-B_Mask.gbr'.\nPlotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\gerbers\\single_detector_usb_master-Edge_Cuts.gbr'.\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "drill",
+        "--format",
+        "excellon",
+        "--drill-origin",
+        "plot",
+        "--excellon-units",
+        "mm",
+        "--excellon-zeros-format",
+        "decimal",
+        "--excellon-oval-format",
+        "route",
+        "--excellon-separate-th",
+        "--generate-map",
+        "--map-format",
+        "pdf",
+        "--generate-report",
+        "--report-path",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\evidence\\native_drill_report_DRAFT.txt",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\drill",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\snapshot\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb"
+      ],
+      "returncode": 0,
+      "stdout": "Created file 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\drill\\single_detector_usb_master-PTH.drl'\nCreated file 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\drill\\single_detector_usb_master-NPTH.drl'\nCreated file 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\drill\\single_detector_usb_master-PTH-drl_map.pdf'.\nCreated file 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\.work_DRAFT_k7865vnr\\payload\\drill\\single_detector_usb_master-NPTH-drl_map.pdf'.\nDone.\n",
+      "stderr": ""
+    }
+  ],
+  "assembly_sourcing_unresolved": [
+    {
+      "reference": "D12",
+      "mpn": "BZT52C6V8GW",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "R39",
+      "mpn": "RN73C1J698RBTDF",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "R100",
+      "mpn": "RC0805FR-07210RL",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "R101",
+      "mpn": "RC0805FR-077R5L",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "U12",
+      "mpn": "TPS3840PL42DBVR",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "U13",
+      "mpn": "TPS3840PL30DBVR",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "U30",
+      "mpn": "ADG4613BRUZ",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "U31",
+      "mpn": "ADG4613BRUZ",
+      "missing": [
+        "catalog identity"
+      ]
+    },
+    {
+      "reference": "U32",
+      "mpn": "ADG4613BRUZ",
+      "missing": [
+        "catalog identity"
+      ]
+    }
+  ],
+  "fabricator_stackup_verified": false,
+  "production_release": false,
+  "output_sha256": {
+    "drill/single_detector_usb_master-NPTH-drl_map.pdf": "75a0f8b169fe4b01d7de99125a515c70a11621f1af914081d1858b16061070cd",
+    "drill/single_detector_usb_master-NPTH.drl": "00fe81ff05f074c87afcd14468a3b90e46cf39a90e6fd4827e41b3d7d76579af",
+    "drill/single_detector_usb_master-PTH-drl_map.pdf": "5ce633a9393e8bfca5f4a0695b55743c61cd893b2d803dadd570cb6a14f29a64",
+    "drill/single_detector_usb_master-PTH.drl": "841ac0128892468247b31f65cb8be57a2cbdb53de0a534cc402c10223903b193",
+    "evidence/assembly_export.json": "79a653e1510fb65bf0737021ad7a7525ad9b7c6b6b0cd7ffe1ad0e38eca01a01",
+    "evidence/board_drc.json": "7136ff46c1924dbd7f48b53bd12ef2fe324f22ab7895dbfa7738f9f19f1f5453",
+    "evidence/board_validation.json": "0064fd216ccea47bc0ce005298af25c299d27ee59d2f125806a480e92a100c3b",
+    "evidence/coordinate_consistency_DRAFT.json": "ce937fb98667a9665661094b75e3fa2bc66e60a6cdbacfe7d1575c5ba7177dde",
+    "evidence/fresh_native_drc_DRAFT.json": "cf6a9aeef92813102d23e767696ee05ee292cfe2246a5f440978622839f9de1d",
+    "evidence/native_drill_report_DRAFT.txt": "0c3439c78458dff1a2023f217d021a2fd528b50b846e5405b121bc901659ef4f",
+    "evidence/native_positions_plot_origin_DRAFT.csv": "0198efcc2ced7c5f36e29ea2b87670c9f675f7611195eff0030547cd050bc26a",
+    "evidence/protected_kelvin_DRAFT.json": "7a08e924a08b65dbfa6a8a87297f9843c7248805fac686860acb583e2c3bb49d",
+    "evidence/routing_handoff.json": "57f7e2c4a3baeef6bb24d672aa2fa0723fe2a4b46e87367cc840e84cba3c3270",
+    "evidence/routing_import.json": "ed27ddf1fe8901f1adc600257f7048ea8f1ba3d8f7ded6b823dec36289e62969",
+    "gerbers/single_detector_usb_master-B_Cu.gbr": "4140d9655b2faa7134387279acb1631968158dcd33a2d08ef1ef0afb2cb9c8db",
+    "gerbers/single_detector_usb_master-B_Mask.gbr": "83b0dbd182b42c65e4ec2908b71f66146658c1c899c728125270e5e9b0e3813b",
+    "gerbers/single_detector_usb_master-B_Paste.gbr": "937e52cd9791b156961e9e8d19768ee0b051e28be9609d6a890e6ff8a4ed9b0c",
+    "gerbers/single_detector_usb_master-B_Silkscreen.gbr": "42197b9356c1cd5bbc57b56a47193075aacecb82a78bf7ed19464b7f2da0b7a1",
+    "gerbers/single_detector_usb_master-Edge_Cuts.gbr": "c754a4f3bf30c864789c8b11e24a0eb2b992772cda613812b6eaa9b7720d19d2",
+    "gerbers/single_detector_usb_master-F_Cu.gbr": "4279d63299ef71a2184604c2ec682a5fd732fda20adf372a86dce49b608888bd",
+    "gerbers/single_detector_usb_master-F_Mask.gbr": "56aa7033b0a61546510fe65273b3611bfa7bf10bbc9809bcdc9861d4bebd92ae",
+    "gerbers/single_detector_usb_master-F_Paste.gbr": "de32f93865a73821c745207ee78a1d3c49cb0b376d1ececf35dace47b6afc54e",
+    "gerbers/single_detector_usb_master-F_Silkscreen.gbr": "163049414a20a3f7da89502076704823cc4e9da085ff85a8a3f4ec4ab86951db",
+    "gerbers/single_detector_usb_master-In1_Cu.gbr": "90b2857ad958b0f42cb435097a5a03dcbf93f318d74cea5b0627790da5481f43",
+    "gerbers/single_detector_usb_master-In2_Cu.gbr": "5ad5dcbda08ab8eedbe7653615572b45214e89aa799b4d5baf27526eef6d3bed",
+    "gerbers/single_detector_usb_master-job.gbrjob": "7d06b45d216789b6b627d3ed19866c33e68ae8666eb3af5d9543883bf6b89c6f",
+    "README_DRAFT.md": "d178caf8b70bb314b97861d06ab2b7f97053c6719afbb03331ed0d013b2ccdee"
+  }
+}

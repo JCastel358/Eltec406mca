@@ -1,0 +1,606 @@
+[
+  {
+    "ref": "U100",
+    "symbol": "EM_LT1963A_Q",
+    "value": "LT1963AEQ#PBF",
+    "nets": {
+      "1": "EM_BAT_SW",
+      "2": "EM_BAT_SW",
+      "3": "EM_GND",
+      "4": "EM_REG",
+      "5": "EM_ADJ"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      101.6,
+      81.28
+    ],
+    "footprint": "Eltec_Master:TO-263-5_TabPin3",
+    "pcb": null,
+    "mpn": "LT1963AEQ#PBF",
+    "manufacturer": "Analog Devices",
+    "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/lt1963a.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "1.5A adjustable LDO. Thermal design and bench qualification limit actual aggregate output. Pin3/tab needs isolated EM_GND copper.",
+    "uuid": "615a153c-d2a8-51ec-81c2-c309d53abde9",
+    "lcsc": "C20415348",
+    "assembly_note": "Exact LCSC match identified; live JLCPCBA stock/sourcing must be checked.",
+    "source_footprint": "Package_TO_SOT_SMD:TO-263-5_TabPin3"
+  },
+  {
+    "ref": "R100",
+    "symbol": "EM_R",
+    "value": "210R 1% 0.125W",
+    "nets": {
+      "1": "EM_ADJ",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      101.6,
+      167.64
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07210RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07210RL",
+    "populated": true,
+    "physical": true,
+    "description": "ADJ-to-ground resistor; ensures >5.5mA divider load even with all emitters off.",
+    "uuid": "9fcd2fd7-0ae6-5a7e-b2af-76075aaadaad",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R101",
+    "symbol": "EM_R",
+    "value": "7R5 1% 0.125W",
+    "nets": {
+      "1": "EM_TRIM_TOP",
+      "2": "EM_ADJ"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      243.84,
+      124.46
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-077R5L",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-077R5L",
+    "populated": true,
+    "physical": true,
+    "description": "Fixed minimum setting resistor; not an independent output overvoltage clamp.",
+    "uuid": "1930bcd5-159a-5419-ae63-1711ff84cceb",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "RV100",
+    "symbol": "EM_3296W",
+    "value": "1k 25-turn 0.5W",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EM_REG",
+      "3": "EM_TRIM_TOP"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      243.84,
+      81.28
+    ],
+    "footprint": "Eltec_Master:Potentiometer_Bourns_3296W_Vertical",
+    "pcb": null,
+    "mpn": "3296W-1-102LF",
+    "manufacturer": "Bourns",
+    "datasheet": "https://www.bourns.com/docs/product-datasheets/3296.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Populated trimmer. Pins1+2 strapped: open wiper retains full track resistance. CW adjustment decreases output. Set with meter before connecting emitters.",
+    "uuid": "f7b1bfdc-5656-567c-b324-ddb51312b6a3",
+    "lcsc": "C57089",
+    "source_footprint": "Potentiometer_THT:Potentiometer_Bourns_3296W_Vertical"
+  },
+  {
+    "ref": "C100",
+    "symbol": "EM_C_Polarized",
+    "value": "22uF 25V 10% TPS",
+    "nets": {
+      "1": "EM_BAT_SW",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      60.96,
+      124.46
+    ],
+    "footprint": "Eltec_Master:CP_EIA-7343-31_Kemet-D",
+    "pcb": null,
+    "mpn": "TPSD226K025R0200",
+    "manufacturer": "Kyocera AVX",
+    "datasheet": "https://datasheets.kyocera-avx.com/TPS.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "CaseD7343-31,22uF\u00b110%,25V,200m\u03a9 maximum ESR at100kHz. Pin1 is positive. Place close to LDO.",
+    "uuid": "051ef4b8-3cb1-5bbf-af7e-721989d3c284",
+    "lcsc": "C284839",
+    "assembly_note": "JLCPCBA Extended/SMT match exists, but live stock and Kyocera AVX manufacturer identity need confirmation (JLC page displays manufacturer --).",
+    "source_footprint": "Capacitor_Tantalum_SMD:CP_EIA-7343-31_Kemet-D"
+  },
+  {
+    "ref": "C102",
+    "symbol": "EM_C_Polarized",
+    "value": "22uF 25V 10% TPS",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      330.2,
+      81.28
+    ],
+    "footprint": "Eltec_Master:CP_EIA-7343-31_Kemet-D",
+    "pcb": null,
+    "mpn": "TPSD226K025R0200",
+    "manufacturer": "Kyocera AVX",
+    "datasheet": "https://datasheets.kyocera-avx.com/TPS.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "CaseD7343-31,22uF\u00b110%,25V,200m\u03a9 maximum ESR at100kHz. Pin1 is positive. Place close to LDO.",
+    "uuid": "702f7edc-967d-5caf-8040-b900045a391c",
+    "lcsc": "C284839",
+    "assembly_note": "JLCPCBA Extended/SMT match exists, but live stock and Kyocera AVX manufacturer identity need confirmation (JLC page displays manufacturer --).",
+    "source_footprint": "Capacitor_Tantalum_SMD:CP_EIA-7343-31_Kemet-D"
+  },
+  {
+    "ref": "C101",
+    "symbol": "EM_C",
+    "value": "100nF 50V X7R 10%",
+    "nets": {
+      "1": "EM_BAT_SW",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      60.96,
+      162.56
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local high-frequency bypass; no separate ADJ capacitor needed.",
+    "uuid": "ad444987-621c-5ae3-87a3-093a674eb3a4",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C103",
+    "symbol": "EM_C",
+    "value": "100nF 50V X7R 10%",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      330.2,
+      124.46
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local high-frequency bypass; no separate ADJ capacitor needed.",
+    "uuid": "42bac0ce-79ca-5046-b1e3-60ebe1ab7d31",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "U101",
+    "symbol": "EM_LTV847S",
+    "value": "LTV-847S",
+    "nets": {
+      "1": "EM_LED1_A",
+      "2": "EM_LED_RETURN",
+      "3": "EM_LED2_A",
+      "4": "EM_LED_RETURN",
+      "5": "EM_LED3_A",
+      "6": "EM_LED_RETURN",
+      "16": "EM_BAT_SW",
+      "15": "EM_GATE1_DRIVE",
+      "14": "EM_BAT_SW",
+      "13": "EM_GATE2_DRIVE",
+      "12": "EM_BAT_SW",
+      "11": "EM_GATE3_DRIVE"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      187.96,
+      71.12
+    ],
+    "footprint": "Eltec_Master:SMDIP-16_W9.53mm",
+    "pcb": null,
+    "mpn": "LTV-847S",
+    "manufacturer": "Lite-On",
+    "datasheet": "https://optoelectronics.liteon.com/upload/download/DS-70-96-0016/LTV-8X7%20series%20%20Rev.S.PDF",
+    "populated": true,
+    "physical": true,
+    "description": "Three channels used, fourth all NC. Cathodes return through the MASTER_PERMIT sink owned by power stage. Collectors use switched battery rail rather than low adjustable heater rail. No ground tie across optocoupler.",
+    "uuid": "9c67db68-f981-54d4-9df5-3439cece0969",
+    "lcsc": "C114599",
+    "source_footprint": "Package_DIP:SMDIP-16_W9.53mm"
+  },
+  {
+    "ref": "R110",
+    "symbol": "EM_R",
+    "value": "240R 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT1",
+      "2": "EM_LED1_A"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      129.54
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07240RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL",
+    "populated": true,
+    "physical": true,
+    "description": "Opto LED current ~8.75mA at3.3V/1.2V; >5mA with2.64V VOH and1.4V VF.",
+    "uuid": "c1e46fad-315b-5eb8-9e2d-e33343ae0071",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R111",
+    "symbol": "EM_R",
+    "value": "100k 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT1",
+      "2": "GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      147.32
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL",
+    "populated": true,
+    "physical": true,
+    "description": "Input pull-down keeps emitter command low while ESP32 pin is high impedance.",
+    "uuid": "57e8fe4c-d91a-5a22-afb6-c021755564c0",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R112",
+    "symbol": "EM_R",
+    "value": "100R 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE1_DRIVE",
+      "2": "EM_GATE1"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      129.54
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL",
+    "populated": true,
+    "physical": true,
+    "description": "Series gate resistor; place beside MOSFET gate.",
+    "uuid": "f7ba8c94-ab4c-544f-a40e-cc0e462600ac",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R113",
+    "symbol": "EM_R",
+    "value": "10k 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE1",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      147.32
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+    "populated": true,
+    "physical": true,
+    "description": "Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.",
+    "uuid": "deb605c4-eb40-59c8-a1bf-879117a0949d",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "Q101",
+    "symbol": "EM_AO3400A",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_GATE1",
+      "2": "EM_GND",
+      "3": "EMIT1_LOW"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      320.04,
+      129.54
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/res/data_sheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter1 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.",
+    "uuid": "3e2cc7ee-d26f-58b8-b9b2-c1b60edd0ab2",
+    "lcsc": "C20917",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R115",
+    "symbol": "EM_R",
+    "value": "240R 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT2",
+      "2": "EM_LED2_A"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      172.72
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07240RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL",
+    "populated": true,
+    "physical": true,
+    "description": "Opto LED current ~8.75mA at3.3V/1.2V; >5mA with2.64V VOH and1.4V VF.",
+    "uuid": "87ea5be0-2bed-5232-9a26-294b0d0ff5de",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R116",
+    "symbol": "EM_R",
+    "value": "100k 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT2",
+      "2": "GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      190.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL",
+    "populated": true,
+    "physical": true,
+    "description": "Input pull-down keeps emitter command low while ESP32 pin is high impedance.",
+    "uuid": "d9b5a0ac-af7e-5208-8034-8af9dc8a3af8",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R117",
+    "symbol": "EM_R",
+    "value": "100R 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE2_DRIVE",
+      "2": "EM_GATE2"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      172.72
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL",
+    "populated": true,
+    "physical": true,
+    "description": "Series gate resistor; place beside MOSFET gate.",
+    "uuid": "7401e39a-f0d7-50c6-af32-f1cbb5f3e0b3",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R118",
+    "symbol": "EM_R",
+    "value": "10k 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE2",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      190.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+    "populated": true,
+    "physical": true,
+    "description": "Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.",
+    "uuid": "44a2fc4a-7c9a-5630-aec5-ff786f86b292",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "Q102",
+    "symbol": "EM_AO3400A",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_GATE2",
+      "2": "EM_GND",
+      "3": "EMIT2_LOW"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      320.04,
+      172.72
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/res/data_sheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter2 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.",
+    "uuid": "cf787bbc-dca2-50e6-b8f7-2f51f742c47e",
+    "lcsc": "C20917",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R120",
+    "symbol": "EM_R",
+    "value": "240R 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT3",
+      "2": "EM_LED3_A"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07240RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL",
+    "populated": true,
+    "physical": true,
+    "description": "Opto LED current ~8.75mA at3.3V/1.2V; >5mA with2.64V VOH and1.4V VF.",
+    "uuid": "b65a6614-61e4-5d96-8339-992c394b5452",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R121",
+    "symbol": "EM_R",
+    "value": "100k 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT3",
+      "2": "GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      233.68
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL",
+    "populated": true,
+    "physical": true,
+    "description": "Input pull-down keeps emitter command low while ESP32 pin is high impedance.",
+    "uuid": "f272134d-7a13-5744-92ac-67b15f474f4b",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R122",
+    "symbol": "EM_R",
+    "value": "100R 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE3_DRIVE",
+      "2": "EM_GATE3"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL",
+    "populated": true,
+    "physical": true,
+    "description": "Series gate resistor; place beside MOSFET gate.",
+    "uuid": "037a7ee5-1c20-53b7-94d2-4cf7f794abfd",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R123",
+    "symbol": "EM_R",
+    "value": "10k 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE3",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      233.68
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+    "populated": true,
+    "physical": true,
+    "description": "Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.",
+    "uuid": "f94b9e74-d8f5-57a4-8d25-af4294cd4027",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "Q103",
+    "symbol": "EM_AO3400A",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_GATE3",
+      "2": "EM_GND",
+      "3": "EMIT3_LOW"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      320.04,
+      215.9
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/res/data_sheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter3 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.",
+    "uuid": "32a9a687-4237-5048-bc54-df43680d1c8e",
+    "lcsc": "C20917",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  }
+]

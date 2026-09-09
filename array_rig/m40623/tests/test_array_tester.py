@@ -311,7 +311,7 @@ class ControllerFlowTests(unittest.TestCase, HomeGuardMixin):
         if outcome["png"] is not None:
             self.assertTrue(Path(outcome["png"]).is_file())
         events = [e.event for e in tray_history.read_tray_events(controller.attempts_path)]
-        self.assertEqual(events, ["locked", "capture_started", "stabilisation_shortened", "judged", "saved"])
+        self.assertEqual(events, ["locked", "capture_started", "stabilisation_shortened", "noise_settled", "judged", "saved"])
         self.assertIs(controller.phase, app.Phase.SAVED)
         with self.assertRaises(RuntimeError):
             controller.save_tray()
@@ -446,7 +446,7 @@ class ControllerFlowTests(unittest.TestCase, HomeGuardMixin):
         plan = app.CapturePlan()
         self.assertEqual(plan.config, daq.AdcConfig(range_code=2, oversample=3))
         self.assertEqual(plan.capture_seconds, 60.0)
-        self.assertEqual(plan.stabilisation_s, 300.0)
+        self.assertEqual(plan.stabilisation_s, 0.0)
         self.assertEqual(plan.edge_context_samples, 310)
         self.assertEqual(app.STREAM_BUFFER_BYTES % 512, 0)
         self.assertEqual(app.STREAM_BUFFER_BYTES % plan.config.scan_bytes, 0)

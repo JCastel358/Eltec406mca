@@ -1,0 +1,374 @@
+{
+  "status": "REVIEWED_POWER_GEOMETRY_AND_CONNECTIVITY_PASS",
+  "created_utc": "2026-09-09T15:44:55.815238+00:00",
+  "source_board_sha256": "2ab4937f2ec558227736722549489c8d60b382db2a86436887f104acd336f4e2",
+  "tool_sha256": "e0a64a1908af03f3985dcf3e283cc380751cfadcbb481a5414c0ec248d7af5ac",
+  "read_only": true,
+  "reviewed_power_bypass_items": [
+    {
+      "uuid": "03426d79-7e11-51cc-9ef7-2c4d7e4dff73",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e",
+      "exact_geometry_preserved": true,
+      "net": "EM_MASTER_GATE"
+    },
+    {
+      "uuid": "3f0ae44b-40d8-5a51-8338-863e88055942",
+      "exact_geometry_preserved": true,
+      "net": "GND"
+    },
+    {
+      "uuid": "403a6719-1c77-57ee-be22-3086192ea737",
+      "exact_geometry_preserved": true,
+      "net": "GND"
+    },
+    {
+      "uuid": "41c3a708-d17c-510e-b603-885a18919a03",
+      "exact_geometry_preserved": true,
+      "net": "GND"
+    },
+    {
+      "uuid": "577edaa8-d647-53e2-a919-009a1e56492d",
+      "exact_geometry_preserved": true,
+      "net": "GND"
+    },
+    {
+      "uuid": "63fe2ada-45f8-5014-b524-9f9f7eadc8b8",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c",
+      "exact_geometry_preserved": true,
+      "net": "EM_MASTER_GATE"
+    },
+    {
+      "uuid": "6973078a-2464-5f16-8043-90dabecf2a72",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "6c94babd-6a85-5087-9c32-9f6cf7c21da6",
+      "exact_geometry_preserved": true,
+      "net": "GND"
+    },
+    {
+      "uuid": "75e61fa8-d666-5e16-ab51-12eaddc773ba",
+      "exact_geometry_preserved": true,
+      "net": "GND"
+    },
+    {
+      "uuid": "7da6a44b-342a-54ad-a7ac-dd0c99c9c758",
+      "exact_geometry_preserved": true,
+      "net": "EM_MASTER_GATE"
+    },
+    {
+      "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "b4d66fe6-1825-5206-a584-46c7bf34277d",
+      "exact_geometry_preserved": true,
+      "net": "EM_MASTER_GATE"
+    },
+    {
+      "uuid": "c174a051-c175-57d9-8282-98bf04cc3270",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "c5abed10-1991-5c06-a54e-0ff89c833d53",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "d2623ead-09bc-5074-9526-01112d87b2d9",
+      "exact_geometry_preserved": true,
+      "net": "ADC_5V_HELD"
+    },
+    {
+      "uuid": "e1ec4c2e-9e50-583d-8447-7851ee633601",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    },
+    {
+      "uuid": "e9b80a44-0f78-5569-a5b6-94d7b0581461",
+      "exact_geometry_preserved": true,
+      "net": "EM_MASTER_GATE"
+    },
+    {
+      "uuid": "fa83a4b8-7587-5bb7-8954-214c471ecce2",
+      "exact_geometry_preserved": true,
+      "net": "EM_BAT_FUSED"
+    }
+  ],
+  "local_ground_stitches": [
+    {
+      "reference": "U16.3",
+      "net": "EM_GND",
+      "via_mm": [
+        82.81,
+        7.77
+      ],
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "U10.15_top",
+      "net": "GND",
+      "via_mm": [
+        34.0,
+        -9.45
+      ],
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "U10.15_bottom",
+      "net": "GND",
+      "via_mm": [
+        34.0,
+        -4.55
+      ],
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C11.2",
+      "net": "GND",
+      "via_mm": [
+        38.5,
+        -11.675
+      ],
+      "stub_width_mm": 0.6,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C15.2",
+      "net": "GND",
+      "via_mm": [
+        34.0,
+        2.325
+      ],
+      "stub_width_mm": 0.3,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C37.2",
+      "net": "GND",
+      "via_mm": [
+        37.3,
+        2.325
+      ],
+      "stub_width_mm": 0.3,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C38.2",
+      "net": "GND",
+      "via_mm": [
+        40.6,
+        2.325
+      ],
+      "stub_width_mm": 0.3,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "R121.2",
+      "net": "GND",
+      "via_mm": [
+        41.35,
+        103.0875
+      ],
+      "stub_width_mm": 0.3,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C101.2",
+      "net": "EM_GND",
+      "via_mm": [
+        81.5,
+        33.85
+      ],
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "R29.2",
+      "net": "EM_GND",
+      "via_mm": [
+        83.825,
+        -25.2
+      ],
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C100.2",
+      "net": "EM_GND",
+      "via_mm": [
+        90.07,
+        35.5
+      ],
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    }
+  ],
+  "ground_pin_bridges": [
+    "U10.10_to_EP15",
+    "U10.11_to_EP15"
+  ],
+  "additional_bypass_stitches": [
+    {
+      "reference": "C13.2",
+      "via_mm": [
+        38.775,
+        -13.5
+      ],
+      "stub_length_mm": 1.2,
+      "stub_width_mm": 0.6,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C39.2",
+      "via_mm": [
+        43.775,
+        -9.0
+      ],
+      "stub_length_mm": 1.2,
+      "stub_width_mm": 0.6,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C36.2",
+      "via_mm": [
+        29.5,
+        -10.675
+      ],
+      "stub_length_mm": 1.2,
+      "stub_width_mm": 0.6,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    }
+  ],
+  "final_C12_C16_stitches": [
+    {
+      "reference": "C12",
+      "present": true,
+      "via_mm": [
+        26.475,
+        -20.05
+      ],
+      "stub_length_mm": 1.9499999999999993,
+      "stub_width_mm": 1.0,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    },
+    {
+      "reference": "C16",
+      "present": true,
+      "via_mm": [
+        64.5,
+        38.5
+      ],
+      "stub_length_mm": 1.2351619327035634,
+      "stub_width_mm": 0.3,
+      "both_inner_plane_contacts": {
+        "In1.Cu": true,
+        "In2.Cu": true
+      }
+    }
+  ],
+  "kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "unconnected": 0,
+  "outer_routing": {
+    "track_segments_by_layer": {
+      "F.Cu": 1416,
+      "In1.Cu": 0,
+      "In2.Cu": 0,
+      "B.Cu": 525
+    },
+    "through_vias": 219
+  },
+  "all_copper_zones_filled": true,
+  "detector_emitter_filled_ground_domains_separate": true,
+  "source_records": {
+    "power_combination_sha256": "66c0e4ba274c8dd02e7fea06287ed8e3bc51e1a6b974e842502b18797974c0f0",
+    "routed_plane_plan_sha256": "9231daf17a63b8b3a8ff663eeedd3af3c5a586e605278a3717734f5b52e16595",
+    "final_ground_integration_sha256": "dbd6613a724ac67dbab0100169a5faa71d25741867074b996da1b850e5e478b8",
+    "native_drc_sha256": "9a76b7bec56f80af5501e82e98564207123953db4667f604fdebd52140167039"
+  },
+  "native_final_integration_drc": {
+    "violations": 0,
+    "unconnected": 0,
+    "schematic_parity_issues": 0
+  },
+  "concrete_copper_defects_found": [],
+  "remaining_layout_actions": [],
+  "bench_qualification_still_required": [
+    "Actual module AVDD operating range and overshoot with instrument uncertainty; static upper corner headroom is about 4.64 mV.",
+    "USB loss, battery removal/depletion and power restoration: measure actual AVDD/AIN discharge and isolation timing; module internal L1/DCR/capacitance remain acceptance inputs.",
+    "Reservoir effective capacitance/ESR and complete held-rail transient step/load bounds on the assembled board.",
+    "LDO startup/inrush, repeated cycling and thermal performance with actual battery range, lead impedance and load.",
+    "Measurement noise, offset/repeatability and sensor/emitter operation using the actual modules; DRC does not validate analog performance."
+  ],
+  "qualification_scope": "Native copper/layout review, not production approval or bench validation."
+}

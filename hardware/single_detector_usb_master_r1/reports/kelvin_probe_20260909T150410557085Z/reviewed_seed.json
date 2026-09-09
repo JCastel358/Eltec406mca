@@ -1,0 +1,39 @@
+{
+  "profile": "LT3041_U10_12_TO_C11_1_V1",
+  "source_board_sha256": "e6961eff764b14fa3f4c7e4b72d7d752b3ee1ae0c88822cd2b5f75ad25379349",
+  "track": {
+    "uuid": "ffc958d5-c549-5896-919b-22798dcd44d4",
+    "start_nm": [
+      35450000,
+      -7500000
+    ],
+    "end_nm": [
+      38500000,
+      -7525000
+    ],
+    "width_nm": 200000,
+    "layer": "F.Cu",
+    "net": "ADC_5V_HELD",
+    "locked": true
+  },
+  "protected_rectangle_nm": [
+    35000000,
+    -7725000,
+    37400000,
+    -7275000
+  ],
+  "start_pad_bbox_nm": [
+    35100000,
+    -7625000,
+    35800000,
+    -7375000
+  ],
+  "destination_pad_bbox_nm": [
+    37150000,
+    -8100000,
+    39850000,
+    -6950000
+  ],
+  "join_policy": "Only inside C11.1 beyond protected rectangle; no intermediate junction or U10.12 branch",
+  "copper_zone_policy": "Recheck after plane work; no F.Cu copper zone may overlap protected rectangle"
+}

@@ -1,0 +1,1097 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>C:\Users\JoseCastelblanco\Documents\Eltec_TestRig\tmp\emitter_stage_check\project\single_detector_usb_master.kicad_sch</source>
+    <date>2026-09-09T09:29:37</date>
+    <tool>Eeschema 10.0.6</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>Single detector rig - USB master power</title>
+        <company/>
+        <rev>R1-DRAFT</rev>
+        <date>2026-09-09</date>
+        <source>single_detector_usb_master.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+    <sheet number="2" name="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/">
+      <title_block>
+        <title>Isolated adjustable emitter supply</title>
+        <company>Eltec Instruments</company>
+        <rev>R1-DRAFT</rev>
+        <date>2026-09-09</date>
+        <source>emitter_regulator.kicad_sch</source>
+        <comment number="1" value="ENGINEERING WORK IN PROGRESS - NOT FOR FABRICATION"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+    <sheet number="3" name="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/">
+      <title_block>
+        <title>Three optically isolated emitter PWM channels</title>
+        <company>Eltec Instruments</company>
+        <rev>R1-DRAFT</rev>
+        <date>2026-09-09</date>
+        <source>emitter_pwm.kicad_sch</source>
+        <comment number="1" value="ENGINEERING WORK IN PROGRESS - NOT FOR FABRICATION"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="C100">
+      <value>22uF 25V 10% TPS</value>
+      <footprint>Eltec_Master:CP_EIA-7343-31_Kemet-D</footprint>
+      <datasheet>https://datasheets.kyocera-avx.com/TPS.pdf</datasheet>
+      <description>CaseD7343-31,22uF±10%,25V,200mΩ maximum ESR at100kHz. Pin1 is positive. Place close to LDO.</description>
+      <fields>
+        <field name="MPN">TPSD226K025R0200</field>
+        <field name="LCSC">C284839</field>
+        <field name="Manufacturer">Kyocera AVX</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:CP_EIA-7343-31_Kemet-D</field>
+        <field name="Datasheet">https://datasheets.kyocera-avx.com/TPS.pdf</field>
+        <field name="Description">CaseD7343-31,22uF±10%,25V,200mΩ maximum ESR at100kHz. Pin1 is positive. Place close to LDO.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_C_Polarized" description=""/>
+      <property name="MPN" value="TPSD226K025R0200"/>
+      <property name="LCSC" value="C284839"/>
+      <property name="Manufacturer" value="Kyocera AVX"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>051ef4b8-3cb1-5bbf-af7e-721989d3c284</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C101">
+      <value>100nF 50V X7R 10%</value>
+      <footprint>Eltec_Master:C_0805_2012Metric</footprint>
+      <datasheet>https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do</datasheet>
+      <description>Local high-frequency bypass; no separate ADJ capacitor needed.</description>
+      <fields>
+        <field name="MPN">CL21B104KBCNNNC</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Samsung Electro-Mechanics</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:C_0805_2012Metric</field>
+        <field name="Datasheet">https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do</field>
+        <field name="Description">Local high-frequency bypass; no separate ADJ capacitor needed.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_C" description=""/>
+      <property name="MPN" value="CL21B104KBCNNNC"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Samsung Electro-Mechanics"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>ad444987-621c-5ae3-87a3-093a674eb3a4</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C102">
+      <value>22uF 25V 10% TPS</value>
+      <footprint>Eltec_Master:CP_EIA-7343-31_Kemet-D</footprint>
+      <datasheet>https://datasheets.kyocera-avx.com/TPS.pdf</datasheet>
+      <description>CaseD7343-31,22uF±10%,25V,200mΩ maximum ESR at100kHz. Pin1 is positive. Place close to LDO.</description>
+      <fields>
+        <field name="MPN">TPSD226K025R0200</field>
+        <field name="LCSC">C284839</field>
+        <field name="Manufacturer">Kyocera AVX</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:CP_EIA-7343-31_Kemet-D</field>
+        <field name="Datasheet">https://datasheets.kyocera-avx.com/TPS.pdf</field>
+        <field name="Description">CaseD7343-31,22uF±10%,25V,200mΩ maximum ESR at100kHz. Pin1 is positive. Place close to LDO.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_C_Polarized" description=""/>
+      <property name="MPN" value="TPSD226K025R0200"/>
+      <property name="LCSC" value="C284839"/>
+      <property name="Manufacturer" value="Kyocera AVX"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>702f7edc-967d-5caf-8040-b900045a391c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C103">
+      <value>100nF 50V X7R 10%</value>
+      <footprint>Eltec_Master:C_0805_2012Metric</footprint>
+      <datasheet>https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do</datasheet>
+      <description>Local high-frequency bypass; no separate ADJ capacitor needed.</description>
+      <fields>
+        <field name="MPN">CL21B104KBCNNNC</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Samsung Electro-Mechanics</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:C_0805_2012Metric</field>
+        <field name="Datasheet">https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do</field>
+        <field name="Description">Local high-frequency bypass; no separate ADJ capacitor needed.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_C" description=""/>
+      <property name="MPN" value="CL21B104KBCNNNC"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Samsung Electro-Mechanics"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>42bac0ce-79ca-5046-b1e3-60ebe1ab7d31</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R100">
+      <value>210R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07210RL</datasheet>
+      <description>ADJ-to-ground resistor; ensures &gt;5.5mA divider load even with all emitters off.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07210RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07210RL</field>
+        <field name="Description">ADJ-to-ground resistor; ensures &gt;5.5mA divider load even with all emitters off.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07210RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>9fcd2fd7-0ae6-5a7e-b2af-76075aaadaad</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R101">
+      <value>7R5 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-077R5L</datasheet>
+      <description>Fixed minimum setting resistor; not an independent output overvoltage clamp.</description>
+      <fields>
+        <field name="MPN">RC0805FR-077R5L</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-077R5L</field>
+        <field name="Description">Fixed minimum setting resistor; not an independent output overvoltage clamp.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-077R5L"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>1930bcd5-159a-5419-ae63-1711ff84cceb</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="RV100">
+      <value>1k 25-turn 0.5W</value>
+      <footprint>Eltec_Master:Potentiometer_Bourns_3296W_Vertical</footprint>
+      <datasheet>https://www.bourns.com/docs/product-datasheets/3296.pdf</datasheet>
+      <description>Populated trimmer. Pins1+2 strapped: open wiper retains full track resistance. CW adjustment decreases output. Set with meter before connecting emitters.</description>
+      <fields>
+        <field name="MPN">3296W-1-102LF</field>
+        <field name="LCSC">C57089</field>
+        <field name="Manufacturer">Bourns</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:Potentiometer_Bourns_3296W_Vertical</field>
+        <field name="Datasheet">https://www.bourns.com/docs/product-datasheets/3296.pdf</field>
+        <field name="Description">Populated trimmer. Pins1+2 strapped: open wiper retains full track resistance. CW adjustment decreases output. Set with meter before connecting emitters.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_3296W" description="Bourns3296W: terminal2 is wiper;1+2 strapped"/>
+      <property name="MPN" value="3296W-1-102LF"/>
+      <property name="LCSC" value="C57089"/>
+      <property name="Manufacturer" value="Bourns"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>f7b1bfdc-5656-567c-b324-ddb51312b6a3</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U100">
+      <value>LT1963AEQ#PBF</value>
+      <footprint>Eltec_Master:TO-263-5_TabPin3</footprint>
+      <datasheet>https://www.analog.com/media/en/technical-documentation/data-sheets/lt1963a.pdf</datasheet>
+      <description>1.5A adjustable LDO. Thermal design and bench qualification limit actual aggregate output. Pin3/tab needs isolated EM_GND copper.</description>
+      <fields>
+        <field name="MPN">LT1963AEQ#PBF</field>
+        <field name="LCSC">C20415348</field>
+        <field name="Manufacturer">Analog Devices</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:TO-263-5_TabPin3</field>
+        <field name="Datasheet">https://www.analog.com/media/en/technical-documentation/data-sheets/lt1963a.pdf</field>
+        <field name="Description">1.5A adjustable LDO. Thermal design and bench qualification limit actual aggregate output. Pin3/tab needs isolated EM_GND copper.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_LT1963A_Q" description="ADI LT1963A adjustable Q/DD package; tab is pin3 GND"/>
+      <property name="MPN" value="LT1963AEQ#PBF"/>
+      <property name="LCSC" value="C20415348"/>
+      <property name="Manufacturer" value="Analog Devices"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Isolated adjustable emitter supply"/>
+      <property name="Sheetfile" value="emitter_regulator.kicad_sch"/>
+      <sheetpath names="/Isolated adjustable emitter supply/" tstamps="/452c08c0-2534-56c5-83b7-28312f02b77c/"/>
+      <tstamps>615a153c-d2a8-51ec-81c2-c309d53abde9</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q101">
+      <value>AO3400A</value>
+      <footprint>Eltec_Master:SOT-23</footprint>
+      <datasheet>https://www.aosmd.com/res/data_sheets/AO3400A.pdf</datasheet>
+      <description>Emitter1 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.</description>
+      <fields>
+        <field name="MPN">AO3400A</field>
+        <field name="LCSC">C20917</field>
+        <field name="Manufacturer">Alpha &amp; Omega Semiconductor</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:SOT-23</field>
+        <field name="Datasheet">https://www.aosmd.com/res/data_sheets/AO3400A.pdf</field>
+        <field name="Description">Emitter1 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_AO3400A" description="AO3400A N-MOS:1gate2source3drain; source referenced to EM_GND"/>
+      <property name="MPN" value="AO3400A"/>
+      <property name="LCSC" value="C20917"/>
+      <property name="Manufacturer" value="Alpha &amp; Omega Semiconductor"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>3e2cc7ee-d26f-58b8-b9b2-c1b60edd0ab2</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q102">
+      <value>AO3400A</value>
+      <footprint>Eltec_Master:SOT-23</footprint>
+      <datasheet>https://www.aosmd.com/res/data_sheets/AO3400A.pdf</datasheet>
+      <description>Emitter2 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.</description>
+      <fields>
+        <field name="MPN">AO3400A</field>
+        <field name="LCSC">C20917</field>
+        <field name="Manufacturer">Alpha &amp; Omega Semiconductor</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:SOT-23</field>
+        <field name="Datasheet">https://www.aosmd.com/res/data_sheets/AO3400A.pdf</field>
+        <field name="Description">Emitter2 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_AO3400A" description="AO3400A N-MOS:1gate2source3drain; source referenced to EM_GND"/>
+      <property name="MPN" value="AO3400A"/>
+      <property name="LCSC" value="C20917"/>
+      <property name="Manufacturer" value="Alpha &amp; Omega Semiconductor"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>cf787bbc-dca2-50e6-b8f7-2f51f742c47e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q103">
+      <value>AO3400A</value>
+      <footprint>Eltec_Master:SOT-23</footprint>
+      <datasheet>https://www.aosmd.com/res/data_sheets/AO3400A.pdf</datasheet>
+      <description>Emitter3 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.</description>
+      <fields>
+        <field name="MPN">AO3400A</field>
+        <field name="LCSC">C20917</field>
+        <field name="Manufacturer">Alpha &amp; Omega Semiconductor</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:SOT-23</field>
+        <field name="Datasheet">https://www.aosmd.com/res/data_sheets/AO3400A.pdf</field>
+        <field name="Description">Emitter3 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_AO3400A" description="AO3400A N-MOS:1gate2source3drain; source referenced to EM_GND"/>
+      <property name="MPN" value="AO3400A"/>
+      <property name="LCSC" value="C20917"/>
+      <property name="Manufacturer" value="Alpha &amp; Omega Semiconductor"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>32a9a687-4237-5048-bc54-df43680d1c8e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R110">
+      <value>240R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL</datasheet>
+      <description>Opto LED current ~8.75mA at3.3V/1.2V; &gt;5mA with2.64V VOH and1.4V VF.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07240RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL</field>
+        <field name="Description">Opto LED current ~8.75mA at3.3V/1.2V; &gt;5mA with2.64V VOH and1.4V VF.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07240RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>c1e46fad-315b-5eb8-9e2d-e33343ae0071</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R111">
+      <value>100k 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL</datasheet>
+      <description>Input pull-down keeps emitter command low while ESP32 pin is high impedance.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07100KL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL</field>
+        <field name="Description">Input pull-down keeps emitter command low while ESP32 pin is high impedance.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07100KL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>57e8fe4c-d91a-5a22-afb6-c021755564c0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R112">
+      <value>100R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL</datasheet>
+      <description>Series gate resistor; place beside MOSFET gate.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07100RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL</field>
+        <field name="Description">Series gate resistor; place beside MOSFET gate.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07100RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>f7ba8c94-ab4c-544f-a40e-cc0e462600ac</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R113">
+      <value>10k 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL</datasheet>
+      <description>Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.</description>
+      <fields>
+        <field name="MPN">RC0805FR-0710KL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL</field>
+        <field name="Description">Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-0710KL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>deb605c4-eb40-59c8-a1bf-879117a0949d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R115">
+      <value>240R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL</datasheet>
+      <description>Opto LED current ~8.75mA at3.3V/1.2V; &gt;5mA with2.64V VOH and1.4V VF.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07240RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL</field>
+        <field name="Description">Opto LED current ~8.75mA at3.3V/1.2V; &gt;5mA with2.64V VOH and1.4V VF.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07240RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>87ea5be0-2bed-5232-9a26-294b0d0ff5de</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R116">
+      <value>100k 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL</datasheet>
+      <description>Input pull-down keeps emitter command low while ESP32 pin is high impedance.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07100KL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL</field>
+        <field name="Description">Input pull-down keeps emitter command low while ESP32 pin is high impedance.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07100KL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>d9b5a0ac-af7e-5208-8034-8af9dc8a3af8</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R117">
+      <value>100R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL</datasheet>
+      <description>Series gate resistor; place beside MOSFET gate.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07100RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL</field>
+        <field name="Description">Series gate resistor; place beside MOSFET gate.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07100RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>7401e39a-f0d7-50c6-af32-f1cbb5f3e0b3</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R118">
+      <value>10k 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL</datasheet>
+      <description>Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.</description>
+      <fields>
+        <field name="MPN">RC0805FR-0710KL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL</field>
+        <field name="Description">Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-0710KL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>44a2fc4a-7c9a-5630-aec5-ff786f86b292</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R120">
+      <value>240R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL</datasheet>
+      <description>Opto LED current ~8.75mA at3.3V/1.2V; &gt;5mA with2.64V VOH and1.4V VF.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07240RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL</field>
+        <field name="Description">Opto LED current ~8.75mA at3.3V/1.2V; &gt;5mA with2.64V VOH and1.4V VF.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07240RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>b65a6614-61e4-5d96-8339-992c394b5452</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R121">
+      <value>100k 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL</datasheet>
+      <description>Input pull-down keeps emitter command low while ESP32 pin is high impedance.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07100KL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL</field>
+        <field name="Description">Input pull-down keeps emitter command low while ESP32 pin is high impedance.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07100KL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>f272134d-7a13-5744-92ac-67b15f474f4b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R122">
+      <value>100R 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL</datasheet>
+      <description>Series gate resistor; place beside MOSFET gate.</description>
+      <fields>
+        <field name="MPN">RC0805FR-07100RL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL</field>
+        <field name="Description">Series gate resistor; place beside MOSFET gate.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-07100RL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>037a7ee5-1c20-53b7-94d2-4cf7f794abfd</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R123">
+      <value>10k 1% 0.125W</value>
+      <footprint>Eltec_Master:R_0805_2012Metric</footprint>
+      <datasheet>https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL</datasheet>
+      <description>Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.</description>
+      <fields>
+        <field name="MPN">RC0805FR-0710KL</field>
+        <field name="LCSC"/>
+        <field name="Manufacturer">Yageo</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:R_0805_2012Metric</field>
+        <field name="Datasheet">https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL</field>
+        <field name="Description">Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_R" description=""/>
+      <property name="MPN" value="RC0805FR-0710KL"/>
+      <property name="LCSC" value=""/>
+      <property name="Manufacturer" value="Yageo"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>f94b9e74-d8f5-57a4-8d25-af4294cd4027</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U101">
+      <value>LTV-847S</value>
+      <footprint>Eltec_Master:SMDIP-16_W9.53mm</footprint>
+      <datasheet>https://optoelectronics.liteon.com/upload/download/DS-70-96-0016/LTV-8X7%20series%20%20Rev.S.PDF</datasheet>
+      <description>Three channels used, fourth all NC. Cathodes return through the MASTER_PERMIT sink owned by power stage. Collectors use switched battery rail rather than low adjustable heater rail. No ground tie across optocoupler.</description>
+      <fields>
+        <field name="MPN">LTV-847S</field>
+        <field name="LCSC">C114599</field>
+        <field name="Manufacturer">Lite-On</field>
+        <field name="Assembly">Populate</field>
+        <field name="Footprint">Eltec_Master:SMDIP-16_W9.53mm</field>
+        <field name="Datasheet">https://optoelectronics.liteon.com/upload/download/DS-70-96-0016/LTV-8X7%20series%20%20Rev.S.PDF</field>
+        <field name="Description">Three channels used, fourth all NC. Cathodes return through the MASTER_PERMIT sink owned by power stage. Collectors use switched battery rail rather than low adjustable heater rail. No ground tie across optocoupler.</field>
+      </fields>
+      <libsource lib="Eltec_Master" part="EM_LTV847S" description="Four independent phototransistors; input/output grounds remain isolated"/>
+      <property name="MPN" value="LTV-847S"/>
+      <property name="LCSC" value="C114599"/>
+      <property name="Manufacturer" value="Lite-On"/>
+      <property name="Assembly" value="Populate"/>
+      <property name="Sheetname" value="Three optically isolated emitter PWM channels"/>
+      <property name="Sheetfile" value="emitter_pwm.kicad_sch"/>
+      <sheetpath names="/Three optically isolated emitter PWM channels/" tstamps="/04641e39-4245-580d-9ae9-f1314757bdcb/"/>
+      <tstamps>9c67db68-f981-54d4-9df5-3439cece0969</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="7"/>
+            <pin num="8"/>
+            <pin num="16"/>
+            <pin num="15"/>
+            <pin num="14"/>
+            <pin num="13"/>
+            <pin num="12"/>
+            <pin num="11"/>
+            <pin num="10"/>
+            <pin num="9"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Eltec_Master" part="EM_3296W">
+      <description>Bourns3296W: terminal2 is wiper;1+2 strapped</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">EM_3296W</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Bourns3296W: terminal2 is wiper;1+2 strapped</field>
+      </fields>
+      <pins>
+        <pin num="1" name="CCW" type="passive"/>
+        <pin num="2" name="WIPER" type="passive"/>
+        <pin num="3" name="CW" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Master" part="EM_AO3400A">
+      <description>AO3400A N-MOS:1gate2source3drain; source referenced to EM_GND</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">EM_AO3400A</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">AO3400A N-MOS:1gate2source3drain; source referenced to EM_GND</field>
+      </fields>
+      <pins>
+        <pin num="1" name="G" type="input"/>
+        <pin num="2" name="S" type="passive"/>
+        <pin num="3" name="D" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Master" part="EM_C">
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">EM_C</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Master" part="EM_C_Polarized">
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">EM_C_Polarized</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Master" part="EM_LT1963A_Q">
+      <description>ADI LT1963A adjustable Q/DD package; tab is pin3 GND</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">EM_LT1963A_Q</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">ADI LT1963A adjustable Q/DD package; tab is pin3 GND</field>
+      </fields>
+      <pins>
+        <pin num="1" name="SHDN_N" type="input"/>
+        <pin num="2" name="IN" type="power_in"/>
+        <pin num="3" name="GND/TAB" type="power_in"/>
+        <pin num="4" name="OUT" type="power_out"/>
+        <pin num="5" name="ADJ" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Master" part="EM_LTV847S">
+      <description>Four independent phototransistors; input/output grounds remain isolated</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">EM_LTV847S</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Four independent phototransistors; input/output grounds remain isolated</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A1" type="passive"/>
+        <pin num="2" name="K1" type="passive"/>
+        <pin num="3" name="A2" type="passive"/>
+        <pin num="4" name="K2" type="passive"/>
+        <pin num="5" name="A3" type="passive"/>
+        <pin num="6" name="K3" type="passive"/>
+        <pin num="7" name="A4/NC" type="passive"/>
+        <pin num="8" name="K4/NC" type="passive"/>
+        <pin num="9" name="E4/NC" type="passive"/>
+        <pin num="10" name="C4/NC" type="passive"/>
+        <pin num="11" name="E3" type="passive"/>
+        <pin num="12" name="C3" type="passive"/>
+        <pin num="13" name="E2" type="passive"/>
+        <pin num="14" name="C2" type="passive"/>
+        <pin num="15" name="E1" type="passive"/>
+        <pin num="16" name="C1" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Master" part="EM_R">
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">EM_R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Eltec_Master">
+      <uri>${KIPRJMOD}/../libraries/master.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="EMIT1_LOW" class="Default">
+      <node ref="Q101" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="2" name="EMIT2_LOW" class="Default">
+      <node ref="Q102" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="3" name="EMIT3_LOW" class="Default">
+      <node ref="Q103" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="4" name="EM_ADJ" class="Default">
+      <node ref="R100" pin="1" pintype="passive"/>
+      <node ref="R101" pin="2" pintype="passive"/>
+      <node ref="U100" pin="5" pinfunction="ADJ_5" pintype="input"/>
+    </net>
+    <net code="5" name="EM_BAT_SW" class="Default">
+      <node ref="C100" pin="1" pintype="passive"/>
+      <node ref="C101" pin="1" pintype="passive"/>
+      <node ref="U100" pin="1" pinfunction="SHDN_N_1" pintype="input"/>
+      <node ref="U100" pin="2" pinfunction="IN_2" pintype="power_in"/>
+      <node ref="U101" pin="12" pinfunction="C3_12" pintype="passive"/>
+      <node ref="U101" pin="14" pinfunction="C2_14" pintype="passive"/>
+      <node ref="U101" pin="16" pinfunction="C1_16" pintype="passive"/>
+    </net>
+    <net code="6" name="EM_GATE1" class="Default">
+      <node ref="Q101" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R112" pin="2" pintype="passive"/>
+      <node ref="R113" pin="1" pintype="passive"/>
+    </net>
+    <net code="7" name="EM_GATE1_DRIVE" class="Default">
+      <node ref="R112" pin="1" pintype="passive"/>
+      <node ref="U101" pin="15" pinfunction="E1_15" pintype="passive"/>
+    </net>
+    <net code="8" name="EM_GATE2" class="Default">
+      <node ref="Q102" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R117" pin="2" pintype="passive"/>
+      <node ref="R118" pin="1" pintype="passive"/>
+    </net>
+    <net code="9" name="EM_GATE2_DRIVE" class="Default">
+      <node ref="R117" pin="1" pintype="passive"/>
+      <node ref="U101" pin="13" pinfunction="E2_13" pintype="passive"/>
+    </net>
+    <net code="10" name="EM_GATE3" class="Default">
+      <node ref="Q103" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R122" pin="2" pintype="passive"/>
+      <node ref="R123" pin="1" pintype="passive"/>
+    </net>
+    <net code="11" name="EM_GATE3_DRIVE" class="Default">
+      <node ref="R122" pin="1" pintype="passive"/>
+      <node ref="U101" pin="11" pinfunction="E3_11" pintype="passive"/>
+    </net>
+    <net code="12" name="EM_GND" class="Default">
+      <node ref="C100" pin="2" pintype="passive"/>
+      <node ref="C101" pin="2" pintype="passive"/>
+      <node ref="C102" pin="2" pintype="passive"/>
+      <node ref="C103" pin="2" pintype="passive"/>
+      <node ref="Q101" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="Q102" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="Q103" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="R100" pin="2" pintype="passive"/>
+      <node ref="R113" pin="2" pintype="passive"/>
+      <node ref="R118" pin="2" pintype="passive"/>
+      <node ref="R123" pin="2" pintype="passive"/>
+      <node ref="U100" pin="3" pinfunction="GND/TAB_3" pintype="power_in"/>
+    </net>
+    <net code="13" name="EM_LED1_A" class="Default">
+      <node ref="R110" pin="2" pintype="passive"/>
+      <node ref="U101" pin="1" pinfunction="A1_1" pintype="passive"/>
+    </net>
+    <net code="14" name="EM_LED2_A" class="Default">
+      <node ref="R115" pin="2" pintype="passive"/>
+      <node ref="U101" pin="3" pinfunction="A2_3" pintype="passive"/>
+    </net>
+    <net code="15" name="EM_LED3_A" class="Default">
+      <node ref="R120" pin="2" pintype="passive"/>
+      <node ref="U101" pin="5" pinfunction="A3_5" pintype="passive"/>
+    </net>
+    <net code="16" name="EM_LED_RETURN" class="Default">
+      <node ref="U101" pin="2" pinfunction="K1_2" pintype="passive"/>
+      <node ref="U101" pin="4" pinfunction="K2_4" pintype="passive"/>
+      <node ref="U101" pin="6" pinfunction="K3_6" pintype="passive"/>
+    </net>
+    <net code="17" name="EM_REG" class="Default">
+      <node ref="C102" pin="1" pintype="passive"/>
+      <node ref="C103" pin="1" pintype="passive"/>
+      <node ref="RV100" pin="1" pinfunction="CCW_1" pintype="passive"/>
+      <node ref="RV100" pin="2" pinfunction="WIPER_2" pintype="passive"/>
+      <node ref="U100" pin="4" pinfunction="OUT_4" pintype="power_out"/>
+    </net>
+    <net code="18" name="EM_TRIM_TOP" class="Default">
+      <node ref="R101" pin="1" pintype="passive"/>
+      <node ref="RV100" pin="3" pinfunction="CW_3" pintype="passive"/>
+    </net>
+    <net code="19" name="ESP_EMIT1" class="Default">
+      <node ref="R110" pin="1" pintype="passive"/>
+      <node ref="R111" pin="1" pintype="passive"/>
+    </net>
+    <net code="20" name="ESP_EMIT2" class="Default">
+      <node ref="R115" pin="1" pintype="passive"/>
+      <node ref="R116" pin="1" pintype="passive"/>
+    </net>
+    <net code="21" name="ESP_EMIT3" class="Default">
+      <node ref="R120" pin="1" pintype="passive"/>
+      <node ref="R121" pin="1" pintype="passive"/>
+    </net>
+    <net code="22" name="GND" class="Default">
+      <node ref="R111" pin="2" pintype="passive"/>
+      <node ref="R116" pin="2" pintype="passive"/>
+      <node ref="R121" pin="2" pintype="passive"/>
+    </net>
+    <net code="23" name="unconnected-(U101-A4/NC-Pad7)" class="Default">
+      <node ref="U101" pin="7" pinfunction="A4/NC_7" pintype="passive+no_connect"/>
+    </net>
+    <net code="24" name="unconnected-(U101-C4/NC-Pad10)" class="Default">
+      <node ref="U101" pin="10" pinfunction="C4/NC_10" pintype="passive+no_connect"/>
+    </net>
+    <net code="25" name="unconnected-(U101-E4/NC-Pad9)" class="Default">
+      <node ref="U101" pin="9" pinfunction="E4/NC_9" pintype="passive+no_connect"/>
+    </net>
+    <net code="26" name="unconnected-(U101-K4/NC-Pad8)" class="Default">
+      <node ref="U101" pin="8" pinfunction="K4/NC_8" pintype="passive+no_connect"/>
+    </net>
+  </nets>
+</export>

@@ -1,0 +1,118 @@
+{
+  "status": "conditional_design_envelope_not_bench_or_SPICE_validation",
+  "acceptance_inputs_not_yet_verified": {
+    "effective_held_capacitance_F_min": 0.0003,
+    "assembled_board_SET_leakage_A_max_each_direction": 2.5e-08,
+    "local_output_ceramic_C_F_min_at_actual_bias_frequency_temperature": 2e-05,
+    "AP2112_local_bypass_C_F_min_each": 1e-06,
+    "scope": "trial laboratory assembly; temperature-stressed silicon bounds do not establish a rig environmental rating",
+    "SET_capacitor_IR_scope": "manufacturer room-temperature/post-test limits; assembled actual operating-temperature leakage must meet same budget",
+    "held_discharge_current_A_max_including_LDO_recovery": 0.12,
+    "actual_AVDD_below_header_V_max": 0.1,
+    "abrupt_header_step_V_max": 0.025,
+    "aggregate_hardware_permission_response_s_max": 1e-05,
+    "module_AIN_capacitance_F_max_excluding_carrier_stray": 1.2e-07,
+    "actual_comparator_common_mode_and_load": "verify offset/delay at approximately4.1V common mode and actual gate load"
+  },
+  "regulated_V": {
+    "nominal": 5.1798,
+    "min": 5.115745995999999,
+    "max": 5.244061196,
+    "min_with_SET_leakage_budget": 5.110757668731444,
+    "max_with_SET_leakage_budget": 5.2453587359,
+    "margin_to_5V25_operating_limit": 0.004641264099999987
+  },
+  "comparator": {
+    "divider_factor_min": 1.219842787682334,
+    "divider_factor_max": 1.2221633036721393,
+    "static_trip_header_V_min": 4.959748748321517,
+    "static_trip_header_V_max": 5.042775960933308,
+    "header_V_for_50mV_prior_underdrive_max": 5.103884126116915,
+    "prior_underdrive_headroom_V": 0.0068735426145289935,
+    "header_V_at_50mV_falling_overdrive_min": 4.89864058313791,
+    "actual_AVDD_V_when_permission_must_drop_min": 4.76964058313791,
+    "operating_margin_at_permission_drop_V": 0.019640583137910284
+  },
+  "analog": {
+    "ground_path_tau_s_max": 4.0823999999999994e-05,
+    "ground_to_0V2_s_max": 0.00013336308990452702,
+    "signal_tracking_tau_s_max": 7.409987999999999e-05,
+    "declining_rail_tracking_lag_V_max": 0.029639952,
+    "conditional_AIN_minus_AVDD_V_max_before_ground": 0.15463995200000002,
+    "powered_off_33k_bleed_V_max_before_temperature_drift": 0.19819799999999999
+  },
+  "exact_passive_closure": {
+    "C10_TPSD226K025R0200": {
+      "nominal_F": 2.2e-05,
+      "initial_min_F": 1.98e-05,
+      "illustrative_min_after_10percent_change_F": 1.7820000000000002e-05,
+      "DC_bias_derating": false,
+      "maximum_ESR_100kHz_ohm": 0.2,
+      "parallel_input_ceramic": "C36 GRM32ER71E226KE15L22uF25VX7R1210",
+      "limit": "battery lead resonance/hot-plug current and damping require actual wiring validation"
+    },
+    "C11_C13_C39_GRM32ER71E226KE15L": {
+      "count": 3,
+      "nominal_F_each": 2.2e-05,
+      "illustrative_small_signal_bias_temp_tol_F_total": 2.8274400000000005e-05,
+      "required_effective_F_total": 2e-05,
+      "required_ESR_ohm_max_each": 0.02,
+      "required_mounted_ESL_H_max_each": 2e-09,
+      "limit": "0.8DC and0.7smallAC factors are separate typical manufacturer curves, not a combined-condition guarantee; verify>=20uF and layout/stability"
+    },
+    "C15_C37_C38_GRM31C5C1H104JA01K": {
+      "nominal_F_total": 3e-07,
+      "initial_F_min": 2.8499999999999997e-07,
+      "post_humidity_F_min_envelope": 2.63625e-07,
+      "room_IR_ohm_F_min": 500,
+      "post_durability_IR_ohm_F_min": 50,
+      "post_humidity_IR_ohm_F_min": 25,
+      "leak_A_max_used": 7.111125e-08,
+      "nominal_RC_corner_Hz": 10.242026274624203,
+      "nominal_t90_s": 0.035780790794071676,
+      "nominal_initial_slew_V_per_s": 333.33333333333337,
+      "corner_initial_slew_V_per_s": 383.1199620673305,
+      "startup_total_output_C_F_envelope": 0.0011,
+      "corner_charging_plus120mA_A": 0.5414319582740637,
+      "limit": "startup can enter the nominal500mA programmed current limit; native ready qualification prevents conversion until settled. No4.7uF noise claim; validate inrush/thermal and release overshoot"
+    },
+    "C14_C23_C24": {
+      "mpn": "GRM31C5C1H104JA01K",
+      "footprint": "1206",
+      "nominal_F_each": 1e-07,
+      "tolerance": 0.05,
+      "C24_qualification_s_initial_min": 0.03396990398043837,
+      "C24_qualification_s_posthumidity_min_envelope": 0.031422161181905495
+    },
+    "R40_Q26_release": {
+      "resistance_ohm": 150,
+      "peak_A_max": 0.03535353535353535,
+      "nominal_RC_s": 1.4999999999999999e-05,
+      "effect": "startup-only clamp release; independent comparator andQ24 shutdown unaffected"
+    },
+    "D12_Diotec_BZT52C6V8GW": {
+      "Vz_5mA_25C_min_V": 6.4,
+      "Vz_5mA_25C_max_V": 7.2,
+      "tempco_max_per_K": 0.0007,
+      "illustrative125C_max_V": 7.704000000000001,
+      "AO3414_absolute_VGS_V": 8,
+      "limit": "Zener limits specified at5mA; R13 restricts normal current far below this. Verify transient clamp with actual battery wiring"
+    }
+  },
+  "C12_Nichicon_PCJ0J821MCL4GS": {
+    "nominal_F": 0.00082,
+    "initial_20C_min_F": 0.000656,
+    "after_endurance_20C_min_F": 0.0005248000000000001,
+    "ESR_20C_100kHz_max_ohm": 0.01,
+    "ESR_endurance_limit_factor": 1.5,
+    "impedance_temperature_ratio_100kHz_max": 1.25,
+    "illustrative_120mA_step_with_1p5x1p25_ESR_V": 0.00225,
+    "limit": "100kHz impedance/endurance specs are not a broadband transient or low-temperature capacitance guarantee; qualified300uF/25mV envelope still required"
+  },
+  "exported_netlist_checks": {
+    "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\interface_netlist.xml",
+    "checked_pin_connections": 83,
+    "failures": [],
+    "passed": true
+  }
+}

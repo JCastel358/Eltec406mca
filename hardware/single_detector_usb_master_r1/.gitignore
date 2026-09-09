@@ -1,0 +1,7 @@
+tmp/
+__pycache__/
+*-backups/
+~*.lck
+*.kicad_prl
+*.kicad_sch.lck
+*.kicad_pcb.lck

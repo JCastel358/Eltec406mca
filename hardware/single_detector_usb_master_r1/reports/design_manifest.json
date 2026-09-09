@@ -1,0 +1,5402 @@
+[
+  {
+    "ref": "U1",
+    "symbol": "ESP32_USB_Module",
+    "value": "ESP32 DevKit 30-pin USB-C",
+    "nets": {
+      "1": "ESP_3V3",
+      "2": "GND",
+      "5": "ESP_DRDY",
+      "8": "ESP_CS_N",
+      "9": "ESP_SCLK",
+      "10": "ESP_MISO",
+      "15": "ESP_MOSI",
+      "16": "USB_PRESENT_5V",
+      "17": "GND",
+      "22": "ESP_EMIT3",
+      "23": "ESP_EMIT2",
+      "24": "ESP_EMIT1",
+      "26": "ESP_POWER_NOT_READY"
+    },
+    "sheet": "esp32_interface",
+    "position": [
+      86.36,
+      106.68
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": false,
+    "physical": true,
+    "description": "Customer-inserted module. J3 and J4 are separately populated female sockets. USB is its only power source.",
+    "uuid": "a1b77371-0430-5e34-8cf8-3fdee2e35011"
+  },
+  {
+    "ref": "J3",
+    "symbol": "ESP_Socket_A",
+    "value": "1x15 female socket - row A",
+    "nets": {
+      "1": "ESP_3V3",
+      "2": "GND",
+      "3": null,
+      "4": null,
+      "5": "ESP_DRDY",
+      "6": null,
+      "7": null,
+      "8": "ESP_CS_N",
+      "9": "ESP_SCLK",
+      "10": "ESP_MISO",
+      "11": null,
+      "12": null,
+      "13": null,
+      "14": null,
+      "15": "ESP_MOSI"
+    },
+    "sheet": "esp32_interface",
+    "position": [
+      233.68,
+      106.68
+    ],
+    "footprint": "Eltec_Master:Socket_Kinghelm_1x15_P2.54_H8.5",
+    "pcb": [
+      86.08,
+      87.0,
+      180
+    ],
+    "mpn": "KH-2.54FH-1X15P-H8.5",
+    "manufacturer": "Kinghelm",
+    "datasheet": "https://www.kinghelm.net/upload/file/20221115/KH-2.54FH-1X15P-H8.5.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Physical socket, populated. Pin1 mates to U1.1; pin15 mates to U1.15. Height/fit remains preliminary.",
+    "uuid": "50bbc345-b522-59df-8f3c-f2ff2dbed65a"
+  },
+  {
+    "ref": "J4",
+    "symbol": "ESP_Socket_B",
+    "value": "1x15 female socket - row B",
+    "nets": {
+      "1": "USB_PRESENT_5V",
+      "2": "GND",
+      "3": null,
+      "4": null,
+      "5": null,
+      "6": null,
+      "7": "ESP_EMIT3",
+      "8": "ESP_EMIT2",
+      "9": "ESP_EMIT1",
+      "10": null,
+      "11": "ESP_POWER_NOT_READY",
+      "12": null,
+      "13": null,
+      "14": null,
+      "15": null
+    },
+    "sheet": "esp32_interface",
+    "position": [
+      350.52,
+      106.68
+    ],
+    "footprint": "Eltec_Master:Socket_Kinghelm_1x15_P2.54_H8.5",
+    "pcb": [
+      86.08,
+      112.4,
+      180
+    ],
+    "mpn": "KH-2.54FH-1X15P-H8.5",
+    "manufacturer": "Kinghelm",
+    "datasheet": "https://www.kinghelm.net/upload/file/20221115/KH-2.54FH-1X15P-H8.5.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Physical socket, populated. Pin1 mates to U1.16; pin15 mates to U1.30. Height/fit remains preliminary.",
+    "uuid": "080cd8d3-9ced-5d42-b6f7-7822fcfb4f61"
+  },
+  {
+    "ref": "U2",
+    "symbol": "ADS1256_GY_Module",
+    "value": "ADS1256 GY-220722-V1 module",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND",
+      "3": "ADC_SCLK",
+      "4": "ADC_MOSI",
+      "5": "ADC_MISO",
+      "6": "ADC_DRDY_N",
+      "7": "ADC_CS_N",
+      "8": "ADC_PDWN_N",
+      "9": "ADC_AIN0",
+      "10": "ADC_AIN1",
+      "11": "ADC_AIN2",
+      "12": "ADC_AIN3",
+      "13": "ADC_AIN4",
+      "14": "ADC_AIN5",
+      "15": "GND",
+      "16": "GND",
+      "17": "GND",
+      "18": "GND",
+      "19": "GND",
+      "20": "GND",
+      "21": "GND",
+      "22": "GND",
+      "23": "GND",
+      "24": "GND"
+    },
+    "sheet": "adc_interface",
+    "position": [
+      88.9,
+      116.84
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": false,
+    "physical": true,
+    "description": "Customer-inserted module. Seller circuit recovered; confirm installed module agrees and measure input-filterDCR/AVDD. Physical sockets areJ5/J6.",
+    "uuid": "b1fefc62-4b4a-567f-8371-c7ed3c17de10"
+  },
+  {
+    "ref": "J5",
+    "symbol": "ADC_Digital_Socket",
+    "value": "1x8 female ADC digital socket",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND",
+      "3": "ADC_SCLK",
+      "4": "ADC_MOSI",
+      "5": "ADC_MISO",
+      "6": "ADC_DRDY_N",
+      "7": "ADC_CS_N",
+      "8": "ADC_PDWN_N"
+    },
+    "sheet": "adc_interface",
+    "position": [
+      238.76,
+      83.82
+    ],
+    "footprint": "Eltec_Master:Socket_Kinghelm_1x08_P2.54_H8.5",
+    "pcb": [
+      53.21,
+      80.975,
+      0
+    ],
+    "mpn": "KH-2.54FH-1X8P-H8.5",
+    "manufacturer": "Kinghelm",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Physical populated socket. Pin1=module5V; native centers retained; candidate drawing verified, assembly matching pending.",
+    "uuid": "df4c0e18-7d59-5cf5-8d36-02de9e40c5bd"
+  },
+  {
+    "ref": "J6",
+    "symbol": "ADC_Analog_Socket",
+    "value": "2x8 female ADC analog socket",
+    "nets": {
+      "1": "ADC_AIN0",
+      "2": "GND",
+      "3": "ADC_AIN1",
+      "4": "GND",
+      "5": "ADC_AIN2",
+      "6": "GND",
+      "7": "ADC_AIN3",
+      "8": "GND",
+      "9": "ADC_AIN4",
+      "10": "GND",
+      "11": "ADC_AIN5",
+      "12": "GND",
+      "13": "GND",
+      "14": "GND",
+      "15": "GND",
+      "16": "GND"
+    },
+    "sheet": "adc_interface",
+    "position": [
+      238.76,
+      157.48
+    ],
+    "footprint": "Eltec_Master:Socket_FG_2x08_P2.54_H8.5",
+    "pcb": [
+      53.21,
+      23.825,
+      0
+    ],
+    "mpn": "FG-PM2.54-2-08P-H8.5",
+    "manufacturer": "FG",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Physical populated socket. Odd pins AIN0..7; even pins GND0..7. Pad geometry checked against native module.",
+    "uuid": "59fad93d-a520-5e96-957f-ba000bc5a919"
+  },
+  {
+    "ref": "J1",
+    "symbol": "PWR_JACK",
+    "value": "GCT DCJ200-10-A / customer installed",
+    "nets": {
+      "1": "DET_BAT_RAW",
+      "2": "GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      48.26,
+      43.18
+    ],
+    "footprint": "Eltec_Master:BarrelJack_GCT_DCJ200_10_A",
+    "pcb": [
+      82.2,
+      26.5,
+      90
+    ],
+    "mpn": "DCJ200-10-A",
+    "manufacturer": "GCT",
+    "datasheet": "https://gct.co/files/drawings/dcj200.pdf",
+    "populated": false,
+    "physical": true,
+    "description": "Original jack position and assigned footprint retained. Physical pad3 is intentionally unconnected.",
+    "uuid": "964a07d4-a309-525f-92e6-6568ae6fe93d"
+  },
+  {
+    "ref": "J2",
+    "symbol": "PWR_JACK",
+    "value": "GCT DCJ200-10-A / customer installed",
+    "nets": {
+      "1": "EM_BAT_RAW",
+      "2": "EM_GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      48.26,
+      142.24
+    ],
+    "footprint": "Eltec_Master:BarrelJack_GCT_DCJ200_10_A",
+    "pcb": [
+      82.2,
+      74.5,
+      90
+    ],
+    "mpn": "DCJ200-10-A",
+    "manufacturer": "GCT",
+    "datasheet": "https://gct.co/files/drawings/dcj200.pdf",
+    "populated": false,
+    "physical": true,
+    "description": "Original jack position and assigned footprint retained. Physical pad3 is intentionally unconnected.",
+    "uuid": "fcea0cc0-fe93-5ace-8efc-365d10f71f84"
+  },
+  {
+    "ref": "F1",
+    "symbol": "PWR_F",
+    "value": "1A Slo-Blo",
+    "nets": {
+      "1": "DET_BAT_RAW",
+      "2": "DET_BAT_FUSED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      111.76,
+      43.18
+    ],
+    "footprint": "Eltec_Master:Fuse_1206_3216Metric",
+    "pcb": null,
+    "mpn": "0468001.NRHF",
+    "manufacturer": "Littelfuse",
+    "datasheet": "https://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_468_datasheet.pdf.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Input fault protection candidate; current rating, interrupt rating and startup I2t must be approved against the actual battery.",
+    "uuid": "0db77805-ad06-51d4-9c16-913c213433e1",
+    "source_footprint": "Fuse:Fuse_1206_3216Metric"
+  },
+  {
+    "ref": "F2",
+    "symbol": "PWR_F",
+    "value": "1.5A Slo-Blo",
+    "nets": {
+      "1": "EM_BAT_RAW",
+      "2": "EM_BAT_FUSED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      111.76,
+      142.24
+    ],
+    "footprint": "Eltec_Master:Fuse_1206_3216Metric",
+    "pcb": null,
+    "mpn": "046801.5NRHF",
+    "manufacturer": "Littelfuse",
+    "datasheet": "https://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_468_datasheet.pdf.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Input fault protection candidate; current rating, interrupt rating and startup I2t must be approved against the actual battery.",
+    "uuid": "ea85bf6e-3b1b-5a03-9d83-08eabe183e51",
+    "source_footprint": "Fuse:Fuse_1206_3216Metric"
+  },
+  {
+    "ref": "Q16",
+    "symbol": "PWR_PMOS",
+    "value": "AO3401A",
+    "nets": {
+      "1": "DET_RPOL_GATE",
+      "2": "DET_BAT_PROTECTED",
+      "3": "DET_BAT_FUSED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      185.42,
+      43.18
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3401A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/datasheets/AO3401A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Reverse-polarity protection. Drain faces jack, source faces load; gate referenced to detector ground.",
+    "uuid": "2dfa7de5-4380-588d-8cdd-eadde073c48c",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R28",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "DET_RPOL_GATE",
+      "2": "GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      182.88,
+      68.58
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "bfd94a04-b796-5be0-8dd5-0948607fe6c3",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q17",
+    "symbol": "PWR_PMOS",
+    "value": "AO3401A",
+    "nets": {
+      "1": "DET_MASTER_GATE",
+      "2": "DET_BAT_PROTECTED",
+      "3": "SENSOR_BAT_SW"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      304.8,
+      43.18
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3401A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/datasheets/AO3401A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "e2cbec20-b7a1-525e-8fb8-0d2b98913000",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R21",
+    "symbol": "PWR_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "DET_MASTER_GATE",
+      "2": "DET_BAT_PROTECTED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      279.4,
+      71.12
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "957f789d-fc1c-5317-8b8e-c207bf15c911",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R22",
+    "symbol": "PWR_R",
+    "value": "1k 1%",
+    "nets": {
+      "1": "DET_MASTER_GATE",
+      "2": "DET_MASTER_SINK"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      345.44,
+      71.12
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-071KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "b80c9e05-2b0e-5e31-b746-8a59d73d0b89",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "C26",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "DET_MASTER_GATE",
+      "2": "DET_BAT_PROTECTED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      279.4,
+      93.98
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "a9526041-83dc-5931-b506-466a3d268e26",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "Q18",
+    "symbol": "PWR_NMOS",
+    "value": "2N7002LT1G",
+    "nets": {
+      "1": "ADC_READY_RAW",
+      "2": "GND",
+      "3": "DET_MASTER_SINK"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      345.44,
+      96.52
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "2N7002LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/pdf/datasheet/2n7002l-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "b17e6374-5dd1-5f3b-9a81-24c20f25cf9d",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "C28",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      205.74,
+      96.52
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "bd9c4436-7bfe-525c-a1fa-d25864e4dc9d",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "Q19",
+    "symbol": "PWR_PMOS",
+    "value": "AO3401A",
+    "nets": {
+      "1": "EM_RPOL_GATE",
+      "2": "EM_BAT_PROTECTED",
+      "3": "EM_BAT_FUSED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      185.42,
+      142.24
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3401A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/datasheets/AO3401A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter-domain reverse-polarity protection. EM_GND remains isolated from detector/USB ground.",
+    "uuid": "3fc45859-ef75-5c9d-bd79-2d1ccbd5bf64",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R29",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "EM_RPOL_GATE",
+      "2": "EM_GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      182.88,
+      167.64
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "2665a9bb-8283-5421-8df7-98bdc27dde7e",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q20",
+    "symbol": "PWR_PMOS",
+    "value": "AO3401A",
+    "nets": {
+      "1": "EM_MASTER_GATE",
+      "2": "EM_BAT_PROTECTED",
+      "3": "EM_BAT_SW"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      304.8,
+      142.24
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3401A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/datasheets/AO3401A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "a3a7c2e3-2aa4-577b-9ff2-bb8b18cf41ff",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R23",
+    "symbol": "PWR_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "EM_MASTER_GATE",
+      "2": "EM_BAT_PROTECTED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      279.4,
+      170.18
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "32f79f3d-a721-50d5-a05d-87d663f1dd18",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R24",
+    "symbol": "PWR_R",
+    "value": "1k 1%",
+    "nets": {
+      "1": "EM_MASTER_GATE",
+      "2": "EM_OPTO_C"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      345.44,
+      170.18
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-071KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "3d61423a-9dfb-56c6-9c10-86dd3d67b0ab",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "C27",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "EM_MASTER_GATE",
+      "2": "EM_BAT_PROTECTED"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      279.4,
+      193.04
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "bad1b4b6-5c46-5320-8f66-0b1da0345d30",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "U16",
+    "symbol": "PWR_OPTO",
+    "value": "LTV-817S-TA1-B",
+    "nets": {
+      "1": "EM_MASTER_LED_A",
+      "2": "EM_MASTER_LED_K",
+      "3": "EM_GND",
+      "4": "EM_OPTO_C"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      340.36,
+      213.36
+    ],
+    "footprint": "Eltec_Master:SMDIP-4_W7.62mm",
+    "pcb": null,
+    "mpn": "LTV-817S-TA1-B",
+    "manufacturer": "Lite-On",
+    "datasheet": "https://optoelectronics.liteon.com/upload/download/DS-70-96-0016/LTV-8X7%20series%20%20Rev.T.PDF",
+    "populated": true,
+    "physical": true,
+    "description": "Isolated emitter master enable. TA1 tape packaging of SMDIP4, B CTR bin130..260% atIF5mA/VCE5V. JLC catalog C109226; verify assembly orientation.",
+    "uuid": "56dbb20a-d3c6-5495-be1d-75905a305cec",
+    "source_footprint": "Package_DIP:SMDIP-4_W7.62mm"
+  },
+  {
+    "ref": "R25",
+    "symbol": "PWR_R",
+    "value": "390 1%",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "EM_MASTER_LED_A"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      205.74,
+      210.82
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07390RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "11537031-c255-591d-977d-9a2e3de64e1f",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q21",
+    "symbol": "PWR_NMOS",
+    "value": "2N7002LT1G",
+    "nets": {
+      "1": "ADC_READY_RAW",
+      "2": "GND",
+      "3": "EM_MASTER_LED_K"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      208.28,
+      238.76
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "2N7002LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/pdf/datasheet/2n7002l-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "6793e773-0c26-575a-832b-bf2fbaf926f6",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "U10",
+    "symbol": "PWR_LT3041",
+    "value": "LT3041ADE#TRPBF",
+    "nets": {
+      "1": "DET_BAT_PROTECTED",
+      "2": "DET_BAT_PROTECTED",
+      "3": "DET_BAT_PROTECTED",
+      "5": "ADC_REG_EN",
+      "7": "ADC_LDO_ILIM",
+      "8": "DET_BAT_PROTECTED",
+      "9": "ADC_LDO_SET",
+      "10": "GND",
+      "11": "GND",
+      "12": "ADC_5V_HELD",
+      "13": "ADC_5V_HELD",
+      "14": "ADC_5V_HELD",
+      "15": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      152.4,
+      58.42
+    ],
+    "footprint": "Eltec_Master:DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm",
+    "pcb": null,
+    "mpn": "LT3041ADE#TRPBF",
+    "manufacturer": "Analog Devices",
+    "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/lt3041.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Reverse-current protected quiet LDO. PGFB tied IN disables fast start; VIOC and PG float. OUTS Kelvin at local output capacitors. LCSC C7452883.",
+    "uuid": "1dea0601-b86b-5a27-8da6-0c0ed188e78c",
+    "source_footprint": "Package_DFN_QFN:DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm"
+  },
+  {
+    "ref": "R10",
+    "symbol": "PWR_R",
+    "value": "51.1k 0.1% 10ppm/K",
+    "nets": {
+      "1": "ADC_LDO_SET",
+      "2": "ADC_LDO_SET_RETURN"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      279.4,
+      45.72
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RN73C1J51K1BTDF",
+    "manufacturer": "TE Connectivity",
+    "datasheet": "https://www.te.com/en/product-6-1879134-9.html",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "0e4efb9a-3415-5e5e-b1e9-012960db8097",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R39",
+    "symbol": "PWR_R",
+    "value": "698 0.1% 10ppm/K",
+    "nets": {
+      "1": "ADC_LDO_SET_RETURN",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      345.44,
+      45.72
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RN73C1J698RBTDF",
+    "manufacturer": "TE Connectivity",
+    "datasheet": "https://www.te.com/en/product-9-1676970-4.html",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "c1080c5e-aed4-5760-af64-0b154c016e98",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R11",
+    "symbol": "PWR_R",
+    "value": "300 0.1%",
+    "nets": {
+      "1": "ADC_LDO_ILIM",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      279.4,
+      68.58
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RT0603BRD07300RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RT_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Nominal500mA current limit. Datasheet450..550mA example is atVIN2.2V/OUT0; do not misstate this as a guaranteed6.4V battery inrush limit.",
+    "uuid": "06b9a5db-3758-5c6d-9aa6-120a33f00e55",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "C10",
+    "symbol": "PWR_CPOL",
+    "value": "22uF 25V tantalum +/-10%",
+    "nets": {
+      "1": "DET_BAT_PROTECTED",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      50.8,
+      109.22
+    ],
+    "footprint": "Eltec_Master:CP_EIA-7343-31_Kemet-D",
+    "pcb": null,
+    "mpn": "TPSD226K025R0200",
+    "manufacturer": "Kyocera AVX",
+    "datasheet": "https://datasheets.kyocera-avx.com/TPS.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "19.8uF initial minimum without MLCC DC-bias loss;200mohm maximumESR at100kHz. Parallel C36 local ceramic follows LT3041 input decoupling guidance; actual battery lead damping must be checked.",
+    "uuid": "c7335196-6d6f-5731-a8d0-b2a1e1123f1a",
+    "source_footprint": "Capacitor_Tantalum_SMD:CP_EIA-7343-31_Kemet-D"
+  },
+  {
+    "ref": "C36",
+    "symbol": "PWR_C",
+    "value": "22uF 25V X7R +/-10%",
+    "nets": {
+      "1": "DET_BAT_PROTECTED",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      50.8,
+      139.7
+    ],
+    "footprint": "Eltec_Master:C_1210_3225Metric",
+    "pcb": null,
+    "mpn": "GRM32ER71E226KE15L",
+    "manufacturer": "Murata",
+    "datasheet": "https://static.chipdip.ru/lib/973/DOC031973527.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Local high-frequency input bypass in parallel with C10 tantalum. C10 independently supplies the LDO minimum input capacitance.",
+    "uuid": "9031939b-0d0a-56be-86b1-4aaedcfcb6c7",
+    "source_footprint": "Capacitor_SMD:C_1210_3225Metric"
+  },
+  {
+    "ref": "C11",
+    "symbol": "PWR_C",
+    "value": "22uF 25V X7R +/-10%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      152.4,
+      109.22
+    ],
+    "footprint": "Eltec_Master:C_1210_3225Metric",
+    "pcb": null,
+    "mpn": "GRM32ER71E226KE15L",
+    "manufacturer": "Murata",
+    "datasheet": "https://static.chipdip.ru/lib/973/DOC031973527.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Three local ceramics;66uF nominal. Approval target>=20uF combined at5.25V, eachESR<20mohm and mountedESL<2nH. Published bias/ESR curves are typical, not guaranteed limits.",
+    "uuid": "ef80a14c-04fc-5f0a-a5ec-726ca09e8a61",
+    "source_footprint": "Capacitor_SMD:C_1210_3225Metric"
+  },
+  {
+    "ref": "C13",
+    "symbol": "PWR_C",
+    "value": "22uF 25V X7R +/-10%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      228.6,
+      109.22
+    ],
+    "footprint": "Eltec_Master:C_1210_3225Metric",
+    "pcb": null,
+    "mpn": "GRM32ER71E226KE15L",
+    "manufacturer": "Murata",
+    "datasheet": "https://static.chipdip.ru/lib/973/DOC031973527.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Three local ceramics;66uF nominal. Approval target>=20uF combined at5.25V, eachESR<20mohm and mountedESL<2nH. Published bias/ESR curves are typical, not guaranteed limits.",
+    "uuid": "70410696-9483-5907-875d-ec06986aa441",
+    "source_footprint": "Capacitor_SMD:C_1210_3225Metric"
+  },
+  {
+    "ref": "C39",
+    "symbol": "PWR_C",
+    "value": "22uF 25V X7R +/-10%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      304.8,
+      109.22
+    ],
+    "footprint": "Eltec_Master:C_1210_3225Metric",
+    "pcb": null,
+    "mpn": "GRM32ER71E226KE15L",
+    "manufacturer": "Murata",
+    "datasheet": "https://static.chipdip.ru/lib/973/DOC031973527.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Three local ceramics;66uF nominal. Approval target>=20uF combined at5.25V, eachESR<20mohm and mountedESL<2nH. Published bias/ESR curves are typical, not guaranteed limits.",
+    "uuid": "69949fb1-ba13-5e5b-843a-7da3d2ceafad",
+    "source_footprint": "Capacitor_SMD:C_1210_3225Metric"
+  },
+  {
+    "ref": "C15",
+    "symbol": "PWR_C",
+    "value": "100nF 50V 5% C0G",
+    "nets": {
+      "1": "ADC_LDO_SET",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      152.4,
+      139.7
+    ],
+    "footprint": "Eltec_Master:C_1206_3216Metric",
+    "pcb": null,
+    "mpn": "GRM31C5C1H104JA01K",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.mouser.ca/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Three parallel C0G SET capacitors total300nF; no4.7uF low-frequency noise claim. Qualified reference timer/firmware controls startup. Manufacturer IR bounds included in power_corners.py.",
+    "uuid": "99139450-36ba-5416-830e-5dae667f7e3e",
+    "source_footprint": "Capacitor_SMD:C_1206_3216Metric"
+  },
+  {
+    "ref": "C37",
+    "symbol": "PWR_C",
+    "value": "100nF 50V 5% C0G",
+    "nets": {
+      "1": "ADC_LDO_SET",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      228.6,
+      139.7
+    ],
+    "footprint": "Eltec_Master:C_1206_3216Metric",
+    "pcb": null,
+    "mpn": "GRM31C5C1H104JA01K",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.mouser.ca/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Three parallel C0G SET capacitors total300nF; no4.7uF low-frequency noise claim. Qualified reference timer/firmware controls startup. Manufacturer IR bounds included in power_corners.py.",
+    "uuid": "39d2b593-60c8-560e-a08a-b6b9a4f2c3ad",
+    "source_footprint": "Capacitor_SMD:C_1206_3216Metric"
+  },
+  {
+    "ref": "C38",
+    "symbol": "PWR_C",
+    "value": "100nF 50V 5% C0G",
+    "nets": {
+      "1": "ADC_LDO_SET",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      228.6,
+      160.02
+    ],
+    "footprint": "Eltec_Master:C_1206_3216Metric",
+    "pcb": null,
+    "mpn": "GRM31C5C1H104JA01K",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.mouser.ca/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Three parallel C0G SET capacitors total300nF; no4.7uF low-frequency noise claim. Qualified reference timer/firmware controls startup. Manufacturer IR bounds included in power_corners.py.",
+    "uuid": "2dbbcc1d-ad97-56aa-943a-02f15d8e10f9",
+    "source_footprint": "Capacitor_SMD:C_1206_3216Metric"
+  },
+  {
+    "ref": "C12",
+    "symbol": "PWR_CPOL",
+    "value": "820uF 6.3V polymer +/-20%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      48.26,
+      160.02
+    ],
+    "footprint": "Eltec_Master:CP_Elec_8x11.9",
+    "pcb": null,
+    "mpn": "PCJ0J821MCL4GS",
+    "manufacturer": "Nichicon",
+    "datasheet": "https://www.nichicon.com/getmedia/dac1415c-535b-498d-bb65-4c9bced98c46/e-pcj.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Polymer 820uF: initial minimum656uF; endurance minimum524.8uF at20C. ESR10mohm max at20C/100kHz; max impedance ratio1.25 at-55/+105C. Verify effectiveC>=300uF and total rail step<=25mV over required operating conditions.",
+    "uuid": "cd08d2dc-13a6-5784-b135-0146497423f6",
+    "source_footprint": "Capacitor_SMD:CP_Elec_8x11.9"
+  },
+  {
+    "ref": "R12",
+    "symbol": "PWR_R",
+    "value": "4.7k 1%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      279.4,
+      134.62
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-074K7L",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Held-rail bleeder~1.08mA; does not by itself prove all off-state analog paths safe.",
+    "uuid": "c815d546-ef40-57ab-a3f3-c7cbed6e4620",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "U11",
+    "symbol": "PWR_AP2112",
+    "value": "AP2112K-3.3TRG1",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND",
+      "3": "ADC_5V_HELD",
+      "5": "ADC_IO_3V3"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      289.56,
+      180.34
+    ],
+    "footprint": "Eltec_Master:SOT-23-5",
+    "pcb": null,
+    "mpn": "AP2112K-3.3TRG1",
+    "manufacturer": "Diodes Incorporated",
+    "datasheet": "https://www.diodes.com/assets/Datasheets/AP2112.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Carrier-local3.3V for receiver-powered SPI buffers/control; not tied to the module internal AMS1117 output.",
+    "uuid": "63a20f18-91f0-5f2d-a207-d382280562dd",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23-5"
+  },
+  {
+    "ref": "C17",
+    "symbol": "PWR_C",
+    "value": "4.7uF 25V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      248.92,
+      220.98
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B475KAFNNNE",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B475KAFNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "4.7uF25V X7R selected with substantial nominal margin to AP2112 effective1uF minimum; qualify combined DC/AC/temperature capacitance at the local rail.",
+    "uuid": "1028ff4b-aaa8-5672-b79e-8a21d55589d5",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C18",
+    "symbol": "PWR_C",
+    "value": "4.7uF 25V X7R",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "GND"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      340.36,
+      220.98
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B475KAFNNNE",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B475KAFNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "4.7uF25V X7R selected with substantial nominal margin to AP2112 effective1uF minimum; qualify combined DC/AC/temperature capacitance at the local rail.",
+    "uuid": "3271d3bf-1ad8-5375-b53b-d0196fb5edff",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "U12",
+    "symbol": "PWR_SUP_PP",
+    "value": "TPS3840PL42DBVR",
+    "nets": {
+      "1": "USB_VALID_RAW",
+      "2": "USB_PRESENT_5V",
+      "3": "GND",
+      "4": "USB_PRESENT_5V",
+      "5": "USB_SUP_CT"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      81.28,
+      58.42
+    ],
+    "footprint": "Eltec_Master:SOT-23-5",
+    "pcb": null,
+    "mpn": "TPS3840PL42DBVR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/tps3840.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Push-pull active-low supervisor; output means valid after threshold+hysteresis and CT delay. Supplied only from the monitored USB domain.",
+    "uuid": "8af02f75-da86-5f1e-91a9-211616ea7785",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23-5"
+  },
+  {
+    "ref": "U13",
+    "symbol": "PWR_SUP_PP",
+    "value": "TPS3840PL30DBVR",
+    "nets": {
+      "1": "ESP_VALID_RAW",
+      "2": "ESP_3V3",
+      "3": "GND",
+      "4": "ESP_3V3",
+      "5": "ESP_SUP_CT"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      284.48,
+      58.42
+    ],
+    "footprint": "Eltec_Master:SOT-23-5",
+    "pcb": null,
+    "mpn": "TPS3840PL30DBVR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/tps3840.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Push-pull active-low supervisor; output means valid after threshold+hysteresis and CT delay. Supplied only from the monitored USB domain.",
+    "uuid": "17de984a-de8f-52b4-9f27-0da7b35dac64",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23-5"
+  },
+  {
+    "ref": "C19",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "USB_PRESENT_5V",
+      "2": "GND"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      55.88,
+      101.6
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "38a8ab16-b128-5959-91dd-1ead3bdb0a77",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "C20",
+    "symbol": "PWR_C",
+    "value": "10nF 5% C0G",
+    "nets": {
+      "1": "USB_SUP_CT",
+      "2": "GND"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      129.54,
+      101.6
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "GRM1885C1H103JA01D",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.farnell.com/datasheets/2048016.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "6498e5c8-bfbe-5d2b-96be-86e128c13f1a",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "C21",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ESP_3V3",
+      "2": "GND"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      259.08,
+      101.6
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "7c1f8365-fec7-5f2e-aa4e-bad18545c11f",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "C22",
+    "symbol": "PWR_C",
+    "value": "10nF 5% C0G",
+    "nets": {
+      "1": "ESP_SUP_CT",
+      "2": "GND"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      332.74,
+      101.6
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "GRM1885C1H103JA01D",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.farnell.com/datasheets/2048016.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "9fdf0312-2f87-5bba-8401-2ff3dfac4099",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "Q10",
+    "symbol": "PWR_NMOS",
+    "value": "AO3414",
+    "nets": {
+      "1": "USB_VALID_RAW",
+      "2": "ENABLE_AND_MID",
+      "3": "POWER_OFF_NODE"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      63.5,
+      157.48
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3414",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/data_sheets/AO3414.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "RDS(on) specified atVGS1.8V; used only forUSB/ESP gate voltages, since absoluteVGS is8V.",
+    "uuid": "267cf352-368c-58c1-8aae-7d4d5fb9475f",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "Q11",
+    "symbol": "PWR_NMOS",
+    "value": "AO3414",
+    "nets": {
+      "1": "ESP_VALID_RAW",
+      "2": "GND",
+      "3": "ENABLE_AND_MID"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      63.5,
+      198.12
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3414",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/data_sheets/AO3414.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "RDS(on) specified atVGS1.8V; used only forUSB/ESP gate voltages, since absoluteVGS is8V.",
+    "uuid": "182f1661-f971-5eb2-8651-60d278c9028f",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "D10",
+    "symbol": "PWR_D",
+    "value": "1N4148W",
+    "nets": {
+      "1": "OFF_BIAS_RAIL",
+      "2": "DET_BAT_PROTECTED"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      157.48,
+      109.22
+    ],
+    "footprint": "Eltec_Master:D_SOD-123",
+    "pcb": null,
+    "mpn": "1N4148W-7-F",
+    "manufacturer": "Diodes Incorporated",
+    "datasheet": "https://www.diodes.com/assets/Datasheets/ds30086.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Diode OR maintains default-OFF control from either battery or heldrail without backfeeding battery when disconnected.",
+    "uuid": "48daf43a-84f1-5222-a43a-b723995ac91e",
+    "source_footprint": "Diode_SMD:D_SOD-123"
+  },
+  {
+    "ref": "D11",
+    "symbol": "PWR_D",
+    "value": "1N4148W",
+    "nets": {
+      "1": "OFF_BIAS_RAIL",
+      "2": "ADC_5V_HELD"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      223.52,
+      109.22
+    ],
+    "footprint": "Eltec_Master:D_SOD-123",
+    "pcb": null,
+    "mpn": "1N4148W-7-F",
+    "manufacturer": "Diodes Incorporated",
+    "datasheet": "https://www.diodes.com/assets/Datasheets/ds30086.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Diode OR maintains default-OFF control from either battery or heldrail without backfeeding battery when disconnected.",
+    "uuid": "ece76f8c-a8a8-563f-b457-1597a18ed557",
+    "source_footprint": "Diode_SMD:D_SOD-123"
+  },
+  {
+    "ref": "R13",
+    "symbol": "PWR_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "OFF_BIAS_RAIL",
+      "2": "POWER_OFF_NODE"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      157.48,
+      157.48
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "b49d6a12-765d-5e16-95f5-96744fd8a654",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q12",
+    "symbol": "PWR_NMOS",
+    "value": "2N7002LT1G",
+    "nets": {
+      "1": "POWER_OFF_NODE",
+      "2": "GND",
+      "3": "ADC_REG_EN"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      251.46,
+      160.02
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "2N7002LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/pdf/datasheet/2n7002l-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "d38ccdf4-8836-509c-8eed-8ac2061dcdee",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R14",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "DET_BAT_PROTECTED",
+      "2": "ADC_REG_EN"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      330.2,
+      160.02
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "e4dee161-dfeb-5670-828c-f61e0a0318f8",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q13",
+    "symbol": "PWR_NMOS",
+    "value": "2N7002LT1G",
+    "nets": {
+      "1": "POWER_OFF_NODE",
+      "2": "GND",
+      "3": "ADC_SUP_MR_N"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      251.46,
+      208.28
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "2N7002LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/pdf/datasheet/2n7002l-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "d0d4513a-9439-50b4-a601-2e86ec628561",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R15",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "PWR_REF_4V096",
+      "2": "ADC_SUP_MR_N"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      330.2,
+      208.28
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "4988f789-7ec1-5c6f-bcfc-d4e0d506759c",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q24",
+    "symbol": "PWR_NMOS",
+    "value": "AO3414",
+    "nets": {
+      "1": "POWER_OFF_NODE",
+      "2": "GND",
+      "3": "ADC_READY_RAW"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      157.48,
+      208.28
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3414",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/data_sheets/AO3414.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Direct hardware kill, specifiedON at1.8V even when onlyheldrail suppliesOFFbias. Comparator isolatedthroughR16. D12protects8V gate rating.",
+    "uuid": "80b30256-5b4a-56a7-9fd8-ff2a38338c62",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "D12",
+    "symbol": "PWR_D",
+    "value": "BZT52C6V8GW",
+    "nets": {
+      "1": "POWER_OFF_NODE",
+      "2": "GND"
+    },
+    "sheet": "power_supervision",
+    "position": [
+      157.48,
+      236.22
+    ],
+    "footprint": "Eltec_Master:D_SOD-123",
+    "pcb": null,
+    "mpn": "BZT52C6V8GW",
+    "manufacturer": "Diotec Semiconductor",
+    "datasheet": "https://diotec.com/request/datasheet/bzt52c2v4gw.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Active SOD1236.8V gate clamp behindR13; datasheet6.40..7.20V at5mA and max+0.07%/K imply7.704V at125C, belowAO3414 8V gate rating. Do not connect gate directly to battery.",
+    "uuid": "72105b3f-8c34-5b2f-9588-9cce9e4dcbd8",
+    "source_footprint": "Diode_SMD:D_SOD-123"
+  },
+  {
+    "ref": "U17",
+    "symbol": "PWR_SHUNT",
+    "value": "LM4050AIM3-4.1/NOPB",
+    "nets": {
+      "1": "PWR_REF_4V096",
+      "2": "GND",
+      "3": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      50.8,
+      43.18
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "LM4050AIM3-4.1/NOPB",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/lm4050-n.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "4.096V shunt reference, A grade -40..85C tolerance18mV plus1.2mV current change below1mA. LCSC C2156509. This component limits analyzed electronics temperature to85C.",
+    "uuid": "2eac691f-8503-57ca-95de-c9188847cb04",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R30",
+    "symbol": "PWR_R",
+    "value": "1.5k 1%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "PWR_REF_4V096"
+    },
+    "sheet": "power_permission",
+    "position": [
+      50.8,
+      76.2
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-071K5L",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "53162a9d-edc2-5751-aa25-6c48b0786f9a",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "C14",
+    "symbol": "PWR_C",
+    "value": "100nF 5% C0G",
+    "nets": {
+      "1": "PWR_REF_4V096",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      50.8,
+      104.14
+    ],
+    "footprint": "Eltec_Master:C_1206_3216Metric",
+    "pcb": null,
+    "mpn": "GRM31C5C1H104JA01K",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.mouser.ca/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "217cefb2-cb2e-5111-9ba1-e21d199ac338",
+    "source_footprint": "Capacitor_SMD:C_1206_3216Metric"
+  },
+  {
+    "ref": "U14",
+    "symbol": "PWR_SUP_PP",
+    "value": "TPS3840PL34DBVR",
+    "nets": {
+      "1": "REF_READY_RAW",
+      "2": "PWR_REF_4V096",
+      "3": "GND",
+      "4": "ADC_SUP_MR_N",
+      "5": "ADC_SUP_CT"
+    },
+    "sheet": "power_permission",
+    "position": [
+      170.18,
+      45.72
+    ],
+    "footprint": "Eltec_Master:SOT-23-5",
+    "pcb": null,
+    "mpn": "TPS3840PL34DBVR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/tps3840.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Delayed reference startup qualification; not the precision falling-rail threshold. Low-POR push-pull output releases default-on ADC_READY clamp throughQ26. LCSC C2871627.",
+    "uuid": "b26dad86-703b-5e42-b0ea-d2a20824e908",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23-5"
+  },
+  {
+    "ref": "C24",
+    "symbol": "PWR_C",
+    "value": "100nF 5% C0G",
+    "nets": {
+      "1": "ADC_SUP_CT",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      170.18,
+      81.28
+    ],
+    "footprint": "Eltec_Master:C_1206_3216Metric",
+    "pcb": null,
+    "mpn": "GRM31C5C1H104JA01K",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.mouser.ca/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "~61.9ms nominal; initial minimum34.0ms using RevE Eq6, RCT350kohm and C95nF;31.4ms with post-humidity capacitance envelope. This timer qualifies reference startup and restarts afterUSB/ESP faults.",
+    "uuid": "79b574ea-2a7b-5ac9-9f7f-5018e4c2b2a5",
+    "source_footprint": "Capacitor_SMD:C_1206_3216Metric"
+  },
+  {
+    "ref": "U18",
+    "symbol": "PWR_COMPARATOR",
+    "value": "TLV3601DCKR",
+    "nets": {
+      "1": "ADC_COMPARATOR_GOOD",
+      "2": "GND",
+      "3": "ADC_RAIL_SENSE",
+      "4": "PWR_REF_4V096",
+      "5": "ADC_5V_HELD"
+    },
+    "sheet": "power_permission",
+    "position": [
+      299.72,
+      43.18
+    ],
+    "footprint": "Eltec_Master:SOT-353_SC-70-5",
+    "pcb": null,
+    "mpn": "TLV3601DCKR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/tlv3601.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Known-low POR comparator. Full-temperature offset5mV, hysteresis5mV,4.5ns max detect at50mV overdrive/5pF. C2974371. See aggregate gate-load bound; do not apply5pF timing directly to allMOSgates.",
+    "uuid": "69356927-3fec-54d5-af3d-f9b42cad50e7",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-353_SC-70-5"
+  },
+  {
+    "ref": "R31",
+    "symbol": "PWR_R",
+    "value": "221 0.1% 25ppm/K",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "ADC_RAIL_SENSE"
+    },
+    "sheet": "power_permission",
+    "position": [
+      287.02,
+      78.74
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RT0603BRD07221RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RT_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "82f63cff-baae-5106-830e-6814cb5622a7",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R32",
+    "symbol": "PWR_R",
+    "value": "1.00k 0.1% 25ppm/K",
+    "nets": {
+      "1": "ADC_RAIL_SENSE",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      350.52,
+      78.74
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RT0603BRD071KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RT_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "9f4cbdbd-2934-5908-922d-dc401565c468",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "C16",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      350.52,
+      104.14
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "847e0a37-6602-511b-aedb-e5143cdae27c",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "R16",
+    "symbol": "PWR_R",
+    "value": "1k 1%",
+    "nets": {
+      "1": "ADC_COMPARATOR_GOOD",
+      "2": "ADC_READY_RAW"
+    },
+    "sheet": "power_permission",
+    "position": [
+      287.02,
+      104.14
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-071KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Limits direct USB-fault clamp current throughQ24 and isolates comparator from MOSFET gate capacitance.",
+    "uuid": "4a09b697-87e0-58d5-be10-2ad2187e7e6f",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R35",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "ADC_READY_RAW",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      226.06,
+      104.14
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "39e80247-bf62-59b3-978d-270984a57924",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q23",
+    "symbol": "PWR_NMOS",
+    "value": "AO3414",
+    "nets": {
+      "1": "REF_NOT_READY",
+      "2": "GND",
+      "3": "ADC_READY_RAW"
+    },
+    "sheet": "power_permission",
+    "position": [
+      170.18,
+      116.84
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3414",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/data_sheets/AO3414.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Default-on qualification clamp. RDS specified at1.8V; holds all enable gates low untilREF_READY releasesQ23 throughQ26.",
+    "uuid": "6d340ca8-fa92-5c07-85f8-048098adfc69",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "Q26",
+    "symbol": "PWR_NMOS",
+    "value": "AO3414",
+    "nets": {
+      "1": "REF_READY_RAW",
+      "2": "GND",
+      "3": "REF_CLAMP_RELEASE"
+    },
+    "sheet": "power_permission",
+    "position": [
+      109.22,
+      142.24
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3414",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/data_sheets/AO3414.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "RDS specified at1.8V so reference-supervisor HIGH safely releases the qualification clamp.",
+    "uuid": "c586a31e-f7ac-5f2b-bb88-b8b61ad91693",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R40",
+    "symbol": "PWR_R",
+    "value": "150 1%",
+    "nets": {
+      "1": "REF_NOT_READY",
+      "2": "REF_CLAMP_RELEASE"
+    },
+    "sheet": "power_permission",
+    "position": [
+      109.22,
+      163.83
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07150RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Limits100nF feed-forward capacitor release pulse below36mA; approximately15us startup-only discharge. Independent Q24/comparator shutdown path is unaffected.",
+    "uuid": "67563920-1925-5445-9699-3ca1ff96b4cd",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R38",
+    "symbol": "PWR_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "REF_NOT_READY"
+    },
+    "sheet": "power_permission",
+    "position": [
+      170.18,
+      144.78
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "0406d7b8-3200-50d0-886c-a9e559f5123f",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "C23",
+    "symbol": "PWR_C",
+    "value": "100nF 5% C0G",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "REF_NOT_READY"
+    },
+    "sheet": "power_permission",
+    "position": [
+      50.8,
+      142.24
+    ],
+    "footprint": "Eltec_Master:C_1206_3216Metric",
+    "pcb": null,
+    "mpn": "GRM31C5C1H104JA01K",
+    "manufacturer": "Murata",
+    "datasheet": "https://www.mouser.ca/datasheet/3/76/1/GRM31C5C1H104JA01-01A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Feed-forward makes default-on clamp track abruptheldrailstartup instead ofwaiting forR38/Ciss. Clamp must be fullyon before comparatorcanproduceHIGH.",
+    "uuid": "42c2b396-337d-561a-835d-ae433360f2ac",
+    "source_footprint": "Capacitor_SMD:C_1206_3216Metric"
+  },
+  {
+    "ref": "R34",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "REF_READY_RAW",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      109.22,
+      114.3
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "a968ec56-d5a6-50b3-b6db-dfc1ec4ed36f",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q14",
+    "symbol": "PWR_NMOS",
+    "value": "2N7002LT1G",
+    "nets": {
+      "1": "ADC_READY_RAW",
+      "2": "GND",
+      "3": "ISOLATE_H"
+    },
+    "sheet": "power_permission",
+    "position": [
+      274.32,
+      144.78
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "2N7002LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/pdf/datasheet/2n7002l-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "c120c967-8a91-52c4-8eef-f14a164ccdfd",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R17",
+    "symbol": "PWR_R",
+    "value": "1k 1%",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "ISOLATE_H"
+    },
+    "sheet": "power_permission",
+    "position": [
+      345.44,
+      144.78
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-071KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "12 ADG control pins may draw216uA total;1k keeps HIGH valid down to3V, whileQ14 sinks~5mA duringmeasurement.",
+    "uuid": "12569531-1083-50e8-82d9-9389612c0eb4",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "U15",
+    "symbol": "PWR_SCHMITT_INV",
+    "value": "SN74LVC1G14DBVR",
+    "nets": {
+      "2": "ISOLATE_H",
+      "3": "GND",
+      "4": "MASTER_PERMIT",
+      "5": "ADC_IO_3V3"
+    },
+    "sheet": "power_permission",
+    "position": [
+      81.28,
+      172.72
+    ],
+    "footprint": "Eltec_Master:SOT-23-5",
+    "pcb": null,
+    "mpn": "SN74LVC1G14DBVR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/sn74lvc1g14.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "3.3V low-impedance hardware permit. Battery masters separately require raw supervisor state, not this gate during undervoltage.",
+    "uuid": "7dd92176-d255-5783-8be0-5c5f2667b658",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23-5"
+  },
+  {
+    "ref": "C25",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      48.26,
+      195.58
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "75fa804e-f4c7-599e-9739-a5fa2d76c392",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "R18",
+    "symbol": "PWR_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "MASTER_PERMIT",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      139.7,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "f0ddd827-52ce-54b0-879a-18ae232f0fa1",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R19",
+    "symbol": "PWR_R",
+    "value": "0",
+    "nets": {
+      "1": "MASTER_PERMIT",
+      "2": "SPI_PERMIT"
+    },
+    "sheet": "power_permission",
+    "position": [
+      139.7,
+      226.06
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603JR-070RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "88e7c648-b409-5843-bffe-2f7008cde790",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q15",
+    "symbol": "PWR_NMOS",
+    "value": "2N7002LT1G",
+    "nets": {
+      "1": "ISOLATE_H",
+      "2": "GND",
+      "3": "ADC_PDWN_N"
+    },
+    "sheet": "power_permission",
+    "position": [
+      274.32,
+      175.26
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "2N7002LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/pdf/datasheet/2n7002l-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "0b397348-f39a-56b8-b3a0-cdbb8ea0c91c",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R20",
+    "symbol": "PWR_R",
+    "value": "4.7k 1%",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "ADC_PDWN_N"
+    },
+    "sheet": "power_permission",
+    "position": [
+      345.44,
+      175.26
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-074K7L",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "26c7381a-d9ff-5173-be47-54e4a6e385f3",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "Q22",
+    "symbol": "PWR_NMOS",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_LED_ENABLE_GATE",
+      "2": "GND",
+      "3": "EM_LED_RETURN"
+    },
+    "sheet": "power_permission",
+    "position": [
+      274.32,
+      213.36
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/sites/default/files/res/datasheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Hardware return gate for all3 existing emitter PWM optocoupler LEDs; this is USB/logic ground, not EM_GND.",
+    "uuid": "ca12e454-e2d1-54e6-b51d-706306fd8cfa",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R26",
+    "symbol": "PWR_R",
+    "value": "100 1%",
+    "nets": {
+      "1": "MASTER_PERMIT",
+      "2": "EM_LED_ENABLE_GATE"
+    },
+    "sheet": "power_permission",
+    "position": [
+      345.44,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "c714f5b7-1453-568b-9974-76eca86c327c",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "R27",
+    "symbol": "PWR_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "EM_LED_ENABLE_GATE",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      345.44,
+      226.06
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "0b5cc4fc-e786-5a40-b984-8ce628921ccc",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "U19",
+    "symbol": "PWR_NAND",
+    "value": "SN74LVC1G132DBVR",
+    "nets": {
+      "1": "ADC_READY_RAW",
+      "2": "REF_READY_RAW",
+      "3": "GND",
+      "4": "ESP_POWER_NOT_READY",
+      "5": "ESP_3V3"
+    },
+    "sheet": "power_permission",
+    "position": [
+      81.28,
+      254
+    ],
+    "footprint": "Eltec_Master:SOT-23-5",
+    "pcb": null,
+    "mpn": "SN74LVC1G132DBVR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/sn74lvc1g132.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "ESP-powered Schmitt NAND:LOW means both rawpermissionsvalid.5.5V-tolerant inputs andIoff avoid cross-power. No reliance on undervoltageADC-domainMASTER_PERMIT logic.",
+    "uuid": "8a945eba-c705-5fd0-9b8f-3e21f7de746e",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23-5"
+  },
+  {
+    "ref": "C29",
+    "symbol": "PWR_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ESP_3V3",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      170.18,
+      251.46
+    ],
+    "footprint": "Eltec_Master:C_0603_1608Metric",
+    "pcb": null,
+    "mpn": "CL10B104KB8NNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL10B104KB8NNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "",
+    "uuid": "503a5f5a-2706-561a-bb69-564f601c1f84",
+    "source_footprint": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  {
+    "ref": "R33",
+    "symbol": "PWR_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "ESP_POWER_NOT_READY",
+      "2": "GND"
+    },
+    "sheet": "power_permission",
+    "position": [
+      233.68,
+      251.46
+    ],
+    "footprint": "Eltec_Master:R_0603_1608Metric",
+    "pcb": null,
+    "mpn": "RC0603FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://www.yageo.com/upload/media/product/productsearch/datasheet/rchip/PYu-RC_Group_51_RoHS_L.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Limits outputIoff10uA to0.1V whileESP unpowered; poweredNAND activelydrivesHIGH=fault.",
+    "uuid": "47a9de99-e523-51aa-a56b-19ad2d95e627",
+    "source_footprint": "Resistor_SMD:R_0603_1608Metric"
+  },
+  {
+    "ref": "U50",
+    "symbol": "SN74LVC2G125_DCT",
+    "value": "SN74LVC2G125DCTR",
+    "nets": {
+      "1": "ADC_IF_OE_N",
+      "2": "ESP_SCLK",
+      "6": "ADC_SCLK_DRV",
+      "7": "ADC_IF_OE_N",
+      "5": "ESP_MOSI",
+      "3": "ADC_MOSI_DRV",
+      "8": "ADC_IO_3V3",
+      "4": "GND"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      63.5,
+      73.66
+    ],
+    "footprint": "Eltec_Master:TI_DCT0008A_SSOP8",
+    "pcb": null,
+    "mpn": "SN74LVC2G125DCTR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Dual buffer; receiver-powered; specified Ioff <=10uA at VCC=0",
+    "uuid": "73025af9-9a52-50d2-9fff-d7bacc9a2213",
+    "lcsc": "C206035"
+  },
+  {
+    "ref": "U51",
+    "symbol": "SN74LVC2G125_DCT",
+    "value": "SN74LVC2G125DCTR",
+    "nets": {
+      "1": "ADC_IF_OE_N",
+      "2": "ESP_CS_N",
+      "6": "ADC_CS_DRV",
+      "7": "ADC_IO_3V3",
+      "5": "GND",
+      "8": "ADC_IO_3V3",
+      "4": "GND"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      63.5,
+      139.7
+    ],
+    "footprint": "Eltec_Master:TI_DCT0008A_SSOP8",
+    "pcb": null,
+    "mpn": "SN74LVC2G125DCTR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Dual buffer; receiver-powered; specified Ioff <=10uA at VCC=0",
+    "uuid": "ba9998f9-5f06-5430-aa22-2d93f50c807f",
+    "lcsc": "C206035"
+  },
+  {
+    "ref": "U52",
+    "symbol": "SN74LVC2G125_DCT",
+    "value": "SN74LVC2G125DCTR",
+    "nets": {
+      "1": "ESP_IF_OE_N",
+      "2": "ADC_MISO",
+      "6": "ESP_MISO_DRV",
+      "7": "ESP_IF_OE_N",
+      "5": "ADC_DRDY_N",
+      "3": "ESP_DRDY_DRV",
+      "8": "ESP_3V3",
+      "4": "GND"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      238.76,
+      73.66
+    ],
+    "footprint": "Eltec_Master:TI_DCT0008A_SSOP8",
+    "pcb": null,
+    "mpn": "SN74LVC2G125DCTR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Dual buffer; receiver-powered; specified Ioff <=10uA at VCC=0",
+    "uuid": "2d91ff71-a3dd-5faa-9d47-f752c386e092",
+    "lcsc": "C206035"
+  },
+  {
+    "ref": "Q50",
+    "symbol": "MMBT3904",
+    "value": "MMBT3904LT1G",
+    "nets": {
+      "1": "ADC_OE_BASE",
+      "2": "GND",
+      "3": "ADC_IF_OE_N"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      238.76,
+      144.78
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "MMBT3904LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/download/data-sheet/pdf/mmbt3904lt1-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Default-disabled output-enable driver; B1 E2 C3",
+    "uuid": "501e58a3-9065-5026-acfe-9f63010b2655",
+    "lcsc": "C81464",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "Q51",
+    "symbol": "MMBT3904",
+    "value": "MMBT3904LT1G",
+    "nets": {
+      "1": "ESP_OE_BASE",
+      "2": "GND",
+      "3": "ESP_IF_OE_N"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      350.52,
+      144.78
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "MMBT3904LT1G",
+    "manufacturer": "onsemi",
+    "datasheet": "https://www.onsemi.com/download/data-sheet/pdf/mmbt3904lt1-d.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Default-disabled output-enable driver; B1 E2 C3",
+    "uuid": "466de406-f380-5378-8455-b7400ac19d88",
+    "lcsc": "C81464",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R50",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "SPI_PERMIT",
+      "2": "ADC_OE_BASE"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      208.28,
+      190.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "e394cc58-cce6-5270-a7c0-0e2fc5b1b880",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R51",
+    "symbol": "SPI_R",
+    "value": "100k",
+    "nets": {
+      "1": "ADC_OE_BASE",
+      "2": "GND"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      208.28,
+      213.36
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "cf161216-25ef-532a-898d-de65e9751661",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R52",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "ADC_IF_OE_N"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      208.28,
+      236.22
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "a3d000b4-5b33-5409-93f6-7dea47b2d862",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R53",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "SPI_PERMIT",
+      "2": "ESP_OE_BASE"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      335.28,
+      190.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "2d2a2146-01fb-5341-9e64-62365316136a",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R54",
+    "symbol": "SPI_R",
+    "value": "100k",
+    "nets": {
+      "1": "ESP_OE_BASE",
+      "2": "GND"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      335.28,
+      213.36
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "00f22e4f-c792-55d3-80dc-a20634ea09f1",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R55",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ESP_3V3",
+      "2": "ESP_IF_OE_N"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      335.28,
+      236.22
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "0ab30c58-0a7c-543c-bc2c-084c85b80c7d",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R56",
+    "symbol": "SPI_R",
+    "value": "33",
+    "nets": {
+      "1": "ADC_SCLK_DRV",
+      "2": "ADC_SCLK"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      124.46,
+      55.88
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0733RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "fbba4850-fd9f-553f-a7a1-dd6c8cc2bb6f",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R57",
+    "symbol": "SPI_R",
+    "value": "33",
+    "nets": {
+      "1": "ADC_MOSI_DRV",
+      "2": "ADC_MOSI"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      124.46,
+      86.36
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0733RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "067b1e27-0de8-51c3-9e89-cf1922220699",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R58",
+    "symbol": "SPI_R",
+    "value": "33",
+    "nets": {
+      "1": "ADC_CS_DRV",
+      "2": "ADC_CS_N"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      124.46,
+      137.16
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0733RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "1f80416e-cb1e-5dd7-8e51-611f1031ff18",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R59",
+    "symbol": "SPI_R",
+    "value": "33",
+    "nets": {
+      "1": "ESP_MISO_DRV",
+      "2": "ESP_MISO"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      335.28,
+      55.88
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0733RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "2753997f-51ef-57e8-86f8-202c17d42a05",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R60",
+    "symbol": "SPI_R",
+    "value": "33",
+    "nets": {
+      "1": "ESP_DRDY_DRV",
+      "2": "ESP_DRDY"
+    },
+    "sheet": "spi_protection",
+    "position": [
+      335.28,
+      86.36
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0733RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "5b743858-f385-56ca-a309-3d4c23bf3324",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R61",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ESP_SCLK",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      63.5,
+      63.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "1dd37427-90ea-5e99-b765-b85c598be3ad",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R62",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ESP_MOSI",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      187.95999999999998,
+      63.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "593f7f3d-8c5d-5521-bef4-4acf90449fde",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R63",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ESP_CS_N",
+      "2": "ESP_3V3"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      312.41999999999996,
+      63.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "c879c94f-4820-5448-ae64-cedb0cfc25c8",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R64",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ADC_MISO",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      63.5,
+      101.6
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "d7855253-854c-5f7e-84c7-696cf0d5c708",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R65",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ADC_DRDY_N",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      187.95999999999998,
+      101.6
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "bb7355a5-06ad-52b0-b927-921558f531a6",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R66",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ADC_SCLK",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      312.41999999999996,
+      101.6
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "bf469cc3-7f08-584d-bd7d-85910e468ff5",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R67",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ADC_MOSI",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      63.5,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "755a12ac-ed78-5e15-a7ba-3d9f512bb3d3",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R68",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ADC_CS_N",
+      "2": "ADC_IO_3V3"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      187.95999999999998,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "98280363-4b24-5d88-9356-95598c98ca5c",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R69",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ESP_MISO",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      312.41999999999996,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "ca48f26d-235f-55fb-b0eb-cda42dabda38",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R70",
+    "symbol": "SPI_R",
+    "value": "10k",
+    "nets": {
+      "1": "ESP_DRDY",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      63.5,
+      177.8
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "0805, 1%, 0.125W; final purchasing match in assembly BOM",
+    "uuid": "5e720164-0ab2-5849-8e4f-55c7684153e7",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "C50",
+    "symbol": "SPI_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      63.5,
+      228.6
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local buffer decoupling; place at VCC/GND pins",
+    "uuid": "1580a9aa-f189-56ed-97b3-88239bd26179",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C51",
+    "symbol": "SPI_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_IO_3V3",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      187.96,
+      228.6
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local buffer decoupling; place at VCC/GND pins",
+    "uuid": "05d2e708-92bf-5db7-bf07-7d3d0b771cbb",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C52",
+    "symbol": "SPI_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ESP_3V3",
+      "2": "GND"
+    },
+    "sheet": "spi_defaults",
+    "position": [
+      312.42,
+      228.6
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local buffer decoupling; place at VCC/GND pins",
+    "uuid": "78dc0a43-f97a-5999-98fc-82700cf0f350",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "JDET1",
+    "symbol": "Detector_Wire_Interface",
+    "value": "TEST",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "SENSOR0",
+      "3": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      45.72,
+      66.04
+    ],
+    "footprint": "Eltec_Master:Detector_Wire_Lands",
+    "pcb": [
+      23.62,
+      83.4075,
+      180.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing wire solder lands: copper feature, no purchased component. V+1 SIGNAL2 GND/case3. Preserve harness polarity.",
+    "uuid": "ffa5c5b5-dc99-567b-9534-3634b87c5be2"
+  },
+  {
+    "ref": "R200",
+    "symbol": "AN_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "SENSOR0",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      48.26,
+      96.52
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Original detector source resistor; remains at the sensor. Do not omit or parallel with another sensor load.",
+    "uuid": "8977676a-c334-575c-bb86-12fefb71ff47",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "JDET2",
+    "symbol": "Detector_Wire_Interface",
+    "value": "REFERENCE",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "SENSOR1",
+      "3": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      45.72,
+      139.7
+    ],
+    "footprint": "Eltec_Master:Detector_Wire_Lands",
+    "pcb": [
+      23.62,
+      70.985,
+      180.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing wire solder lands: copper feature, no purchased component. V+1 SIGNAL2 GND/case3. Preserve harness polarity.",
+    "uuid": "772f7764-ba90-5524-8ae3-837b2b66d51e"
+  },
+  {
+    "ref": "R201",
+    "symbol": "AN_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "SENSOR1",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      48.26,
+      170.18
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Original detector source resistor; remains at the sensor. Do not omit or parallel with another sensor load.",
+    "uuid": "794441e8-5e34-53d2-8086-1a9b796e4471",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "U30",
+    "symbol": "ADG4613_TSSOP16",
+    "value": "ADG4613BRUZ",
+    "nets": {
+      "1": "ISOLATE_H",
+      "8": "ISOLATE_H",
+      "9": "ISOLATE_H",
+      "16": "ISOLATE_H",
+      "14": "AMP_SERIES0",
+      "11": "AMP_SERIES1",
+      "3": "CLAMP_GND0",
+      "6": "CLAMP_GND1",
+      "15": "ADC_AIN0",
+      "2": "ADC_AIN0",
+      "10": "ADC_AIN1",
+      "7": "ADC_AIN1",
+      "13": "ADC_5V_HELD",
+      "4": "GND",
+      "5": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      294.64,
+      104.14
+    ],
+    "footprint": "Eltec_Master:TSSOP-16_4.4x5mm_P0.65mm",
+    "pcb": null,
+    "mpn": "ADG4613BRUZ",
+    "manufacturer": "Analog Devices",
+    "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/adg4612_4613.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Selector after low-impedance buffer: HIGH grounds ADC inputs through220R; LOW selects buffered signals. Power-off leakage is discharged by33k ADC bleeders.",
+    "uuid": "b79b1868-13f5-5444-8ff7-9656747fbe7d",
+    "source_footprint": "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
+  },
+  {
+    "ref": "R210",
+    "symbol": "AN_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "SENSOR0",
+      "2": "AMP_IN0"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      104.14,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Limits input clamp current. OPA2325 rail-clamp operation requires input current within10mA.",
+    "uuid": "126b11c4-ca48-5659-9a8e-ac003ebc21cc",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R220",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT0",
+      "2": "AMP_SERIES0"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      236.22,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Isolation before selector. Gain network compensates nominal33k bleed load; module100R/100nF and ADC impedance remain in transfer calculation.",
+    "uuid": "4fc027c8-7966-5620-a02c-51441fcd9be1",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R230",
+    "symbol": "AN_R",
+    "value": "220R 1%",
+    "nets": {
+      "1": "CLAMP_GND0",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      292.1,
+      185.42
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07220RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Direct ADC grounding path when ISOLATE_H is HIGH; includes internal module100R/100nF filter.",
+    "uuid": "dd012230-8285-5547-a18b-b49f97a2b605",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R240",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "ADC_AIN0",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      355.6,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Permanent ADC-side bleed. Two tied switch drain leaks at3uA each produce at most0.199V with33k0.1%; not82k.",
+    "uuid": "63eeb213-6abc-59e9-99e1-dcf2eedbd0f9",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R250",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT0",
+      "2": "AMP_FB0"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      114.3,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting feedback. Rf/Rg=499/33000 offsets ADC-side bleed loading; calculate residual switch/module transfer error.",
+    "uuid": "67630860-dbe0-544a-abc8-7abdf0231323",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R260",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "AMP_FB0",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      200.66,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting gain resistor. Gain is1.0151212 nominal before output network.",
+    "uuid": "ff4299ab-a68c-5303-8075-5885e749ecc0",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R211",
+    "symbol": "AN_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "SENSOR1",
+      "2": "AMP_IN1"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      104.14,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Limits input clamp current. OPA2325 rail-clamp operation requires input current within10mA.",
+    "uuid": "71c1ce22-fec3-5f1c-9509-38f2d95f09e4",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R221",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT1",
+      "2": "AMP_SERIES1"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      236.22,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Isolation before selector. Gain network compensates nominal33k bleed load; module100R/100nF and ADC impedance remain in transfer calculation.",
+    "uuid": "809211df-0ed9-594c-b65d-d2ac9e6d25da",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R231",
+    "symbol": "AN_R",
+    "value": "220R 1%",
+    "nets": {
+      "1": "CLAMP_GND1",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      292.1,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07220RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Direct ADC grounding path when ISOLATE_H is HIGH; includes internal module100R/100nF filter.",
+    "uuid": "c9524eac-c381-5c51-8baf-840f436b1881",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R241",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "ADC_AIN1",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      355.6,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Permanent ADC-side bleed. Two tied switch drain leaks at3uA each produce at most0.199V with33k0.1%; not82k.",
+    "uuid": "51816ebf-0c19-5f2b-b5ae-e33429f8d115",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R251",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT1",
+      "2": "AMP_FB1"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      114.3,
+      220.98
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting feedback. Rf/Rg=499/33000 offsets ADC-side bleed loading; calculate residual switch/module transfer error.",
+    "uuid": "73818307-39ce-5bee-9799-2bf89892f9f4",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R261",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "AMP_FB1",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      200.66,
+      220.98
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting gain resistor. Gain is1.0151212 nominal before output network.",
+    "uuid": "7cfc8467-ee45-5d22-8b40-73513a42ec10",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "U33",
+    "symbol": "OPA2325_Dual",
+    "value": "OPA2325IDR",
+    "nets": {
+      "3": "AMP_IN0",
+      "2": "AMP_FB0",
+      "1": "AMP_OUT0",
+      "5": "AMP_IN1",
+      "6": "AMP_FB1",
+      "7": "AMP_OUT1",
+      "8": "ADC_5V_HELD",
+      "4": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      154.94,
+      104.14
+    ],
+    "footprint": "Eltec_Master:SOIC-8_3.9x4.9mm_P1.27mm",
+    "pcb": null,
+    "mpn": "OPA2325IDR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/opa325.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Zero-crossover input stage. Powered by held ADC supply so its output is bounded by that supply. Gain1+499/33k; see transfer and fault-input analysis.",
+    "uuid": "97abe0b5-6b17-5b22-aed9-42de533db579",
+    "lcsc": "C2058909",
+    "source_footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  },
+  {
+    "ref": "C30",
+    "symbol": "AN_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      236.22,
+      241.3
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local analog IC bypass; one each at switch and dual opamp.",
+    "uuid": "9345b4c6-529b-5ca5-a3d3-09bbb27afce3",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C33",
+    "symbol": "AN_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_1",
+    "position": [
+      340.36,
+      241.3
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local analog IC bypass; one each at switch and dual opamp.",
+    "uuid": "dcc04dc8-387e-5279-87dd-74cbd3816bef",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "JDET3",
+    "symbol": "Detector_Wire_Interface",
+    "value": "TEST",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "SENSOR2",
+      "3": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      45.72,
+      66.04
+    ],
+    "footprint": "Eltec_Master:Detector_Wire_Lands",
+    "pcb": [
+      23.62,
+      58.5825,
+      180.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing wire solder lands: copper feature, no purchased component. V+1 SIGNAL2 GND/case3. Preserve harness polarity.",
+    "uuid": "468f8adf-abc9-5521-94c4-07614789c6b1"
+  },
+  {
+    "ref": "R202",
+    "symbol": "AN_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "SENSOR2",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      48.26,
+      96.52
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Original detector source resistor; remains at the sensor. Do not omit or parallel with another sensor load.",
+    "uuid": "7a5bd661-aab8-591e-8da8-5bad3a3d7035",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "JDET4",
+    "symbol": "Detector_Wire_Interface",
+    "value": "REFERENCE",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "SENSOR3",
+      "3": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      45.72,
+      139.7
+    ],
+    "footprint": "Eltec_Master:Detector_Wire_Lands",
+    "pcb": [
+      23.62,
+      46.1625,
+      180.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing wire solder lands: copper feature, no purchased component. V+1 SIGNAL2 GND/case3. Preserve harness polarity.",
+    "uuid": "d95a46aa-9fb6-5270-9101-6368e4440b7e"
+  },
+  {
+    "ref": "R203",
+    "symbol": "AN_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "SENSOR3",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      48.26,
+      170.18
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Original detector source resistor; remains at the sensor. Do not omit or parallel with another sensor load.",
+    "uuid": "0bad323a-f0b5-51b0-8dfe-39bd9c50398f",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "U31",
+    "symbol": "ADG4613_TSSOP16",
+    "value": "ADG4613BRUZ",
+    "nets": {
+      "1": "ISOLATE_H",
+      "8": "ISOLATE_H",
+      "9": "ISOLATE_H",
+      "16": "ISOLATE_H",
+      "14": "AMP_SERIES2",
+      "11": "AMP_SERIES3",
+      "3": "CLAMP_GND2",
+      "6": "CLAMP_GND3",
+      "15": "ADC_AIN2",
+      "2": "ADC_AIN2",
+      "10": "ADC_AIN3",
+      "7": "ADC_AIN3",
+      "13": "ADC_5V_HELD",
+      "4": "GND",
+      "5": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      294.64,
+      104.14
+    ],
+    "footprint": "Eltec_Master:TSSOP-16_4.4x5mm_P0.65mm",
+    "pcb": null,
+    "mpn": "ADG4613BRUZ",
+    "manufacturer": "Analog Devices",
+    "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/adg4612_4613.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Selector after low-impedance buffer: HIGH grounds ADC inputs through220R; LOW selects buffered signals. Power-off leakage is discharged by33k ADC bleeders.",
+    "uuid": "09df4fe5-10be-57ef-8727-2bbef51034ee",
+    "source_footprint": "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
+  },
+  {
+    "ref": "R212",
+    "symbol": "AN_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "SENSOR2",
+      "2": "AMP_IN2"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      104.14,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Limits input clamp current. OPA2325 rail-clamp operation requires input current within10mA.",
+    "uuid": "f7af9c48-8e53-540e-a829-a297c99c7ad8",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R222",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT2",
+      "2": "AMP_SERIES2"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      236.22,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Isolation before selector. Gain network compensates nominal33k bleed load; module100R/100nF and ADC impedance remain in transfer calculation.",
+    "uuid": "a4bdd767-69d9-53c2-9a33-731917284ea0",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R232",
+    "symbol": "AN_R",
+    "value": "220R 1%",
+    "nets": {
+      "1": "CLAMP_GND2",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      292.1,
+      185.42
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07220RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Direct ADC grounding path when ISOLATE_H is HIGH; includes internal module100R/100nF filter.",
+    "uuid": "bd4621eb-10c5-5524-872f-909da767ff30",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R242",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "ADC_AIN2",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      355.6,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Permanent ADC-side bleed. Two tied switch drain leaks at3uA each produce at most0.199V with33k0.1%; not82k.",
+    "uuid": "fa0c97f5-7a3e-5651-b24f-56140683c5bd",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R252",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT2",
+      "2": "AMP_FB2"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      114.3,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting feedback. Rf/Rg=499/33000 offsets ADC-side bleed loading; calculate residual switch/module transfer error.",
+    "uuid": "3a7068a5-5b69-5d23-b716-bcde659b5aee",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R262",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "AMP_FB2",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      200.66,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting gain resistor. Gain is1.0151212 nominal before output network.",
+    "uuid": "f0b3c2b7-4775-5f5c-9236-e687615e1a20",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R213",
+    "symbol": "AN_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "SENSOR3",
+      "2": "AMP_IN3"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      104.14,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Limits input clamp current. OPA2325 rail-clamp operation requires input current within10mA.",
+    "uuid": "12501fbd-1200-56d9-8454-40f17485940c",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R223",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT3",
+      "2": "AMP_SERIES3"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      236.22,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Isolation before selector. Gain network compensates nominal33k bleed load; module100R/100nF and ADC impedance remain in transfer calculation.",
+    "uuid": "1dd3611d-6d0f-5577-9f18-21a964cae5f4",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R233",
+    "symbol": "AN_R",
+    "value": "220R 1%",
+    "nets": {
+      "1": "CLAMP_GND3",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      292.1,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07220RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Direct ADC grounding path when ISOLATE_H is HIGH; includes internal module100R/100nF filter.",
+    "uuid": "1d353204-21f6-586e-9988-b5d4380195fb",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R243",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "ADC_AIN3",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      355.6,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Permanent ADC-side bleed. Two tied switch drain leaks at3uA each produce at most0.199V with33k0.1%; not82k.",
+    "uuid": "ae03e96e-d36c-537b-a684-ffe79cfe25f9",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R253",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT3",
+      "2": "AMP_FB3"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      114.3,
+      220.98
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting feedback. Rf/Rg=499/33000 offsets ADC-side bleed loading; calculate residual switch/module transfer error.",
+    "uuid": "8cb8cb74-273f-5570-acc8-d9de05414fdc",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R263",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "AMP_FB3",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      200.66,
+      220.98
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting gain resistor. Gain is1.0151212 nominal before output network.",
+    "uuid": "26eaeb06-9bd2-59b9-bd68-1b6324c09834",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "U34",
+    "symbol": "OPA2325_Dual",
+    "value": "OPA2325IDR",
+    "nets": {
+      "3": "AMP_IN2",
+      "2": "AMP_FB2",
+      "1": "AMP_OUT2",
+      "5": "AMP_IN3",
+      "6": "AMP_FB3",
+      "7": "AMP_OUT3",
+      "8": "ADC_5V_HELD",
+      "4": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      154.94,
+      104.14
+    ],
+    "footprint": "Eltec_Master:SOIC-8_3.9x4.9mm_P1.27mm",
+    "pcb": null,
+    "mpn": "OPA2325IDR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/opa325.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Zero-crossover input stage. Powered by held ADC supply so its output is bounded by that supply. Gain1+499/33k; see transfer and fault-input analysis.",
+    "uuid": "33453668-9c74-5e86-93fc-feba4934350f",
+    "lcsc": "C2058909",
+    "source_footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  },
+  {
+    "ref": "C31",
+    "symbol": "AN_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      236.22,
+      241.3
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local analog IC bypass; one each at switch and dual opamp.",
+    "uuid": "9f581d56-6b4e-56e8-b8c8-adebb23b0449",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C34",
+    "symbol": "AN_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_2",
+    "position": [
+      340.36,
+      241.3
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local analog IC bypass; one each at switch and dual opamp.",
+    "uuid": "b5eb724b-2faf-5a7c-a137-2d3539855642",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "JDET5",
+    "symbol": "Detector_Wire_Interface",
+    "value": "TEST",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "SENSOR4",
+      "3": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      45.72,
+      66.04
+    ],
+    "footprint": "Eltec_Master:Detector_Wire_Lands",
+    "pcb": [
+      23.74,
+      34.3625,
+      180.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing wire solder lands: copper feature, no purchased component. V+1 SIGNAL2 GND/case3. Preserve harness polarity.",
+    "uuid": "d877cd36-573c-5194-aeb6-c6e88ab50017"
+  },
+  {
+    "ref": "R204",
+    "symbol": "AN_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "SENSOR4",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      48.26,
+      96.52
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Original detector source resistor; remains at the sensor. Do not omit or parallel with another sensor load.",
+    "uuid": "2f5ba4a9-1556-5dc9-84bb-37a89dae1157",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "JDET6",
+    "symbol": "Detector_Wire_Interface",
+    "value": "REFERENCE",
+    "nets": {
+      "1": "SENSOR_BAT_SW",
+      "2": "SENSOR5",
+      "3": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      45.72,
+      139.7
+    ],
+    "footprint": "Eltec_Master:Detector_Wire_Lands",
+    "pcb": [
+      23.6541,
+      21.985,
+      180.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing wire solder lands: copper feature, no purchased component. V+1 SIGNAL2 GND/case3. Preserve harness polarity.",
+    "uuid": "aad12529-c65e-5338-9ae0-6177bf013240"
+  },
+  {
+    "ref": "R205",
+    "symbol": "AN_R",
+    "value": "100k 1%",
+    "nets": {
+      "1": "SENSOR5",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      48.26,
+      170.18
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Original detector source resistor; remains at the sensor. Do not omit or parallel with another sensor load.",
+    "uuid": "2593168c-4bd9-5e3e-90ed-3d995c1975bc",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "U32",
+    "symbol": "ADG4613_TSSOP16",
+    "value": "ADG4613BRUZ",
+    "nets": {
+      "1": "ISOLATE_H",
+      "8": "ISOLATE_H",
+      "9": "ISOLATE_H",
+      "16": "ISOLATE_H",
+      "14": "AMP_SERIES4",
+      "11": "AMP_SERIES5",
+      "3": "CLAMP_GND4",
+      "6": "CLAMP_GND5",
+      "15": "ADC_AIN4",
+      "2": "ADC_AIN4",
+      "10": "ADC_AIN5",
+      "7": "ADC_AIN5",
+      "13": "ADC_5V_HELD",
+      "4": "GND",
+      "5": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      294.64,
+      104.14
+    ],
+    "footprint": "Eltec_Master:TSSOP-16_4.4x5mm_P0.65mm",
+    "pcb": null,
+    "mpn": "ADG4613BRUZ",
+    "manufacturer": "Analog Devices",
+    "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/adg4612_4613.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Selector after low-impedance buffer: HIGH grounds ADC inputs through220R; LOW selects buffered signals. Power-off leakage is discharged by33k ADC bleeders.",
+    "uuid": "b7d4bc84-fefb-5aa4-adb3-8d8b423b3eb7",
+    "source_footprint": "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
+  },
+  {
+    "ref": "R214",
+    "symbol": "AN_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "SENSOR4",
+      "2": "AMP_IN4"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      104.14,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Limits input clamp current. OPA2325 rail-clamp operation requires input current within10mA.",
+    "uuid": "da5bf8bc-8aba-5476-91f0-1d4f4df7d8e3",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R224",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT4",
+      "2": "AMP_SERIES4"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      236.22,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Isolation before selector. Gain network compensates nominal33k bleed load; module100R/100nF and ADC impedance remain in transfer calculation.",
+    "uuid": "3058f471-e28f-5333-8866-693ace6ba08d",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R234",
+    "symbol": "AN_R",
+    "value": "220R 1%",
+    "nets": {
+      "1": "CLAMP_GND4",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      292.1,
+      185.42
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07220RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Direct ADC grounding path when ISOLATE_H is HIGH; includes internal module100R/100nF filter.",
+    "uuid": "2cd8f62b-58ab-5eb6-a0b2-e8e368e190eb",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R244",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "ADC_AIN4",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      355.6,
+      66.04
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Permanent ADC-side bleed. Two tied switch drain leaks at3uA each produce at most0.199V with33k0.1%; not82k.",
+    "uuid": "ec540111-9c6c-5d97-b8fc-133ab819b779",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R254",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT4",
+      "2": "AMP_FB4"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      114.3,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting feedback. Rf/Rg=499/33000 offsets ADC-side bleed loading; calculate residual switch/module transfer error.",
+    "uuid": "e5b75764-faa0-556a-94d0-0362539c4f68",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R264",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "AMP_FB4",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      200.66,
+      195.58
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting gain resistor. Gain is1.0151212 nominal before output network.",
+    "uuid": "da34196a-e535-57b9-8a61-a910d99750cd",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R215",
+    "symbol": "AN_R",
+    "value": "10k 1%",
+    "nets": {
+      "1": "SENSOR5",
+      "2": "AMP_IN5"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      104.14,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Limits input clamp current. OPA2325 rail-clamp operation requires input current within10mA.",
+    "uuid": "d488632f-339c-5db2-aa4e-9dbe67883908",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R225",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT5",
+      "2": "AMP_SERIES5"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      236.22,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Isolation before selector. Gain network compensates nominal33k bleed load; module100R/100nF and ADC impedance remain in transfer calculation.",
+    "uuid": "c511ef75-2370-5ca1-b7ef-8bad6a9a91a2",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R235",
+    "symbol": "AN_R",
+    "value": "220R 1%",
+    "nets": {
+      "1": "CLAMP_GND5",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      292.1,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07220RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Direct ADC grounding path when ISOLATE_H is HIGH; includes internal module100R/100nF filter.",
+    "uuid": "2a0dad6e-9f67-56c7-a928-8b9471455859",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R245",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "ADC_AIN5",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      355.6,
+      139.7
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Permanent ADC-side bleed. Two tied switch drain leaks at3uA each produce at most0.199V with33k0.1%; not82k.",
+    "uuid": "2483ea43-1cee-5625-927b-7e0086baeb95",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R255",
+    "symbol": "AN_R",
+    "value": "499R 0.1%",
+    "nets": {
+      "1": "AMP_OUT5",
+      "2": "AMP_FB5"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      114.3,
+      220.98
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD07499RL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting feedback. Rf/Rg=499/33000 offsets ADC-side bleed loading; calculate residual switch/module transfer error.",
+    "uuid": "541655fc-83a8-5b94-a120-170be0714ff8",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R265",
+    "symbol": "AN_R",
+    "value": "33k 0.1%",
+    "nets": {
+      "1": "AMP_FB5",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      200.66,
+      220.98
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RT0805BRD0733KL",
+    "manufacturer": "Yageo",
+    "datasheet": "",
+    "populated": true,
+    "physical": true,
+    "description": "Noninverting gain resistor. Gain is1.0151212 nominal before output network.",
+    "uuid": "099a7c78-6fa9-5466-a16d-a505a5541a0d",
+    "lcsc": "C728650",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "U35",
+    "symbol": "OPA2325_Dual",
+    "value": "OPA2325IDR",
+    "nets": {
+      "3": "AMP_IN4",
+      "2": "AMP_FB4",
+      "1": "AMP_OUT4",
+      "5": "AMP_IN5",
+      "6": "AMP_FB5",
+      "7": "AMP_OUT5",
+      "8": "ADC_5V_HELD",
+      "4": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      154.94,
+      104.14
+    ],
+    "footprint": "Eltec_Master:SOIC-8_3.9x4.9mm_P1.27mm",
+    "pcb": null,
+    "mpn": "OPA2325IDR",
+    "manufacturer": "Texas Instruments",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/opa325.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Zero-crossover input stage. Powered by held ADC supply so its output is bounded by that supply. Gain1+499/33k; see transfer and fault-input analysis.",
+    "uuid": "113380a3-e502-5362-a01d-1632d98f8f5b",
+    "lcsc": "C2058909",
+    "source_footprint": "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+  },
+  {
+    "ref": "C32",
+    "symbol": "AN_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      236.22,
+      241.3
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local analog IC bypass; one each at switch and dual opamp.",
+    "uuid": "e90fb48d-5d27-5642-9a33-34c909f104b2",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C35",
+    "symbol": "AN_C",
+    "value": "100nF 50V X7R",
+    "nets": {
+      "1": "ADC_5V_HELD",
+      "2": "GND"
+    },
+    "sheet": "analog_pair_3",
+    "position": [
+      340.36,
+      241.3
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local analog IC bypass; one each at switch and dual opamp.",
+    "uuid": "985c3654-a882-5ff2-99d6-4055fbb740a0",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "U100",
+    "symbol": "EM_LT1963A_Q",
+    "value": "LT1963AEQ#PBF",
+    "nets": {
+      "1": "EM_BAT_SW",
+      "2": "EM_BAT_SW",
+      "3": "EM_GND",
+      "4": "EM_REG",
+      "5": "EM_ADJ"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      101.6,
+      81.28
+    ],
+    "footprint": "Eltec_Master:TO-263-5_TabPin3",
+    "pcb": null,
+    "mpn": "LT1963AEQ#PBF",
+    "manufacturer": "Analog Devices",
+    "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/lt1963a.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "1.5A adjustable LDO. Thermal design and bench qualification limit actual aggregate output. Pin3/tab needs isolated EM_GND copper.",
+    "uuid": "615a153c-d2a8-51ec-81c2-c309d53abde9",
+    "lcsc": "C20415348",
+    "assembly_note": "Exact LCSC match identified; live JLCPCBA stock/sourcing must be checked.",
+    "source_footprint": "Package_TO_SOT_SMD:TO-263-5_TabPin3"
+  },
+  {
+    "ref": "R100",
+    "symbol": "EM_R",
+    "value": "210R 1% 0.125W",
+    "nets": {
+      "1": "EM_ADJ",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      101.6,
+      167.64
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07210RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07210RL",
+    "populated": true,
+    "physical": true,
+    "description": "ADJ-to-ground resistor; ensures >5.5mA divider load even with all emitters off.",
+    "uuid": "9fcd2fd7-0ae6-5a7e-b2af-76075aaadaad",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R101",
+    "symbol": "EM_R",
+    "value": "7R5 1% 0.125W",
+    "nets": {
+      "1": "EM_TRIM_TOP",
+      "2": "EM_ADJ"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      243.84,
+      124.46
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-077R5L",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-077R5L",
+    "populated": true,
+    "physical": true,
+    "description": "Fixed minimum setting resistor; not an independent output overvoltage clamp.",
+    "uuid": "1930bcd5-159a-5419-ae63-1711ff84cceb",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "RV100",
+    "symbol": "EM_3296W",
+    "value": "1k 25-turn 0.5W",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EM_REG",
+      "3": "EM_TRIM_TOP"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      243.84,
+      81.28
+    ],
+    "footprint": "Eltec_Master:Potentiometer_Bourns_3296W_Vertical",
+    "pcb": null,
+    "mpn": "3296W-1-102LF",
+    "manufacturer": "Bourns",
+    "datasheet": "https://www.bourns.com/docs/product-datasheets/3296.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Populated trimmer. Pins1+2 strapped: open wiper retains full track resistance. CW adjustment decreases output. Set with meter before connecting emitters.",
+    "uuid": "f7b1bfdc-5656-567c-b324-ddb51312b6a3",
+    "lcsc": "C57089",
+    "source_footprint": "Potentiometer_THT:Potentiometer_Bourns_3296W_Vertical"
+  },
+  {
+    "ref": "C100",
+    "symbol": "EM_C_Polarized",
+    "value": "22uF 25V 10% TPS",
+    "nets": {
+      "1": "EM_BAT_SW",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      60.96,
+      124.46
+    ],
+    "footprint": "Eltec_Master:CP_EIA-7343-31_Kemet-D",
+    "pcb": null,
+    "mpn": "TPSD226K025R0200",
+    "manufacturer": "Kyocera AVX",
+    "datasheet": "https://datasheets.kyocera-avx.com/TPS.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "CaseD7343-31,22uF\u00b110%,25V,200m\u03a9 maximum ESR at100kHz. Pin1 is positive. Place close to LDO.",
+    "uuid": "051ef4b8-3cb1-5bbf-af7e-721989d3c284",
+    "lcsc": "C284839",
+    "assembly_note": "JLCPCBA Extended/SMT match exists, but live stock and Kyocera AVX manufacturer identity need confirmation (JLC page displays manufacturer --).",
+    "source_footprint": "Capacitor_Tantalum_SMD:CP_EIA-7343-31_Kemet-D"
+  },
+  {
+    "ref": "C102",
+    "symbol": "EM_C_Polarized",
+    "value": "22uF 25V 10% TPS",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      330.2,
+      81.28
+    ],
+    "footprint": "Eltec_Master:CP_EIA-7343-31_Kemet-D",
+    "pcb": null,
+    "mpn": "TPSD226K025R0200",
+    "manufacturer": "Kyocera AVX",
+    "datasheet": "https://datasheets.kyocera-avx.com/TPS.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "CaseD7343-31,22uF\u00b110%,25V,200m\u03a9 maximum ESR at100kHz. Pin1 is positive. Place close to LDO.",
+    "uuid": "702f7edc-967d-5caf-8040-b900045a391c",
+    "lcsc": "C284839",
+    "assembly_note": "JLCPCBA Extended/SMT match exists, but live stock and Kyocera AVX manufacturer identity need confirmation (JLC page displays manufacturer --).",
+    "source_footprint": "Capacitor_Tantalum_SMD:CP_EIA-7343-31_Kemet-D"
+  },
+  {
+    "ref": "C101",
+    "symbol": "EM_C",
+    "value": "100nF 50V X7R 10%",
+    "nets": {
+      "1": "EM_BAT_SW",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      60.96,
+      162.56
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local high-frequency bypass; no separate ADJ capacitor needed.",
+    "uuid": "ad444987-621c-5ae3-87a3-093a674eb3a4",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "C103",
+    "symbol": "EM_C",
+    "value": "100nF 50V X7R 10%",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      330.2,
+      124.46
+    ],
+    "footprint": "Eltec_Master:C_0805_2012Metric",
+    "pcb": null,
+    "mpn": "CL21B104KBCNNNC",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "datasheet": "https://product.samsungsem.com/mlcc/CL21B104KBCNNN.do",
+    "populated": true,
+    "physical": true,
+    "description": "Local high-frequency bypass; no separate ADJ capacitor needed.",
+    "uuid": "42bac0ce-79ca-5046-b1e3-60ebe1ab7d31",
+    "source_footprint": "Capacitor_SMD:C_0805_2012Metric"
+  },
+  {
+    "ref": "U101",
+    "symbol": "EM_LTV847S",
+    "value": "LTV-847S",
+    "nets": {
+      "1": "EM_LED1_A",
+      "2": "EM_LED_RETURN",
+      "3": "EM_LED2_A",
+      "4": "EM_LED_RETURN",
+      "5": "EM_LED3_A",
+      "6": "EM_LED_RETURN",
+      "16": "EM_BAT_SW",
+      "15": "EM_GATE1_DRIVE",
+      "14": "EM_BAT_SW",
+      "13": "EM_GATE2_DRIVE",
+      "12": "EM_BAT_SW",
+      "11": "EM_GATE3_DRIVE"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      187.96,
+      71.12
+    ],
+    "footprint": "Eltec_Master:SMDIP-16_W9.53mm",
+    "pcb": null,
+    "mpn": "LTV-847S",
+    "manufacturer": "Lite-On",
+    "datasheet": "https://optoelectronics.liteon.com/upload/download/DS-70-96-0016/LTV-8X7%20series%20%20Rev.S.PDF",
+    "populated": true,
+    "physical": true,
+    "description": "Three channels used, fourth all NC. Cathodes return through the MASTER_PERMIT sink owned by power stage. Collectors use switched battery rail rather than low adjustable heater rail. No ground tie across optocoupler.",
+    "uuid": "9c67db68-f981-54d4-9df5-3439cece0969",
+    "lcsc": "C114599",
+    "source_footprint": "Package_DIP:SMDIP-16_W9.53mm"
+  },
+  {
+    "ref": "R110",
+    "symbol": "EM_R",
+    "value": "240R 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT1",
+      "2": "EM_LED1_A"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      129.54
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07240RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL",
+    "populated": true,
+    "physical": true,
+    "description": "Opto LED current ~8.75mA at3.3V/1.2V; >5mA with2.64V VOH and1.4V VF.",
+    "uuid": "c1e46fad-315b-5eb8-9e2d-e33343ae0071",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R111",
+    "symbol": "EM_R",
+    "value": "100k 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT1",
+      "2": "GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      147.32
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL",
+    "populated": true,
+    "physical": true,
+    "description": "Input pull-down keeps emitter command low while ESP32 pin is high impedance.",
+    "uuid": "57e8fe4c-d91a-5a22-afb6-c021755564c0",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R112",
+    "symbol": "EM_R",
+    "value": "100R 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE1_DRIVE",
+      "2": "EM_GATE1"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      129.54
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL",
+    "populated": true,
+    "physical": true,
+    "description": "Series gate resistor; place beside MOSFET gate.",
+    "uuid": "f7ba8c94-ab4c-544f-a40e-cc0e462600ac",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R113",
+    "symbol": "EM_R",
+    "value": "10k 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE1",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      147.32
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+    "populated": true,
+    "physical": true,
+    "description": "Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.",
+    "uuid": "deb605c4-eb40-59c8-a1bf-879117a0949d",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "Q101",
+    "symbol": "EM_AO3400A",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_GATE1",
+      "2": "EM_GND",
+      "3": "EMIT1_LOW"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      320.04,
+      129.54
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/res/data_sheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter1 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.",
+    "uuid": "3e2cc7ee-d26f-58b8-b9b2-c1b60edd0ab2",
+    "lcsc": "C20917",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R115",
+    "symbol": "EM_R",
+    "value": "240R 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT2",
+      "2": "EM_LED2_A"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      172.72
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07240RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL",
+    "populated": true,
+    "physical": true,
+    "description": "Opto LED current ~8.75mA at3.3V/1.2V; >5mA with2.64V VOH and1.4V VF.",
+    "uuid": "87ea5be0-2bed-5232-9a26-294b0d0ff5de",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R116",
+    "symbol": "EM_R",
+    "value": "100k 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT2",
+      "2": "GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      190.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL",
+    "populated": true,
+    "physical": true,
+    "description": "Input pull-down keeps emitter command low while ESP32 pin is high impedance.",
+    "uuid": "d9b5a0ac-af7e-5208-8034-8af9dc8a3af8",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R117",
+    "symbol": "EM_R",
+    "value": "100R 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE2_DRIVE",
+      "2": "EM_GATE2"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      172.72
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL",
+    "populated": true,
+    "physical": true,
+    "description": "Series gate resistor; place beside MOSFET gate.",
+    "uuid": "7401e39a-f0d7-50c6-af32-f1cbb5f3e0b3",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R118",
+    "symbol": "EM_R",
+    "value": "10k 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE2",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      190.5
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+    "populated": true,
+    "physical": true,
+    "description": "Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.",
+    "uuid": "44a2fc4a-7c9a-5630-aec5-ff786f86b292",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "Q102",
+    "symbol": "EM_AO3400A",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_GATE2",
+      "2": "EM_GND",
+      "3": "EMIT2_LOW"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      320.04,
+      172.72
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/res/data_sheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter2 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.",
+    "uuid": "cf787bbc-dca2-50e6-b8f7-2f51f742c47e",
+    "lcsc": "C20917",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "R120",
+    "symbol": "EM_R",
+    "value": "240R 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT3",
+      "2": "EM_LED3_A"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07240RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07240RL",
+    "populated": true,
+    "physical": true,
+    "description": "Opto LED current ~8.75mA at3.3V/1.2V; >5mA with2.64V VOH and1.4V VF.",
+    "uuid": "b65a6614-61e4-5d96-8339-992c394b5452",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R121",
+    "symbol": "EM_R",
+    "value": "100k 1% 0.125W",
+    "nets": {
+      "1": "ESP_EMIT3",
+      "2": "GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      66.04,
+      233.68
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100KL",
+    "populated": true,
+    "physical": true,
+    "description": "Input pull-down keeps emitter command low while ESP32 pin is high impedance.",
+    "uuid": "f272134d-7a13-5744-92ac-67b15f474f4b",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R122",
+    "symbol": "EM_R",
+    "value": "100R 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE3_DRIVE",
+      "2": "EM_GATE3"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      215.9
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-07100RL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-07100RL",
+    "populated": true,
+    "physical": true,
+    "description": "Series gate resistor; place beside MOSFET gate.",
+    "uuid": "037a7ee5-1c20-53b7-94d2-4cf7f794abfd",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "R123",
+    "symbol": "EM_R",
+    "value": "10k 1% 0.125W",
+    "nets": {
+      "1": "EM_GATE3",
+      "2": "EM_GND"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      193.04,
+      233.68
+    ],
+    "footprint": "Eltec_Master:R_0805_2012Metric",
+    "pcb": null,
+    "mpn": "RC0805FR-0710KL",
+    "manufacturer": "Yageo",
+    "datasheet": "https://yageogroup.com/component-documentation/download/specsheet/RC0805FR-0710KL",
+    "populated": true,
+    "physical": true,
+    "description": "Gate-to-source pull-down AFTER series resistor; discharges gate when optical drive is off.",
+    "uuid": "f94b9e74-d8f5-57a4-8d25-af4294cd4027",
+    "source_footprint": "Resistor_SMD:R_0805_2012Metric"
+  },
+  {
+    "ref": "Q103",
+    "symbol": "EM_AO3400A",
+    "value": "AO3400A",
+    "nets": {
+      "1": "EM_GATE3",
+      "2": "EM_GND",
+      "3": "EMIT3_LOW"
+    },
+    "sheet": "emitter_pwm",
+    "position": [
+      320.04,
+      215.9
+    ],
+    "footprint": "Eltec_Master:SOT-23",
+    "pcb": null,
+    "mpn": "AO3400A",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "datasheet": "https://www.aosmd.com/res/data_sheets/AO3400A.pdf",
+    "populated": true,
+    "physical": true,
+    "description": "Emitter3 low-side PWM. Gate powered optically from EM_BAT_SW; emitterpositive is EM_REG.",
+    "uuid": "32a9a687-4237-5048-bc54-df43680d1c8e",
+    "lcsc": "C20917",
+    "source_footprint": "Package_TO_SOT_SMD:SOT-23"
+  },
+  {
+    "ref": "JEM1",
+    "symbol": "Emitter_Wire_Interface",
+    "value": "EMITTER 1",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EMIT1_LOW"
+    },
+    "sheet": "emitter_connections",
+    "position": [
+      101.6,
+      71.12
+    ],
+    "footprint": "Eltec_Master:Emitter_Wire_Lands",
+    "pcb": [
+      32.235,
+      111.17,
+      90.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing two wire copper lands. Pin1heaterpositive; pin2PWMreturn. No purchased connector.",
+    "uuid": "cfcfd61e-249b-562b-914b-268944336a78"
+  },
+  {
+    "ref": "JEM2",
+    "symbol": "Emitter_Wire_Interface",
+    "value": "EMITTER 2",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EMIT2_LOW"
+    },
+    "sheet": "emitter_connections",
+    "position": [
+      101.6,
+      121.92
+    ],
+    "footprint": "Eltec_Master:Emitter_Wire_Lands",
+    "pcb": [
+      23.735,
+      111.17,
+      90.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing two wire copper lands. Pin1heaterpositive; pin2PWMreturn. No purchased connector.",
+    "uuid": "1a526e57-262d-581d-934d-03963c78afe6"
+  },
+  {
+    "ref": "JEM3",
+    "symbol": "Emitter_Wire_Interface",
+    "value": "EMITTER 3",
+    "nets": {
+      "1": "EM_REG",
+      "2": "EMIT3_LOW"
+    },
+    "sheet": "emitter_connections",
+    "position": [
+      101.6,
+      172.72
+    ],
+    "footprint": "Eltec_Master:Emitter_Wire_Lands",
+    "pcb": [
+      15.235,
+      111.17,
+      90.0
+    ],
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "Existing two wire copper lands. Pin1heaterpositive; pin2PWMreturn. No purchased connector.",
+    "uuid": "24839ebe-5933-5dcb-8dc8-f2fd1590c58b"
+  },
+  {
+    "ref": "#FLG01",
+    "symbol": "External_Power_Source",
+    "value": "External power source",
+    "nets": {
+      "1": "GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      45.72,
+      238.76
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "ERC declaration of external source through passive protection. See schematic power path; no physical component.",
+    "uuid": "f3913af3-a480-5edc-a10a-2f7c73b2a2b5"
+  },
+  {
+    "ref": "#FLG02",
+    "symbol": "External_Power_Source",
+    "value": "External power source",
+    "nets": {
+      "1": "EM_GND"
+    },
+    "sheet": "power_inputs",
+    "position": [
+      106.68,
+      238.76
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "ERC declaration of external source through passive protection. See schematic power path; no physical component.",
+    "uuid": "eaf06979-b808-5e10-8adc-e1f92f19dca4"
+  },
+  {
+    "ref": "#FLG03",
+    "symbol": "External_Power_Source",
+    "value": "External power source",
+    "nets": {
+      "1": "DET_BAT_PROTECTED"
+    },
+    "sheet": "adc_supply",
+    "position": [
+      50.8,
+      210.82
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "ERC declaration of external source through passive protection. See schematic power path; no physical component.",
+    "uuid": "16e33366-822a-54ea-a1e7-d708a0a7e435"
+  },
+  {
+    "ref": "#FLG04",
+    "symbol": "External_Power_Source",
+    "value": "External power source",
+    "nets": {
+      "1": "EM_BAT_SW"
+    },
+    "sheet": "emitter_regulator",
+    "position": [
+      106.68,
+      195.58
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "ERC declaration of external source through passive protection. See schematic power path; no physical component.",
+    "uuid": "261f886f-0d58-571d-9d6a-e634b4cc021a"
+  },
+  {
+    "ref": "#FLG05",
+    "symbol": "External_Power_Source",
+    "value": "External power source",
+    "nets": {
+      "1": "PWR_REF_4V096"
+    },
+    "sheet": "power_permission",
+    "position": [
+      76.2,
+      218.44
+    ],
+    "footprint": "",
+    "pcb": null,
+    "mpn": "",
+    "manufacturer": "",
+    "datasheet": "",
+    "populated": true,
+    "physical": false,
+    "description": "ERC declaration of external source through passive protection. See schematic power path; no physical component.",
+    "uuid": "156268c1-a82f-5b66-ab47-e7d72378b61e"
+  }
+]

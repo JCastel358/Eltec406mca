@@ -1,0 +1,319 @@
+{
+  "started_utc": "2026-09-09T13:59:42.537233+00:00",
+  "complete": true,
+  "flashed": false,
+  "fqbn": "esp32:esp32:esp32",
+  "commands": [
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tools\\prepare_firmware.py"
+      ],
+      "returncode": 0,
+      "stdout": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\firmware\\Eltec_USB_Master\\Eltec_USB_Master.ino\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Users\\JoseCastelblanco\\AppData\\Local\\Programs\\Arduino IDE\\resources\\app\\lib\\backend\\resources\\arduino-cli.exe",
+        "version"
+      ],
+      "returncode": 0,
+      "stdout": "arduino-cli  Version: 1.5.1 Commit: 01f3d4f2b Date: 2026-06-05T10:22:12Z\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Users\\JoseCastelblanco\\AppData\\Local\\Programs\\Arduino IDE\\resources\\app\\lib\\backend\\resources\\arduino-cli.exe",
+        "core",
+        "list"
+      ],
+      "returncode": 0,
+      "stdout": "ID          Installed Latest Name\narduino:avr 1.8.8     1.8.8  Arduino AVR Boards\nesp32:esp32 3.3.11    3.3.11 esp32\n\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Users\\JoseCastelblanco\\AppData\\Local\\Programs\\Arduino IDE\\resources\\app\\lib\\backend\\resources\\arduino-cli.exe",
+        "compile",
+        "--fqbn",
+        "esp32:esp32:esp32",
+        "--warnings",
+        "all",
+        "--build-path",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tmp\\firmware_build",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\firmware\\Eltec_USB_Master"
+      ],
+      "returncode": 0,
+      "stdout": "Sketch uses 291568 bytes (22%) of program storage space. Maximum is 1310720 bytes.\nGlobal variables use 22972 bytes (7%) of dynamic memory, leaving 304708 bytes for local variables. Maximum is 327680 bytes.\n",
+      "stderr": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\firmware\\Eltec_USB_Master\\Eltec_USB_Master.ino: In function 'void onCarrierPowerChange()':\nC:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\firmware\\Eltec_USB_Master\\Eltec_USB_Master.ino:233:3: warning: '++' expression of 'volatile'-qualified type is deprecated [-Wvolatile]\n  233 |   carrierPowerEpoch++;\n      |   ^~~~~~~~~~~~~~~~~\nC:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\firmware\\Eltec_USB_Master\\Eltec_USB_Master.ino: In function 'void onAdsDrdyFalling()':\nC:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\firmware\\Eltec_USB_Master\\Eltec_USB_Master.ino:560:26: warning: '++' expression of 'volatile'-qualified type is deprecated [-Wvolatile]\n  560 |   if (streamSampleReady) streamDrdyOverruns++;\n      |                          ^~~~~~~~~~~~~~~~~~\n"
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tools\\check_firmware_protocol.py",
+        "--require-current-sketch"
+      ],
+      "returncode": 0,
+      "stdout": "{\"status\": \"PASS\", \"passed\": 24, \"failed\": 0, \"generated_sketch_matches_current_generator\": true, \"report\": \"C:\\\\Users\\\\JoseCastelblanco\\\\Documents\\\\Eltec_TestRig\\\\hardware\\\\single_detector_usb_master_r1\\\\reports\\\\firmware_protocol_checks.json\"}\n",
+      "stderr": ""
+    }
+  ],
+  "firmware_sha256": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c",
+  "original_source_sha256": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+  "original_source_unchanged": true,
+  "build_outputs": {
+    "tmp\\firmware_build\\boot_app0.bin": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0",
+    "tmp\\firmware_build\\Eltec_USB_Master.ino.bin": "58c62c0c21647bf430bdf1a739d36cafab89fe60cb60a419db4f267a1c137530",
+    "tmp\\firmware_build\\Eltec_USB_Master.ino.bootloader.bin": "427f96e10c620c4f062dab15da54fc45494d897e8397ae6f3aecc98c42d7e379",
+    "tmp\\firmware_build\\Eltec_USB_Master.ino.merged.bin": "eee8e32e621192b7956405ef3d555e076be13d7948a269a853784fb9f3b1010d",
+    "tmp\\firmware_build\\Eltec_USB_Master.ino.partitions.bin": "148b959cbff1c38aa8e1d5c0ba9d612c54997b945e56a63f41223eef650653a1"
+  },
+  "protocol_checks": {
+    "status": "PASS",
+    "checks_passed": 24,
+    "checks_failed": 0,
+    "scope": "Real Python backend handshake/command/stop-stream parsers with mocked transport. No MCU execution, serial connection, compiler invocation, flashing, or generated firmware writes.",
+    "inputs": {
+      "source": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+      "generator": "1b0abbda03dbe4e792bdcce2e8ecdb9ad84b07d36ad7a0fbf584163ddd8b4c10",
+      "generated_sketch": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c"
+    },
+    "backend_sources": {
+      "m405m22": {
+        "path": "single_detector_rig\\m405m22\\esp32_backend.py",
+        "sha256": "51c4106e59063d992c715606b84b19a353845bfca2dc50ca532cf416b7cf4efb"
+      },
+      "m406mca": {
+        "path": "single_detector_rig\\m406mca\\esp32_backend.py",
+        "sha256": "a7c137d748ce2e424e0e002e8a0453e225ac62aac9454079b2af0f9f6761ab04"
+      },
+      "m449m18": {
+        "path": "single_detector_rig\\m449m18\\esp32_backend.py",
+        "sha256": "82e3952547ae1cb87950b5cfa4cca731980d969d4207846a135fff1be5edf618"
+      }
+    },
+    "literal_generator_replacements": 18,
+    "proposed_sketch_sha256": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c",
+    "generated_sketch_matches_current_generator": true,
+    "generated_sketch_note": "Current",
+    "checks": [
+      {
+        "name": "status_wire_format_preserved",
+        "passed": true,
+        "detail": {
+          "source_and_candidate_printf_format": "STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f,pwm_duty=%.1f\\n"
+        }
+      },
+      {
+        "name": "generated_sketch_matches_current_generator",
+        "passed": true,
+        "detail": true
+      },
+      {
+        "name": "m405m22/identity_v3_3",
+        "passed": true,
+        "detail": {
+          "identity": "ELTEC-ESP32-ADS1256,v3.3",
+          "version": [
+            3,
+            3,
+            0
+          ],
+          "identity_does_not_require_ready": true
+        }
+      },
+      {
+        "name": "m405m22/normal_handshake",
+        "passed": true,
+        "detail": {
+          "commands": [
+            "IDN?"
+          ],
+          "ready_seen": true
+        }
+      },
+      {
+        "name": "m405m22/identity_while_power_unavailable",
+        "passed": true,
+        "detail": {
+          "identity_accepted_with_adc_not_ready": true,
+          "limitation": "This is serial identity only; no analog readiness claim."
+        }
+      },
+      {
+        "name": "m405m22/status_reply",
+        "passed": true,
+        "detail": {
+          "reply": "STATUS,pwm=0,streaming=0,vref=2.500,rate=1000,pwm_hz=10.000,pwm_duty=50.0"
+        }
+      },
+      {
+        "name": "m405m22/old_END_then_ERR_failure_mode_reproduced",
+        "passed": true,
+        "detail": {
+          "END_before_ERR_is_accepted": true,
+          "fault_left_unconsumed": true,
+          "purpose": "Reproduce why firmware must report captured faults before END."
+        }
+      },
+      {
+        "name": "m405m22/ERR_before_END_rejects_capture",
+        "passed": true,
+        "detail": {
+          "fault_rejected_before_END": true,
+          "error": "Firmware stream error: ERR,carrier power lost; capture invalid"
+        }
+      },
+      {
+        "name": "m405m22/scalar_fault_rejected",
+        "passed": true,
+        "detail": {
+          "invalid_scalar_rejected": true,
+          "error": "OFFSET? -> ERR,carrier power or ADC not ready; retry after ready"
+        }
+      },
+      {
+        "name": "m406mca/identity_v3_3",
+        "passed": true,
+        "detail": {
+          "identity": "ELTEC-ESP32-ADS1256,v3.3",
+          "version": [
+            3,
+            3,
+            0
+          ],
+          "identity_does_not_require_ready": true
+        }
+      },
+      {
+        "name": "m406mca/normal_handshake",
+        "passed": true,
+        "detail": {
+          "commands": [
+            "IDN?"
+          ],
+          "ready_seen": true
+        }
+      },
+      {
+        "name": "m406mca/identity_while_power_unavailable",
+        "passed": true,
+        "detail": {
+          "identity_accepted_with_adc_not_ready": true,
+          "limitation": "This is serial identity only; no analog readiness claim."
+        }
+      },
+      {
+        "name": "m406mca/status_reply",
+        "passed": true,
+        "detail": {
+          "reply": "STATUS,pwm=0,streaming=0,vref=2.500,rate=1000,pwm_hz=10.000,pwm_duty=50.0"
+        }
+      },
+      {
+        "name": "m406mca/old_END_then_ERR_failure_mode_reproduced",
+        "passed": true,
+        "detail": {
+          "END_before_ERR_is_accepted": true,
+          "fault_left_unconsumed": true,
+          "purpose": "Reproduce why firmware must report captured faults before END."
+        }
+      },
+      {
+        "name": "m406mca/ERR_before_END_rejects_capture",
+        "passed": true,
+        "detail": {
+          "fault_rejected_before_END": true,
+          "error": "Firmware stream error: ERR,carrier power lost; capture invalid"
+        }
+      },
+      {
+        "name": "m406mca/scalar_fault_rejected",
+        "passed": true,
+        "detail": {
+          "invalid_scalar_rejected": true,
+          "error": "OFFSET? -> ERR,carrier power or ADC not ready; retry after ready"
+        }
+      },
+      {
+        "name": "m449m18/identity_v3_3",
+        "passed": true,
+        "detail": {
+          "identity": "ELTEC-ESP32-ADS1256,v3.3",
+          "version": [
+            3,
+            3,
+            0
+          ],
+          "identity_does_not_require_ready": true
+        }
+      },
+      {
+        "name": "m449m18/normal_handshake",
+        "passed": true,
+        "detail": {
+          "commands": [
+            "IDN?"
+          ],
+          "ready_seen": true
+        }
+      },
+      {
+        "name": "m449m18/identity_while_power_unavailable",
+        "passed": true,
+        "detail": {
+          "identity_accepted_with_adc_not_ready": true,
+          "limitation": "This is serial identity only; no analog readiness claim."
+        }
+      },
+      {
+        "name": "m449m18/status_reply",
+        "passed": true,
+        "detail": {
+          "reply": "STATUS,pwm=0,streaming=0,vref=2.500,rate=1000,pwm_hz=10.000,pwm_duty=50.0"
+        }
+      },
+      {
+        "name": "m449m18/old_END_then_ERR_failure_mode_reproduced",
+        "passed": true,
+        "detail": {
+          "END_before_ERR_is_accepted": true,
+          "fault_left_unconsumed": true,
+          "purpose": "Reproduce why firmware must report captured faults before END."
+        }
+      },
+      {
+        "name": "m449m18/ERR_before_END_rejects_capture",
+        "passed": true,
+        "detail": {
+          "fault_rejected_before_END": true,
+          "error": "Firmware stream error: ERR,carrier power lost; capture invalid"
+        }
+      },
+      {
+        "name": "m449m18/scalar_fault_rejected",
+        "passed": true,
+        "detail": {
+          "invalid_scalar_rejected": true,
+          "error": "OFFSET? -> ERR,carrier power or ADC not ready; retry after ready"
+        }
+      },
+      {
+        "name": "firmware_inputs_unchanged",
+        "passed": true,
+        "detail": {
+          "source": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+          "generator": "1b0abbda03dbe4e792bdcce2e8ecdb9ad84b07d36ad7a0fbf584163ddd8b4c10",
+          "generated_sketch": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c"
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Compile uses generic ESP32 target and installed core; actual module/flash configuration must be confirmed before flashing.",
+    "Compile is not a hardware power-cycle, serial/app, noise or fault-injection test.",
+    "This validation never selects a serial port and never uploads firmware."
+  ],
+  "finished_utc": "2026-09-09T14:00:17.274385+00:00"
+}

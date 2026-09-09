@@ -3,11 +3,13 @@
 `reference_candidate_qualifier.py` measures candidate 406MCA detectors the
 way the production 406 MCA app measures a part, records everything, and
 ranks the candidates for the job of **permanently mounted reference unit**
-on AIN1 (the emitter-health gate, `REFERENCE_GATE_ENABLED`, off on every
-model since the op-amp crosstalk finding — CALIBRATION_RECORD §2.4). The
-buffer board now has one independent op-amp per channel, so the gate can
-come back once a reference part is chosen and the crosstalk re-check is
-done.
+on AIN1 (the emitter-health gate, `REFERENCE_GATE_ENABLED`). The buffer board
+now has one independent op-amp per channel, and the gate went back **on for
+all three models on 2026-09-09** — ahead of the crosstalk re-check, which is
+still outstanding (CALIBRATION_RECORD §2.4). So the remaining work below is
+live production work, not preparation: until the chosen part is mounted and a
+fresh **Calibrate reference unit** has been run, each rig refuses its stored
+(pre-isolation) baseline and locks testing.
 
 ## Precision retest on AIN0 (recommended for the final selection)
 
@@ -195,13 +197,27 @@ a question, not an answer.
 ## After choosing
 
 1. Mount the chosen part on AIN1.
-2. Re-check crosstalk with the new buffer board: with a DUT loaded and
-   driven, `REF?` and an AIN1 stream must not move with the DUT (the
-   2026-08-17 finding was ~4.94 mV → ~0.30 mV). `Arduino/Eltec/esp32_rig_readout.py ref`
-   and `--channel ref` captures of the mounted part are the tools.
-3. Only then set `REFERENCE_GATE_ENABLED = True` (each model by hand), run
-   **Calibrate reference unit** fresh, and record the new baseline in
-   CALIBRATION_RECORD §2.4 / §5 with a CHANGELOG entry.
+2. Re-check crosstalk with the new buffer (TI OPA2196), reproducing the
+   original trigger: with a **shorted DUT** seated and the emitter driven,
+   `REF?` and an AIN1 stream must not move (the 2026-08-17 finding was
+   ~4.94 mV → ~0.30 mV, about −90 %). Through the app only the 406 MCA path
+   reads AIN1 with the DUT seated — calibrate first, then load the shorted
+   part and Start: clean = "Reference unit passed" then the "Is a sensor
+   loaded?" prompt; crosstalk = "outside its window" and a lockout (now also
+   a `measure_error` row in `_attempts.csv`). The 405/449 reject a ≈0 V part
+   before AIN1 is read, so for them use `Arduino/Eltec/esp32_rig_readout.py ref`
+   / `--channel ref` captures with the shorted DUT in place.
+3. `REFERENCE_GATE_ENABLED = True` is already set on all three models
+   (2026-09-09). Run **Calibrate reference unit** fresh on each rig — the
+   schema bump (405/449 v5, 406 v3) refuses every older baseline, so this is
+   required before any part can be tested — and record the chosen part, the
+   step-2 crosstalk numbers and the new baseline in CALIBRATION_RECORD
+   §2.4 / §5 with a CHANGELOG entry.
+4. **If step 2 fails** — AIN1 still moves with the DUT — set
+   `REFERENCE_GATE_ENABLED = False` again in each model rather than widening
+   `REFERENCE_TOLERANCE_PERCENT`: a reference that tracks the loaded part is
+   measuring the wrong thing, and no tolerance makes it trustworthy. The
+   gate-off path is still unit-tested in all three models.
 
 ## Without hardware
 

@@ -1,0 +1,168 @@
+(footprint "Detector_Wire_Lands"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "Original copper wire attachment lands; no purchased or placed component. Pad1=positive; pad2=signal; pad3=ground/shield.")
+	(property "Reference" "REF**"
+		(at 5.08 -0.635 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "069002c1-eeb9-4538-abfe-b0986ae547e7")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Detector_Wire_Lands"
+		(at -5.08 -1.04 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "fed98f37-3c63-4d5b-babe-4557ff1bdc88")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "05fc12ec-2750-480b-a6ae-78ad3b0eac7b")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "4ab20002-c369-4e7f-904f-d78ec2aa6cfb")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole exclude_from_pos_files exclude_from_bom)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_rect
+		(start 0 0)
+		(end 9.611737 9.525)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "9900554d-2704-4d4b-8738-f42ea8423600")
+	)
+	(fp_rect
+		(start -0.5 -0.5)
+		(end 10.111737 10.025)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "aa5af864-e4b6-4567-9465-6030e2605ec9")
+	)
+	(fp_rect
+		(start 0 0)
+		(end 9.611737 9.525)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "5f34d15a-d302-48bb-b4ae-9a6b9d2cb3f5")
+	)
+	(fp_text user "GND"
+		(at 3.548 3.556 270)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "0fd017ca-8610-4d95-afbc-546bd00c6531")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom)
+		)
+	)
+	(fp_text user "V+"
+		(at 4.58 0.77 270)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "9b50b71d-c1b2-4856-9974-7092aa136f2e")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom)
+		)
+	)
+	(fp_text user "SIG"
+		(at 6.08 7.715 180)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "bd3ed23d-8fbf-490a-96e4-00b70fc658e1")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom)
+		)
+	)
+	(fp_text user "${REFERENCE}"
+		(at -5.08 -2.54 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "dc4e15a7-3f05-477e-94ed-c185a2f5db06")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" thru_hole circle
+		(at 7.62 1.905)
+		(size 2.54 2.54)
+		(drill 1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "54cde861-b769-44b9-8888-8466ebda7d15")
+	)
+	(pad "2" thru_hole circle
+		(at 7.62 6.985)
+		(size 2.54 2.54)
+		(drill 1)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "98d1d26e-9abf-4adb-9295-e2861bef27e7")
+	)
+	(pad "3" smd roundrect
+		(at 1.778 4.826)
+		(size 2.54 7)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.15)
+		(uuid "7644444d-fdb6-4a8d-88dc-c8cbbcaf71e1")
+	)
+	(embedded_fonts no)
+)

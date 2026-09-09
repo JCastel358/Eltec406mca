@@ -1,0 +1,148 @@
+{
+  "status": "THREE_SIGNAL_RETURN_STITCHES_ADDED",
+  "added_uuids": [
+    "44ed5f42-fa44-5031-a26e-9767d610312f",
+    "59e6a54c-ef23-580a-8602-b5435bda8d4c",
+    "7380bdc3-ebaa-5355-8e4a-34f59b74f065"
+  ],
+  "vias": [
+    {
+      "name": "ADC_SCLK_RETURN",
+      "xy_mm": [
+        55.9,
+        92.25
+      ],
+      "signals": [
+        [
+          "ADC_SCLK",
+          [
+            55.8,
+            91.25
+          ]
+        ]
+      ],
+      "uuid": "59e6a54c-ef23-580a-8602-b5435bda8d4c",
+      "net": "GND",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "signal_via_distances_mm": [
+        1.005
+      ],
+      "no_surface_stub": true,
+      "pad_to_annulus_clearance_min_mm": 0.3,
+      "foreign_copper_clearance_min_mm": 0.25
+    },
+    {
+      "name": "AMP_OUT5_RETURN_A",
+      "xy_mm": [
+        28.65,
+        19.55
+      ],
+      "signals": [
+        [
+          "AMP_OUT5",
+          [
+            31.35,
+            20.25
+          ]
+        ]
+      ],
+      "uuid": "7380bdc3-ebaa-5355-8e4a-34f59b74f065",
+      "net": "GND",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "signal_via_distances_mm": [
+        2.7893
+      ],
+      "no_surface_stub": true,
+      "pad_to_annulus_clearance_min_mm": 0.3,
+      "foreign_copper_clearance_min_mm": 0.25
+    },
+    {
+      "name": "AMP_OUT5_RETURN_BC",
+      "xy_mm": [
+        32.6,
+        24.5
+      ],
+      "signals": [
+        [
+          "AMP_OUT5",
+          [
+            32.5,
+            22.5
+          ]
+        ],
+        [
+          "AMP_OUT5",
+          [
+            31.7,
+            24.4
+          ]
+        ]
+      ],
+      "uuid": "44ed5f42-fa44-5031-a26e-9767d610312f",
+      "net": "GND",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "signal_via_distances_mm": [
+        2.0025,
+        0.9055
+      ],
+      "no_surface_stub": true,
+      "pad_to_annulus_clearance_min_mm": 0.3,
+      "foreign_copper_clearance_min_mm": 0.25
+    }
+  ],
+  "added_through_vias": 3,
+  "added_tracks": 0,
+  "existing_native_geometry_preserved": true,
+  "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb",
+  "source_sha256": "690d80156d71a897e6ca834e49c7fc9674a03378a2d5fc5f3264eae576b5b15f",
+  "candidate": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_return_stitches\\candidate\\single_detector_usb_master.kicad_pcb",
+  "candidate_sha256": "0cc6fffd001c48b4229ba58f00e337093ceeb621585f29773e6a010e9d88d40e",
+  "before_drc": {
+    "counts": {},
+    "stdout": "Found 0 violations\nFound 0 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/signal_return_stitches/before_drc.json\n",
+    "command": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+      "pcb",
+      "drc",
+      "--format",
+      "json",
+      "--severity-all",
+      "--schematic-parity",
+      "--output",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_return_stitches\\before_drc.json",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_return_stitches\\candidate\\single_detector_usb_master.kicad_pcb"
+    ]
+  },
+  "after_drc": {
+    "counts": {},
+    "stdout": "Found 0 violations\nFound 0 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/signal_return_stitches/after_drc.json\n",
+    "command": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+      "pcb",
+      "drc",
+      "--format",
+      "json",
+      "--severity-all",
+      "--schematic-parity",
+      "--output",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_return_stitches\\after_drc.json",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_return_stitches\\candidate\\single_detector_usb_master.kicad_pcb"
+    ]
+  },
+  "protected_kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "main_board_untouched": true
+}

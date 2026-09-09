@@ -1,0 +1,103 @@
+{
+  "status": "FILLED_REVIEW_COPY_ONLY",
+  "output": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\reference_planes\\candidate\\single_detector_usb_master.kicad_pcb",
+  "output_sha256": "b6c8333a3b9f599492e362b56542393bcdaba7cecaf2fd523a13194a25bea5a1",
+  "before_drc": {
+    "counts": {
+      "unconnected_items": 462
+    },
+    "stdout": "Found 0 violations\nFound 462 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/reference_planes/before_drc.json\n",
+    "command": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+      "pcb",
+      "drc",
+      "--format",
+      "json",
+      "--severity-all",
+      "--schematic-parity",
+      "--output",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\reference_planes\\before_drc.json",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\reference_planes\\candidate\\single_detector_usb_master.kicad_pcb"
+    ]
+  },
+  "after_drc": {
+    "counts": {
+      "unconnected_items": 442
+    },
+    "stdout": "Found 0 violations\nFound 442 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/reference_planes/after_drc.json\n",
+    "command": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+      "pcb",
+      "drc",
+      "--format",
+      "json",
+      "--severity-all",
+      "--schematic-parity",
+      "--output",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\reference_planes\\after_drc.json",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\reference_planes\\candidate\\single_detector_usb_master.kicad_pcb"
+    ]
+  },
+  "filled_copper_areas": [
+    {
+      "name": "U100_THERMAL_F.Cu",
+      "net": "EM_GND",
+      "area_mm2": 157.801
+    },
+    {
+      "name": "U100_THERMAL_B.Cu",
+      "net": "EM_GND",
+      "area_mm2": 158.255
+    },
+    {
+      "name": "EM_PWM_In1.Cu",
+      "net": "EM_GND",
+      "area_mm2": 437.577
+    },
+    {
+      "name": "EM_INPUT_REGULATOR_In1.Cu",
+      "net": "EM_GND",
+      "area_mm2": 1252.152
+    },
+    {
+      "name": "EM_OPTO_LOCAL_In1.Cu",
+      "net": "EM_GND",
+      "area_mm2": 20.294
+    },
+    {
+      "name": "GND_REFERENCE_In1.Cu",
+      "net": "GND",
+      "area_mm2": 9551.426
+    },
+    {
+      "name": "GND_REFERENCE_In2.Cu",
+      "net": "GND",
+      "area_mm2": 9550.492
+    },
+    {
+      "name": "EM_PWM_In2.Cu",
+      "net": "EM_GND",
+      "area_mm2": 437.593
+    },
+    {
+      "name": "EM_INPUT_REGULATOR_In2.Cu",
+      "net": "EM_GND",
+      "area_mm2": 1252.201
+    },
+    {
+      "name": "EM_OPTO_LOCAL_In2.Cu",
+      "net": "EM_GND",
+      "area_mm2": 20.297
+    }
+  ],
+  "existing_native_geometry_preserved": true,
+  "added_uuid_count": 43,
+  "added_thermal_through_vias": 17,
+  "added_local_ground_stitches": 8,
+  "added_ground_stitches_by_net": {
+    "EM_GND": 2,
+    "GND": 6
+  },
+  "added_outer_ground_stubs": 8,
+  "new_internal_signal_tracks": 0
+}

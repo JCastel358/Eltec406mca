@@ -1,0 +1,152 @@
+{
+  "status": "COPY_PROBE_PASSED_NOT_A_FULL_BOARD_ROUTE",
+  "source_hashes": {
+    "libraries\\master.kicad_sym": "9fed7d5ce6a479957f87f3ffa2efdd4c2115bc625d3d7df2e6b9181ccedc0bc1",
+    "libraries\\master.pretty\\BarrelJack_GCT_DCJ200_10_A.kicad_mod": "b7333718c8e71cd4b09f99e5c11256b1f16292d5e36d52623121c2ebf88e9554",
+    "libraries\\master.pretty\\C_0603_1608Metric.kicad_mod": "b2f5ee1c7e9a922f4d9e92b7844668a8154e56e06add385b88baa10a6799095f",
+    "libraries\\master.pretty\\C_0805_2012Metric.kicad_mod": "90016129533f855682ab39e9908aabc5331916aa5283639498fe052b920967f7",
+    "libraries\\master.pretty\\C_1206_3216Metric.kicad_mod": "5bc8c68afdd88552646fa8a522715397e2145af27577d07bf50393ee308207c2",
+    "libraries\\master.pretty\\C_1210_3225Metric.kicad_mod": "7cf9bedbfc2e28f87b669e54514802ed46c5c3b22633d9b013b19ff5c63b26b5",
+    "libraries\\master.pretty\\CP_EIA-7343-31_Kemet-D.kicad_mod": "ab21cd6d8e6d4e2c9ac4e7a93ae3ad565b229a9064d897d7ec92014892b56df5",
+    "libraries\\master.pretty\\CP_Elec_10x10.5.kicad_mod": "9adfed611af8618f3005c45a488d77c7ebcc78947e8125e73f9764681feda8f5",
+    "libraries\\master.pretty\\CP_Elec_8x11.9.kicad_mod": "c81a1160a19e16dcd530eb887ec04f7e217caeefae12d4aaef1cbc2d0b55349d",
+    "libraries\\master.pretty\\D_SMA.kicad_mod": "e2d049a54ef961e231eb8e7e769078a3c44feb8475a7bdafba01c6646a5144f3",
+    "libraries\\master.pretty\\D_SOD-123.kicad_mod": "a7a2c6492a58677da0f95fd3a9865974162fc52aa45173a0125135f7ca496a60",
+    "libraries\\master.pretty\\Detector_Wire_Lands.kicad_mod": "9e1942bd9bf833175822b97748b1c639f6fea42425b55a0c459c61e398f725d1",
+    "libraries\\master.pretty\\DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm.kicad_mod": "d7c5688d135afa24857896405ae3ad3c49e9c91dab6752ca971bcc3528a08e45",
+    "libraries\\master.pretty\\Emitter_Wire_Lands.kicad_mod": "715ee909e249db690a1726d4a55b057da39d4c49df2d99ea9dcdb5378f819e35",
+    "libraries\\master.pretty\\Fuse_1206_3216Metric.kicad_mod": "5de78aaa1acbb50ec18e556c08d4e9301eb5d23987149aced87ccc5bbfc65693",
+    "libraries\\master.pretty\\HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm.kicad_mod": "5b7d63555ed4f92178e31c9234eaf7a0f9a00c216de98d528d31815e2e91074c",
+    "libraries\\master.pretty\\Potentiometer_Bourns_3296W_Vertical.kicad_mod": "c9f3cfdbcf4a24af5ebf792bb188c3ecfc9c50444f50677cc4cdbd7a5f1f5a33",
+    "libraries\\master.pretty\\R_0603_1608Metric.kicad_mod": "15dde88a8cd0d4cb8f443678b8c7aaba3459473e58a0c79d392af54021f78e0d",
+    "libraries\\master.pretty\\R_0805_2012Metric.kicad_mod": "83da7a8a25143d98c2e5aff4b2ee98d5d7477c413eea6ec36e9a0b5e85b5656b",
+    "libraries\\master.pretty\\SMDIP-16_W9.53mm.kicad_mod": "e6173deb8f5aed5d5eb6cac49906f889f15e8e06f2c2962166408b3a4477b7d1",
+    "libraries\\master.pretty\\SMDIP-4_W7.62mm.kicad_mod": "817f6128ac0fab550974a026a0799dd782ac8b573b98ededf7b42e639cd0edf2",
+    "libraries\\master.pretty\\Socket_FG_2x08_P2.54_H8.5.kicad_mod": "fd7b7bba79e173b04fd34c609dbf32da733f16b02285936f9e37f91976a50df0",
+    "libraries\\master.pretty\\Socket_Kinghelm_1x08_P2.54_H8.5.kicad_mod": "8503863044bec809c3b627d634889414b7a13278eb696b96feff51a59f5872c7",
+    "libraries\\master.pretty\\Socket_Kinghelm_1x15_P2.54_H8.5.kicad_mod": "98f2b61efb23c96215baa47ddcc5d42f19a5cccdd9a09379d99428366a8b5452",
+    "libraries\\master.pretty\\SOIC-8_3.9x4.9mm_P1.27mm.kicad_mod": "0031e401b16b841d2d20331a6175ece1a4f10bb80e356286f3d17b56a445133c",
+    "libraries\\master.pretty\\SOT-23-5.kicad_mod": "724b6b8f1ab209f195e74df2cf0696b3c9b13df5fe8369c85bc21690ea06872f",
+    "libraries\\master.pretty\\SOT-23.kicad_mod": "50477a63310cc4d2f8ce5859020ebbde2ea5214fbeff07e5328f474b0e62cb18",
+    "libraries\\master.pretty\\SOT-353_SC-70-5.kicad_mod": "a05fedb991c367cfc25a92e60c7a5cdef88afc3cb559559a81ecab2df6f25feb",
+    "libraries\\master.pretty\\TI_DCT0008A_SSOP8.kicad_mod": "3b5ef66a4bba9c5893f4380054e9e34b16f394f57ce59f7326b8e9548c1521cd",
+    "libraries\\master.pretty\\TO-263-5_TabPin3.kicad_mod": "d3c596a0fbe26578c86232ef5cc1b4a3f851f3171b14df3a656d745b522abc18",
+    "libraries\\master.pretty\\TSSOP-16_4.4x5mm_P0.65mm.kicad_mod": "7ca2eb97c326e29683a118ae503c9165f51128b23c4cdeb0786b78370a911ff2",
+    "reports\\design_manifest.json": "6b26cc6bf3a1e90ad549319bc5f5376eb977d27c40787a715dbb07b0aaae15f1",
+    "reports\\interface_netlist.xml": "6c3f2e68c5a7bbaeb0a9311028d814e9cd5e541c2c3d5b98faa83231d64243f7",
+    "reports\\placement_manifest.json": "3667c44723fb0fdf22a043a0606c9d0b234c89e19b0e8b779d86127c32e0f2c6",
+    "single_detector_usb_master\\adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master\\adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master\\analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master\\analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master\\analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master\\emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master\\emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master\\emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master\\esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master\\fp-lib-table": "15d72736cb413bf1d62ca9816eb9b4e2b90e5033c6d29dcd8fb7e9928283564e",
+    "single_detector_usb_master\\power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master\\power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master\\power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_dru": "0a68d7ebbf53577634025066fc9f21378e2fa1abb019ac4f199e565bcab3f49f",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pcb": "e6961eff764b14fa3f4c7e4b72d7d752b3ee1ae0c88822cd2b5f75ad25379349",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pro": "3cf227d4406d784bd901bfeaedaec4b81d7e781376ee89d6b09216ddebb1b1ac",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master\\spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master\\spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d",
+    "single_detector_usb_master\\sym-lib-table": "f4833790416c9256d262fb8a16296079f32b5222c610ed54b2c6710af54e075a",
+    "tools\\protected_kelvin.py": "cf35f42f06cae6c89623e2c00ce51839fef76dcb1fede703828639d3f22276ac",
+    "tools\\route_board.py": "38d883c9e721679d78802072fa2db492a52064da62ef0bae4f78b1982969a74c"
+  },
+  "main_board_unchanged": true,
+  "runtime": {
+    "java": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\java\\jdk-25.0.4.1+1-jre\\bin\\java.exe",
+      "sha256": "5808527e3dfc4eb285c7664ba356bc267055ef906e83ed4660d9f7976da7349b",
+      "version": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+    },
+    "router": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\freerouting-2.2.4.jar",
+      "sha256": "f5ed374182900ccc78e473518bbb9f6b869f4a07159495f663a76f52bb10523b",
+      "version": "2.2.4",
+      "build_revision": "20f1a72e546b9b23c7ba5127086885cfacbdd4be"
+    },
+    "other_project_modified": false
+  },
+  "seed": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "session": {
+    "session_bytes": 5013,
+    "routed_wire_paths": 15
+  },
+  "fixture_routing": {
+    "track_segments_by_layer": {
+      "F.Cu": 24,
+      "In1.Cu": 0,
+      "In2.Cu": 0,
+      "B.Cu": 0
+    },
+    "through_vias": 0
+  },
+  "native_seed_drc_violations": 0,
+  "native_seed_unconnected_items": 461,
+  "negative_cases": [
+    {
+      "case": "default export refuses existing seed",
+      "rejected": true
+    },
+    {
+      "case": "local OUTS to OUT13 short",
+      "rejected": true
+    },
+    {
+      "case": "intermediate sense branch",
+      "rejected": true
+    },
+    {
+      "case": "intermediate via",
+      "rejected": true
+    },
+    {
+      "case": "unlocked seed",
+      "rejected": true
+    },
+    {
+      "case": "changed seed width",
+      "rejected": true
+    },
+    {
+      "case": "changed seed endpoint",
+      "rejected": true
+    },
+    {
+      "case": "empty SES",
+      "rejected": true
+    },
+    {
+      "case": "non-session output",
+      "rejected": true
+    },
+    {
+      "case": "no wiring SES",
+      "rejected": true
+    },
+    {
+      "case": "source hash mismatch",
+      "rejected": true
+    }
+  ],
+  "accepted_join_only_inside_capacitor_pad": true,
+  "nonrouting_native_identity_retained": true,
+  "limitations": "Four-component router fixture excludes other placement obstacles; its import is not a usable full-board route. Full-board DRC was seed-only. No copper planes filled."
+}

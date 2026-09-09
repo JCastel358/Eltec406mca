@@ -1,0 +1,95 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T11:37:05",
+    "ignored_checks": [
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167",
+            "violations": []
+        },
+        {
+            "path": "/ESP32 USB power and firmware interface/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/96c545ad-2b94-5309-8a64-0e495ca95eef",
+            "violations": []
+        },
+        {
+            "path": "/ADS1256 removable module and socket mapping/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/07614baf-2677-51c1-97c2-ee67d5b0365e",
+            "violations": []
+        },
+        {
+            "path": "/Battery inputs, polarity protection and master switches/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/e006831c-efa4-56c5-b457-5a0b93657d70",
+            "violations": []
+        },
+        {
+            "path": "/Quiet held ADC supply and local digital supply/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/83f454b1-7b2c-5cc8-a685-a08fff7825a0",
+            "violations": []
+        },
+        {
+            "path": "/USB and ESP32 supervision with battery-referenced enable/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/4e00fb40-6744-5b12-8b6c-ca8d3b39e690",
+            "violations": []
+        },
+        {
+            "path": "/Power readiness and isolation/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/027fcce3-f553-5e56-a81d-f2753cd0fd57",
+            "violations": []
+        },
+        {
+            "path": "/SPI interface across independently switched supplies/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5",
+            "violations": []
+        },
+        {
+            "path": "/SPI defaults, decoupling and power-off leakage bounds/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/8aca0663-0a70-501a-a789-457027977951",
+            "violations": []
+        },
+        {
+            "path": "/Detector/reference pair 1 - buffered ADC isolation/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/e8a99acd-5793-5ae0-a450-c6651b6aaf41",
+            "violations": []
+        },
+        {
+            "path": "/Detector/reference pair 2 - buffered ADC isolation/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/e157b82e-61fd-533d-94ce-d051a7995ca4",
+            "violations": []
+        },
+        {
+            "path": "/Detector/reference pair 3 - buffered ADC isolation/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/e57479d2-53b9-52bb-b82b-61a554438b97",
+            "violations": []
+        },
+        {
+            "path": "/Isolated adjustable emitter supply/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/452c08c0-2534-56c5-83b7-28312f02b77c",
+            "violations": []
+        },
+        {
+            "path": "/Three optically isolated emitter PWM channels/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/04641e39-4245-580d-9ae9-f1314757bdcb",
+            "violations": []
+        },
+        {
+            "path": "/Existing emitter wire connections/",
+            "uuid_path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/c42b95c5-ca46-522a-a7ee-71e74181f8e0",
+            "violations": []
+        }
+    ],
+    "source": "single_detector_usb_master.kicad_sch"
+}

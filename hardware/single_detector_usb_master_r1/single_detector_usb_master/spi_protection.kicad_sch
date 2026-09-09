@@ -1,0 +1,4173 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "51444993-0e25-5fd9-aea5-765bd288fff5")
+	(paper "A3")
+	(title_block
+		(title "SPI interface across independently switched supplies")
+		(date "2026-09-09")
+		(rev "R1-DRAFT")
+		(company "Eltec Instruments")
+		(comment 1 "ENGINEERING WORK IN PROGRESS - NOT FOR FABRICATION")
+	)
+	(lib_symbols
+		(symbol "Eltec_Master:MMBT3904"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "MMBT3904"
+				(at 0 -7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "MMBT3904_0_1"
+				(rectangle
+					(start -5.08 3.81)
+					(end 5.08 -3.81)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "MMBT3904_1_1"
+				(pin input line
+					(at -7.62 0 0)
+					(length 2.54)
+					(name "B"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 7.62 -1.27 180)
+					(length 2.54)
+					(name "E"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin open_collector line
+					(at 7.62 1.27 180)
+					(length 2.54)
+					(name "C"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Eltec_Master:SN74LVC2G125_DCT"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 10.16 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "SN74LVC2G125_DCT"
+				(at 0 -10.16 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "SN74LVC2G125_DCT_0_1"
+				(rectangle
+					(start -10.16 6.35)
+					(end 10.16 -6.35)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "SN74LVC2G125_DCT_1_1"
+				(pin input line
+					(at -12.7 3.81 0)
+					(length 2.54)
+					(name "1OE_N"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 1.27 0)
+					(length 2.54)
+					(name "1A"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin tri_state line
+					(at 12.7 1.27 180)
+					(length 2.54)
+					(name "2Y"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 12.7 -3.81 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 -1.27 0)
+					(length 2.54)
+					(name "2A"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin tri_state line
+					(at 12.7 3.81 180)
+					(length 2.54)
+					(name "1Y"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -12.7 -3.81 0)
+					(length 2.54)
+					(name "2OE_N"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 12.7 -1.27 180)
+					(length 2.54)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Eltec_Master:SPI_R"
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "R"
+				(at 0 3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "SPI_R"
+				(at 0 -3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "SPI_R_0_1"
+				(rectangle
+					(start -2.54 1.016)
+					(end 2.54 -1.016)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "SPI_R_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name ""
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name ""
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	)
+	(text "U51 spare channel: input tied LOW; OE tied HIGH; output NC.\nDCT pinout: 1OE=1, 1A=2, 1Y=6, 2OE=7, 2A=5, 2Y=3, GND=4, VCC=8.\nDo not substitute the quad SN74LVC125A: its cited data sheet does not specify Ioff."
+		(exclude_from_sim no)
+		(at 25.4 190.5 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "631e3e58-b677-5445-91d4-44997e3f249f")
+	)
+	(text "FORWARD: ADC-powered outputs. RETURN: ESP32-powered outputs.\nSPI_PERMIT must be LOW until both supplies are valid; power stage provides this.\nEach OE defaults HIGH through a pull-up to its own supply."
+		(exclude_from_sim no)
+		(at 25.4 20.32 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "cdaf911b-cf4a-5e04-b982-e0fee8bcaa81")
+	)
+	(no_connect
+		(at 76.2 138.43)
+		(uuid "69146c63-e7a6-5bdc-8a97-e1c35c2f511d")
+	)
+	(wire
+		(pts
+			(xy 340.36 236.22) (xy 345.44 236.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "02368cbf-86fa-5233-ac67-bf1bd15b37ab")
+	)
+	(wire
+		(pts
+			(xy 129.54 55.88) (xy 134.62 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "073dae9b-1e65-5661-9191-f94077b7d2d2")
+	)
+	(wire
+		(pts
+			(xy 342.9 144.78) (xy 337.82 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "15003d6d-cb0b-5a74-a01b-22d53b33c757")
+	)
+	(wire
+		(pts
+			(xy 50.8 77.47) (xy 45.72 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "188b4777-28fc-5519-b87a-f799e6261ef8")
+	)
+	(wire
+		(pts
+			(xy 340.36 213.36) (xy 345.44 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "189cade9-d673-54cf-8a45-fcba1b1e5d0c")
+	)
+	(wire
+		(pts
+			(xy 203.2 190.5) (xy 198.12 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1b66b194-87c8-55db-9265-22d8c43a706f")
+	)
+	(wire
+		(pts
+			(xy 330.2 213.36) (xy 325.12 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "25125a52-417d-5125-b43a-1fc3985b4e46")
+	)
+	(wire
+		(pts
+			(xy 226.06 74.93) (xy 220.98 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2a90a2f8-4c0c-5c78-b37a-02345fa470ac")
+	)
+	(wire
+		(pts
+			(xy 50.8 72.39) (xy 45.72 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2f795bb5-2f08-5d18-b63e-54285bb78deb")
+	)
+	(wire
+		(pts
+			(xy 119.38 55.88) (xy 114.3 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2fa5f1c8-3f76-5409-9dd9-a1f99bc3669b")
+	)
+	(wire
+		(pts
+			(xy 340.36 55.88) (xy 345.44 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "31b871fa-6907-5b59-9926-a4a2b97dd0b5")
+	)
+	(wire
+		(pts
+			(xy 76.2 72.39) (xy 81.28 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "332ab10a-3589-578f-adc0-1c4d1e98aee6")
+	)
+	(wire
+		(pts
+			(xy 340.36 190.5) (xy 345.44 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "36310e7f-6a2d-56b4-8bdf-ed6c843232e1")
+	)
+	(wire
+		(pts
+			(xy 50.8 138.43) (xy 45.72 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "39d00afb-a808-53f8-9830-e7ad55900659")
+	)
+	(wire
+		(pts
+			(xy 203.2 213.36) (xy 198.12 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4b8827d7-271e-5b07-92d6-e0472a73886a")
+	)
+	(wire
+		(pts
+			(xy 213.36 213.36) (xy 218.44 213.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4f39a4ce-53eb-560f-b6a4-d787c630d434")
+	)
+	(wire
+		(pts
+			(xy 231.14 144.78) (xy 226.06 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4f73e101-75ff-521a-a2a2-9a4e67d4d9de")
+	)
+	(wire
+		(pts
+			(xy 203.2 236.22) (xy 198.12 236.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5b18c8c1-d99e-5825-94dd-40fed5a7dcff")
+	)
+	(wire
+		(pts
+			(xy 213.36 236.22) (xy 218.44 236.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5b9a3ea6-9b7a-5792-9fb4-85a56ce0e99a")
+	)
+	(wire
+		(pts
+			(xy 246.38 146.05) (xy 251.46 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5ec5be05-a210-522b-9439-4855df5602b1")
+	)
+	(wire
+		(pts
+			(xy 50.8 143.51) (xy 45.72 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "60f4cf46-2862-5a4e-9a23-799987245bf6")
+	)
+	(wire
+		(pts
+			(xy 76.2 69.85) (xy 81.28 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "63e7986b-ade9-52d6-ad2c-a8935bc6d828")
+	)
+	(wire
+		(pts
+			(xy 251.46 69.85) (xy 256.54 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6b3579b4-9925-5485-ace5-4ea0b63a8852")
+	)
+	(wire
+		(pts
+			(xy 50.8 74.93) (xy 45.72 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7885981c-09c9-564a-b11a-a0ff3c478c36")
+	)
+	(wire
+		(pts
+			(xy 76.2 74.93) (xy 81.28 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7ad564ba-e7c3-5df6-ace2-692c3254f3ce")
+	)
+	(wire
+		(pts
+			(xy 129.54 137.16) (xy 134.62 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7d174ef7-c0f8-579d-b806-5a2bbc85724e")
+	)
+	(wire
+		(pts
+			(xy 251.46 74.93) (xy 256.54 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7ddc3002-f29e-5f0a-811b-20a7d0871917")
+	)
+	(wire
+		(pts
+			(xy 76.2 135.89) (xy 81.28 135.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "827b671e-4520-5031-838a-3d97562d47c0")
+	)
+	(wire
+		(pts
+			(xy 330.2 55.88) (xy 325.12 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "87d06ac5-208f-5951-8603-f8760ed9b629")
+	)
+	(wire
+		(pts
+			(xy 119.38 86.36) (xy 114.3 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8c38c1b7-240e-5496-8f97-d3ae23a4d953")
+	)
+	(wire
+		(pts
+			(xy 226.06 69.85) (xy 220.98 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8e2956f9-d1f2-523a-9ca3-bf676e63c142")
+	)
+	(wire
+		(pts
+			(xy 119.38 137.16) (xy 114.3 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "90d0d613-5a6a-541c-a9a0-ce8ce7f2ea78")
+	)
+	(wire
+		(pts
+			(xy 226.06 77.47) (xy 220.98 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "98c53d34-f818-56f0-8e62-a0ae84567086")
+	)
+	(wire
+		(pts
+			(xy 129.54 86.36) (xy 134.62 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a3011ac9-25d0-5026-a9c5-4a64f63e9a7d")
+	)
+	(wire
+		(pts
+			(xy 251.46 77.47) (xy 256.54 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a6a87ef8-d6be-5717-bd95-06ad5cb1f549")
+	)
+	(wire
+		(pts
+			(xy 76.2 143.51) (xy 81.28 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "adcd3a6a-9c44-5e1a-b9e5-2cd62305bed8")
+	)
+	(wire
+		(pts
+			(xy 76.2 77.47) (xy 81.28 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b0c3064a-1e3c-52af-b735-c769870603f8")
+	)
+	(wire
+		(pts
+			(xy 50.8 140.97) (xy 45.72 140.97)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b267c4dc-da43-5e70-aa13-64b56e4b6a7a")
+	)
+	(wire
+		(pts
+			(xy 251.46 72.39) (xy 256.54 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b9bd7536-518a-582a-ac88-4eb412e50f3b")
+	)
+	(wire
+		(pts
+			(xy 340.36 86.36) (xy 345.44 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bbcf274a-2b15-5b55-84f7-99d77c4e3fea")
+	)
+	(wire
+		(pts
+			(xy 358.14 143.51) (xy 363.22 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "be6ac337-2daa-593e-a5e6-4e72bb2ff715")
+	)
+	(wire
+		(pts
+			(xy 358.14 146.05) (xy 363.22 146.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c7b8d1e6-f2e4-5118-ab71-8b979e93d668")
+	)
+	(wire
+		(pts
+			(xy 76.2 140.97) (xy 81.28 140.97)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d8c2e9fb-231a-53b7-b71c-73b763bd05a5")
+	)
+	(wire
+		(pts
+			(xy 50.8 135.89) (xy 45.72 135.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "de8dce4a-30b5-5d86-9b50-9ac7bdfe8630")
+	)
+	(wire
+		(pts
+			(xy 213.36 190.5) (xy 218.44 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e28e8b66-785a-5ddf-b4bc-9c7c3452054f")
+	)
+	(wire
+		(pts
+			(xy 330.2 86.36) (xy 325.12 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e543f5ad-7e77-53cb-8b9a-fe687310386b")
+	)
+	(wire
+		(pts
+			(xy 50.8 69.85) (xy 45.72 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e7fc749a-37ae-5c90-9ea1-a8b9e839a5ec")
+	)
+	(wire
+		(pts
+			(xy 226.06 72.39) (xy 220.98 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e806dda8-e3cb-553f-bc41-e6c9003c4d98")
+	)
+	(wire
+		(pts
+			(xy 330.2 190.5) (xy 325.12 190.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e80e4573-b1f5-5165-8e45-ddf88a340d84")
+	)
+	(wire
+		(pts
+			(xy 246.38 143.51) (xy 251.46 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eb6409bd-6319-5109-b234-63edb219b1fd")
+	)
+	(wire
+		(pts
+			(xy 330.2 236.22) (xy 325.12 236.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fb38084e-99f2-564f-8d38-de5568183459")
+	)
+	(global_label "ADC_OE_BASE"
+		(shape input)
+		(at 198.12 213.36 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "003aabc7-c30b-5abb-9659-6bc34364c621")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 198.12 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_MOSI"
+		(shape input)
+		(at 134.62 86.36 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "020d6d45-10ac-5d19-bbf9-3b8e22a89fda")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_DRDY_N"
+		(shape input)
+		(at 220.98 74.93 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "04590925-0a1e-531f-9037-01573babafe3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 220.98 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_SCLK_DRV"
+		(shape input)
+		(at 114.3 55.88 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "09cb3d23-7eb3-593d-8632-5d449d3e5757")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 114.3 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IF_OE_N"
+		(shape input)
+		(at 45.72 69.85 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "1316da02-d0c7-596a-a927-98894f7ba4e9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 256.54 77.47 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "169645d3-7a20-5d97-abe3-969b4dd0865f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 256.54 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_SCLK_DRV"
+		(shape input)
+		(at 81.28 69.85 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "1d5105ea-7e97-565b-9b05-25ee064b02e6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 81.28 143.51 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "1d72361b-61a2-527d-a43b-15035d87c469")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 143.51 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SPI_PERMIT"
+		(shape input)
+		(at 325.12 190.5 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "1e001635-554f-57d2-bdb3-92ad61d26993")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 325.12 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_CS_N"
+		(shape input)
+		(at 45.72 138.43 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "23abeb9c-a42a-5764-bc16-46cb0236cb0b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 138.43 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IO_3V3"
+		(shape input)
+		(at 198.12 236.22 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "34800bf1-0145-558c-b4a0-d56cbb72947e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 198.12 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_SCLK"
+		(shape input)
+		(at 45.72 72.39 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "38fab68e-21ba-5dd6-8d39-b635388e0be7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_CS_N"
+		(shape input)
+		(at 134.62 137.16 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "586fee81-fe5d-51a1-88c9-b90dd3f0c4ff")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_IF_OE_N"
+		(shape input)
+		(at 345.44 236.22 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "59674a34-d673-574e-83c0-4ed9ab6942d6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 345.44 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_MOSI_DRV"
+		(shape input)
+		(at 114.3 86.36 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "60b60dbe-cae4-5dd4-bcff-170f1fbb7f8c")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 114.3 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_3V3"
+		(shape input)
+		(at 256.54 74.93 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "641f8450-dcac-5b22-b7f3-10d9dc9fe841")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 256.54 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_IF_OE_N"
+		(shape input)
+		(at 220.98 69.85 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "6612daa8-0207-5255-bb4b-57ba3879faed")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 220.98 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IF_OE_N"
+		(shape input)
+		(at 45.72 135.89 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "6b8be2e0-2192-5754-821d-4467fc7e7663")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 135.89 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_CS_DRV"
+		(shape input)
+		(at 114.3 137.16 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "6cc8ed26-c0a7-528e-89d2-8bf479253fc1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 114.3 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 218.44 213.36 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "6e23dab5-2e5f-50ec-b0d0-d187c98c9b2e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 218.44 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_MISO_DRV"
+		(shape input)
+		(at 256.54 69.85 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "70eb5510-6ef2-559b-87b7-54ea614d7047")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 256.54 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_OE_BASE"
+		(shape input)
+		(at 218.44 190.5 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "7ece5c48-19c9-5b6b-83a2-59ad2ba86329")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 218.44 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 345.44 213.36 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "89575f67-5cb5-5f53-8438-e89cddd26646")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 345.44 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_SCLK"
+		(shape input)
+		(at 134.62 55.88 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "91ff1f41-b183-5260-9a97-f75f9e0d6496")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_MISO"
+		(shape input)
+		(at 345.44 55.88 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "981262f3-8a9e-5004-9efc-133e0243cf99")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 345.44 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_MISO"
+		(shape input)
+		(at 220.98 72.39 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "98f4c762-322d-5ebe-bbf8-33a13b57795c")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 220.98 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_DRDY_DRV"
+		(shape input)
+		(at 256.54 72.39 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "99c2817d-9b75-5ced-9a79-edc3c8ec8135")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 256.54 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_MISO_DRV"
+		(shape input)
+		(at 325.12 55.88 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "9d03fa09-b706-52e1-aa07-6b2977619012")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 325.12 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 363.22 146.05 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "9fd3a07c-3e15-5529-9857-3d7dc30cfba5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 363.22 146.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IF_OE_N"
+		(shape input)
+		(at 45.72 77.47 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "a0506f9e-b331-59c0-91ec-57d51f1a54fd")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_DRDY_DRV"
+		(shape input)
+		(at 325.12 86.36 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "a0fb10f7-ac9d-5425-9f74-4d0f1e8ea0fb")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 325.12 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 45.72 140.97 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "a1eae6fe-9913-5ebf-8060-a8c3c4d50127")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 140.97 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IF_OE_N"
+		(shape input)
+		(at 218.44 236.22 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "a45e7c41-662e-552e-9b90-8e9206aaab6c")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 218.44 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SPI_PERMIT"
+		(shape input)
+		(at 198.12 190.5 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "a8d6f73b-5950-5a8a-bb7d-a1aaeed6b8f0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 198.12 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_IF_OE_N"
+		(shape input)
+		(at 220.98 77.47 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "a90d1e6e-7c2a-58a1-9d33-54450937ab81")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 220.98 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_IF_OE_N"
+		(shape input)
+		(at 363.22 143.51 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "a97e1428-c55e-5495-a3ae-cf146e34e47f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 363.22 143.51 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_MOSI_DRV"
+		(shape input)
+		(at 81.28 72.39 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "bacb900e-3138-56d8-8990-8d29f857e504")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IO_3V3"
+		(shape input)
+		(at 81.28 74.93 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "bda1de96-b883-53e2-bef1-1a70c3b72d82")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_DRDY"
+		(shape input)
+		(at 345.44 86.36 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "bdc2f590-5643-5c5a-b51a-e7e64dc6a079")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 345.44 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_OE_BASE"
+		(shape input)
+		(at 226.06 144.78 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "bdddb0d4-a7cd-5e6b-abc6-807735eba3d3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 226.06 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 81.28 77.47 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "c2fc7e12-c18a-5389-9908-c83607642cf6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IO_3V3"
+		(shape input)
+		(at 81.28 140.97 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "c7bc0ad6-d980-50bc-b024-b89a8dc9973f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 140.97 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_MOSI"
+		(shape input)
+		(at 45.72 74.93 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "d1c4bb0b-55f3-5205-ab8e-7514bbe596a6")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_OE_BASE"
+		(shape input)
+		(at 337.82 144.78 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "dc309e84-638b-5e16-b248-fc0eaefe63a0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 337.82 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_OE_BASE"
+		(shape input)
+		(at 325.12 213.36 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "dcbf401d-01f0-5b7b-bf4d-08d0de95262f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 325.12 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_3V3"
+		(shape input)
+		(at 325.12 236.22 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "ec041658-65d8-542d-a446-53cf9f457603")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 325.12 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_CS_DRV"
+		(shape input)
+		(at 81.28 135.89 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "f126c3d1-1107-5e7b-957e-011f1cfd7a61")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 81.28 135.89 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ESP_OE_BASE"
+		(shape input)
+		(at 345.44 190.5 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "f3b6a4ca-63d2-5372-865c-ab9c0d08622d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 345.44 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape input)
+		(at 251.46 146.05 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "f85e4706-9598-5697-a513-e8d1de4408fa")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 251.46 146.05 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IO_3V3"
+		(shape input)
+		(at 45.72 143.51 180)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify right)
+		)
+		(uuid "fb9038cc-9a5a-5172-8183-064fcd73b666")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 45.72 143.51 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_IF_OE_N"
+		(shape input)
+		(at 251.46 143.51 0)
+		(effects
+			(font
+				(size 1.016 1.016)
+			)
+			(justify left)
+		)
+		(uuid "ff3bdaa2-27fb-5219-9507-4a0c884bf1fc")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 251.46 143.51 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 335.28 213.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "00f22e4f-c792-55d3-80dc-a20634ea09f1")
+		(property "Reference" "R54"
+			(at 335.28 208.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "100k"
+			(at 335.28 218.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-07100KL"
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 335.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4d8f56f6-e77f-55fd-acdc-66994a78da29")
+		)
+		(pin "2"
+			(uuid "2a012dff-50bd-5a52-90fb-3f38c35a0116")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R54")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 124.46 86.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "067b1e27-0de8-51c3-9e89-cf1922220699")
+		(property "Reference" "R57"
+			(at 124.46 81.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "33"
+			(at 124.46 91.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0733RL"
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 124.46 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4f646eac-de4e-5eeb-876a-dbd277ad96dc")
+		)
+		(pin "2"
+			(uuid "234916ce-9f6b-540b-b4e3-3e856fd5771a")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R57")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 335.28 236.22 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "0ab30c58-0a7c-543c-bc2c-084c85b80c7d")
+		(property "Reference" "R55"
+			(at 335.28 231.14 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "10k"
+			(at 335.28 241.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0710KL"
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 335.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "9326bfa8-207d-53bb-bba3-5db2ccead0c1")
+		)
+		(pin "2"
+			(uuid "801ddc95-60fa-5ce6-9c75-0e7f1ab0fc77")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R55")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 124.46 137.16 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "1f80416e-cb1e-5dd7-8e51-611f1031ff18")
+		(property "Reference" "R58"
+			(at 124.46 132.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "33"
+			(at 124.46 142.24 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0733RL"
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 124.46 137.16 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "e0aa5c4b-02d9-50a3-bdc3-764e1a904325")
+		)
+		(pin "2"
+			(uuid "01eb42d4-993d-527a-9f1b-b3cf5e6a5b7e")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R58")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 335.28 55.88 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "2753997f-51ef-57e8-86f8-202c17d42a05")
+		(property "Reference" "R59"
+			(at 335.28 50.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "33"
+			(at 335.28 60.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0733RL"
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 335.28 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "9be1c49e-b2f0-5e02-bccf-13083e4c283c")
+		)
+		(pin "2"
+			(uuid "4ff95cd3-e852-5cb8-ba4e-4a41ad550fba")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R59")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 335.28 190.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "2d2a2146-01fb-5341-9e64-62365316136a")
+		(property "Reference" "R53"
+			(at 335.28 185.42 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "10k"
+			(at 335.28 195.58 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0710KL"
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 335.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "b374e157-5b26-5bac-871f-7fdbfdab8f42")
+		)
+		(pin "2"
+			(uuid "d956ebe9-f1ad-5647-bcd9-e1f91cd38879")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R53")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SN74LVC2G125_DCT")
+		(at 238.76 73.66 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "2d91ff71-a3dd-5faa-9d47-f752c386e092")
+		(property "Reference" "U52"
+			(at 238.76 63.5 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SN74LVC2G125DCTR"
+			(at 238.76 83.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:TI_DCT0008A_SSOP8"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Dual buffer; receiver-powered; specified Ioff <=10uA at VCC=0"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "SN74LVC2G125DCTR"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C206035"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Texas Instruments"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 238.76 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "ecfa6811-73f5-5d5e-bff7-a8bdefe36f0e")
+		)
+		(pin "2"
+			(uuid "61649686-4d95-5673-9164-8422b570196c")
+		)
+		(pin "5"
+			(uuid "743f819e-831c-503a-ab0d-58c2082014ef")
+		)
+		(pin "7"
+			(uuid "ace038b1-222d-5f05-ad6e-59d3880e4064")
+		)
+		(pin "6"
+			(uuid "8f150b92-7948-5bcc-8fc5-ff229219bf02")
+		)
+		(pin "3"
+			(uuid "be6efd84-92de-5731-94b4-968b752ccc42")
+		)
+		(pin "8"
+			(uuid "76c7c30c-af89-55dd-8d01-c295bb6a2f94")
+		)
+		(pin "4"
+			(uuid "41a5972c-b522-5276-8f09-90ab43d03ddc")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "U52")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:MMBT3904")
+		(at 350.52 144.78 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "466de406-f380-5378-8455-b7400ac19d88")
+		(property "Reference" "Q51"
+			(at 350.52 137.16 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MMBT3904LT1G"
+			(at 350.52 152.4 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:SOT-23"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.onsemi.com/download/data-sheet/pdf/mmbt3904lt1-d.pdf"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Default-disabled output-enable driver; B1 E2 C3"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "MMBT3904LT1G"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C81464"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "onsemi"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 350.52 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c1fd1390-e234-5476-831f-8a6a3408f2a6")
+		)
+		(pin "3"
+			(uuid "4b9ceaa6-eede-5907-88a1-25ce5186dc94")
+		)
+		(pin "2"
+			(uuid "1dca2817-b84a-5084-b52a-18a7f093089c")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "Q51")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:MMBT3904")
+		(at 238.76 144.78 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "501e58a3-9065-5026-acfe-9f63010b2655")
+		(property "Reference" "Q50"
+			(at 238.76 137.16 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MMBT3904LT1G"
+			(at 238.76 152.4 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:SOT-23"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.onsemi.com/download/data-sheet/pdf/mmbt3904lt1-d.pdf"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Default-disabled output-enable driver; B1 E2 C3"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "MMBT3904LT1G"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C81464"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "onsemi"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 238.76 144.78 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "23808731-1092-560d-9689-7675910c09e6")
+		)
+		(pin "3"
+			(uuid "bcbfdda7-814b-5eaa-b587-51809083c7bb")
+		)
+		(pin "2"
+			(uuid "25a4d519-1a68-5275-9134-fe171dfc8f4f")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "Q50")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 335.28 86.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "5b743858-f385-56ca-a309-3d4c23bf3324")
+		(property "Reference" "R60"
+			(at 335.28 81.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "33"
+			(at 335.28 91.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0733RL"
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 335.28 86.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "6507f52c-423e-56ee-b393-26cedcb2b34a")
+		)
+		(pin "2"
+			(uuid "38d28407-5474-5158-b207-5707446d88af")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R60")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SN74LVC2G125_DCT")
+		(at 63.5 73.66 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "73025af9-9a52-50d2-9fff-d7bacc9a2213")
+		(property "Reference" "U50"
+			(at 63.5 63.5 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SN74LVC2G125DCTR"
+			(at 63.5 83.82 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:TI_DCT0008A_SSOP8"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Dual buffer; receiver-powered; specified Ioff <=10uA at VCC=0"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "SN74LVC2G125DCTR"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C206035"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Texas Instruments"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 63.5 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "8ed93f00-32cd-5deb-b3f7-ad28b78b5f2d")
+		)
+		(pin "2"
+			(uuid "8b4a7cbf-794c-516c-8e25-49ba46b15c05")
+		)
+		(pin "5"
+			(uuid "94502ac2-1cc4-5407-b1bf-4527f0e3e7dc")
+		)
+		(pin "7"
+			(uuid "1ed10322-e4f2-5ffa-8383-d4caa13c3f00")
+		)
+		(pin "6"
+			(uuid "dab23747-c948-5fcc-9a27-cea6bc717713")
+		)
+		(pin "3"
+			(uuid "94672ace-6d01-5679-aa1e-302700d4f149")
+		)
+		(pin "8"
+			(uuid "e6889eff-d9a7-505d-b5cc-73ad291f8d6c")
+		)
+		(pin "4"
+			(uuid "e43d971b-0a50-5b40-951b-9e759faf8325")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "U50")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 208.28 236.22 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "a3d000b4-5b33-5409-93f6-7dea47b2d862")
+		(property "Reference" "R52"
+			(at 208.28 231.14 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "10k"
+			(at 208.28 241.3 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0710KL"
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 208.28 236.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "291cac36-a87a-547c-b12a-a24508317c6a")
+		)
+		(pin "2"
+			(uuid "b24c41e2-b94d-5faa-8d8e-c213f0ce4ea5")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R52")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SN74LVC2G125_DCT")
+		(at 63.5 139.7 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "ba9998f9-5f06-5430-aa22-2d93f50c807f")
+		(property "Reference" "U51"
+			(at 63.5 129.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SN74LVC2G125DCTR"
+			(at 63.5 149.86 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:TI_DCT0008A_SSOP8"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Dual buffer; receiver-powered; specified Ioff <=10uA at VCC=0"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "SN74LVC2G125DCTR"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C206035"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Texas Instruments"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 63.5 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "79b6177c-c4c0-5bd6-b502-59f4875ce332")
+		)
+		(pin "2"
+			(uuid "2af7d79f-3329-5cf8-a886-87b5d6c2c3d6")
+		)
+		(pin "5"
+			(uuid "b0ab2aed-d215-5604-a5b9-9a9de67c0969")
+		)
+		(pin "7"
+			(uuid "a7d4a13c-f38f-5e0d-9dd3-25c74bd09296")
+		)
+		(pin "6"
+			(uuid "e08d0da1-ce01-5863-ae6a-e0f34c289cf7")
+		)
+		(pin "3"
+			(uuid "16ef57a1-f51b-540f-8fed-d7ba616fc2fc")
+		)
+		(pin "8"
+			(uuid "c8aa3246-c8b0-51c5-a024-11f690468eb6")
+		)
+		(pin "4"
+			(uuid "bc67849c-ba5b-540d-8c90-db4c7a503ba6")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "U51")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 208.28 213.36 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "cf161216-25ef-532a-898d-de65e9751661")
+		(property "Reference" "R51"
+			(at 208.28 208.28 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "100k"
+			(at 208.28 218.44 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-07100KL"
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 208.28 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "8381de10-f83f-5b9d-8a8e-fa03385b4ae7")
+		)
+		(pin "2"
+			(uuid "383d8120-8c0d-5598-b5af-b705814de6fa")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R51")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 208.28 190.5 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "e394cc58-cce6-5270-a7c0-0e2fc5b1b880")
+		(property "Reference" "R50"
+			(at 208.28 185.42 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "10k"
+			(at 208.28 195.58 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0710KL"
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 208.28 190.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c23c2b65-da30-5e34-a748-70ad7b20149f")
+		)
+		(pin "2"
+			(uuid "52c772d8-ddc6-5ada-8dd4-7d0e2e426229")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R50")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Eltec_Master:SPI_R")
+		(at 124.46 55.88 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "fbba4850-fd9f-553f-a7a1-dd6c8cc2bb6f")
+		(property "Reference" "R56"
+			(at 124.46 50.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "33"
+			(at 124.46 60.96 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Footprint" "Eltec_Master:R_0805_2012Metric"
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "0805, 1%, 0.125W; final purchasing match in assembly BOM"
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RC0805FR-0733RL"
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" ""
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Manufacturer" "Yageo"
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Assembly" "Populate"
+			(at 124.46 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "5690fe3a-cded-5f69-8ac6-a7b70bfa9acd")
+		)
+		(pin "2"
+			(uuid "dd007076-0d43-5863-ac6e-aa5c0b9c9fa6")
+		)
+		(instances
+			(project "single_detector_usb_master"
+				(path "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5"
+					(reference "R56")
+					(unit 1)
+				)
+			)
+		)
+	)
+)

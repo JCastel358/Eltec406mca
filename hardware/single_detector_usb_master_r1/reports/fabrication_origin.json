@@ -1,0 +1,14 @@
+{
+  "board_before_sha256": "e6961eff764b14fa3f4c7e4b72d7d752b3ee1ae0c88822cd2b5f75ad25379349",
+  "origin_before_native_mm": [
+    0.0,
+    0.0
+  ],
+  "origin_after_native_mm": [
+    12.0,
+    115.0
+  ],
+  "backup": "reports\\origin_update\\before_e6961eff764b14fa.kicad_pcb",
+  "board_after_sha256": "d521b5ccd8612cdf9124a9c9deba861d1cd8b8a23226c328b7ebdb7d1327707e",
+  "native_geometry_and_nets_preserved": true
+}

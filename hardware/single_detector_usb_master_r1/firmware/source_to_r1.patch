@@ -1,0 +1,263 @@
+--- Arduino/Eltec/Eltec.ino
++++ firmware/Eltec_USB_Master/Eltec_USB_Master.ino
+@@ -1,3 +1,12 @@
++/*
++  USB-MASTER R1 REVISION FIRMWARE v3.3 - engineering candidate
++  This separate derived sketch is for the new carrier with GPIO35 power status.
++  The historical wiring comments below describe the source rig; use the new
++  carrier schematic. AIN6/7 are grounded, BAT? is unavailable, PDWN is controlled
++  by hardware, and the six detector inputs use held-supply protected buffers.
++  Electrical shutdown protection does not depend on this firmware running.
++  Do not flash an old carrier with this sketch: its GPIO35 is not connected.
++*/
+ /*
+   Eltec sensor test rig — ESP32 + ADS1256 firmware
+   ================================================
+@@ -208,6 +217,21 @@
+ // ---------------------------------------------------------------- pins ----
+ static const int PIN_CS = 5;
+ static const int PIN_DRDY = 4;
++// USB-master R1 carrier only: ESP-powered status gate, LOW means ready.
++// GPIO35 is input-only and is never assigned to an emitter output.
++static const int PIN_POWER_NOT_READY = 35;
++static volatile bool powerFaultSeen = true;
++static volatile uint32_t carrierPowerEpoch = 0;
++
++static bool carrierPowerReady() {
++  return digitalRead(PIN_POWER_NOT_READY) == LOW;
++}
++
++static void IRAM_ATTR onCarrierPowerChange() {
++  // Latch the delivered rising edge even if a short pulse has already ended.
++  powerFaultSeen = true;
++  carrierPowerEpoch++;
++}
+ // Default emitter-gate pin. Moved to D33 (GPIO33) on 2026-08-25; the
+ // perf-board wire moves with it (it was on D25 from 2026-07-13). GPIO33 is
+ // RTC-capable (hold latch released at attach) but NOT a DAC pin, unlike
+@@ -282,6 +306,8 @@
+ 
+ static volatile bool streaming = false;
+ static uint32_t streamCount = 0;
++static bool streamPowerFault = false;
++static uint32_t streamPowerEpoch = 0;
+ static uint8_t streamMux = MUX_SENSOR;   // which channel STREAM,START points at
+ static uint8_t streamPga = 0;            // latched from pgaSensor at STREAM,START
+ // DRDY is an active-low level. A GPIO interrupt latches each real falling edge
+@@ -305,9 +331,10 @@
+ static bool waitDRDY(uint32_t timeoutMs = 200) {
+   uint32_t start = millis();
+   while (digitalRead(PIN_DRDY) == HIGH) {
++    if (powerFaultSeen || !carrierPowerReady()) return false;
+     if (millis() - start > timeoutMs) return false;
+   }
+-  return true;
++  return !powerFaultSeen && carrierPowerReady();
+ }
+ 
+ static void adsCommand(uint8_t cmd) {
+@@ -447,6 +474,8 @@
+     while (j >= 0 && buf[j] > v) { buf[j + 1] = buf[j]; j--; }
+     buf[j + 1] = v;
+   }
++  // Include the final SPI transfer, optional delay and sorting in validity.
++  if (powerFaultSeen || !carrierPowerReady()) return NAN;
+   return (samples & 1) ? buf[samples / 2]
+                        : 0.5f * (buf[samples / 2 - 1] + buf[samples / 2]);
+ }
+@@ -536,8 +565,17 @@
+ // ------------------------------------------------- commands ---------------
+ static void handleCommand(char *cmd) {
+   gotFirstCommand = true;
++  // Commands that need live analog hardware cannot operate on stale settings.
++  const bool needsAdc = strncmp(cmd, "FE,", 3) == 0 ||
++      strcmp(cmd, "OFFSET?") == 0 || strcmp(cmd, "REF?") == 0 ||
++      strncmp(cmd, "STREAM,START", 12) == 0 ||
++      strcmp(cmd, "PWM,ON") == 0 || strcmp(cmd, "GATE,ON") == 0;
++  if (needsAdc && (!adsOk || powerFaultSeen || !carrierPowerReady())) {
++    Serial.println("ERR,carrier power or ADC not ready; retry after ready");
++    return;
++  }
+   if (strcmp(cmd, "IDN?") == 0) {
+-    Serial.println("ELTEC-ESP32-ADS1256,v3.2");
++    Serial.println("ELTEC-ESP32-ADS1256,v3.3");
+ 
+   } else if (strcmp(cmd, "STATUS?") == 0) {
+     Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f,pwm_duty=%.1f\n",
+@@ -576,7 +614,7 @@
+     bool oldBuf = adsBufferOn;
+     pgaSensor = newPga;
+     adsBufferOn = newBuf;
+-    if (adsApplyFrontEnd()) {
++    if (adsApplyFrontEnd() && !powerFaultSeen && carrierPowerReady()) {
+       Serial.printf("OK,FE,gain=%d,buf=%d\n", 1 << pgaSensor,
+                     adsBufferOn ? 1 : 0);
+     } else {
+@@ -584,8 +622,8 @@
+       // reported state always matches the silicon.
+       pgaSensor = oldPga;
+       adsBufferOn = oldBuf;
+-      adsApplyFrontEnd();
+-      Serial.println("ERR,front-end apply/verify failed (previous config restored)");
++      adsOk = false;  // fresh verified initialization restores previous settings
++      Serial.println("ERR,front-end apply failed; ADC reinitialization required");
+     }
+ 
+   } else if (strcmp(cmd, "PWM,ON") == 0) {
+@@ -661,26 +699,25 @@
+     }
+ 
+   } else if (strcmp(cmd, "BAT?") == 0) {
+-    if (streaming) { Serial.println("ERR,stop stream first"); return; }
+-    float v = readMedianVolts(MUX_BATTERY, PGA_BATTERY,
+-                              BATTERY_READ_SAMPLES, BATTERY_READ_DELAY_MS);
+-    adsSelectChannel(MUX_SENSOR, pgaSensor);   // leave mux ready for streaming
+-    if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
+-    else Serial.printf("BAT,%.4f\n", v * BATTERY_DIVIDER_RATIO);
++    Serial.println("ERR,battery measurement not fitted on USB-master R1");
+ 
+   } else if (strcmp(cmd, "OFFSET?") == 0) {
+     if (streaming) { Serial.println("ERR,stop stream first"); return; }
+     float v = readMedianVolts(MUX_SENSOR, pgaSensor,
+                               OFFSET_READ_SAMPLES, OFFSET_READ_DELAY_MS);
+-    if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
++    if (isnan(v) || powerFaultSeen || !carrierPowerReady())
++      Serial.println("ERR,offset invalid or ADS1256 timeout");
+     else Serial.printf("OFFSET,%.5f\n", v);
+ 
+   } else if (strcmp(cmd, "REF?") == 0) {
+     if (streaming) { Serial.println("ERR,stop stream first"); return; }
+     float v = readMedianVolts(MUX_REF, pgaSensor,
+                               OFFSET_READ_SAMPLES, OFFSET_READ_DELAY_MS);
+-    adsSelectChannel(MUX_SENSOR, pgaSensor);   // leave mux ready for streaming
+-    if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
++    bool restored = adsSelectChannel(MUX_SENSOR, pgaSensor);
++    if (!restored || powerFaultSeen || !carrierPowerReady()) {
++      adsOk = false;
++      Serial.println("ERR,reference read invalid or ADC restore failed");
++    } else if (isnan(v)) Serial.println("ERR,ADS1256 timeout");
+     else Serial.printf("REF,%.5f\n", v);
+ 
+   } else if (strcmp(cmd, "STREAM,START") == 0 ||
+@@ -696,8 +733,16 @@
+     noInterrupts();
+     streamSampleReady = false;
+     streamDrdyOverruns = 0;
+-    streaming = true;
++    streamPowerFault = powerFaultSeen || !carrierPowerReady();
++    streamPowerEpoch = carrierPowerEpoch;
++    streaming = !streamPowerFault;
+     interrupts();
++    if (streamPowerFault || powerFaultSeen || streamPowerEpoch != carrierPowerEpoch) {
++      streaming = false;
++      streamPowerFault = true;
++      Serial.println("ERR,carrier power changed while starting capture");
++      return;
++    }
+     Serial.printf("STREAM,BEGIN,%d,%s\n", (int)SAMPLE_RATE_HZ,
+                   refChannel ? "REF" : "SENSOR");
+ 
+@@ -706,7 +751,14 @@
+     streaming = false;
+     streamSampleReady = false;
+     uint32_t overruns = streamDrdyOverruns;
++    streamPowerFault = streamPowerFault || powerFaultSeen ||
++        streamPowerEpoch != carrierPowerEpoch || !carrierPowerReady();
+     interrupts();
++    // Emit the error BEFORE END: backends stop draining at the END record.
++    if (streamPowerFault) {
++      Serial.println("ERR,carrier power lost; capture invalid");
++      if (overruns != UINT32_MAX) overruns++;
++    }
+     Serial.printf("STREAM,END,%lu,%lu\n", (unsigned long)streamCount,
+                   (unsigned long)overruns);
+ 
+@@ -730,9 +782,46 @@
+   }
+ }
+ 
++// Stop the current operation on any captured supply fault. Hardware already
++// isolates analog/SPI and emitter power independently of this software.
++static void carrierPowerService() {
++  static uint32_t readySinceMs = 0;
++  static uint32_t nextInitMs = 0;
++  if (powerFaultSeen || !carrierPowerReady()) {
++    const bool wasOperating = adsOk || streaming || pwmOn || gateLevel;
++    noInterrupts();
++    if (streaming) streamPowerFault = true;
++    streaming = false;
++    streamSampleReady = false;
++    interrupts();
++    pwmSet(false);
++    adsOk = false;
++    readySinceMs = 0;
++    if (wasOperating) Serial.println("ERR,carrier power lost; capture invalid");
++    if (!carrierPowerReady()) return;
++    // Clear the sticky event only before a fresh stable-power qualification.
++    noInterrupts();
++    powerFaultSeen = !carrierPowerReady();
++    interrupts();
++    if (powerFaultSeen) return;
++  }
++  if (adsOk) return;
++  const uint32_t now = millis();
++  if (readySinceMs == 0) readySinceMs = now ? now : 1;
++  if (now - readySinceMs < 10 || (int32_t)(now - nextInitMs) < 0) return;
++  nextInitMs = now + 1000;
++  // Hardware already supplies its own qualification delay. This retry handles
++  // ESP reset, late battery insertion and a completed sequence after boot.
++  adsOk = adsInit() && adsSelectChannel(MUX_SENSOR, pgaSensor) &&
++      !powerFaultSeen && carrierPowerReady();
++  if (adsOk && !gotFirstCommand) Serial.println("READY,ELTEC-ESP32-ADS1256");
++}
++
+ // ------------------------------------------------- Arduino ----------------
+ void setup() {
+   gpio_deep_sleep_hold_dis();   // make sure no pad is latched from a past hold
++  pinMode(PIN_POWER_NOT_READY, INPUT);  // carrier logic drivesGPIO35
++  attachInterrupt(digitalPinToInterrupt(PIN_POWER_NOT_READY), onCarrierPowerChange, RISING);
+   gateAttach(pinGate);
+   pinMode(PIN_CS, OUTPUT);
+   digitalWrite(PIN_CS, HIGH);
+@@ -742,20 +831,22 @@
+   Serial.begin(500000);
+   SPI.begin();
+ 
+-  adsOk = adsInit();
+-  if (adsOk) {
+-    adsOk = adsSelectChannel(MUX_SENSOR, pgaSensor);
+-    if (adsOk) Serial.println("READY,ELTEC-ESP32-ADS1256");
+-    else Serial.println("ERR,ADS1256 channel select/calibration timeout");
+-  } else {
+-    Serial.println("ERR,ADS1256 init/register verification failed");
+-  }
++  // Bounded boot wait keeps normal host handshakes behind initialization.
++  // Missing battery never hangs the serial interface indefinitely.
++  const uint32_t bootStart = millis();
++  while (!adsOk && millis() - bootStart < 1500) {
++    carrierPowerService();
++    delay(1);
++  }
++  if (!adsOk) Serial.println("ERR,carrier power or ADC not ready");
+   nextHelloMs = millis() + 2000;
+ }
+ 
+ void loop() {
++  carrierPowerService();
+   pwmService();
+   serialService();
++  carrierPowerService();
+ 
+   if (!gotFirstCommand && !streaming && (int32_t)(millis() - nextHelloMs) >= 0) {
+     if (adsOk) Serial.println("READY,ELTEC-ESP32-ADS1256");
+@@ -776,6 +867,10 @@
+     interrupts();
+     if (sampleReady) {
+       int32_t raw = adsReadData();
++      if (powerFaultSeen || !carrierPowerReady()) {
++        carrierPowerService();
++        return;
++      }
+       float volts = countsToVolts(raw, streamPga);
+       Serial.printf("D,%lu,%ld,%.6f,%d\n",
+                     (unsigned long)sampleTimestampUs, (long)raw, volts,

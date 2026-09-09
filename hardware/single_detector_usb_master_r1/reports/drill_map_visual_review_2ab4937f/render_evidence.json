@@ -1,0 +1,34 @@
+[
+  {
+    "pdf": "exports\\fabrication_draft\\20260909T154345_189586Z_2ab4937f2ec5_DRAFT\\drill\\single_detector_usb_master-NPTH-drl_map.pdf",
+    "pdf_sha256": "c4321937017ac6e8924e8aa2ae68471ae244b360dc774ef17d2f34fb7ead127c",
+    "pdfinfo": "Title:           single_detector_usb_master-NPTH-drl_map.pdf\nSubject:         \nAuthor:          \nCreator:         PCBNEW\nProducer:        KiCad PDF\nCreationDate:    Wed Dec 31 19:00:00 2025 Eastern Standard Time\nCustom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      yes\nPages:           1\nEncrypted:       no\nPage size:       841.896 x 595.296 pts (A4)\nPage rot:        0\nFile size:       6088 bytes\nOptimized:       no\nPDF version:     1.5\n",
+    "renderer_command": [
+      "C:\\Users\\JoseCastelblanco\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin\\pdftoppm.exe",
+      "-r",
+      "160",
+      "-png",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\20260909T154345_189586Z_2ab4937f2ec5_DRAFT\\drill\\single_detector_usb_master-NPTH-drl_map.pdf",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\drill_map_visual_review_2ab4937f\\single_detector_usb_master-NPTH-drl_map"
+    ],
+    "pages": [
+      "reports\\drill_map_visual_review_2ab4937f\\single_detector_usb_master-NPTH-drl_map-1.png"
+    ]
+  },
+  {
+    "pdf": "exports\\fabrication_draft\\20260909T154345_189586Z_2ab4937f2ec5_DRAFT\\drill\\single_detector_usb_master-PTH-drl_map.pdf",
+    "pdf_sha256": "5d970933bc56fabc2461b4415fbf7a86b6abe8f1904a3e79bfd99e81394f440e",
+    "pdfinfo": "Title:           single_detector_usb_master-PTH-drl_map.pdf\nSubject:         \nAuthor:          \nCreator:         PCBNEW\nProducer:        KiCad PDF\nCreationDate:    Wed Dec 31 19:00:00 2025 Eastern Standard Time\nCustom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      yes\nPages:           1\nEncrypted:       no\nPage size:       841.896 x 595.296 pts (A4)\nPage rot:        0\nFile size:       26195 bytes\nOptimized:       no\nPDF version:     1.5\n",
+    "renderer_command": [
+      "C:\\Users\\JoseCastelblanco\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin\\pdftoppm.exe",
+      "-r",
+      "160",
+      "-png",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\fabrication_draft\\20260909T154345_189586Z_2ab4937f2ec5_DRAFT\\drill\\single_detector_usb_master-PTH-drl_map.pdf",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\drill_map_visual_review_2ab4937f\\single_detector_usb_master-PTH-drl_map"
+    ],
+    "pages": [
+      "reports\\drill_map_visual_review_2ab4937f\\single_detector_usb_master-PTH-drl_map-1.png"
+    ]
+  }
+]

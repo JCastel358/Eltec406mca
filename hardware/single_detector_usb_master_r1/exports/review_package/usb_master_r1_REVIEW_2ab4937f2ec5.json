@@ -1,0 +1,7 @@
+{
+  "zip": "usb_master_r1_REVIEW_2ab4937f2ec5.zip",
+  "sha256": "28304b05aded27df4703141596f14b3bce3741eebae0fccb39b8e37a187bae5c",
+  "board_sha256": "2ab4937f2ec558227736722549489c8d60b382db2a86436887f104acd336f4e2",
+  "included_files": 407,
+  "portable_native_drc_passed": true
+}

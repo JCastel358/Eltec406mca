@@ -152,6 +152,21 @@ honoured inside the wait exactly as it is inside a capture.
 
 ## Reference gate
 
+**Live again since 2026-09-09** (`REFERENCE_GATE_ENABLED = True`) on the new
+**TI OPA2196** buffer; it was off from 2026-08-24 for op-amp crosstalk (a
+shorted DUT pulled AIN1 down ~90 % and the app demanded a recalibration).
+This model reads AIN1 **with the DUT already seated**, so it is the one path
+that exercises the shorted-DUT re-check through the app: calibrate, load the
+shorted part, Start — clean = "Reference unit passed" then "Is a sensor
+loaded?"; crosstalk = "outside its window" and a lockout, which now also
+writes a `measure_error` row to the batch's `_attempts.csv`. `REFERENCE_CALIBRATION_SCHEMA_VERSION` went 2 → **3** in the same
+change, so the stored v2 baselines — including the historical 5.3432 mV file,
+all measured through the old shared buffer — are refused on load and the app
+locks testing until **Calibrate reference unit** is run fresh. The stored
+files are left untouched as evidence. The crosstalk re-check on the new board
+is still outstanding; if AIN1 still follows the DUT, set the flag back to
+`False` rather than widening the window (CALIBRATION_RECORD §2.4).
+
 The AIN1 reference-unit gate uses a dedicated delta threshold:
 
 1. Battery check and PWM off.
@@ -169,8 +184,11 @@ The AIN1 reference-unit gate uses a dedicated delta threshold:
    the existing reference lockout and recalibration requirement.
 
 Calibration files created with the former `+/-10%` policy are automatically
-loaded with the current `+/-25%` window, so recalibration is not required solely
-for this policy change.
+loaded with the current `+/-25%` window, so recalibration is not required
+solely for that policy change — but every file predating the isolated buffer
+board is a schema v2 file and is rejected regardless (see above): a tolerance
+policy can be upgraded in place, a baseline measured on the wrong hardware
+cannot.
 
 V6.1 first looks for its own baseline at:
 
@@ -327,9 +345,9 @@ is imported, nothing is copied): insertion offset settling, the adaptive
 10 Hz capture with the DUT stability settings, a drive hold, the
 post-capture settled-offset read, then ranks the candidates for the
 permanently mounted reference. Procedure and ranking rules:
-`engineer_tools/reference_unit/README.md`. The reference gate itself stays
-off until the part is mounted and the crosstalk re-check is done
-(CALIBRATION_RECORD §2.4).
+`engineer_tools/reference_unit/README.md`. The gate itself was turned on
+2026-09-09 ahead of the crosstalk re-check, with the schema bump forcing a
+fresh baseline before any part can be tested (CALIBRATION_RECORD §2.4).
 
 ## Tests
 

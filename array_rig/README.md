@@ -21,30 +21,44 @@ reveals measurements and assigned sensor numbers; **Show less** hides them.
 
 ## Technician flow
 
-1. Enter **Tech name** and **Batch number**. Load up to fifty detectors;
-   click any physically empty socket on the map to mark it grey.
+1. Enter **Tech name** and **Batch number**. Load up to fifty detectors.
 2. Use the rig's **physical power switch immediately before pressing
    Measure offset**. The app connects to the DAQ and reads the signals; it
-   does not switch detector power or vacuum. Green means offset in range;
-   red means out of range. Low or dead-looking readings can still settle:
-   recheck before discarding a part.
+   does not switch detector power or vacuum. Empty-looking sockets are
+   rechecked together after two seconds and marked grey automatically.
+   Green means offset in range; red means out of range. Low or dead-looking
+   readings can still settle: recheck before discarding a part.
 3. Replace red parts and press **Measure offset** again, as often as needed.
-   If replacements run out, remove the remaining bad parts and mark their
-   sockets empty. A socket marked loaded again requires a fresh offset read.
+   If replacements run out, remove the remaining bad parts and measure
+   offset again so empty sockets are detected. A socket marked loaded again
+   requires a fresh offset read.
 4. Turn on the vacuum, wait for the gauge to reach the required setting,
-   and check **Vacuum is at the required setting**. Press **Measure noise**
-   once all loaded sockets have good offsets. The app automatically waits
-   five minutes for stabilisation, then captures sixty seconds of noise.
+   and confirm both the vacuum setting and that the detected detector count
+   and map match the physical tray. Press **Measure noise** once all loaded
+   sockets have good offsets. The app checks waveform settling for 3–20
+   seconds, then captures sixty seconds of noise.
 5. Read the socket colours and status. Use **Show more** for measurements
    and assigned sensor numbers. Results save automatically; use
    **Next tray** after the save completes. **Stop** interrupts a measurement
    so it can be retried.
 
 Tray and sensor numbers are automatic. Every offset read is retained for
-audit, including reads taken before a detector is replaced. Empty sockets
-are an operator choice: a near-zero reading is never assumed to mean empty.
-The vacuum check is the operator's gauge confirmation; the app has no
-pressure telemetry or configured vacuum setpoint.
+audit, including reads taken before a detector is replaced. Automatic empty
+detection is an inference: both median offset reads must be within one ADC
+code of zero (about 76 µV on the 0–5 V range). A dead or shorted detector can
+also read zero, so check the detected map and count before noise. Click a
+socket containing a detector to mark it loaded; that manual choice wins
+over automatic detection. The vacuum check is the operator's gauge
+confirmation; the app has no pressure telemetry or configured vacuum setpoint.
+
+Settling compares each loaded channel's one-second waveform maximum and
+minimum. Two consecutive changes within 0.1 mV allow capture to start after
+three seconds. At twenty seconds capture starts with a recorded warning
+if the signal has not settled. This tolerance schedules capture and does
+not decide pass/fail. The user's 2026-09-08 timing decision removes the
+app's five-minute countdown: TP120 itself separately calls for five minutes
+after power-on and 15–20 seconds after switching detectors on the legacy
+fixture. The changed timing policy and settling evidence are logged.
 
 Production noise limits are still pending: measured parts with no other
 failure show amber **NO LIMIT**, which is not a noise pass. Defined limits

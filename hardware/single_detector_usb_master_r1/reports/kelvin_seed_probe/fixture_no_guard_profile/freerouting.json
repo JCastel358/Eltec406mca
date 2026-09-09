@@ -1,0 +1,61 @@
+{
+  "profile": {
+    "id": "121b69de-1a2c-4f15-990a-301f71190490",
+    "email": "",
+    "allow_telemetry": true,
+    "allow_contact": true
+  },
+  "gui": {
+    "enabled": true,
+    "input_directory": "",
+    "dialog_confirmation_timeout": 5
+  },
+  "router": {
+    "optimizer": {},
+    "scoring": {}
+  },
+  "drc": {
+    "include_warnings": true,
+    "include_errors": true
+  },
+  "usage_and_diagnostic_data": {
+    "disable_analytics": false
+  },
+  "feature_flags": {
+    "multi_threading": true,
+    "inspection_mode": false,
+    "other_menu": false,
+    "save_jobs": false
+  },
+  "api_server": {
+    "enabled": false,
+    "http_allowed": true,
+    "endpoints": [
+      "http://127.0.0.1:37864"
+    ],
+    "authentication": {
+      "enabled": true,
+      "providers": "",
+      "google_sheets": {}
+    },
+    "cors_origins": ""
+  },
+  "statistics": {
+    "start_time": "2026-09-09 10:55:31",
+    "sessions_total": 0,
+    "jobs_started": 0,
+    "jobs_completed": 0
+  },
+  "logging": {
+    "console": {
+      "enabled": true,
+      "level": "INFO"
+    },
+    "file": {
+      "enabled": true,
+      "level": "INFO",
+      "location": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\kelvin_seed_probe\\fixture_no_guard_profile\\freerouting.log"
+    }
+  },
+  "version": "2.2.4"
+}

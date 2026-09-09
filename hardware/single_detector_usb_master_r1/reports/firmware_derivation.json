@@ -1,0 +1,9 @@
+{
+  "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\Arduino\\Eltec\\Eltec.ino",
+  "source_sha256": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+  "output": "firmware\\Eltec_USB_Master\\Eltec_USB_Master.ino",
+  "output_sha256": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c",
+  "source_modified": false,
+  "compiled": false,
+  "flashed": false
+}

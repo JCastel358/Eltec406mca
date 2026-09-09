@@ -1,0 +1,48 @@
+{
+  "status": "ALL_SEVEN_PAGES_VISUALLY_REVIEWED",
+  "reviewer": "Primary design agent, individual images viewed in conversation",
+  "source_board_sha256": "2ab4937f2ec558227736722549489c8d60b382db2a86436887f104acd336f4e2",
+  "outputs": [
+    {
+      "file": "copper_top.pdf",
+      "sha256": "adcc57dc7093b0e0910acd55776ed64b5f82337f03667711c43bb0c3b4779e2f",
+      "pages": 1,
+      "all_pages_viewed": true,
+      "rendered_sha256": {
+        "rendered_pages\\copper_top-1.png": "03be18660bc4d6c6a2068275ca62232b046ac41cc65f087906bf9bdf0fb7ee1b"
+      }
+    },
+    {
+      "file": "copper_bottom.pdf",
+      "sha256": "d97738e487d0f06501d5c3fbaee7c6d0430338bcff0755b253f6e777bb43e188",
+      "pages": 1,
+      "all_pages_viewed": true,
+      "rendered_sha256": {
+        "rendered_pages\\copper_bottom-1.png": "6cecb3d2674bc9e9028548149c121355b6f9dd4e2d37d47081e57d90f7ae8aa9"
+      }
+    },
+    {
+      "file": "copper_layers.pdf",
+      "sha256": "321e08ccdd49c01259ca7a6a3b1d417ce4d6d0ee82b7d05f1fb798af324a9f31",
+      "pages": 4,
+      "all_pages_viewed": true,
+      "rendered_sha256": {
+        "rendered_pages\\copper_layers-1.png": "591a94574601502c320f2de3cd7c878523cf6a9645bf687e2c149e30755679fd",
+        "rendered_pages\\copper_layers-2.png": "f4237e9167777b320e634ced62c24ea722099ae63e448dbecd008ce75632525a",
+        "rendered_pages\\copper_layers-3.png": "dc7a81637225f1dbd33e2570dc66d094c1f94b811846f61b0efe642042470aae",
+        "rendered_pages\\copper_layers-4.png": "561286d40aa79836e8f4ed282100d3910d9e6b2d7551ae74a1df9058e376ccd2"
+      }
+    },
+    {
+      "file": "assembly_top.pdf",
+      "sha256": "05908a0e41fc0f89637534bf99a161e93e85e738da8077d7f82346d5ee579d37",
+      "pages": 1,
+      "all_pages_viewed": true,
+      "rendered_sha256": {
+        "rendered_pages\\assembly_top-1.png": "b48945240a76c6cb439a4608592b97e4c20955837754437d41e130514d52483d"
+      }
+    }
+  ],
+  "observations": "visual_review.md",
+  "scope": "PDF visual readability only; no physical qualification"
+}

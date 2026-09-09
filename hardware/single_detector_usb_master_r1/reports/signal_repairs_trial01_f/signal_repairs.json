@@ -1,0 +1,983 @@
+{
+  "status": "SIGNAL_COPY_PASS",
+  "source_sha256": "b33a97f84bf1f496620f39c85c54ef9b8a860b96ba0045ccac9a89994dcc416f",
+  "candidate_sha256": "93b2e6a36082550680599f7186cef9cffda7636118f845f8416b0d8a76a316f9",
+  "input_sha256": {
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pcb": "b33a97f84bf1f496620f39c85c54ef9b8a860b96ba0045ccac9a89994dcc416f",
+    "single_detector_usb_master\\adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master\\adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master\\analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master\\analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master\\analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master\\emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master\\emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master\\emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master\\esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master\\power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master\\power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master\\power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master\\spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master\\spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pro": "efa2f91b4d171408b3a2c3a0256d78477df6e959c0237632494aa48d63b3c473",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_dru": "0a68d7ebbf53577634025066fc9f21378e2fa1abb019ac4f199e565bcab3f49f",
+    "single_detector_usb_master\\fp-lib-table": "15d72736cb413bf1d62ca9816eb9b4e2b90e5033c6d29dcd8fb7e9928283564e",
+    "single_detector_usb_master\\sym-lib-table": "f4833790416c9256d262fb8a16296079f32b5222c610ed54b2c6710af54e075a"
+  },
+  "tool_sha256": "8efafbe5d05bc17d88f3e35b70d5b080177d7a91678c8fb970eb34e84574bfc5",
+  "candidate": "reports\\signal_repairs_trial01_f\\candidate\\single_detector_usb_master.kicad_pcb",
+  "paths": [
+    {
+      "net": "AMP_OUT4",
+      "width_mm": 0.25,
+      "reason": "Make room for AMP_OUT5 off-pad through via without moving components",
+      "path": [
+        {
+          "xy_mm": [
+            30.4795,
+            20.5627
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            30.8168,
+            20.9
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            32.1959,
+            20.9
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            32.5332,
+            20.5627
+          ],
+          "layer": "B.Cu"
+        }
+      ]
+    },
+    {
+      "net": "ESP_MOSI",
+      "width_mm": 0.2,
+      "path": [
+        {
+          "xy_mm": [
+            50.52,
+            87.0
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            51.83,
+            88.31
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            55.9,
+            88.31
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            57.7017,
+            90.7446
+          ],
+          "layer": "F.Cu"
+        }
+      ]
+    },
+    {
+      "net": "ADC_SCLK",
+      "source": "J5.3",
+      "target_via_uuid": "9a83b0ec-3d64-4a63-9229-d07eb34f138a",
+      "width_mm": 0.2,
+      "visited_nodes": 98530,
+      "path": [
+        {
+          "xy_mm": [
+            58.29,
+            80.975
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            55.1,
+            84.15
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            50.05,
+            85.65
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            49.45,
+            86.2
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            49.2,
+            86.7
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            49.2,
+            87.3
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            49.45,
+            87.8
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            50.4,
+            88.75
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            55.55,
+            88.75
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            55.8,
+            89.2
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            55.8,
+            91.25
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            55.8,
+            91.25
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            61.65,
+            96.85
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            62.05,
+            96.9
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            62.25,
+            96.8
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            62.45,
+            96.6
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            62.55,
+            96.4
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            62.55,
+            89.9
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            61.9125,
+            89.2584
+          ],
+          "layer": "B.Cu"
+        }
+      ]
+    },
+    {
+      "net": "AMP_OUT5",
+      "source": "U35.7",
+      "target_via_uuid": "f06be6d7-39a7-49ba-89b4-c6aaa56afd61",
+      "width_mm": 0.25,
+      "visited_nodes": 22147,
+      "path": [
+        {
+          "xy_mm": [
+            29.15,
+            21.709
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            29.85,
+            20.6
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            30.1,
+            20.4
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            31.35,
+            20.25
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            31.35,
+            20.25
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            32.6,
+            19.9
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            32.95,
+            20.05
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            33.2,
+            20.4
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            33.2,
+            20.75
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            32.5,
+            22.5
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            32.5,
+            22.5
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            31.7,
+            24.4
+          ],
+          "layer": "F.Cu"
+        },
+        {
+          "xy_mm": [
+            31.7,
+            24.4
+          ],
+          "layer": "B.Cu"
+        },
+        {
+          "xy_mm": [
+            31.2263,
+            29.2357
+          ],
+          "layer": "B.Cu"
+        }
+      ]
+    }
+  ],
+  "added": [
+    {
+      "uuid": "a2149c5d-5270-5682-9f30-482089cb9d00",
+      "net": "AMP_OUT4",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        30.4795,
+        20.5627
+      ],
+      "end_mm": [
+        30.8168,
+        20.9
+      ]
+    },
+    {
+      "uuid": "71192ef7-86a4-5ccf-bbf9-274e728add30",
+      "net": "AMP_OUT4",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        30.8168,
+        20.9
+      ],
+      "end_mm": [
+        32.1959,
+        20.9
+      ]
+    },
+    {
+      "uuid": "88ef12ed-0701-5a1c-8eb5-b6a38bcaedc0",
+      "net": "AMP_OUT4",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        32.1959,
+        20.9
+      ],
+      "end_mm": [
+        32.5332,
+        20.5627
+      ]
+    },
+    {
+      "uuid": "a7c0eb61-6164-5484-9c71-5e6c83a1fa99",
+      "net": "ESP_MOSI",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        50.52,
+        87.0
+      ],
+      "end_mm": [
+        51.83,
+        88.31
+      ]
+    },
+    {
+      "uuid": "90dfc769-b619-5612-a167-0aa3e5b6ed69",
+      "net": "ESP_MOSI",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        51.83,
+        88.31
+      ],
+      "end_mm": [
+        55.9,
+        88.31
+      ]
+    },
+    {
+      "uuid": "2639533e-7b78-5326-b2f0-5f900f730cce",
+      "net": "ESP_MOSI",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        55.9,
+        88.31
+      ],
+      "end_mm": [
+        57.7017,
+        90.7446
+      ]
+    },
+    {
+      "uuid": "a704d21d-950c-5dbb-99fb-0c3877b6c259",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        58.29,
+        80.975
+      ],
+      "end_mm": [
+        55.1,
+        84.15
+      ]
+    },
+    {
+      "uuid": "45de5c70-3626-5e3d-bbfd-06f3a71205db",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        55.1,
+        84.15
+      ],
+      "end_mm": [
+        50.05,
+        85.65
+      ]
+    },
+    {
+      "uuid": "d1597362-f234-5b46-b89b-99ab2ce5e1e2",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        50.05,
+        85.65
+      ],
+      "end_mm": [
+        49.45,
+        86.2
+      ]
+    },
+    {
+      "uuid": "34aa416c-8dd5-559b-a97b-3dd998c3f3c5",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        49.45,
+        86.2
+      ],
+      "end_mm": [
+        49.2,
+        86.7
+      ]
+    },
+    {
+      "uuid": "45416201-bb16-500c-b5e7-b8430ce4d2da",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        49.2,
+        86.7
+      ],
+      "end_mm": [
+        49.2,
+        87.3
+      ]
+    },
+    {
+      "uuid": "c02f83e3-2c2f-5583-8972-3b7aa175f8cf",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        49.2,
+        87.3
+      ],
+      "end_mm": [
+        49.45,
+        87.8
+      ]
+    },
+    {
+      "uuid": "aee3fc18-d410-5842-8387-4954f85d3d47",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        49.45,
+        87.8
+      ],
+      "end_mm": [
+        50.4,
+        88.75
+      ]
+    },
+    {
+      "uuid": "0ebda715-f0fa-5bd2-a7ac-a1a3accf4ec0",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        50.4,
+        88.75
+      ],
+      "end_mm": [
+        55.55,
+        88.75
+      ]
+    },
+    {
+      "uuid": "9238ad11-f22c-5e87-941d-9d0c22471270",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        55.55,
+        88.75
+      ],
+      "end_mm": [
+        55.8,
+        89.2
+      ]
+    },
+    {
+      "uuid": "01268907-a954-5d66-b4d0-dc14e31fb5ef",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        55.8,
+        89.2
+      ],
+      "end_mm": [
+        55.8,
+        91.25
+      ]
+    },
+    {
+      "uuid": "8f494772-a3a6-534f-a479-bc9db0450595",
+      "net": "ADC_SCLK",
+      "kind": "through_via",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "xy_mm": [
+        55.8,
+        91.25
+      ]
+    },
+    {
+      "uuid": "4618784b-6ee6-5b0b-be88-610870a0b79b",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        55.8,
+        91.25
+      ],
+      "end_mm": [
+        61.65,
+        96.85
+      ]
+    },
+    {
+      "uuid": "eabf9429-59ca-5ab9-bcf9-da43559c20b8",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        61.65,
+        96.85
+      ],
+      "end_mm": [
+        62.05,
+        96.9
+      ]
+    },
+    {
+      "uuid": "1576e763-acf3-595b-be90-3cda762f5c45",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        62.05,
+        96.9
+      ],
+      "end_mm": [
+        62.25,
+        96.8
+      ]
+    },
+    {
+      "uuid": "93c85445-f0be-59cb-bf15-508bf2dc9402",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        62.25,
+        96.8
+      ],
+      "end_mm": [
+        62.45,
+        96.6
+      ]
+    },
+    {
+      "uuid": "10df7a40-3226-54ab-baa4-8425a5444005",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        62.45,
+        96.6
+      ],
+      "end_mm": [
+        62.55,
+        96.4
+      ]
+    },
+    {
+      "uuid": "600b490f-d937-5a4a-9bcd-fb9a473d4766",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        62.55,
+        96.4
+      ],
+      "end_mm": [
+        62.55,
+        89.9
+      ]
+    },
+    {
+      "uuid": "3fff68a4-d699-5575-8bc3-1f06b86d30c7",
+      "net": "ADC_SCLK",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.2,
+      "start_mm": [
+        62.55,
+        89.9
+      ],
+      "end_mm": [
+        61.9125,
+        89.2584
+      ]
+    },
+    {
+      "uuid": "21cdf3d2-17fa-57c3-a104-72daf1fc6df7",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        29.15,
+        21.709
+      ],
+      "end_mm": [
+        29.85,
+        20.6
+      ]
+    },
+    {
+      "uuid": "cac809c5-eda9-5057-ae46-f442cfc90866",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        29.85,
+        20.6
+      ],
+      "end_mm": [
+        30.1,
+        20.4
+      ]
+    },
+    {
+      "uuid": "f87a6633-1d84-5fae-a29e-13b2a204390b",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        30.1,
+        20.4
+      ],
+      "end_mm": [
+        31.35,
+        20.25
+      ]
+    },
+    {
+      "uuid": "148589a2-8116-5ef3-8e7d-f26e98ccb891",
+      "net": "AMP_OUT5",
+      "kind": "through_via",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "xy_mm": [
+        31.35,
+        20.25
+      ]
+    },
+    {
+      "uuid": "b98ba517-016d-5d6c-a2a7-30275a165d68",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        31.35,
+        20.25
+      ],
+      "end_mm": [
+        32.6,
+        19.9
+      ]
+    },
+    {
+      "uuid": "dfa7a198-ad43-5af3-aabc-a530990b858c",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        32.6,
+        19.9
+      ],
+      "end_mm": [
+        32.95,
+        20.05
+      ]
+    },
+    {
+      "uuid": "ddefe2da-1762-5f4c-867b-32e874fd5c45",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        32.95,
+        20.05
+      ],
+      "end_mm": [
+        33.2,
+        20.4
+      ]
+    },
+    {
+      "uuid": "e9dfff76-cbff-58cf-a066-a8ae5e8eff67",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        33.2,
+        20.4
+      ],
+      "end_mm": [
+        33.2,
+        20.75
+      ]
+    },
+    {
+      "uuid": "e1f4ca63-e7ec-5313-a074-f2af4c6a2096",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        33.2,
+        20.75
+      ],
+      "end_mm": [
+        32.5,
+        22.5
+      ]
+    },
+    {
+      "uuid": "da863b4e-b199-59da-8a12-e235028c8ddd",
+      "net": "AMP_OUT5",
+      "kind": "through_via",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "xy_mm": [
+        32.5,
+        22.5
+      ]
+    },
+    {
+      "uuid": "7f555490-6994-55f0-9272-c42ed0d4e971",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "F.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        32.5,
+        22.5
+      ],
+      "end_mm": [
+        31.7,
+        24.4
+      ]
+    },
+    {
+      "uuid": "b853a2ee-ce2c-510e-b0c2-c6d45afa37c3",
+      "net": "AMP_OUT5",
+      "kind": "through_via",
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "xy_mm": [
+        31.7,
+        24.4
+      ]
+    },
+    {
+      "uuid": "587a988b-1f15-5c13-97ef-03ae682eecbc",
+      "net": "AMP_OUT5",
+      "kind": "track",
+      "layer": "B.Cu",
+      "width_mm": 0.25,
+      "start_mm": [
+        31.7,
+        24.4
+      ],
+      "end_mm": [
+        31.2263,
+        29.2357
+      ]
+    }
+  ],
+  "removed": {
+    "127e51c1-4dcf-4589-8924-637594cc2ed9": [
+      "AMP_OUT4",
+      2,
+      [
+        30479500,
+        20562700
+      ],
+      [
+        32533200,
+        20562700
+      ],
+      250000,
+      false
+    ],
+    "41885f3f-caa5-4396-95c0-102747ccfc49": [
+      "ESP_MOSI",
+      0,
+      [
+        52161500,
+        88641500
+      ],
+      [
+        55598600,
+        88641500
+      ],
+      200000,
+      false
+    ],
+    "5d2c8ff7-0b01-47c5-b374-4ae63ee9c87e": [
+      "ESP_MOSI",
+      0,
+      [
+        50520000,
+        87000000
+      ],
+      [
+        52161500,
+        88641500
+      ],
+      200000,
+      false
+    ],
+    "67c4b690-449c-4ce6-a3b3-9fcabf2455f5": [
+      "ESP_MOSI",
+      0,
+      [
+        55598600,
+        88641500
+      ],
+      [
+        57701700,
+        90744600
+      ],
+      200000,
+      false
+    ]
+  },
+  "protected_kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "existing_copper_except_listed_removed_unchanged": true,
+  "nonrouting_identity_unchanged": true,
+  "native_command": [
+    "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+    "pcb",
+    "drc",
+    "--format",
+    "json",
+    "--severity-all",
+    "--schematic-parity",
+    "--refill-zones",
+    "--save-board",
+    "--output",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_repairs_trial01_f\\native_drc.json",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\signal_repairs_trial01_f\\candidate\\single_detector_usb_master.kicad_pcb"
+  ],
+  "native_returncode": 0,
+  "native_stdout": "Found 0 violations\nFound 3 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/signal_repairs_trial01_f/native_drc.json\nSaved board\n",
+  "violation_count": 0,
+  "parity_count": 0,
+  "unconnected_count": 3,
+  "target_signals_remaining": [],
+  "drc_sha256": "6bf6ebf86888aeccb55f868dd731dc6af3432a00c0786d28ac34e7e62f98a6f0"
+}

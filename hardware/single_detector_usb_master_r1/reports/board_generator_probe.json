@@ -1,0 +1,74 @@
+{
+  "stack": {
+    "copper_layers": 4,
+    "nominal_board_thickness_mm": 1.6,
+    "layers": [
+      {
+        "name": "F.Cu",
+        "purpose": "Signal and power routing"
+      },
+      {
+        "name": "In1.Cu",
+        "purpose": "GND reference; separate isolated EM_GND region where required"
+      },
+      {
+        "name": "In2.Cu",
+        "purpose": "GND reference/return copper; separate isolated EM_GND region where required"
+      },
+      {
+        "name": "B.Cu",
+        "purpose": "Signal and power routing"
+      }
+    ],
+    "status": "Candidate layer purposes; no copper zones or fabrication dielectric/copper-thickness stack generated."
+  },
+  "antenna": {
+    "source_silk_antenna_graphic_mm": [
+      45.44,
+      93.35,
+      53.06,
+      106.05
+    ],
+    "rule_area_mm": [
+      42.0,
+      89.0,
+      55.5,
+      110.0
+    ],
+    "layers": [
+      "F.Cu",
+      "In1.Cu",
+      "In2.Cu",
+      "B.Cu"
+    ],
+    "prohibited": [
+      "tracks",
+      "vias",
+      "pads",
+      "copper pours",
+      "footprints"
+    ],
+    "basis": "Conservative carrier corridor around source antenna-like graphic; no new components or copper. Exact ESP32 module antenna boundary, vendor clearance and enclosure RF/physical qualification remain open.",
+    "limitation": "This preserves the fixed socket/harness geometry and is not a vendor RF-compliance claim."
+  },
+  "native_reopen": {
+    "copper_layers": 4,
+    "zone_layers": [
+      "F.Cu",
+      "B.Cu",
+      "In1.Cu",
+      "In2.Cu"
+    ],
+    "rule_area": true,
+    "disallow_tracks": true,
+    "disallow_vias": true,
+    "disallow_pads": true,
+    "disallow_pours": true,
+    "disallow_footprints": true
+  },
+  "rule_area_only_regeneration_allowed": true,
+  "routed_default_refusal": "Refusing to discard routing in C:\\Users\\JOSECA~1\\AppData\\Local\\Temp\\eltec_board_generator_probe_3d996e3w\\fixture.kicad_pcb: 1 tracks/vias and 0 copper zones. Continue from the routed board or explicitly use --replace-routed-board to regenerate placement; the latter first saves a hash-named backup.",
+  "explicit_flag_preserves_hash_matched_backup": true,
+  "unfilled_copper_zone_refused": true,
+  "scope": "Disposable native fixture only; real candidate PCB not rebuilt while schematic revisions are pending."
+}

@@ -1,0 +1,460 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T11:23:08",
+    "ignored_checks": [
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "single_detector_usb_master.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [ADC_5V_HELD] on F.Cu, length 0.7517 mm",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -8.5
+                    },
+                    "uuid": "a67bacc1-9edc-4092-a76c-b1373e5cb098"
+                },
+                {
+                    "description": "Pad 13 [ADC_5V_HELD] of U10 on F.Cu",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -8.0
+                    },
+                    "uuid": "9e108178-8d8e-5281-937c-af602ef9b303"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 3 [ADC_SCLK] of J5",
+                    "pos": {
+                        "x": 58.29,
+                        "y": 80.975
+                    },
+                    "uuid": "c5017c32-cb1a-5eb9-b72d-34f2364b3bde"
+                },
+                {
+                    "description": "Track [ADC_SCLK] on B.Cu, length 3.1186 mm",
+                    "pos": {
+                        "x": 61.6339,
+                        "y": 89.2584
+                    },
+                    "uuid": "1f9dde0e-b34b-4fff-a5ff-dc12eb133db1"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 7 [AMP_OUT5] of U35 on F.Cu",
+                    "pos": {
+                        "x": 29.15,
+                        "y": 21.709
+                    },
+                    "uuid": "a6805ce4-eadd-5f4f-a1ae-bbd0da3a679e"
+                },
+                {
+                    "description": "Track [AMP_OUT5] on F.Cu, length 0.4505 mm",
+                    "pos": {
+                        "x": 31.2263,
+                        "y": 29.2357
+                    },
+                    "uuid": "885853a1-36ec-475f-91fb-6e84198b9493"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -22.2
+                    },
+                    "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -14.6
+                    },
+                    "uuid": "c174a051-c175-57d9-8282-98bf04cc3270"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -22.2
+                    },
+                    "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -14.6
+                    },
+                    "uuid": "c174a051-c175-57d9-8282-98bf04cc3270"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -22.2
+                    },
+                    "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -22.2
+                    },
+                    "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -14.6
+                    },
+                    "uuid": "c174a051-c175-57d9-8282-98bf04cc3270"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_BAT_FUSED] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -14.6
+                    },
+                    "uuid": "c174a051-c175-57d9-8282-98bf04cc3270"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -24.1
+                    },
+                    "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -24.1
+                    },
+                    "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.2,
+                        "y": -17.5
+                    },
+                    "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -24.1
+                    },
+                    "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -24.1
+                    },
+                    "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.2,
+                        "y": -17.5
+                    },
+                    "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In1.Cu' [EM_GND] on In1.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "5e3e350a-3e90-5601-b528-ca53914863f3"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        },
+        {
+            "description": "Clearance violation (zone clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.2,
+                        "y": -17.5
+                    },
+                    "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Hole clearance violation (board setup constraints hole clearance 0.2500 mm; actual 0.0000 mm)",
+            "items": [
+                {
+                    "description": "Via [EM_MASTER_GATE] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 89.2,
+                        "y": -17.5
+                    },
+                    "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e"
+                },
+                {
+                    "description": "Zone 'EM_INPUT_REGULATOR_In2.Cu' [EM_GND] on In2.Cu, priority 1",
+                    "pos": {
+                        "x": 80.0,
+                        "y": -29.5
+                    },
+                    "uuid": "68a134a8-78a0-518d-99d8-b1913c3a429c"
+                }
+            ],
+            "severity": "error",
+            "type": "hole_clearance"
+        }
+    ]
+}

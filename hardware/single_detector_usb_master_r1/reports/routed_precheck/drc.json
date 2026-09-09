@@ -1,0 +1,374 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T11:15:21",
+    "ignored_checks": [
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "single_detector_usb_master.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 11 [GND] of U10 on F.Cu",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -7.0
+                    },
+                    "uuid": "35fc473a-f4cb-5f26-b64b-8b72bd79ce11"
+                },
+                {
+                    "description": "Pad 10 [GND] of U10 on F.Cu",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -6.5
+                    },
+                    "uuid": "7fc3de41-91be-51c9-8633-bca1109cd968"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 11 [GND] of U10 on F.Cu",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -7.0
+                    },
+                    "uuid": "35fc473a-f4cb-5f26-b64b-8b72bd79ce11"
+                },
+                {
+                    "description": "Track [GND] on F.Cu, length 2.0017 mm",
+                    "pos": {
+                        "x": 34.0,
+                        "y": -7.0
+                    },
+                    "uuid": "16f5f93e-a1c6-4c2d-bcc3-823176e7fa4c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 2.1273 mm",
+                    "pos": {
+                        "x": 44.3869,
+                        "y": 26.4744
+                    },
+                    "uuid": "3018728c-58a4-4643-a60c-fe14955e62ad"
+                },
+                {
+                    "description": "Track [GND] on F.Cu, length 0.6500 mm",
+                    "pos": {
+                        "x": 41.325,
+                        "y": 27.0465
+                    },
+                    "uuid": "b9a7c172-5448-4c2a-ba8c-b74e7706e19c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 1.8522 mm",
+                    "pos": {
+                        "x": 55.8995,
+                        "y": 96.0402
+                    },
+                    "uuid": "7b075616-25f9-47d0-af61-1c725153fea2"
+                },
+                {
+                    "description": "Track [GND] on F.Cu, length 1.2654 mm",
+                    "pos": {
+                        "x": 40.4125,
+                        "y": 93.5
+                    },
+                    "uuid": "1e75fd4d-fc7f-40e4-a7b8-4d83d5388a24"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [ADC_5V_HELD] on F.Cu, length 0.7517 mm",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -8.5
+                    },
+                    "uuid": "b6256c14-fc95-40e7-b9c1-22d3781f1255"
+                },
+                {
+                    "description": "Pad 13 [ADC_5V_HELD] of U10 on F.Cu",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -8.0
+                    },
+                    "uuid": "9e108178-8d8e-5281-937c-af602ef9b303"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [EM_MASTER_GATE] on F.Cu, length 0.4596 mm",
+                    "pos": {
+                        "x": 87.0,
+                        "y": -20.725
+                    },
+                    "uuid": "0d8fa993-841a-41d5-8d11-cda01119acf7"
+                },
+                {
+                    "description": "Pad 1 [EM_MASTER_GATE] of Q20 on F.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -22.95
+                    },
+                    "uuid": "c419e1c2-a58e-506e-95e5-301c2e2662bf"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 1.4730 mm",
+                    "pos": {
+                        "x": 80.4584,
+                        "y": 34.0084
+                    },
+                    "uuid": "5d58e121-1565-478c-809a-d07c6ec2752a"
+                },
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 4.6625 mm",
+                    "pos": {
+                        "x": 88.75,
+                        "y": 43.5
+                    },
+                    "uuid": "3eed20a8-ede6-4ddd-a2c0-78ab17d389d5"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [EM_GND] of R29 on F.Cu",
+                    "pos": {
+                        "x": 83.825,
+                        "y": -24.0
+                    },
+                    "uuid": "e092e683-8da3-5ff6-8d6f-cf3711c867c7"
+                },
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 3.3257 mm",
+                    "pos": {
+                        "x": 82.81,
+                        "y": 6.27
+                    },
+                    "uuid": "36032c27-bb16-42af-9551-6e085f29ea5e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 9.1500 mm",
+                    "pos": {
+                        "x": 88.75,
+                        "y": 52.65
+                    },
+                    "uuid": "b5356009-9c6c-4d76-a8a1-f07c721308a4"
+                },
+                {
+                    "description": "Pad 2 [EM_GND] of C100 on F.Cu",
+                    "pos": {
+                        "x": 91.87,
+                        "y": 35.5
+                    },
+                    "uuid": "81a0b9a7-5c60-51c1-b170-3649eb3f0d0e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 3 [ADC_SCLK] of J5",
+                    "pos": {
+                        "x": 58.29,
+                        "y": 80.975
+                    },
+                    "uuid": "c5017c32-cb1a-5eb9-b72d-34f2364b3bde"
+                },
+                {
+                    "description": "Track [ADC_SCLK] on B.Cu, length 3.1186 mm",
+                    "pos": {
+                        "x": 61.6339,
+                        "y": 89.2584
+                    },
+                    "uuid": "4bc13db4-d82f-4e8b-9d81-05acb0a9d2ef"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 7 [AMP_OUT5] of U35 on F.Cu",
+                    "pos": {
+                        "x": 29.15,
+                        "y": 21.709
+                    },
+                    "uuid": "a6805ce4-eadd-5f4f-a1ae-bbd0da3a679e"
+                },
+                {
+                    "description": "Track [AMP_OUT5] on B.Cu, length 2.2453 mm",
+                    "pos": {
+                        "x": 31.2263,
+                        "y": 29.2357
+                    },
+                    "uuid": "b08c490a-ca21-45e2-b5c5-590151fd1e63"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 3 [EM_BAT_FUSED] of Q19 on F.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -21.0
+                    },
+                    "uuid": "f8ea217e-1ce7-568d-ac8f-6cd20c13f3c6"
+                },
+                {
+                    "description": "Pad 2 [EM_BAT_FUSED] of F2 on F.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -16.0
+                    },
+                    "uuid": "f28c7728-2a81-5aaf-8f8b-17f62aa08d43"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Track width (rule 'Power route neckdown floor' min width 0.2500 mm; actual 0.2498 mm)",
+            "items": [
+                {
+                    "description": "Track [DET_BAT_PROTECTED] on F.Cu, length 0.5000 mm",
+                    "pos": {
+                        "x": 32.55,
+                        "y": -8.0
+                    },
+                    "uuid": "0a252d85-5400-40e1-80cb-c87455ed3e57"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (rule 'Power route neckdown floor' min width 0.2500 mm; actual 0.2498 mm)",
+            "items": [
+                {
+                    "description": "Track [DET_BAT_PROTECTED] on F.Cu, length 0.2828 mm",
+                    "pos": {
+                        "x": 35.65,
+                        "y": -5.126
+                    },
+                    "uuid": "6f397e04-9b0b-45d7-9c5d-63f71b2b3b43"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (rule 'Power route neckdown floor' min width 0.2500 mm; actual 0.2498 mm)",
+            "items": [
+                {
+                    "description": "Track [DET_BAT_PROTECTED] on F.Cu, length 0.1019 mm",
+                    "pos": {
+                        "x": 32.4481,
+                        "y": -8.0
+                    },
+                    "uuid": "e4bd879a-6498-4a8e-8e1e-80d4477d19fb"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (rule 'Power route neckdown floor' min width 0.2500 mm; actual 0.2498 mm)",
+            "items": [
+                {
+                    "description": "Track [DET_BAT_PROTECTED] on F.Cu, length 0.5000 mm",
+                    "pos": {
+                        "x": 32.55,
+                        "y": -8.5
+                    },
+                    "uuid": "ee25ead0-bbfc-4fda-95f0-f6dbcdd54153"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        },
+        {
+            "description": "Track width (rule 'Power route neckdown floor' min width 0.2500 mm; actual 0.2498 mm)",
+            "items": [
+                {
+                    "description": "Track [DET_BAT_PROTECTED] on F.Cu, length 0.1740 mm",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -5.326
+                    },
+                    "uuid": "f102deef-3529-44f4-b45a-7f1482f907e0"
+                }
+            ],
+            "severity": "error",
+            "type": "track_width"
+        }
+    ]
+}

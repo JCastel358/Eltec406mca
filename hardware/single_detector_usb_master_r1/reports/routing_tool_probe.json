@@ -1,0 +1,119 @@
+{
+  "status": "PASS",
+  "runtime": {
+    "java": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\java\\jdk-25.0.4.1+1-jre\\bin\\java.exe",
+      "sha256": "5808527e3dfc4eb285c7664ba356bc267055ef906e83ed4660d9f7976da7349b",
+      "version": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)"
+    },
+    "router": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\freerouting-2.2.4.jar",
+      "sha256": "f5ed374182900ccc78e473518bbb9f6b869f4a07159495f663a76f52bb10523b",
+      "version": "2.2.4",
+      "build_revision": "20f1a72e546b9b23c7ba5127086885cfacbdd4be"
+    },
+    "other_project_modified": false
+  },
+  "checks": [
+    {
+      "check": "four_layer_initial_route_validation",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "check": "two_pad_unrouted_count",
+      "status": "PASS",
+      "detail": {
+        "count": 1
+      }
+    },
+    {
+      "check": "explicit_outer_only_layer_rules",
+      "status": "PASS",
+      "detail": {
+        "F.Cu": "on",
+        "In1.Cu": "off",
+        "In2.Cu": "off",
+        "B.Cu": "on"
+      }
+    },
+    {
+      "check": "dsn_nonrouting_structure_preserved",
+      "status": "PASS",
+      "detail": "All non-layer-routing-settings expressions retained"
+    },
+    {
+      "check": "unsupported_stack_refused",
+      "status": "PASS",
+      "detail": "Expected refusal observed"
+    },
+    {
+      "check": "identity_repeat_stable",
+      "status": "PASS",
+      "detail": true
+    },
+    {
+      "check": "native_ses_import_fixture",
+      "status": "PASS",
+      "detail": {
+        "input": "Hand-authored two-pad SES fixture; no external router executed",
+        "native_identity_preserved": true,
+        "unrouted_before": 1,
+        "unrouted_after": 0,
+        "layers": {
+          "track_segments_by_layer": {
+            "F.Cu": 1,
+            "In1.Cu": 0,
+            "In2.Cu": 0,
+            "B.Cu": 0
+          },
+          "through_vias": 0
+        }
+      }
+    },
+    {
+      "check": "existing_routes_refused",
+      "status": "PASS",
+      "detail": "Expected refusal observed"
+    },
+    {
+      "check": "internal_signal_track_refused",
+      "status": "PASS",
+      "detail": "Expected refusal observed"
+    },
+    {
+      "check": "source_pcb_bytes_unchanged",
+      "status": "PASS",
+      "detail": true
+    },
+    {
+      "check": "explicit_project_netclass_loading",
+      "status": "PASS",
+      "detail": {
+        "effective_class": "FixturePower",
+        "width_mm": 0.75,
+        "project_json_unchanged": true,
+        "dsn_class_width_um": 750.0
+      }
+    },
+    {
+      "check": "guarded_import_end_to_end_fixture",
+      "status": "PASS",
+      "detail": {
+        "backup_verified": true,
+        "changed_source_refused": true,
+        "native_paths_and_nonrouting_content_preserved": true,
+        "atomic_replacement_fixture_only": true,
+        "unrouted_before": 1,
+        "unrouted_after": 0
+      }
+    },
+    {
+      "check": "actual_project_sources_untouched",
+      "status": "PASS"
+    }
+  ],
+  "actual_board_routed": false,
+  "external_router_executed": false,
+  "scope": "Disposable native fixture and guarded API checks only"
+}

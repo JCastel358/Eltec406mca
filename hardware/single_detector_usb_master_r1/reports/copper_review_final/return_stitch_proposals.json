@@ -1,0 +1,223 @@
+{
+  "status": "READ_ONLY_GEOMETRY_PROPOSALS_NOT_APPLIED",
+  "source_sha256": "690d80156d71a897e6ca834e49c7fc9674a03378a2d5fc5f3264eae576b5b15f",
+  "proposals": [
+    {
+      "signal_via": "ADC_SCLK",
+      "origin_mm": [
+        55.8,
+        91.25
+      ],
+      "accepted_candidates": [
+        {
+          "xy_mm": [
+            55.8,
+            92.15
+          ],
+          "distance_from_signal_via_mm": 0.9,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            55.8,
+            92.25
+          ],
+          "distance_from_signal_via_mm": 1.0,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            55.9,
+            92.25
+          ],
+          "distance_from_signal_via_mm": 1.005,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        }
+      ]
+    },
+    {
+      "signal_via": "AMP_OUT5_A",
+      "origin_mm": [
+        31.35,
+        20.25
+      ],
+      "accepted_candidates": [
+        {
+          "xy_mm": [
+            28.65,
+            19.55
+          ],
+          "distance_from_signal_via_mm": 2.7893,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            28.65,
+            19.45
+          ],
+          "distance_from_signal_via_mm": 2.816,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            28.65,
+            19.35
+          ],
+          "distance_from_signal_via_mm": 2.846,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        }
+      ]
+    },
+    {
+      "signal_via": "AMP_OUT5_B",
+      "origin_mm": [
+        32.5,
+        22.5
+      ],
+      "accepted_candidates": [
+        {
+          "xy_mm": [
+            32.6,
+            24.5
+          ],
+          "distance_from_signal_via_mm": 2.0025,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            32.6,
+            24.6
+          ],
+          "distance_from_signal_via_mm": 2.1024,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            32.7,
+            24.6
+          ],
+          "distance_from_signal_via_mm": 2.1095,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        }
+      ]
+    },
+    {
+      "signal_via": "AMP_OUT5_C",
+      "origin_mm": [
+        31.7,
+        24.4
+      ],
+      "accepted_candidates": [
+        {
+          "xy_mm": [
+            32.5,
+            24.7
+          ],
+          "distance_from_signal_via_mm": 0.8544,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            32.4,
+            24.9
+          ],
+          "distance_from_signal_via_mm": 0.8602,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        },
+        {
+          "xy_mm": [
+            32.5,
+            24.8
+          ],
+          "distance_from_signal_via_mm": 0.8944,
+          "diameter_mm": 0.6,
+          "drill_mm": 0.3,
+          "net": "GND",
+          "layers": [
+            "F.Cu",
+            "B.Cu"
+          ],
+          "no_surface_stub_needed": true
+        }
+      ]
+    }
+  ],
+  "requires_copy_native_DRC_after_addition": true
+}

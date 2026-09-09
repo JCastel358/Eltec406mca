@@ -1,0 +1,241 @@
+{
+  "status": "PASS",
+  "checks_passed": 24,
+  "checks_failed": 0,
+  "scope": "Real Python backend handshake/command/stop-stream parsers with mocked transport. No MCU execution, serial connection, compiler invocation, flashing, or generated firmware writes.",
+  "inputs": {
+    "source": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+    "generator": "1b0abbda03dbe4e792bdcce2e8ecdb9ad84b07d36ad7a0fbf584163ddd8b4c10",
+    "generated_sketch": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c"
+  },
+  "backend_sources": {
+    "m405m22": {
+      "path": "single_detector_rig\\m405m22\\esp32_backend.py",
+      "sha256": "51c4106e59063d992c715606b84b19a353845bfca2dc50ca532cf416b7cf4efb"
+    },
+    "m406mca": {
+      "path": "single_detector_rig\\m406mca\\esp32_backend.py",
+      "sha256": "a7c137d748ce2e424e0e002e8a0453e225ac62aac9454079b2af0f9f6761ab04"
+    },
+    "m449m18": {
+      "path": "single_detector_rig\\m449m18\\esp32_backend.py",
+      "sha256": "82e3952547ae1cb87950b5cfa4cca731980d969d4207846a135fff1be5edf618"
+    }
+  },
+  "literal_generator_replacements": 18,
+  "proposed_sketch_sha256": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c",
+  "generated_sketch_matches_current_generator": true,
+  "generated_sketch_note": "Current",
+  "checks": [
+    {
+      "name": "status_wire_format_preserved",
+      "passed": true,
+      "detail": {
+        "source_and_candidate_printf_format": "STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f,pwm_duty=%.1f\\n"
+      }
+    },
+    {
+      "name": "generated_sketch_matches_current_generator",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "m405m22/identity_v3_3",
+      "passed": true,
+      "detail": {
+        "identity": "ELTEC-ESP32-ADS1256,v3.3",
+        "version": [
+          3,
+          3,
+          0
+        ],
+        "identity_does_not_require_ready": true
+      }
+    },
+    {
+      "name": "m405m22/normal_handshake",
+      "passed": true,
+      "detail": {
+        "commands": [
+          "IDN?"
+        ],
+        "ready_seen": true
+      }
+    },
+    {
+      "name": "m405m22/identity_while_power_unavailable",
+      "passed": true,
+      "detail": {
+        "identity_accepted_with_adc_not_ready": true,
+        "limitation": "This is serial identity only; no analog readiness claim."
+      }
+    },
+    {
+      "name": "m405m22/status_reply",
+      "passed": true,
+      "detail": {
+        "reply": "STATUS,pwm=0,streaming=0,vref=2.500,rate=1000,pwm_hz=10.000,pwm_duty=50.0"
+      }
+    },
+    {
+      "name": "m405m22/old_END_then_ERR_failure_mode_reproduced",
+      "passed": true,
+      "detail": {
+        "END_before_ERR_is_accepted": true,
+        "fault_left_unconsumed": true,
+        "purpose": "Reproduce why firmware must report captured faults before END."
+      }
+    },
+    {
+      "name": "m405m22/ERR_before_END_rejects_capture",
+      "passed": true,
+      "detail": {
+        "fault_rejected_before_END": true,
+        "error": "Firmware stream error: ERR,carrier power lost; capture invalid"
+      }
+    },
+    {
+      "name": "m405m22/scalar_fault_rejected",
+      "passed": true,
+      "detail": {
+        "invalid_scalar_rejected": true,
+        "error": "OFFSET? -> ERR,carrier power or ADC not ready; retry after ready"
+      }
+    },
+    {
+      "name": "m406mca/identity_v3_3",
+      "passed": true,
+      "detail": {
+        "identity": "ELTEC-ESP32-ADS1256,v3.3",
+        "version": [
+          3,
+          3,
+          0
+        ],
+        "identity_does_not_require_ready": true
+      }
+    },
+    {
+      "name": "m406mca/normal_handshake",
+      "passed": true,
+      "detail": {
+        "commands": [
+          "IDN?"
+        ],
+        "ready_seen": true
+      }
+    },
+    {
+      "name": "m406mca/identity_while_power_unavailable",
+      "passed": true,
+      "detail": {
+        "identity_accepted_with_adc_not_ready": true,
+        "limitation": "This is serial identity only; no analog readiness claim."
+      }
+    },
+    {
+      "name": "m406mca/status_reply",
+      "passed": true,
+      "detail": {
+        "reply": "STATUS,pwm=0,streaming=0,vref=2.500,rate=1000,pwm_hz=10.000,pwm_duty=50.0"
+      }
+    },
+    {
+      "name": "m406mca/old_END_then_ERR_failure_mode_reproduced",
+      "passed": true,
+      "detail": {
+        "END_before_ERR_is_accepted": true,
+        "fault_left_unconsumed": true,
+        "purpose": "Reproduce why firmware must report captured faults before END."
+      }
+    },
+    {
+      "name": "m406mca/ERR_before_END_rejects_capture",
+      "passed": true,
+      "detail": {
+        "fault_rejected_before_END": true,
+        "error": "Firmware stream error: ERR,carrier power lost; capture invalid"
+      }
+    },
+    {
+      "name": "m406mca/scalar_fault_rejected",
+      "passed": true,
+      "detail": {
+        "invalid_scalar_rejected": true,
+        "error": "OFFSET? -> ERR,carrier power or ADC not ready; retry after ready"
+      }
+    },
+    {
+      "name": "m449m18/identity_v3_3",
+      "passed": true,
+      "detail": {
+        "identity": "ELTEC-ESP32-ADS1256,v3.3",
+        "version": [
+          3,
+          3,
+          0
+        ],
+        "identity_does_not_require_ready": true
+      }
+    },
+    {
+      "name": "m449m18/normal_handshake",
+      "passed": true,
+      "detail": {
+        "commands": [
+          "IDN?"
+        ],
+        "ready_seen": true
+      }
+    },
+    {
+      "name": "m449m18/identity_while_power_unavailable",
+      "passed": true,
+      "detail": {
+        "identity_accepted_with_adc_not_ready": true,
+        "limitation": "This is serial identity only; no analog readiness claim."
+      }
+    },
+    {
+      "name": "m449m18/status_reply",
+      "passed": true,
+      "detail": {
+        "reply": "STATUS,pwm=0,streaming=0,vref=2.500,rate=1000,pwm_hz=10.000,pwm_duty=50.0"
+      }
+    },
+    {
+      "name": "m449m18/old_END_then_ERR_failure_mode_reproduced",
+      "passed": true,
+      "detail": {
+        "END_before_ERR_is_accepted": true,
+        "fault_left_unconsumed": true,
+        "purpose": "Reproduce why firmware must report captured faults before END."
+      }
+    },
+    {
+      "name": "m449m18/ERR_before_END_rejects_capture",
+      "passed": true,
+      "detail": {
+        "fault_rejected_before_END": true,
+        "error": "Firmware stream error: ERR,carrier power lost; capture invalid"
+      }
+    },
+    {
+      "name": "m449m18/scalar_fault_rejected",
+      "passed": true,
+      "detail": {
+        "invalid_scalar_rejected": true,
+        "error": "OFFSET? -> ERR,carrier power or ADC not ready; retry after ready"
+      }
+    },
+    {
+      "name": "firmware_inputs_unchanged",
+      "passed": true,
+      "detail": {
+        "source": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+        "generator": "1b0abbda03dbe4e792bdcce2e8ecdb9ad84b07d36ad7a0fbf584163ddd8b4c10",
+        "generated_sketch": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c"
+      }
+    }
+  ]
+}

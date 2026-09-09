@@ -1785,11 +1785,11 @@ class MeasurementHarness:
 class HardwareWorkflowTests(unittest.TestCase):
     """Full hardware sequence WITH the reference gate.
 
-    Production currently ships REFERENCE_GATE_ENABLED = False (the shared
-    dual op-amp buffer lets the DUT couple into AIN1), but the gate machinery
-    must stay working for the channel-isolated buffer board, so these tests
-    run with the gate forced on. ReferenceGateDisabledTests covers the
-    shipping default.
+    This is the shipping configuration again since 2026-09-09
+    (REFERENCE_GATE_ENABLED = True on the channel-isolated buffer board). The
+    flag is still patched on explicitly so these assertions keep describing
+    the gate-on path even if the crosstalk re-check forces the flag back off;
+    ReferenceGateDisabledTests covers that fallback.
     """
 
     def setUp(self):
@@ -2179,7 +2179,8 @@ class NoiseWorkflowTests(unittest.TestCase):
     """TP412 emitter-off noise test: order, gate, fail-fast, progress ladder.
 
     Runs with the reference gate forced on (see HardwareWorkflowTests) so the
-    historical four-step ladder assertions keep covering that configuration.
+    four-step ladder assertions keep covering that configuration whatever the
+    shipping flag is.
     """
 
     def setUp(self):
@@ -2406,7 +2407,9 @@ class NoiseSoakTests(unittest.TestCase):
 
     def run_hardware(self, device, *, noise_soak=False):
         harness = MeasurementHarness(device)
-        harness.reference_calibration = None  # gate disabled in production
+        # The harness's default reference calibration is left in place: the
+        # gate is live in production again (2026-09-09), so the soak runs the
+        # full four-phase path.
         result = app.EmitterTesterApp._hardware_measurement(
             harness,
             app.DEFAULT_FILTER_SETUP,
@@ -2647,14 +2650,53 @@ class RawNoiseCaptureTests(unittest.TestCase):
         )
 
 
-class ReferenceGateDisabledTests(unittest.TestCase):
-    """Shipping default: REFERENCE_GATE_ENABLED = False (op-amp crosstalk).
+class ReferenceGateShippingDefaultTests(unittest.TestCase):
+    """The gate ships ON again since 2026-09-09 (isolated buffer board).
 
-    The shared dual op-amp buffer couples the DUT into AIN1, so the reference
-    reading tracks the loaded sensor instead of the emitter. Until the
-    channel-isolated buffer board is installed, a test must run WITHOUT any
-    reference capture and without requiring a reference calibration.
+    Deliberately outside ReferenceGateDisabledTests, whose setUp patches the
+    flag off: this class reads the module constant as production sees it.
     """
+
+    def test_shipping_default_is_enabled(self):
+        self.assertTrue(app.REFERENCE_GATE_ENABLED)
+
+    def test_a_stale_baseline_is_rejected_rather_than_reused(self):
+        # Every pre-2026-09-09 baseline was recorded through the shared dual
+        # op-amp, where a loaded DUT dragged AIN1 down: reusing one would gate
+        # production against a crosstalk artefact. The schema bump must make
+        # that file unloadable, and must say so as a hardware mismatch rather
+        # than as a corrupt file.
+        self.assertEqual(app.REFERENCE_CALIBRATION_SCHEMA_VERSION, 5)
+        stale = app.build_reference_calibration([5.0, 5.0, 5.0, 5.0, 5.0]).to_dict()
+        stale["schema_version"] = 4
+        with self.assertRaises(app.ReferenceCalibrationError) as caught:
+            app.ReferenceCalibration.from_dict(stale)
+        message = str(caught.exception)
+        self.assertIn("schema v4", message)
+        self.assertNotIn("malformed", message)
+
+    def test_gate_blocks_measurement_until_a_fresh_baseline_exists(self):
+        harness = SimpleNamespace(
+            simulator_var=SimpleNamespace(get=lambda: False),
+            reference_calibration=None,
+        )
+        self.assertFalse(app.EmitterTesterApp.reference_gate_ready(harness))
+
+
+class ReferenceGateDisabledTests(unittest.TestCase):
+    """Fallback path with REFERENCE_GATE_ENABLED forced off.
+
+    Production ran this way from 2026-08-17 to 2026-09-09 (the shared dual
+    op-amp coupled the DUT into AIN1). It is kept covered because the
+    crosstalk re-check on the isolated board can still send the flag back
+    off: a test must then run WITHOUT any reference capture and without
+    requiring a reference calibration.
+    """
+
+    def setUp(self):
+        patcher = mock.patch.object(app, "REFERENCE_GATE_ENABLED", False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def run_hardware(self, device):
         harness = MeasurementHarness(device)
@@ -2672,9 +2714,6 @@ class ReferenceGateDisabledTests(unittest.TestCase):
             lambda callback: callback(),
         )
         return harness, result
-
-    def test_default_flag_is_disabled(self):
-        self.assertFalse(app.REFERENCE_GATE_ENABLED)
 
     def test_measurement_runs_without_reference_capture_or_calibration(self):
         device = FakeMeasurementDevice()
@@ -2704,7 +2743,8 @@ class ReferenceGateDisabledTests(unittest.TestCase):
 
     def test_gate_reports_ready_without_any_calibration(self):
         # reference_gate_ready() must not block Measure while the gate is off,
-        # even with no calibration loaded at all.
+        # even with no calibration loaded at all. (With the gate on it does
+        # block - see ReferenceGateShippingDefaultTests.)
         harness = SimpleNamespace(
             simulator_var=SimpleNamespace(get=lambda: False),
             reference_calibration=None,
@@ -3004,6 +3044,28 @@ class NoSensorPromptTests(unittest.TestCase):
         self.assertIsNone(h.last_result)
         self.assertIn("No sensor detected", h.last_measure_error)
         self.assertIn(("log", app.attempt_history.EVENT_MEASURE_ERROR), h.events)
+
+    def test_reference_lockout_is_logged_to_the_attempts_csv(self):
+        # 2026-09-09, gate live again: the exact event the old shared-buffer
+        # crosstalk produced (a shorted DUT dragged AIN1 from ~4.94 mV to
+        # ~0.30 mV and the app demanded a recalibration) must leave a row in
+        # the batch's _attempts.csv with the reading and the drift, not just
+        # a warning box that disappears when the technician clicks OK.
+        h = self._harness(False)
+        h.step = "measure"
+        h.RESULT_STEP = "result"
+        calibration = app.build_reference_calibration([4.94, 4.97, 4.91, 4.95, 4.93])
+        exc = app.ReferenceCheckFailedError(0.30, calibration, dut_offset_v=0.01)
+        with mock.patch.object(app.messagebox, "showwarning") as warn:
+            app.EmitterTesterApp.on_reference_block(h, 3, exc)
+        warn.assert_called_once()
+        self.assertFalse(h.measuring); self.assertFalse(h.busy)
+        self.assertEqual(h.step, "result")
+        self.assertIn(("log", app.attempt_history.EVENT_MEASURE_ERROR), h.events)
+        self.assertIn("0.30 mV", h.last_measure_error)
+        self.assertIn("-93.9%", h.last_measure_error)
+        self.assertIn("lockout", h.status_var.get())
+        self.assertIsNone(h.last_result)
 
 
 class NotMeasuredSkipTests(unittest.TestCase):

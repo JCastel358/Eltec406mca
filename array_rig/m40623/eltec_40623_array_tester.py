@@ -8,14 +8,16 @@ this directory as cwd. It measures the two TP120 tests that need no emitter:
 * **Offset check** - the technician powers the rig and presses "Measure
   offset". Every loaded detector is checked against the full provisional
   offset window; low/dead values are shown for rechecking after settling.
-  Repeated checks let the technician replace bad parts or mark sockets
-  empty. Every check is retained in the tray history without consuming
+  Repeated checks let the technician replace bad parts. Near-zero sockets
+  are inferred empty after a wake-up recheck, with manual overrides and
+  tray-map confirmation. Every check is retained without consuming
   sensor numbers. The legacy continuous-poll/lock API remains available
   to engineering callers.
 * **Noise** - after all loaded offsets pass, the technician turns on the
   vacuum, waits for the required setting, then presses "Measure noise".
   The accepted offset snapshot is frozen and sensor numbers assigned.
-  The rig streams all fifty channels wideband (1000 scans/s per channel)
+  A bounded 3-20 s waveform-extrema check replaces the app's added power-on
+  countdown. The rig streams all fifty channels (1000 scans/s per channel)
   for the TP120 hold time (60 s), judging each channel's windowed pk-pk
   in the single rig's 0.85-22 Hz band (``array_analysis``). Raw captures
   are saved so future calibrated bands or limits can be replayed.
@@ -23,15 +25,15 @@ this directory as cwd. It measures the two TP120 tests that need no emitter:
 Verdict status: **CALIBRATION PENDING / PROVISIONAL**. TP120's noise limits
 (10.0-37.9 mV) are DMM readings behind the legacy amplifier 9000232 and
 rectifier-hold 9000272; no pin-level equivalent exists yet, so noise tiles
-show the measured value and "no limit yet" until the paired lot derives the
+show "NO LIMIT", with readings under Show more, until the paired lot derives the
 chain factor (``engineer_tools/array_parity/array_noise_parity.py``). The offset limits
 (0.3-1.2 V) are applied, stamped provisional until the PCB loading is
 confirmed against fixture 9000054. Every CSV row carries
 ``calibration_status`` / ``calibration_id`` / ``verdict_status``.
 
 Sensitivity and polarity (TP120's 3 Hz chopper test) are NOT implemented:
-the emitter board does not exist yet. The step rail shows the disabled step
-and ``ArrayTesterApp.drive`` is the slot the emitter driver will plug into.
+the emitter board does not exist yet. ``TrayController.drive`` retains the
+engineering extension point for its future driver.
 
 Layout of this file (mirrors the single-rig testers): constants -> Tk-free
 core (paths, CSV, npz, capture procedure, ``TrayController``) -> Tk GUI.
@@ -69,9 +71,9 @@ import tray_history  # noqa: E402
 # Identity
 # --------------------------------------------------------------------------- #
 APP_TITLE = "Eltec 40623 Array Tester"
-# 0.2 (2026-09-08): explicit repeatable offset checks before noise; the
-# calibration remains pending (noise limits None, offsets provisional).
-APP_VERSION = "0.2"
+# 0.3 (2026-09-08): empty-socket workflow and bounded waveform settling.
+# Calibration remains pending (noise limits None, offsets provisional).
+APP_VERSION = "0.3"
 MODEL_NAME = "40623"
 PROCEDURE = "TP120 rev W"
 RESULTS_ROOT_NAME = "Eltec_40623_Test_Results"
@@ -130,18 +132,25 @@ OFFSET_SETTLED_WINDOW_S = 2.0
 # --------------------------------------------------------------------------- #
 # Noise phase (TP120 timing; the analysis constants live in array_analysis)
 # --------------------------------------------------------------------------- #
-# TP120: "Let detectors stand for five minutes for detectors to stabilize"
-# after power-on. The operator screen starts this wait after vacuum confirmation;
-# the actual wait is recorded on every row. Simulation skips the wall-clock wait.
-NOISE_STABILISATION_S = 300.0
+# TP120 separately specifies five minutes after power-on and 15-20 seconds
+# after selecting each detector on the legacy switch box. The operator's
+# 2026-09-08 array-workflow decision replaces the extra five-minute countdown
+# with the bounded waveform check below; this is an explicit timing change,
+# not a claim that TP120 omits its power-on stabilisation. The actual wait and
+# versioned timing policy are archived; electrical calibration is unchanged.
+NOISE_STABILISATION_S = 0.0
+NOISE_TIMING_POLICY = "adaptive_extrema_v1_2026-09-08"
+NOISE_SETTLE_CRITERION = "one_second_max_and_min_delta"
 # TP120: rectifier-hold read after "a minimum of 60 seconds" -> 60 one-second
 # windows. 20 s is the engineering option (same rule, fewer windows).
 NOISE_CAPTURE_SECONDS = 60.0
 NOISE_CAPTURE_SECONDS_ENGINEERING = 20.0
 CAPTURE_LENGTH_CHOICES = ((NOISE_CAPTURE_SECONDS, "60 s (TP120)"), (NOISE_CAPTURE_SECONDS_ENGINEERING, "20 s (engineering)"))
-# Adaptive quiet wait carried from the 405 M22: stream and watch 1 s block
-# means; capture starts once every loaded channel's last N block-to-block
-# changes are within the delta, or at the deadline regardless. Never a verdict.
+# Stream and compare the maxima AND minima of consecutive one-second blocks
+# on loaded channels only. Two small consecutive changes allow an early
+# start after three seconds. Changing noise or a transient can use the full
+# 20 seconds; at the deadline measure anyway with a recorded warning. The
+# inherited 0.1 mV is a scheduling tolerance, not a calibrated noise limit.
 NOISE_WAIT_BEFORE_CAPTURE_S = 3.0
 NOISE_WAIT_MAX_S = 20.0
 NOISE_BASELINE_SETTLE_BLOCKS = 2
@@ -253,6 +262,7 @@ class TrayCapture:
     stabilisation_wait_s: float
     started_at: str
     attempts_used: int
+    quiet_diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -366,6 +376,8 @@ CSV_FIELDS = [
     "noise_pp_limit_low_mv", "noise_pp_limit_high_mv", "noise_max_over_fraction", "noise_limit_provenance",
     "noise_verdict", "noise_band_note",
     "stabilisation_wait_s", "quiet_wait_s", "quiet_settled", "capture_seconds",
+    "noise_timing_policy", "quiet_settle_criterion", "quiet_settle_delta_mv", "quiet_settle_blocks",
+    "quiet_min_s", "quiet_max_s", "quiet_stop_reason",
     "pass_fail", "verdict", "verdict_status", "fail_reasons", "warnings", "failure_mode_tag", "operator_comments",
     "calibration_status", "calibration_id",
     "daq_serial", "daq_range_code", "daq_oversample", "daq_drop_conversions", "daq_scan_rate_hz", "daq_actual_timer_hz",
@@ -394,6 +406,7 @@ class RowContext:
     grid_snapshot_path: str = ""
     noise_limits: aa.NoiseLimits = aa.NoiseLimits()
     offset_limits: aa.OffsetLimits = aa.OffsetLimits()
+    quiet_diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 def _fmt(value: Any, digits: int = 6) -> str:
@@ -446,6 +459,13 @@ def position_row(result: aa.PositionResult, ctx: RowContext, *, comment: str = "
         "quiet_wait_s": _fmt(ctx.quiet_wait_s, 2),
         "quiet_settled": _fmt(ctx.quiet_settled),
         "capture_seconds": _fmt(ctx.capture_seconds, 1),
+        "noise_timing_policy": NOISE_TIMING_POLICY,
+        "quiet_settle_criterion": NOISE_SETTLE_CRITERION,
+        "quiet_settle_delta_mv": _fmt(ctx.plan.settle_delta_mv, 6),
+        "quiet_settle_blocks": str(ctx.plan.settle_blocks),
+        "quiet_min_s": _fmt(ctx.plan.quiet_min_s, 3),
+        "quiet_max_s": _fmt(ctx.plan.quiet_max_s, 3),
+        "quiet_stop_reason": str(ctx.quiet_diagnostics.get("stop_reason", "")),
         "pass_fail": result.pass_fail_text,
         "verdict": result.verdict.value,
         "verdict_status": result.verdict_status,
@@ -517,8 +537,15 @@ def save_tray_raw_capture(
         "daq_serial": daq_info.serial_number if daq_info else "unknown", "daq_model": daq_info.name if daq_info else "unknown",
         "range_code": plan.range_code, "range_span_v": daq.range_spec(plan.range_code).span_v, "oversample": plan.oversample,
         "drop_conversions": plan.drop_first, "scan_rate_hz": plan.scan_hz, "actual_timer_hz": capture.actual_timer_hz,
-        "capture_seconds": plan.capture_seconds, "stabilisation_wait_s": capture.stabilisation_wait_s,
+        "capture_seconds": capture.waveform_v.shape[1] / capture.sample_rate_hz,
+        "stabilisation_wait_s": capture.stabilisation_wait_s,
         "quiet_wait_s": capture.quiet_wait_s, "quiet_settled": capture.quiet_settled,
+        "noise_timing_policy": NOISE_TIMING_POLICY,
+        "quiet_settle_criterion": NOISE_SETTLE_CRITERION,
+        "quiet_settle_delta_mv": plan.settle_delta_mv, "quiet_settle_blocks": plan.settle_blocks,
+        "quiet_min_s": plan.quiet_min_s, "quiet_max_s": plan.quiet_max_s,
+        "quiet_stop_reason": capture.quiet_diagnostics.get("stop_reason", ""),
+        "quiet_diagnostics_json": json.dumps(capture.quiet_diagnostics, separators=(",", ":"), allow_nan=False),
         "decimation_factor": plan.decimation_factor, "calibration_id": aa.CALIBRATION_ID, "app_version": APP_VERSION,
         "model": MODEL_NAME, "simulated": bool(daq_info.simulated) if daq_info else False,
         "stream_attempts": capture.attempts_used,
@@ -663,54 +690,104 @@ def run_quiet_wait(
     *,
     progress: ProgressFn | None = None,
     cancelled: Callable[[], bool] | None = None,
+    diagnostics: dict[str, Any] | None = None,
+    remainder_scans: list[np.ndarray] | None = None,
 ) -> tuple[np.ndarray, float, bool]:
-    """Stream (discarding) until the loaded channels' block means settle or the deadline.
+    """Watch loaded-channel waveform extrema until settled or the deadline.
 
     Returns ``(tail [50, >= edge samples] volts, wait_s, settled)``. The tail
     is the real history that seats the anti-alias FIR at the capture's start.
+    ``remainder_scans`` receives the unconsumed remainder of the final chunk
+    as ``[scans, 50]`` volts, so capture follows that history without a gap.
+    ``diagnostics`` receives the timing policy and per-window evidence.
     """
 
+    if not np.isfinite(plan.scan_hz) or plan.scan_hz < 1:
+        raise ValueError("scan_hz must be finite and at least 1 Hz")
+    if not (np.isfinite(plan.quiet_min_s) and np.isfinite(plan.quiet_max_s)
+            and 0 <= plan.quiet_min_s <= plan.quiet_max_s):
+        raise ValueError("quiet wait must satisfy 0 <= quiet_min_s <= quiet_max_s")
+    loaded_mask = np.asarray(loaded_mask, dtype=bool)
+    if loaded_mask.shape != (daq.CHANNEL_COUNT,):
+        raise ValueError("loaded_mask must name all 50 channels")
     block_samples = int(round(plan.scan_hz))
     min_samples = int(round(plan.quiet_min_s * plan.scan_hz))
     max_samples = int(round(plan.quiet_max_s * plan.scan_hz))
     keep = max(plan.edge_context_samples, 1)
     collected = 0
-    block_means: list[np.ndarray] = []
+    block_maxima: list[np.ndarray] = []
+    block_minima: list[np.ndarray] = []
     current: list[np.ndarray] = []
     current_len = 0
-    tail: list[np.ndarray] = []
-    tail_len = 0
+    history = np.empty((0, daq.CHANNEL_COUNT), dtype=np.float64)
+    trace: dict[str, Any] = {
+        "timing_policy": NOISE_TIMING_POLICY,
+        "criterion": NOISE_SETTLE_CRITERION,
+        "delta_mv": plan.settle_delta_mv,
+        "blocks_required": plan.settle_blocks,
+        "block_seconds": block_samples / plan.scan_hz,
+        "min_s": plan.quiet_min_s,
+        "max_s": plan.quiet_max_s,
+        "loaded_channels": np.flatnonzero(loaded_mask).tolist(),
+        "windows": [],
+    }
     settled = False
     last_data = time.monotonic()
-    while collected < max_samples:
+    while collected < max_samples and not settled:
         if cancelled and cancelled():
             raise CaptureCancelled("cancelled during the quiet wait")
         chunk = _read_scans_volts(device, plan)
-        if chunk is None:
+        if chunk is None or chunk.shape[0] == 0:
             _check_no_data(last_data, plan, "quiet wait")
             continue
         last_data = time.monotonic()
-        collected += chunk.shape[0]
-        tail.append(chunk)
-        tail_len += chunk.shape[0]
-        while tail_len - tail[0].shape[0] >= keep and len(tail) > 1:
-            tail_len -= tail[0].shape[0]
-            tail.pop(0)
-        current.append(chunk)
-        current_len += chunk.shape[0]
-        if current_len >= block_samples:
-            block = np.concatenate(current)[:block_samples]
-            block_means.append(block.mean(axis=0))
+        if chunk.ndim != 2 or chunk.shape[1] != daq.CHANNEL_COUNT or not np.isfinite(chunk).all():
+            raise daq.DaqError("invalid samples during the quiet wait")
+        consumed = 0
+        while consumed < chunk.shape[0] and collected < max_samples:
+            if cancelled and cancelled():
+                raise CaptureCancelled("cancelled during the quiet wait")
+            take = min(block_samples - current_len, chunk.shape[0] - consumed, max_samples - collected)
+            part = chunk[consumed:consumed + take]
+            history = np.concatenate((history, part))[-keep:]
+            current.append(part)
+            current_len += take
+            consumed += take
+            collected += take
+            if current_len != block_samples:
+                continue
+            block = np.concatenate(current)
+            maxima, minima = block.max(axis=0), block.min(axis=0)
+            window: dict[str, Any] = {
+                "elapsed_s": collected / plan.scan_hz,
+                "maxima_v": maxima[loaded_mask].tolist(),
+                "minima_v": minima[loaded_mask].tolist(),
+                "max_delta_mv": None,
+                "min_delta_mv": None,
+            }
+            if block_maxima:
+                window["max_delta_mv"] = (np.abs(maxima - block_maxima[-1])[loaded_mask] * 1000.0).tolist()
+                window["min_delta_mv"] = (np.abs(minima - block_minima[-1])[loaded_mask] * 1000.0).tolist()
+            trace["windows"].append(window)
+            block_maxima.append(maxima)
+            block_minima.append(minima)
             current, current_len = [], 0
+            settled = collected >= min_samples and aa.quiet_wait_settled(
+                np.stack(block_maxima), loaded_mask,
+                delta_mv=plan.settle_delta_mv, blocks_required=plan.settle_blocks,
+                block_minima_v=np.stack(block_minima),
+            )
             if progress:
-                progress("quiet", min(1.0, collected / max_samples), f"quiet wait {collected / plan.scan_hz:.0f} s")
-            if collected >= min_samples and aa.quiet_wait_settled(
-                np.stack(block_means), loaded_mask, delta_mv=plan.settle_delta_mv, blocks_required=plan.settle_blocks
-            ):
-                settled = True
+                progress("quiet", min(1.0, collected / max_samples), f"checking waveform settling {collected / plan.scan_hz:.0f} s")
+            if settled:
                 break
-    history = np.concatenate(tail).T if tail else np.empty((daq.CHANNEL_COUNT, 0))
-    return history[:, -keep:], collected / plan.scan_hz, settled
+        if (settled or collected >= max_samples) and consumed < chunk.shape[0] and remainder_scans is not None:
+            remainder_scans.append(chunk[consumed:])
+    trace.update(elapsed_s=collected / plan.scan_hz, settled=settled,
+                 stop_reason="settled" if settled else "deadline")
+    if diagnostics is not None:
+        diagnostics.update(trace)
+    return history.T, collected / plan.scan_hz, settled
 
 
 def run_tray_capture(
@@ -727,8 +804,9 @@ def run_tray_capture(
 ) -> TrayCaptureReport:
     """Stream -> quiet wait -> capture (+ edge contexts) -> integrity check (retry) -> analysis -> verdicts.
 
-    The stabilisation countdown is the caller's (GUI) job; its actual length
-    is passed in for the record.
+    The operator path begins the bounded waveform check immediately. Any
+    separately supplied engineering stabilisation wait is retained in the
+    record; the default no longer imposes a five-minute countdown.
     """
 
     capture_samples = int(round(plan.capture_seconds * plan.scan_hz))
@@ -746,16 +824,20 @@ def run_tray_capture(
             scan_hz=plan.scan_hz, buffer_bytes=plan.buffer_bytes, buffer_count=plan.buffer_count, drop_first=plan.drop_first,
         )
         try:
-            left, quiet_s, settled = run_quiet_wait(device, plan, loaded_mask, progress=progress, cancelled=cancelled)
             chunks: list[np.ndarray] = []
-            got = 0
+            quiet_diagnostics: dict[str, Any] = {}
+            left, quiet_s, settled = run_quiet_wait(
+                device, plan, loaded_mask, progress=progress, cancelled=cancelled,
+                diagnostics=quiet_diagnostics, remainder_scans=chunks,
+            )
+            got = sum(chunk.shape[0] for chunk in chunks)
             wanted = capture_samples + context
             last_data = time.monotonic()
             while got < wanted:
                 if cancelled and cancelled():
                     raise CaptureCancelled("cancelled during the capture")
                 chunk = _read_scans_volts(device, plan)
-                if chunk is None:
+                if chunk is None or chunk.shape[0] == 0:
                     _check_no_data(last_data, plan, "capture")
                     continue
                 last_data = time.monotonic()
@@ -778,6 +860,12 @@ def run_tray_capture(
             if progress:
                 progress("retry", None, f"attempt {attempts} failed: {exc}")
             continue
+        except Exception:
+            try:
+                device.stop_stream()
+            except daq.DaqError:
+                pass
+            raise
         diagnostics = device.stop_stream()
         problems = diagnostics.problems()
         if problems:
@@ -800,6 +888,7 @@ def run_tray_capture(
             stabilisation_wait_s=stabilisation_wait_s,
             started_at=started_at,
             attempts_used=attempts,
+            quiet_diagnostics=quiet_diagnostics,
         )
 
     results: list[aa.PositionResult] = []
@@ -839,7 +928,10 @@ def run_tray_capture(
             offset_initial_v=float(lock.offset_initial_v[channel]), offset_v=float(settled_offsets[channel]),
             offset_early_v=float(early[channel]), noise=noise[channel],
             offset_limits=offset_limits, noise_limits=noise_limits,
-            extra_warnings=() if capture.quiet_settled else ("Baseline had not settled before the capture (deadline reached).",),
+            extra_warnings=() if capture.quiet_settled else (
+                f"Waveform maxima/minima had not settled within {plan.quiet_max_s:g} s; "
+                "capture started at the settling deadline.",
+            ),
         ))
     return TrayCaptureReport(capture=capture, results=results, noise=noise, judged=judged, rig_fault=None,
                              attempts_used=capture.attempts_used, stabilisation_wait_s=stabilisation_wait_s)
@@ -848,6 +940,14 @@ def run_tray_capture(
 # --------------------------------------------------------------------------- #
 # TrayController: the whole flow without Tk (the GUI wraps it; the tests drive it)
 # --------------------------------------------------------------------------- #
+# Occupancy convenience, NOT a qualified physical-presence test: a shorted
+# detector can also read ground. Use one code of the configured ADC range,
+# recheck after power-on, retain the loaded verdict in the audit, and require
+# the operator to check the detected tray map before noise. See calibration §4b.
+EMPTY_DETECTION_POLICY = "near_zero_one_adc_code_v1_2026-09-08"
+EMPTY_RECHECK_S = 2.0
+
+
 class TrayController:
     def __init__(
         self,
@@ -869,6 +969,7 @@ class TrayController:
         self.state = TrayState(lot=lot.strip(), tray_number=tray_number, tester_name=tester_name.strip())
         self.hardware_lock = threading.RLock()
         self.occupancy_choice: dict[str, aa.Occupancy] = {}
+        self._auto_empty_positions: frozenset[str] = frozenset()
         self.live_offsets: np.ndarray | None = None
         # Explicit operator checks keep their own immutable measurement basis.
         # The legacy polling/lock API remains available to engineering callers.
@@ -916,7 +1017,7 @@ class TrayController:
         if chosen is not None:
             return chosen
         if self._operator_offset_workflow:
-            return aa.Occupancy.LOADED
+            return aa.Occupancy.EMPTY if position in self._auto_empty_positions else aa.Occupancy.LOADED
         if volts is None and self.live_offsets is not None:
             volts = float(self.live_offsets[daq.channel_for_position(position)])
         if volts is not None and volts < self.offset_limits.dead_v:
@@ -963,13 +1064,12 @@ class TrayController:
     def unknown_positions(self) -> tuple[str, ...]:
         return tuple(p for p in daq.POSITIONS if self.effective_occupancy(p) is aa.Occupancy.UNKNOWN)
 
-    def measure_offsets(self) -> np.ndarray:
+    def measure_offsets(self, *, cancelled: Callable[[], bool] | None = None) -> np.ndarray:
         """Check the current tray, retaining every check before replacements.
 
-        The operator starts with all fifty positions loaded and explicitly
-        marks absent parts empty. Low/dead values are visible recheck failures,
-        not a prompt to guess whether a detector is present. No final sensor
-        numbers or result rows are assigned until ``prepare_noise``.
+        Near-zero sockets are provisionally inferred empty after a second
+        read. A manual LOADED choice always wins, even for a zero-output part.
+        No final sensor numbers or rows are assigned until ``prepare_noise``.
         """
 
         if self.phase is not Phase.LOAD_OFFSET:
@@ -980,15 +1080,44 @@ class TrayController:
         self.occupancy_choice = {
             p: occ for p, occ in self.occupancy_choice.items() if occ is not aa.Occupancy.UNKNOWN
         }
+        def read():
+            if cancelled and cancelled():
+                raise CaptureCancelled("stopped during offset measurement")
+            values = np.asarray(self.device.read_scan_volts_median(reads=OFFSET_POLL_READS), dtype=np.float64)
+            if values.shape != (daq.CHANNEL_COUNT,) or not np.all(np.isfinite(values)):
+                raise ValueError("Offset measurement did not return fifty finite readings; measure offset again.")
+            return values
+
+        threshold = daq.lsb_volts(self.plan.range_code)
+        simulated = bool(self.device.info and self.device.info.simulated)
+        recheck_wait = 0.0
         with self.hardware_lock:
-            volts = np.asarray(self.device.read_scan_volts_median(reads=OFFSET_POLL_READS), dtype=np.float64)
-        if volts.shape != (daq.CHANNEL_COUNT,) or not np.all(np.isfinite(volts)):
-            raise ValueError("Offset measurement did not return fifty finite readings; measure offset again.")
+            initial = read().copy()
+            candidates = {p for c, p in enumerate(daq.POSITIONS)
+                          if p not in self.occupancy_choice and abs(float(initial[c])) <= threshold}
+            volts = initial
+            if candidates:
+                started = time.monotonic()
+                while not simulated and time.monotonic() - started < EMPTY_RECHECK_S:
+                    if cancelled and cancelled():
+                        raise CaptureCancelled("stopped while rechecking empty sockets")
+                    time.sleep(min(.05, max(0.0, EMPTY_RECHECK_S - (time.monotonic() - started))))
+                recheck_wait = time.monotonic() - started if not simulated else 0.0
+                volts = read()
+        self._auto_empty_positions = frozenset(
+            p for c, p in enumerate(daq.POSITIONS) if p in candidates and abs(float(volts[c])) <= threshold
+        )
         loaded = frozenset(p for p in daq.POSITIONS if self.effective_occupancy(p) is aa.Occupancy.LOADED)
         readings = {
             p: {
                 "occupancy": self.effective_occupancy(p).value,
+                "occupancy_source": ("manual_" + self.occupancy_choice[p].value.lower() if p in self.occupancy_choice
+                                     else "inferred_near_zero" if p in self._auto_empty_positions else "measured_signal"),
+                "offset_initial_v": float(initial[c]),
                 "offset_v": float(volts[c]),
+                "loaded_offset_class": aa.classify_offset(
+                    float(volts[c]), occupancy=aa.Occupancy.LOADED, limits=self.offset_limits,
+                ).value,
                 "offset_class": aa.classify_offset(
                     float(volts[c]), occupancy=self.effective_occupancy(p), limits=self.offset_limits,
                 ).value,
@@ -1004,7 +1133,9 @@ class TrayController:
             detail=json.dumps({
                 "offset_measurement": check_number, "bad_positions": bad, "readings": readings,
                 "offset_min_v": self.offset_limits.min_v, "offset_max_v": self.offset_limits.max_v,
-                "simulated": bool(self.device.info and self.device.info.simulated),
+                "empty_detection_policy": EMPTY_DETECTION_POLICY, "empty_threshold_v": threshold,
+                "empty_recheck_wait_s": recheck_wait,
+                "inferred_empty_positions": sorted(self._auto_empty_positions), "simulated": simulated,
             }, separators=(",", ":")),
         )
         self._measured_offsets = volts.copy()
@@ -1062,7 +1193,11 @@ class TrayController:
             tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_LOCKED, phase=Phase.LOCKED.value,
             tester_name=self.state.tester_name, loaded_count=len(loaded),
             first_sensor_number=min(numbers.values()), last_sensor_number=max(numbers.values()),
-            detail=f"Accepted offset measurement {self.offset_measurement_count}; all loaded offsets within limits",
+            detail=json.dumps({"offset_measurement": self.offset_measurement_count,
+                               "loaded_positions": loaded,
+                               "manual_occupancy": {p: occ.value for p, occ in self.occupancy_choice.items()},
+                               "inferred_empty_positions": sorted(p for p in self._auto_empty_positions if p not in self.occupancy_choice),
+                               "empty_detection_policy": EMPTY_DETECTION_POLICY}, separators=(",", ":")),
         )
         self.state.lock = lock
         self.state.lock_results = []
@@ -1146,13 +1281,17 @@ class TrayController:
             self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
             tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_CAPTURE_STARTED, phase=Phase.CAPTURING.value,
             tester_name=self.state.tester_name, stabilisation_wait_s=stabilisation_wait_s, capture_seconds=plan.capture_seconds,
+            detail=json.dumps({"noise_timing_policy": NOISE_TIMING_POLICY,
+                               "criterion": NOISE_SETTLE_CRITERION, "quiet_min_s": plan.quiet_min_s,
+                               "quiet_max_s": plan.quiet_max_s}, separators=(",", ":")),
         )
-        if stabilisation_wait_s + 1e-9 < self.state.stabilisation_s or stabilisation_wait_s + 1e-9 < NOISE_STABILISATION_S:
+        if stabilisation_wait_s + 1e-9 < 300.0:
             tray_history.append_tray_event(
                 self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
                 tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_STABILISATION_SHORTENED,
                 phase=Phase.STABILISING.value, tester_name=self.state.tester_name, stabilisation_wait_s=stabilisation_wait_s,
-                detail=f"TP120 asks for {NOISE_STABILISATION_S:.0f} s",
+                detail="TP120 specifies 300 s after power-on. App countdown removed by user decision 2026-09-08; "
+                       f"{NOISE_TIMING_POLICY} checks waveform settling before capture. Time since power-on is not measured.",
             )
         self.phase = Phase.CAPTURING
 
@@ -1182,6 +1321,13 @@ class TrayController:
         else:
             tray_history.append_tray_event(
                 self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
+                tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_NOISE_SETTLED,
+                phase=Phase.CAPTURING.value, tester_name=self.state.tester_name,
+                quiet_wait_s=report.capture.quiet_wait_s,
+                detail=json.dumps(report.capture.quiet_diagnostics, separators=(",", ":"), allow_nan=False),
+            )
+            tray_history.append_tray_event(
+                self.attempts_path, lot_number=self.state.lot, tray_number=self.state.tray_number,
                 tray_attempt=self.state.tray_attempt, event=tray_history.EVENT_JUDGED, phase=Phase.JUDGED.value,
                 tester_name=self.state.tester_name,
                 detail=report.capture.diagnostics.summary() if report.capture and report.capture.diagnostics else "",
@@ -1203,6 +1349,7 @@ class TrayController:
             stabilisation_wait_s=report.stabilisation_wait_s if report else None,
             quiet_wait_s=capture.quiet_wait_s if capture else None,
             quiet_settled=capture.quiet_settled if capture else None,
+            quiet_diagnostics=capture.quiet_diagnostics if capture else {},
             capture_seconds=self.state.capture_seconds if report else None,
             actual_timer_hz=capture.actual_timer_hz if capture else None,
             pool_events=diagnostics.pool_too_small_events if diagnostics else None,
@@ -1660,11 +1807,14 @@ def build_gui_classes():
             self.status_label = tk.Label(guide, textvariable=self.status_var, bg=CARD_BG, fg=TEXT_DARK,
                                         font=("TkDefaultFont", 11), justify="left", anchor="w", wraplength=S(1150))
             self.status_label.pack(fill="x", pady=(S(4), 0))
-            guide.bind("<Configure>", lambda e: self.status_label.configure(wraplength=max(100, e.width-S(40))))
+            guide.bind("<Configure>", lambda e: (
+                self.status_label.configure(wraplength=max(100, e.width-S(40))),
+                self.vacuum_check.configure(wraplength=max(100, e.width-S(65))),
+            ))
             self.vacuum_var = tk.BooleanVar(value=False)
-            self.vacuum_check = tk.Checkbutton(guide, text="Vacuum is at the required setting (checked on the rig gauge)",
+            self.vacuum_check = tk.Checkbutton(guide, text="The detected tray matches the loaded detectors, and vacuum is ready",
                                               variable=self.vacuum_var, command=self._refresh_controls, bg=CARD_BG,
-                                              activebackground=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 11), anchor="w")
+                                              activebackground=CARD_BG, fg=TEXT_DARK, font=("TkDefaultFont", 11), anchor="w", justify="left")
 
             tray_card = tk.Frame(body, bg=CARD_BG, padx=S(12), pady=S(5), highlightthickness=1, highlightbackground=CARD_BORDER)
             tray_card.pack(fill="both", expand=True)
@@ -1680,7 +1830,7 @@ def build_gui_classes():
             tk.Label(summary, textvariable=self.summary_var, bg=CARD_BG, fg=MUTED_FG, font=("TkDefaultFont", 10)).pack(side="right")
             self.grid = TrayGrid(tray_card, on_tile_click=self.on_tile_click, on_empty_click=self.toggle_empty)
             self.grid.pack(fill="both", expand=True)
-            self.map_hint_var = tk.StringVar(value="Positions are row-column, viewed from above. Click a physically empty socket to exclude it.")
+            self.map_hint_var = tk.StringVar(value="Positions are row-column, viewed from above. Near-zero sockets are marked empty automatically; click to correct.")
             tk.Label(tray_card, textvariable=self.map_hint_var, bg=CARD_BG, fg=MUTED_FG,
                      font=("TkDefaultFont", 9), anchor="w").pack(fill="x", pady=(S(3), 0))
             self.progress = ttk.Progressbar(body, mode="determinate")
@@ -1782,12 +1932,14 @@ def build_gui_classes():
                         raise RuntimeError("Save this tray before starting another.")
                     c.state.lock = None
                     c.phase = Phase.LOAD_OFFSET
-                    c.measure_offsets()
+                    c.measure_offsets(cancelled=self._cancel.is_set)
                     if self._cancel.is_set():
                         c.offset_checked = False
                         self._post(self._stopped)
                     else:
                         self._post(self._offset_done)
+                except CaptureCancelled:
+                    self._post(self._stopped)
                 except Exception as exc:
                     self._post(lambda exc=exc: self._failed("Offset measurement", exc))
             self._run_worker(work)
@@ -1807,7 +1959,9 @@ def build_gui_classes():
                 volts = float(c.live_offsets[channel])
                 kind = aa.classify_offset(volts, occupancy=aa.Occupancy.EMPTY if empty else aa.Occupancy.LOADED)
                 if empty:
-                    state, headline, detail = aa.TileState.EMPTY, "—", "EMPTY"
+                    state = aa.TileState.EMPTY
+                    headline = f"{volts*1e6:.0f} µV" if abs(volts) < .001 else f"{volts:.3f} V"
+                    detail = "AUTO" if position in c._auto_empty_positions and position not in c.occupancy_choice else "EMPTY"
                 elif not c.offset_checked:
                     state, headline, detail = aa.TileState.LOADED, "—", "RECHECK"
                 else:
@@ -1818,9 +1972,11 @@ def build_gui_classes():
                 self.grid.set_tile(position, state=state, headline=headline, detail=detail)
             good, bad = c.offset_good_positions(), c.offset_bad_positions()
             empty_count = sum(c.effective_occupancy(p) is aa.Occupancy.EMPTY for p in daq.POSITIONS)
-            self.summary_var.set(f"{len(good)} offset OK  ·  {len(bad)} to check  ·  {empty_count} empty")
+            empty_label = "empty / likely empty" if c._auto_empty_positions - c.occupancy_choice.keys() else "empty"
+            self.summary_var.set(f"{len(good)} offset OK  ·  {len(bad)} to check  ·  {empty_count} {empty_label}")
             self.map_hint_var.set("Green = offset OK   ·   Red = check offset   ·   Gray = empty   ·   " +
-                                  ("Click red to simulate replacement; right-click to mark empty." if self.simulate else "Click a physically empty socket to exclude it; click again to reload."))
+                                  ("Click red / empty to simulate replacement; right-click to override occupancy." if self.simulate
+                                   else "Near-zero may also mean a shorted detector. Click a socket to correct loaded / empty."))
             if not c.offset_checked:
                 self.step_var.set("1  /  Check the updated tray")
                 self.status_var.set("The tray has changed. Press Measure offset to check the loaded detectors again.")
@@ -1830,12 +1986,15 @@ def build_gui_classes():
                                     "No replacements left? Remove the bad detectors and mark those sockets empty.")
             elif good:
                 self.step_var.set("2  /  Prepare vacuum")
-                self.status_var.set(f"{len(good)} detectors are ready. Turn on the vacuum and wait until the gauge reaches the required setting. "
+                self.status_var.set(f"{len(good)} detectors detected. Check that the tray map matches the installed detectors. "
+                                    "Turn on the vacuum and wait until the gauge reaches the required setting. "
                                     "Confirm below, then press Measure noise. Keep power and vacuum on.")
             else:
                 self.step_var.set("1  /  Load detectors")
-                self.status_var.set("The tray is empty. Load detectors, click their sockets, then press Measure offset.")
+                self.status_var.set("No detectors detected. If any are installed, check power and connections, then press Measure offset again. "
+                                    "Click an occupied socket to mark it loaded if it still reads empty.")
             if c.offset_checked and good and not bad:
+                self.vacuum_check.configure(text=f"The {len(good)} detected positions match the tray, and the vacuum gauge is ready")
                 self.vacuum_check.pack(fill="x", pady=(S(5), 0))
             else:
                 self.vacuum_var.set(False)
@@ -1912,27 +2071,16 @@ def build_gui_classes():
                     c.attempts_path, lot_number=c.state.lot, tray_number=c.state.tray_number,
                     tray_attempt=c.state.tray_attempt, event=tray_history.EVENT_VACUUM_CONFIRMED,
                     phase=Phase.LOCKED.value, tester_name=c.state.tester_name,
-                    detail="Operator confirmed required vacuum setting on the rig gauge; pressure is not monitored by the app."
+                    loaded_count=len(c.state.lock.loaded_positions),
+                    detail="Operator confirmed the detected loaded positions/count match the physical tray and the required vacuum setting on the rig gauge; pressure is not monitored by the app."
                            + (" SIMULATION ONLY." if self.simulate else ""),
                 )
-                # The app cannot read the vacuum gauge. Confirmation starts the prescribed
-                # wait; no engineering skip control is exposed to the operator.
-                started = time.monotonic()
-                wait_s = 0.0
-                if not self.simulate:
-                    while wait_s < c.plan.stabilisation_s:
-                        if self._cancel.wait(.2):
-                            raise CaptureCancelled("stopped during stabilisation")
-                        wait_s = min(c.plan.stabilisation_s, time.monotonic() - started)
-                        left = max(0, math.ceil(c.plan.stabilisation_s-wait_s))
-                        self._post(lambda w=wait_s, left=left: self._progress_update(
-                            .2*w/max(1, c.plan.stabilisation_s), f"Stabilising under vacuum · {left//60}:{left%60:02d} remaining. Keep the rig powered."))
-                else:
-                    self._post(lambda: self._progress_update(.2, "Simulation: five-minute wait skipped; capturing with a fast virtual clock."))
-
+                # Begin streaming immediately; the waveform decides when the
+                # bounded settling interval ends, before the full 60 s capture.
                 def progress(kind, fraction, message):
-                    self._post(lambda f=fraction, message=message: self._progress_update(.2+.75*(f or 0), message))
-                c.run_noise_phase(stabilisation_wait_s=wait_s, progress=progress, cancelled=self._cancel.is_set)
+                    value = .2 * (fraction or 0) if kind == "quiet" else .2 + .75 * (fraction or 0)
+                    self._post(lambda value=value, message=message: self._progress_update(value, message))
+                c.run_noise_phase(stabilisation_wait_s=0.0, progress=progress, cancelled=self._cancel.is_set)
                 self._post(lambda: self._progress_update(.98, "Measurement complete. Saving results…"))
                 try:
                     outcome = c.save_tray()
@@ -1977,6 +2125,8 @@ def build_gui_classes():
                 self.status_var.set("Results are saved. Remove the red detectors and keep the green detectors. Press Next tray when ready."
                                     if self.simulate or c.noise_limits.defined else
                                     "Results are saved. Amber detectors have a noise reading but no calibrated pass/fail limit yet. Press Next tray when ready.")
+                if c.state.report.capture and not c.state.report.capture.quiet_settled:
+                    self.status_var.set(self.status_var.get() + " Settling reached its time limit; review the recorded warning.")
             self.footer_var.set("Simulation results saved separately." if self.simulate else "Results saved automatically.")
             self._refresh_controls()
 

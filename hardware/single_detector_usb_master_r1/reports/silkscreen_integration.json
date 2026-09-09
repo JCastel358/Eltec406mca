@@ -1,0 +1,177 @@
+{
+  "completed_utc": "2026-09-09T14:49:22.241237+00:00",
+  "files": [
+    {
+      "target": "single_detector_usb_master\\single_detector_usb_master.kicad_pcb",
+      "before_sha256": "1e7a8f23a8d13f1012472341a7c199ac7e2251233b80d5243fdc4ee1b843cc49",
+      "after_sha256": "e6961eff764b14fa3f4c7e4b72d7d752b3ee1ae0c88822cd2b5f75ad25379349",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb"
+    },
+    {
+      "target": "libraries\\master.pretty\\BarrelJack_GCT_DCJ200_10_A.kicad_mod",
+      "before_sha256": "e53e3f1bb9d5e8725cd08cbe9bb98ed9ac805bdb863452267743bf838230b03b",
+      "after_sha256": "b7333718c8e71cd4b09f99e5c11256b1f16292d5e36d52623121c2ebf88e9554",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\BarrelJack_GCT_DCJ200_10_A.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\CP_EIA-7343-31_Kemet-D.kicad_mod",
+      "before_sha256": "fb4fe1d431b643ac9df94afe47ed0950a01ac8eaf55c318707203094591d5cc2",
+      "after_sha256": "ab21cd6d8e6d4e2c9ac4e7a93ae3ad565b229a9064d897d7ec92014892b56df5",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\CP_EIA-7343-31_Kemet-D.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\CP_Elec_8x11.9.kicad_mod",
+      "before_sha256": "ef2eddfa0afac1c2d8c0928809b40264d56e9f35fe712db2838dff2098914240",
+      "after_sha256": "c81a1160a19e16dcd530eb887ec04f7e217caeefae12d4aaef1cbc2d0b55349d",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\CP_Elec_8x11.9.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\C_0603_1608Metric.kicad_mod",
+      "before_sha256": "684afb45799702221cdd7d6f2dcdec4f695c8ab0491d153614ced1dcbd147637",
+      "after_sha256": "b2f5ee1c7e9a922f4d9e92b7844668a8154e56e06add385b88baa10a6799095f",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\C_0603_1608Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\C_0805_2012Metric.kicad_mod",
+      "before_sha256": "95e29023c502498a439ed1b9c54f42da741ae04b9250e48ec3e7ec09c0e7e724",
+      "after_sha256": "90016129533f855682ab39e9908aabc5331916aa5283639498fe052b920967f7",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\C_0805_2012Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\C_1206_3216Metric.kicad_mod",
+      "before_sha256": "15eade983341f8b382832566fb6e32259715a8e6e4026defcfe422fbb4f5787e",
+      "after_sha256": "5bc8c68afdd88552646fa8a522715397e2145af27577d07bf50393ee308207c2",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\C_1206_3216Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\C_1210_3225Metric.kicad_mod",
+      "before_sha256": "8fca6fc938819d868abba69f5100c8857954d97d5566e6b3d259c172824391ad",
+      "after_sha256": "7cf9bedbfc2e28f87b669e54514802ed46c5c3b22633d9b013b19ff5c63b26b5",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\C_1210_3225Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm.kicad_mod",
+      "before_sha256": "a07423345ea50eb33ca11715c1c0abd20251f0db65e14a5a36f13db1bd6227f5",
+      "after_sha256": "d7c5688d135afa24857896405ae3ad3c49e9c91dab6752ca971bcc3528a08e45",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\D_SOD-123.kicad_mod",
+      "before_sha256": "b6425b388d1111041b427c1e9faf335720db7eef21f57cb94b2d4f29bd511818",
+      "after_sha256": "a7a2c6492a58677da0f95fd3a9865974162fc52aa45173a0125135f7ca496a60",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\D_SOD-123.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Detector_Wire_Lands.kicad_mod",
+      "before_sha256": "8615216438ea1eef592df6320cbd932a763b2ccc77b4bb201630084e83940bdd",
+      "after_sha256": "9e1942bd9bf833175822b97748b1c639f6fea42425b55a0c459c61e398f725d1",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Detector_Wire_Lands.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Emitter_Wire_Lands.kicad_mod",
+      "before_sha256": "21f32335ce41e21a73454a02e7e543c23fad4d00cc9e67f1bfcd2e17c353036c",
+      "after_sha256": "715ee909e249db690a1726d4a55b057da39d4c49df2d99ea9dcdb5378f819e35",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Emitter_Wire_Lands.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Fuse_1206_3216Metric.kicad_mod",
+      "before_sha256": "d225981f14570fa6798a6d1061d142b3e69af6732f849530ad7be876e6ba6938",
+      "after_sha256": "5de78aaa1acbb50ec18e556c08d4e9301eb5d23987149aced87ccc5bbfc65693",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Fuse_1206_3216Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Potentiometer_Bourns_3296W_Vertical.kicad_mod",
+      "before_sha256": "a75eec59c0b7ade75872a4587cf0471bb4ded86be1b60ab044c333e560788ae6",
+      "after_sha256": "c9f3cfdbcf4a24af5ebf792bb188c3ecfc9c50444f50677cc4cdbd7a5f1f5a33",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Potentiometer_Bourns_3296W_Vertical.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\R_0603_1608Metric.kicad_mod",
+      "before_sha256": "d6bd6e8e59dd2dbcc4c83be333e81cbb52a6a9258c802b544708dc7d271c516b",
+      "after_sha256": "15dde88a8cd0d4cb8f443678b8c7aaba3459473e58a0c79d392af54021f78e0d",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\R_0603_1608Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\R_0805_2012Metric.kicad_mod",
+      "before_sha256": "13735199ff645ca46c72a00e0d3bfd300dd8ea218b3b5f11812fbb97e5181985",
+      "after_sha256": "83da7a8a25143d98c2e5aff4b2ee98d5d7477c413eea6ec36e9a0b5e85b5656b",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\R_0805_2012Metric.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\SMDIP-16_W9.53mm.kicad_mod",
+      "before_sha256": "6ab81b587a59b73c6edda903076a35dff945c345734b161919234e7ad6cee7e3",
+      "after_sha256": "e6173deb8f5aed5d5eb6cac49906f889f15e8e06f2c2962166408b3a4477b7d1",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\SMDIP-16_W9.53mm.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\SMDIP-4_W7.62mm.kicad_mod",
+      "before_sha256": "6a9bc5d3555c0121301bbabeca36f6bc8e80a7380f94340a4a1ec2568a6fd01a",
+      "after_sha256": "817f6128ac0fab550974a026a0799dd782ac8b573b98ededf7b42e639cd0edf2",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\SMDIP-4_W7.62mm.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\SOIC-8_3.9x4.9mm_P1.27mm.kicad_mod",
+      "before_sha256": "5fb7fbe3bb8f6eb3a77cd1cf38b51b074753c04d24d1481cba3f30790cd1f0e4",
+      "after_sha256": "0031e401b16b841d2d20331a6175ece1a4f10bb80e356286f3d17b56a445133c",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\SOIC-8_3.9x4.9mm_P1.27mm.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\SOT-23.kicad_mod",
+      "before_sha256": "562c69cea82724a3298a856d6ed1f2579aca00326d2e66ee483a5be87d727abf",
+      "after_sha256": "50477a63310cc4d2f8ce5859020ebbde2ea5214fbeff07e5328f474b0e62cb18",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\SOT-23.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\SOT-23-5.kicad_mod",
+      "before_sha256": "607a6e93196e42d4bbc14f04d90f58eb001b06a1e0f57225e110a7c9b891e81b",
+      "after_sha256": "724b6b8f1ab209f195e74df2cf0696b3c9b13df5fe8369c85bc21690ea06872f",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\SOT-23-5.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\SOT-353_SC-70-5.kicad_mod",
+      "before_sha256": "192a900b80b21123cc31263e2f2bdaa88dd9fae576f09f56b175b5d55af53191",
+      "after_sha256": "a05fedb991c367cfc25a92e60c7a5cdef88afc3cb559559a81ecab2df6f25feb",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\SOT-353_SC-70-5.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Socket_FG_2x08_P2.54_H8.5.kicad_mod",
+      "before_sha256": "5ca96523d9bf366c85dbcd716985b861f19a167bdfad3b78be0a3ad48166d088",
+      "after_sha256": "fd7b7bba79e173b04fd34c609dbf32da733f16b02285936f9e37f91976a50df0",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Socket_FG_2x08_P2.54_H8.5.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Socket_Kinghelm_1x08_P2.54_H8.5.kicad_mod",
+      "before_sha256": "9d563d0adc22f30187cdcd4bec7b0f3bd07927a8367fdf2facc838afda597e17",
+      "after_sha256": "8503863044bec809c3b627d634889414b7a13278eb696b96feff51a59f5872c7",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Socket_Kinghelm_1x08_P2.54_H8.5.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\Socket_Kinghelm_1x15_P2.54_H8.5.kicad_mod",
+      "before_sha256": "e8b325301635f6213eed232897ccd99967c5694f02a4cd2eb2118f9a8fa881b2",
+      "after_sha256": "98f2b61efb23c96215baa47ddcc5d42f19a5cccdd9a09379d99428366a8b5452",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\Socket_Kinghelm_1x15_P2.54_H8.5.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\TI_DCT0008A_SSOP8.kicad_mod",
+      "before_sha256": "c3f3886b3942ddce82c7dfbe143b217becd62b8e64bec22efbb1798246fd2a5b",
+      "after_sha256": "3b5ef66a4bba9c5893f4380054e9e34b16f394f57ce59f7326b8e9548c1521cd",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\TI_DCT0008A_SSOP8.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\TO-263-5_TabPin3.kicad_mod",
+      "before_sha256": "b3b71c2120645ff3b7ac4df797500b086b9ec49903a7e4f53808f936114be1fe",
+      "after_sha256": "d3c596a0fbe26578c86232ef5cc1b4a3f851f3171b14df3a656d745b522abc18",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\TO-263-5_TabPin3.kicad_mod"
+    },
+    {
+      "target": "libraries\\master.pretty\\TSSOP-16_4.4x5mm_P0.65mm.kicad_mod",
+      "before_sha256": "eafd2df435e9b45aa9c0f8e2f6d039943964c1ad4c95c98cc19102d12898c066",
+      "after_sha256": "7ca2eb97c326e29683a118ae503c9165f51128b23c4cdeb0786b78370a911ff2",
+      "backup": "reports\\silkscreen_cleanup\\integrated_from_1e7a8f23a8d13f10\\libraries\\master.pretty\\TSSOP-16_4.4x5mm_P0.65mm.kicad_mod"
+    }
+  ],
+  "matching_native_board_and_libraries_installed": true,
+  "project_library_tables_untouched": true,
+  "original_source_project_untouched": true,
+  "status": "SILK_INTEGRATED_RECHECK_MAIN_PROJECT_DRC"
+}

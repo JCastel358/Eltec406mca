@@ -107,9 +107,17 @@ arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
   measurable on the legacy AIN7 divider. The header shows "Battery: not
   monitored". Re-enable per model once the sensor battery is measurable (the
   plan is AIN6 through a ≥4:1 divider).
-- **Both models' reference gates are disabled** (`REFERENCE_GATE_ENABLED =
-  False`; 405 M22 since 2026-08-17, 406 MCA since 2026-08-24) until the
-  channel-isolated buffer board is installed.
+- **All three models' reference gates are live again** (`REFERENCE_GATE_ENABLED
+  = True` since 2026-09-09, on the channel-isolated buffer board). AIN1 is
+  read before every sensor and must hold its ±25 % window, so a failing
+  emitter is caught by the rig instead of showing up as a run of
+  low-sensitivity parts. **Every rig must run "Calibrate reference unit"
+  before its next batch**: the stored baselines were all recorded through the
+  old shared op-amp buffer and are refused on load (schema bump), so testing
+  stays locked until a fresh one exists. The crosstalk re-check on the new
+  board is still outstanding — if the reference turns out to still follow the
+  loaded part, set the flag back to `False` rather than widening the window
+  (calibration record §2.4).
 
 ## Running it
 
@@ -223,16 +231,26 @@ preset to **SB - Sensor bad**, reason "No offset: AIN0 reads x V with a
 sensor loaded"), ready to save; *No* keeps the old behaviour (nothing
 recorded, seat the sensor and measure again).
 
-### 406 MCA reference gate disabled (2026-08-24)
+### Reference gates disabled (2026-08-17 / 08-24), re-enabled (2026-09-09)
 
-`REFERENCE_GATE_ENABLED = False` in `m406mca/eltec_406mca_esp32_tester.py`,
-exactly like the 405 M22 build: the shared dual op-amp buffer has no channel
-isolation, so the sensor under test couples into AIN1 and the reference could
-not be calibrated. No calibration is required to test; the load-step card
-says "Reference gate disabled (op-amp crosstalk)"; `reference_*` CSV columns
-stay blank. All gate code is intact and unit-tested with the flag forced on —
-set it back to `True` and run a fresh "Calibrate reference unit" once the
-channel-isolated op-amp board is installed.
+The shared dual op-amp buffer had no channel isolation, so the sensor under
+test coupled into AIN1 and the reference could not be calibrated:
+`REFERENCE_GATE_ENABLED = False` on the 405 M22 from 2026-08-17 and on the
+406 MCA and 449 M18 from 2026-08-24. No calibration was required to test, the
+setup card said "Reference gate disabled (op-amp crosstalk)", and the
+`reference_*` CSV columns stayed blank.
+
+With the buffer replaced by a channel-isolated **TI OPA2196** (the old one
+let a shorted DUT pull AIN1 down ~90 %), all three flags went back to
+`True` on **2026-09-09** and the `reference_*` columns are populated again;
+a reference lockout now also writes a `measure_error` row to `_attempts.csv`.
+The stored baselines are refused (schema 4 → 5 on the 405/449, 2 → 3 on the
+406) because they were measured through the old shared buffer, so each rig
+locks testing until "Calibrate reference unit" is run fresh; the old files
+stay in the results folders as evidence. The gate-off path is still
+unit-tested in every model, so the flag can go back to `False` in one line if
+the outstanding crosstalk re-check shows AIN1 still following the DUT — that,
+not a wider `REFERENCE_TOLERANCE_PERCENT`, is the correct response.
 
 ### Selector opens full screen (2026-08-25)
 

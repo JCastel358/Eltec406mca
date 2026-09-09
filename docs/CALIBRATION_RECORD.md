@@ -26,7 +26,7 @@ Last reconciled against the code: **2026-09-02**.
 | Polarity | POSITIVE required | POSITIVE required | POSITIVE required at both frequencies (assumed — verify on the bench) |
 | SNR | ≥ 1.5 | ≥ 1.5 | ≥ 1.5 at both frequencies |
 | Stability (peak delta) | 0.500 mV, 5 deltas, 10 cycles, 3 attempts, 60 s | 0.100 mV, 10 deltas, 20 cycles, 3 attempts, 20 s | 0.100 mV, 5 deltas, 20 cycles @5 Hz / 4 blocks of 9 @18 Hz, 3 attempts, 30 s |
-| Reference unit (AIN1 emitter health) | **OFF** since 2026-08-17 (op-amp crosstalk) | **OFF** since 2026-08-24 (same) | **OFF** (same) |
+| Reference unit (AIN1 emitter health) | **ON** again since 2026-09-09 | **ON** again since 2026-09-09 | **ON** again since 2026-09-09 |
 | Battery | **OFF** (no battery on AIN7 since 2026-08-12) | OFF in the unified copy | OFF |
 | Emitter drive | 1 Hz / 50 % (reference phases 10 Hz) | 10 Hz / 50 % | 5 Hz then 18 Hz, **20 %** duty (reference 10 Hz / 50 %) |
 | ADS1256 front end | boot default: gain 1, buffer OFF (±5 V) | app sends `FE,V19`: gain 2, buffer ON (±2.5 V) | boot default (±5 V) |
@@ -42,7 +42,7 @@ copy-per-model policy in [`ENGINEER_HANDOVER.md`](ENGINEER_HANDOVER.md).
 
 | Gate | 40623 array |
 | --- | --- |
-| Offset band | **ON, PROVISIONAL** 0.3–1.2 V (TP120); < 0.05 V on a loaded socket = D; ≥ 4.9 V = HO (railed). Only HO/railed fail fast at insertion; LO/D on the settled reading. |
+| Offset band | **ON, PROVISIONAL** 0.3–1.2 V (TP120); < 0.05 V on a loaded socket = D; ≥ 4.9 V = HO (railed). Operator screening requires every loaded offset in band before noise; the final verdict also checks the settled reading. |
 | Noise | **PENDING** — pin-level limits `None` (measured and recorded only; TP120's 10.0–37.9 mV are DMM readings behind amplifier 9000232 + rectifier-hold 9000272). Structural rules when limits exist: 15 % window rule (high), median rule (low). |
 | Sensitivity / polarity | **not implemented** (no emitter board) |
 | Front end | unity-gain buffer per position → DAQ 0–5 V single-ended, 1000 scans/s per channel, oversample 3 with the first conversion dropped |
@@ -87,14 +87,14 @@ Detailed mechanics: [`m405m22/README.md`](../single_detector_rig/m405m22/README.
 | Polarity | POSITIVE | tester | Every Eltec model tested so far peaks while the emitter is on. |
 | `peak_delta_threshold_mv` | **0.500 mV** | `m405m22/stability_settings.json` | Relaxed from 0.100 mV on **2026-08-12**: the inherited 406 limit kept these high-gain parts timing out as Unstable. Provisional — review percentiles with `stability_calibration.py`. |
 | `DUT_STABILITY_CONFIRMATION_DELTAS` / `SENSITIVITY_MEASUREMENT_CYCLES` / attempts / `STABILITY_TIMEOUT_S` | 5 / 10 / 3 / 60 s | tester ≈ l.466 | 1 s cycles: qualification + 10 cycles needs ≥ ~16 s, so 60 s instead of the 406's 20 s. |
-| `REFERENCE_PEAK_DELTA_THRESHOLD_MV` / `REFERENCE_TOLERANCE_PERCENT` | 0.250 mV / ±25 % | tester ≈ l.486 | Reference unit's own gate; deliberately independent of the DUT threshold. Inert while the gate is off. |
-| `REFERENCE_CALIBRATION_SCHEMA_VERSION` | 4 | tester ≈ l.512 | See §5. |
+| `REFERENCE_PEAK_DELTA_THRESHOLD_MV` / `REFERENCE_TOLERANCE_PERCENT` | 0.250 mV / ±25 % | tester ≈ l.498 | Reference unit's own gate; deliberately independent of the DUT threshold. Live again since 2026-09-09. |
+| `REFERENCE_CALIBRATION_SCHEMA_VERSION` | **5** since 2026-09-09 | tester ≈ l.558 | Bumped with the gate re-enable so pre-isolation baselines are refused. See §5. |
 | `PWM_FREQUENCY_HZ` / `REFERENCE_PWM_FREQUENCY_HZ` / duty | 1 Hz / 10 Hz / 50 % | `esp32_backend.py` l.66–68 | TP412 specifies responsivity at 1 Hz. The AIN1 reference unit is a **406MCA sensor**, so reference phases drive its qualified 10 Hz (told by the user 2026-08-12). Only 1 and 10 Hz are accepted. |
 | `PWM_GPIO` | 33 | `esp32_backend.py` | Emitter gate moved D25 → D33 on 2026-08-25 (firmware v3.1). The app sends `PIN,33` after every connect. |
 | `MINIMUM_FIRMWARE_VERSION` | (2, 0, 0) | `esp32_backend.py` l.74 | Needs the gain-1 unbuffered front end. |
 | `STREAM_MAX_MICRO_GAPS` / `STREAM_MAX_MISSING_SAMPLES` / `REFERENCE_READING_STREAM_RETRIES` | 3 / 20 samples / 2 | tester ≈ l.504 | Bounded USB micro-gap tolerance (2026-08-12); gaps are refilled from firmware timestamps (2026-08-13). Anything else (duplicates, overruns, > 2 % rate error) rejects the capture. |
 | `BATTERY_MONITORING_ENABLED` | False | tester ≈ l.282 | No battery on AIN7 since the 2026-08-12 rewiring (6.5 V → emitters only, 9 V → sensors). Re-enable when the sensor battery is measurable on AIN6 (≥ 4:1 divider). |
-| `REFERENCE_GATE_ENABLED` | **False** | tester ≈ l.297 | See §2.4. |
+| `REFERENCE_GATE_ENABLED` | **True** since 2026-09-09 | tester ≈ l.309 | See §2.4. |
 
 ### 2.2 Why the noise limit is 300 mV ÷ 700, not ÷ 4000
 
@@ -188,24 +188,67 @@ the same order; raw data in [`analysis/405M22_Data/`](../analysis/405M22_Data/)
 - The near-limit band (§2.1) is the factor's margin of error expressed in raw
   mV.
 
-### 2.4 Reference gate disabled — op-amp channel crosstalk (2026-08-17)
+### 2.4 Reference gate — disabled 2026-08-17 for op-amp crosstalk, re-enabled 2026-09-09
 
-The fixture's buffer/voltage-follower stage is a **dual op-amp with no channel
-isolation**, so the sensor under test couples into the AIN1 reference channel:
-the reference reading collapsed from ~4.94 mV to ~0.30 mV with a DUT loaded
-(lot 500, 2026-08-17 10:50) and tracked whichever part was inserted. No
-recalibration can fix that, so `REFERENCE_GATE_ENABLED = False` skips the
-reference phase entirely (3-step test: offset → noise → sensitivity). Verdicts
-are unaffected — everything is measured on AIN0; only automatic emitter-health
-monitoring is lost. **Operator rule meanwhile: several low-sensitivity
-failures in a row → suspect the emitter before condemning parts.**
+**The finding (2026-08-17).** The fixture's original buffer/voltage-follower
+stage was a **dual op-amp with no channel isolation**, so the sensor under
+test coupled into the AIN1 reference channel. The trigger was a **shorted
+DUT**: with one seated, the reference reading collapsed by ~90 %, from
+~4.94 mV to ~0.30 mV (lot 500, 2026-08-17 10:50), and tracked whichever part
+was inserted. The app then demanded a recalibration for a fault that was the
+part's — by design, not by bug: the reference-failure suppression is
+one-sided (`high_offset_dut_explains_reference_*`: only an *above*-window
+spike with a *high*-offset DUT is forgiven), so a collapsed reading with a
+≈0 V DUT correctly refused to blame the part and invalidated the baseline.
+That logic is unchanged; what was wrong was the hardware underneath it. No
+recalibration could fix that, so
+`REFERENCE_GATE_ENABLED = False` skipped the reference phase entirely and the
+operator rule was "several low-sensitivity failures in a row → suspect the
+emitter before condemning parts". The same crosstalk disabled the 406 MCA
+(2026-08-24) and 449 M18 gates. Verdicts were never affected — everything is
+measured on AIN0; only automatic emitter-health monitoring was lost. The
+contaminated 405 baseline was archived as
+`reference_sensor_calibration_crosstalk_contaminated_20260817.json.bak`.
 
-To re-enable: install the per-channel-isolated buffer board, set the flag to
-`True`, run **Calibrate reference unit** fresh (expect a baseline near ~5 mV).
-The contaminated baseline was archived as
-`reference_sensor_calibration_crosstalk_contaminated_20260817.json.bak` in the
-405 results folder. The gate code is kept and unit-tested with the flag forced
-on. The same crosstalk disabled the 406 MCA (2026-08-24) and 449 M18 gates.
+**The re-enable (2026-09-09).** The buffer was replaced with a **TI OPA2196**
+dual precision op-amp (the `hardware/single_detector_usb_master_r1` notes
+list the fitted part as OPA2196IDR, SOIC-8), chosen for its channel
+isolation, so `REFERENCE_GATE_ENABLED = True` on all three models, edited by
+hand in each. The reference unit is read before every
+sensor and must stay inside its ±25 % window (§3); the test is back to four
+phases (405: reference → offset → noise → sensitivity; 449: offset →
+reference → 5 Hz → 18 Hz; 406: reference → offset → sensitivity → settled
+offset re-read).
+
+> **The crosstalk re-check on the new board is still outstanding.** The gate
+> was turned on ahead of it at the user's request, with the verification to
+> follow immediately, reproducing the original trigger: **seat a shorted DUT
+> and confirm the AIN1 reading does not move** (pass = still inside the
+> ±25 % window, ideally within a few percent of the fresh baseline; the old
+> board gave −90 %). Only the **406 MCA** path reads AIN1 with the DUT seated,
+> so that is the model that exercises it through the app (calibrate first,
+> then load the shorted part and Start: a clean board gives "Reference unit
+> passed" followed by the "Is a sensor loaded?" prompt; crosstalk gives
+> "Reference unit is outside its window" and a lockout — which now also
+> lands in the batch's `_attempts.csv`). The 405 M22 and 449 M18 read the
+> offset first and reject a ≈0 V part before AIN1 is touched, so for those
+> two drive the emitter with the shorted DUT in place and watch AIN1 with
+> `Arduino/Eltec/esp32_rig_readout.py ref`. Record the before/after numbers
+> here when it is done. **If the reference still tracks the loaded part, set
+> the flag back to `False` — do not widen `REFERENCE_TOLERANCE_PERCENT`.** A gate that moves with the DUT is not
+> mis-tolerated, it is measuring the wrong thing, and no tolerance makes it
+> trustworthy. The gate-off path stays unit-tested in all three models so
+> that reversal is a one-line change.
+
+**Every stored baseline is refused.** All of them were measured through the
+shared dual op-amp, so their means and windows describe the crosstalk rather
+than the emitter. `REFERENCE_CALIBRATION_SCHEMA_VERSION` was bumped in the
+same change — 4 → **5** on the 405 and 449 (kept equal, so those two builds
+still interchange baselines) and 2 → **3** on the 406 — which makes each rig
+refuse its old file and lock testing until **Calibrate reference unit** is run
+fresh on the isolated hardware (expect a baseline near ~5 mV). The old files
+are left in the results folders as evidence; nothing is deleted or
+overwritten. A superseded file reports a hardware mismatch, not corruption.
 
 **Choosing the reference part (2026-09-04).** The isolated buffer board is
 installed; the reference unit is picked from candidate 406MCA parts with
@@ -215,8 +258,8 @@ insertion, the 10 Hz / 50 % stabilization and sensitivity, a drive hold, the
 post-emitter offset recovery) and ranks on settling time, stabilization time
 and run-to-run repeatability — never on the sensitivity value itself. The
 chosen part, the crosstalk re-check on the new board and the fresh baseline
-go here when the gate is turned back on; the ±25 % window (§3) and the
-0.250 mV reference threshold are unchanged by the choice.
+go here as they are completed; the ±25 % window (§3) and the 0.250 mV
+reference threshold are unchanged by the choice.
 
 **Precision retest (2026-09-08):** `capture --precision` leaves each candidate
 seated on AIN0 for 30 readings at 10 Hz / 50% duty. Each retains the production
@@ -226,8 +269,11 @@ intervals alternate 2/10/60 s. These are engineering test defaults, not new
 acceptance limits. `compare --precision` ranks five-cycle CV / worst deviation
 ahead of timing and keeps the retests separate from original reseating data.
 See `engineer_tools/reference_unit/README.md` for the procedure and outputs.
-The selected detector still needs verification and fresh calibration on AIN1;
-the production gate remains disabled pending that work.
+The selected detector still needs verification and a fresh AIN1 calibration.
+The production gate was nevertheless **turned on 2026-09-09** ahead of that
+work (§2.4): the schema bump forces the fresh calibration before any part can
+be tested, and the crosstalk re-check follows immediately. Record the chosen
+part and its baseline here once both are done.
 
 ---
 
@@ -251,10 +297,10 @@ policy build). Detailed mechanics:
 | Polarity | POSITIVE | | |
 | `peak_delta_threshold_mv` | **0.100 mV** | `m406mca/stability_settings.json` | v6 era; still flagged for broader qualification with known-good/bad parts. |
 | Stability policy | 10 consecutive deltas, 20 measurement cycles, 3 attempts (a kick discards the window), 20 s deadline | tester ≈ l.239 | v6.1 policy (July 2026), adopted into the unified app. |
-| `REFERENCE_PEAK_DELTA_THRESHOLD_MV` / `REFERENCE_TOLERANCE_PERCENT` | 0.250 mV / ±25 % | tester ≈ l.254 | Tolerance was ±10 % in v6; widened to ±25 % in v6.1 (older ±10 % files load under the wider window). Inert while the gate is off. |
-| Historical reference baseline | 5.3432 mV (limits 4.8089–5.8775 mV at ±10 %) | results folder JSON | Recorded on firmware v1.7 with the 6 V SLA fixture; **historical only** — the crosstalk finding makes any AIN1 baseline on the current buffer board untrustworthy. |
-| `REFERENCE_CALIBRATION_SCHEMA_VERSION` | 2 | tester ≈ l.256 | See §5. |
-| `REFERENCE_GATE_ENABLED` | **False** since 2026-08-24 | tester ≈ l.207 | Same crosstalk as §2.4. |
+| `REFERENCE_PEAK_DELTA_THRESHOLD_MV` / `REFERENCE_TOLERANCE_PERCENT` | 0.250 mV / ±25 % | tester ≈ l.317 | Tolerance was ±10 % in v6; widened to ±25 % in v6.1. Live again since 2026-09-09. The window is **not** the knob for a failed crosstalk re-check — see §2.4. |
+| Historical reference baseline | 5.3432 mV (limits 4.8089–5.8775 mV at ±10 %) | results folder JSON | Recorded on firmware v1.7 with the 6 V SLA fixture; **historical only** — measured through the shared dual op-amp, so it describes the crosstalk, not the emitter. Refused on load since the schema v3 bump (2026-09-09); the file stays as evidence. |
+| `REFERENCE_CALIBRATION_SCHEMA_VERSION` | **3** since 2026-09-09 | tester ≈ l.335 | Bumped with the gate re-enable so pre-isolation baselines are refused. See §5. |
+| `REFERENCE_GATE_ENABLED` | **True** since 2026-09-09 | tester ≈ l.227 | Re-enabled with the other models; see §2.4. |
 | ADS1256 front end | gain 2, buffer ON, ±2.5 V (`WAVEFORM_INPUT_RANGE_V` 2.5) | backend sends `FE,V19` after `IDN?` on firmware ≥ v2.1 and hard-verifies `FE?` | Every 406 threshold was qualified on this front end (firmware v1.9). A port open resets the board to the v2.0 front end, which is why the app re-applies it on every connect. **Legacy standalone 406MCA rigs must stay on firmware v1.9** — v2.0+ halves the ADC resolution (LSB 298 → 596 nV) and changes the noise floor. |
 | `PWM_FREQUENCY_HZ` / duty / `PWM_GPIO` | 10 Hz / 50 % / 33 | `esp32_backend.py` l.40 | |
 | `MINIMUM_FIRMWARE_VERSION` | (1, 7, 0) | `esp32_backend.py` l.45 | v1.7 fixed the ADS1256 configuration read-back; older streams could run at the 30 kSPS reset default. |
@@ -280,7 +326,7 @@ Tester: `single_detector_rig/m449m18/eltec_449m18_esp32_tester.py` (added
 | `peak_delta_threshold_mv` | 0.100 mV | `m449m18/stability_settings.json` | Inherited; revisit once real raw amplitudes are known. |
 | Stability policy | 5 deltas, 3 attempts, 30 s; 20 measurement cycles at 5 Hz (4 s); 36 cycles at 18 Hz judged as **4 blocks of 9 cycles** | tester ≈ l.406 | 18 Hz = 55.56 samples per cycle at 1000 SPS, so single-cycle peaks jitter; 9 cycles = exactly 500 samples, after which the phase pattern repeats. Sync validation judges the mean cadence (±0.05 Hz at 5 Hz, ±0.18 Hz at 18 Hz) with a one-sample allowance per cycle. |
 | Drive | 5 Hz then 18 Hz at **20 % duty** (`PWM_DUTY_CYCLE_PERCENT` 20); reference 10 Hz / 50 % | `esp32_backend.py` l.72–74 | The legacy fixture's 20/80 blade. Requires firmware **v3.2** (`PWM,DUTY`); `MINIMUM_FIRMWARE_VERSION` = (3, 2, 0). **v3.2 is compiled but not yet flashed or bench-verified** (2026-08-28). |
-| Reference gate / battery gate | both off | tester ≈ l.322 / l.307 | As on the other models. Schema v4. |
+| Reference gate / battery gate | reference **ON** since 2026-09-09, battery off | tester ≈ l.335 / l.307 | Reference gate re-enabled with the other models (§2.4). It judges the fixture's emitter, not the 449 part, so it is live even though this model's own sensitivity calibration is still pending. Schema **v5**. |
 
 **Open work before production:** flash and bench-verify firmware v3.2; derive
 K_5 / K_18; fill the TP443 offset band; confirm polarity on real parts; revisit
@@ -303,18 +349,20 @@ Added 2026-09-02.
 | --- | --- | --- | --- |
 | `OFFSET_MIN_V` / `OFFSET_MAX_V` | 0.3 / 1.2 V | `array_analysis.py` | TP120 rev W "40623 Offset Check": test box 9000054, **+8 V supply, 100 kΩ source resistor**, DMM 20 V scale, "let detectors stand for ten to fifteen minutes, if needed". **PROVISIONAL**: the array PCB's supply/loading must be confirmed to match 9000054 before these transfer without a correction. |
 | `OFFSET_SETTLE_DELTA_V` | 0.05 V | `array_analysis.py` | TP120 sensitivity pages: "wait until reading does not shift more than ± 0.05 V". Applied as a recorded warning (early vs settled reading), never a verdict. |
-| `OFFSET_DEAD_V` | 0.05 V | `array_analysis.py` | A loaded socket under this = D (dead / no output). Same value as the 405's wake-up floor; bench-tunable. The technician marks physically empty sockets; a near-zero reading never automatically excludes a position. |
+| `OFFSET_DEAD_V` | 0.05 V | `array_analysis.py` | A loaded socket under this = D (dead / no output). Same value as the 405's wake-up floor; unchanged. This verdict threshold is not the empty-inference threshold below. A manual LOADED override preserves the D verdict even at zero. |
+| `EMPTY_DETECTION_POLICY` / cutoff | `near_zero_one_adc_code_v1_2026-09-08`; absolute voltage ≤ one ADC code, currently 5 V / 65536 = 76.294 µV | tester, `daq.lsb_volts(plan.range_code)` | User requested automatic empty marking for sparse trays (2026-09-08). **Provisional occupancy inference, not bench-qualified presence detection.** No empty-socket baseline is available; user is unsure whether empty inputs float or read zero. A shorted detector may also read zero, and floating empty inputs may exceed the cutoff. Manual loaded/empty overrides win; operator must confirm the map/count with vacuum readiness before noise. Re-evaluated at every offset check. |
+| `EMPTY_RECHECK_S` | 2 s on hardware, 0 s in simulation | tester | Near-zero candidates must stay within the cutoff on two median-of-three scans, with a brief wake-up delay. This reduces immediate power-on false empties but cannot distinguish a short or prove every detector has finished waking up. Initial/final readings, loaded interpretation, cutoff, source and actual delay are audited. |
 | `OFFSET_RAIL_V` | 4.9 V (0.98 × 5 V range) | `array_analysis.py` | A railed part = HO (405 lesson: never a wiring error). |
 | Offset policy | Explicit **Measure offset** checks the full existing band before noise. Recheck or replace out-of-range loaded parts, or remove them and mark sockets empty; every check is audited. The accepted reading becomes `offset_initial_v`; the final verdict still checks the mean of the capture's last 2 s. | tester | Operator workflow updated 2026-09-08. Low/dead readings may settle upward after power-on: recheck before rejecting. Limits remain provisional and unchanged. |
 | `NOISE_LEGACY_PP_LIMIT_LOW_MV` / `_HIGH_MV` | 10.0 / 37.9 mV | `array_analysis.py` | TP120 rev W "40623 Noise": fixture 9000233 (50 sockets, 5×10 switch box), **±5 V** supply, **under vacuum**, 5 min stabilisation, 15–20 s settle per position, amplifier box **9000232** → rectifier-hold **9000272** (Reset until < 1.0 mV, release, **≥ 60 s** hold) → DMM 200 mV DC. "Noise level must be between 10.0 mV and 37.9 mV." A LOW limit exists (dead crystal/FET). **These are DMM readings behind an amplifier of unknown gain/passband — never pin-level.** |
 | `NOISE_LEGACY_CHAIN_FACTOR` | **None** | `array_analysis.py` | Not derived. Derivation = the 405's §2.2/§2.3 recipe: the same parts on the legacy 9000233 fixture (DMM readings per position) and on this rig; `engineer_tools/array_parity/array_noise_parity.py` pairs them and proposes the factor. |
-| `NOISE_PP_LIMIT_LOW_MV` / `_HIGH_MV` | **None** | `array_analysis.py` | = legacy limit ÷ chain factor once derived. With `None` every noise verdict is `NO_LIMIT` (measured, recorded, never a failure); tiles show the value and "no limit yet". |
+| `NOISE_PP_LIMIT_LOW_MV` / `_HIGH_MV` | **None** | `array_analysis.py` | = legacy limit ÷ chain factor once derived. With `None` every noise verdict is `NO_LIMIT` (measured, recorded, never a failure); tiles show NO LIMIT, with values under Show more. |
 | `NOISE_MAX_OVER_FRACTION` | 0.15 (structural default) | `array_analysis.py` | Copied from the 405 M22's lot-500 rule. **Re-decide with the paired lot.** |
 | Low-side rule | MEDIAN window pk-pk below the low limit → NOISE_LOW | `array_analysis.py` | Structural choice: a dead crystal is quiet in every window; the median ignores one environmental bang. Re-decide with the paired lot. |
 | `NOISE_DECIMATION_FACTOR` / `NOISE_WINDOW_S` | 20 / 1.0 s | `array_analysis.py` | The single rig's pipeline unchanged (1000 → 50 SPS Kaiser FIR, 621 taps, 310-sample edge context, per-window detrend): judged band ≈ 0.85–22 Hz. Frozen oracle: `tests/golden_noise_reference.py` (from `single_detector_rig/m405m22/stability_analysis.py` at d7526b5). |
 | `NOISE_CAPTURE_SECONDS` | 60 s (20 s remains available to engineering callers) | tester | TP120's ≥ 60 s hold → 60 one-second windows. No capture-length control in the operator screen. |
-| `NOISE_STABILISATION_S` | 300 s after operator vacuum confirmation, actual wait recorded per row | tester | TP120: "Let detectors stand for five minutes". No skip control in the operator screen; simulation skips the wall-clock wait and records that fact. |
-| Adaptive quiet wait | 3–20 s, 2 blocks within 0.1 mV | tester | Carried from the 405; `NOISE_BASELINE_SETTLE_DELTA_MV = 0.1` is the 405's derived value rounded — only affects wait time, never a verdict. |
+| `NOISE_STABILISATION_S` / `NOISE_TIMING_POLICY` | 0 s added countdown / `adaptive_extrema_v1_2026-09-08` | tester | Explicit user decision 2026-09-08 to remove the five-minute app countdown. Supplied TP120 page 5 **does** specify five minutes after power-on, separately from 15–20 s after switching detectors. This is a deliberate timing departure, not a corrected transcription or proof of equivalent thermal stabilisation. Actual prewait and policy are recorded; time since physical power-on is not measured. |
+| Adaptive quiet wait | 3–20 s; two consecutive one-second max AND min deltas ≤ 0.1 mV on every loaded channel | tester, `quiet_wait_settled` | 2026-09-08: use waveform extrema instead of block means, so constant-mean changing amplitude does not start early. Existing `NOISE_BASELINE_SETTLE_DELTA_MV = 0.1` (405 scheduling tolerance, rounded) unchanged; provisional scheduling only, not a calibrated noise gate. At the deadline capture starts with a warning; the full 60 s and noise verdict algorithm remain unchanged. Per-window maxima/minima, deltas, loaded channels, elapsed wait and stop reason are archived. |
 | `CALIBRATION_STATUS` / `CALIBRATION_ID` / `VERDICT_STATUS` | PENDING / `40623_array50_daq_PENDING` / PROVISIONAL | `array_analysis.py` | Stamped on every CSV row and every raw capture. Bump the id when the limits are derived. |
 | DAQ range / rate / oversample | 0–5 V (code 2, 76.3 µV/LSB) / 1000 scans/s / 3 (first conversion dropped) | tester | See §6. Recorded per row (`daq_range_code`, `daq_oversample`, `daq_drop_conversions`, `daq_scan_rate_hz`, `daq_actual_timer_hz`). |
 
@@ -366,11 +414,17 @@ Added 2026-09-02.
 | v1 | v6 (early) | timed capture / median metric | nobody — rejected so old and new metrics never mix |
 | v2 | v6 (2026-07) | adaptive five-reading baseline (robust-peak stability, five fresh cycles averaged, five readings averaged, repeatable within 10 %) | 406 MCA (`REFERENCE_CALIBRATION_SCHEMA_VERSION = 2`) |
 | v3 | 2026-08-12 | baseline taken on the firmware v2.0 front end (gain 1, buffer off) | superseded the same day |
-| v4 | 2026-08-12 (evening) | additionally stores `reference_pwm_hz: 10` — reference readings driven at the 406MCA reference unit's 10 Hz (a pyroelectric response at 1 Hz is several times larger and not comparable) | 405 M22, 449 M18 |
+| v4 | 2026-08-12 (evening) | additionally stores `reference_pwm_hz: 10` — reference readings driven at the 406MCA reference unit's 10 Hz (a pyroelectric response at 1 Hz is several times larger and not comparable) | nobody — superseded by v5 |
+| v3 (406) | 2026-09-09 | baseline recorded through the **channel-isolated buffer board**; every v2 file was measured on the shared dual op-amp and describes the crosstalk, not the emitter | 406 MCA (`REFERENCE_CALIBRATION_SCHEMA_VERSION = 3`) |
+| v5 | 2026-09-09 | same isolation requirement for the gain-1 builds; 405 M22 and 449 M18 moved together so a baseline recorded by either still loads in the other | 405 M22, 449 M18 (`= 5`) |
 
 Older schemas are deliberately rejected so a fresh **Calibrate reference
-unit** run is forced after each change. All of this is inert while the
-reference gates are off (§2.4).
+unit** run is forced after each change. Since 2026-09-09 the gates are live
+(§2.4), so a rig with only an older file **locks testing** until that run is
+done — which is the intent: no production part is judged against a baseline
+from the pre-isolation fixture. The app names the mismatch explicitly
+("schema v4, but this build requires v5") rather than calling the file
+malformed, and never edits or deletes the stored file.
 
 ---
 
@@ -384,6 +438,7 @@ reference gates are off (§2.4).
 | ADC input noise | ~4–8 µV rms at 1000 SPS / gain 1 (≈30–50 µV pk-pk per 1 s window raw; ≈5–10 µV after 20:1) | Why the noise verdict is band-limited. |
 | Emitter gate | GPIO33 (D33) → dual-MOSFET trigger module, direct wire | D25 until 2026-08-25. `PIN,<n>` retargets at runtime; the apps send `PIN,33`. |
 | Power | 6.5 V battery → emitters only; 9 V battery → sensor buffers; grounds common | Isolated 2026-08-12 — this fixed the emitter-induced spike. Neither battery is monitored (AIN7 divider unused; plan: AIN6 with ≥ 4:1 divider). |
+| Sensor buffer (AIN0 DUT + AIN1 reference) | **TI OPA2196** dual precision op-amp, unity-gain followers, installed 2026-09 | Replaced the original dual op-amp whose channels were not isolated (a shorted DUT pulled AIN1 down ~90 %, §2.4). Channel isolation on the new part **not yet verified on the bench** (2026-09-09). |
 | Serial | 500000 baud ASCII over CP210x USB | Windows driver grants only a 512-byte receive queue; see the stream-reliability notes in `m405m22/README.md`. |
 | Bench board (2026-08-28) | DOIT ESP32 DEVKIT V1, COM3 on the Windows laptop, running firmware **v3.1**; v3.2 compiled, not yet flashed | `python Arduino/Eltec/flash_firmware.py --check` reports what a board runs. |
 | **Array rig DAQ** (2026-09-02) | ACCES USB-AIO16-64MA DAQ-PACK, VID 0x1605 PID 0x8145, serial 40E68DEE0D501728, `AIOUSB.dll` 2.4.0.0 (64-bit, System32; the probe prints the same file's fixed-info version 2.4.8796.22296); 16-bit SAR, one ADC behind two multiplexer stages, 500 kS/s aggregate, **no anti-alias filter**, range per group of 4 channels, contiguous scan only, firmware loaded from the host at plug-in | `array_rig/m40623/daq_bench_probe.py info`. Self-calibration (`ADC_SetCal :AUTO:`) supported and run at every connect. |
@@ -407,6 +462,6 @@ reference gates are off (§2.4).
 | 406 high-side plausibility abort at 2.5 V ("no sensor") | removed; a railed AIN0 is measured and recorded as HO | 2026-09-03 — same reasoning as the 405's 2026-08-13 change |
 | `RETEST / QUARANTINE` verdict for the ±0.10 mV band (both models) | `PASS · NEAR LIMIT` + re-measure suggestion | 2026-08-25 — "if it passes it passes"; old CSVs with RETEST rows are shown as failures in the summary (they were quarantine records) |
 | 406 reference tolerance ±10 % | ±25 % | v6.1 (July 2026) |
-| Reference / battery gates ON | OFF | 2026-08-17 / 08-24 (crosstalk) and 2026-08-12 (no battery on AIN7) |
+| Reference / battery gates ON | reference **ON** again, battery OFF | Reference gate off 2026-08-17 / 08-24 (crosstalk), back on 2026-09-09 on the isolated buffer board (§2.4). Battery still off since 2026-08-12 (nothing measurable on AIN7). |
 | Emitter gate GPIO25 | GPIO33 | 2026-08-25, firmware v3.1 |
 | Reference readings at 1 Hz (405) | 10 Hz, schema v4 | 2026-08-12 — the reference unit is a 406MCA sensor |

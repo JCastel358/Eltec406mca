@@ -1,0 +1,423 @@
+{
+  "status": "POWER_AND_BYPASS_INTEGRATION_COPY_PASS_TWO_SIGNAL_OPENS",
+  "input_sha256": {
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pcb": "b33a97f84bf1f496620f39c85c54ef9b8a860b96ba0045ccac9a89994dcc416f",
+    "single_detector_usb_master\\adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master\\adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master\\analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master\\analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master\\analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master\\emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master\\emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master\\emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master\\esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master\\power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master\\power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master\\power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master\\spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master\\spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pro": "efa2f91b4d171408b3a2c3a0256d78477df6e959c0237632494aa48d63b3c473",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_dru": "0a68d7ebbf53577634025066fc9f21378e2fa1abb019ac4f199e565bcab3f49f",
+    "single_detector_usb_master\\fp-lib-table": "15d72736cb413bf1d62ca9816eb9b4e2b90e5033c6d29dcd8fb7e9928283564e",
+    "single_detector_usb_master\\sym-lib-table": "f4833790416c9256d262fb8a16296079f32b5222c610ed54b2c6710af54e075a",
+    "tools\\prepare_combined_repairs.py": "41d748dcd8d465b6be71900eb7baa7cb0fb628407f147541cc819a94eecba59e",
+    "tools\\add_power_repairs.py": "4b99c7463355a4197579c7ca2c8a015b08ccfe8a699e60bb5a83606ee6064606",
+    "tools\\add_reviewed_power_stubs.py": "fa08caee3df3cff3ed63ae99857adcdf9b07f7032f34c4e7bc9cdb932cd70c13",
+    "tools\\add_bypass_stitches.py": "37e6d33e69d9cdb51cf3e4ee81d73e050591d0c5ed29bf291c0e416a5413a7d1",
+    "tools\\protected_kelvin.py": "cf35f42f06cae6c89623e2c00ce51839fef76dcb1fede703828639d3f22276ac"
+  },
+  "candidate": "reports\\power_bypass_combined\\candidate\\single_detector_usb_master.kicad_pcb",
+  "candidate_sha256": "6a8e3420a72ee526a746a36abbbc0db909ab3fcc85a2613780c4c91c88b3b8c4",
+  "added_uuids": [
+    "03426d79-7e11-51cc-9ef7-2c4d7e4dff73",
+    "1017ab10-c110-529a-ae68-8df4aa241a3e",
+    "3f0ae44b-40d8-5a51-8338-863e88055942",
+    "403a6719-1c77-57ee-be22-3086192ea737",
+    "41c3a708-d17c-510e-b603-885a18919a03",
+    "577edaa8-d647-53e2-a919-009a1e56492d",
+    "63fe2ada-45f8-5014-b524-9f9f7eadc8b8",
+    "656c614b-3eac-56a6-8f8a-39c9f8da1f8c",
+    "6973078a-2464-5f16-8043-90dabecf2a72",
+    "6c94babd-6a85-5087-9c32-9f6cf7c21da6",
+    "75e61fa8-d666-5e16-ab51-12eaddc773ba",
+    "7da6a44b-342a-54ad-a7ac-dd0c99c9c758",
+    "9f2b2140-6491-59f4-9e85-40c994d4c338",
+    "b4d66fe6-1825-5206-a584-46c7bf34277d",
+    "c174a051-c175-57d9-8282-98bf04cc3270",
+    "c5abed10-1991-5c06-a54e-0ff89c833d53",
+    "d2623ead-09bc-5074-9526-01112d87b2d9",
+    "e1ec4c2e-9e50-583d-8447-7851ee633601",
+    "e9b80a44-0f78-5569-a5b6-94d7b0581461",
+    "fa83a4b8-7587-5bb7-8954-214c471ecce2"
+  ],
+  "power_repairs": {
+    "status": "TWO_POWER_OPENS_REPAIRED_IN_MEMORY_NOT_DRC_QUALIFIED",
+    "added": [
+      {
+        "kind": "via",
+        "uuid": "1017ab10-c110-529a-ae68-8df4aa241a3e",
+        "net": "EM_MASTER_GATE",
+        "at_mm": [
+          89.2,
+          -17.5
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3
+      },
+      {
+        "kind": "via",
+        "uuid": "656c614b-3eac-56a6-8f8a-39c9f8da1f8c",
+        "net": "EM_MASTER_GATE",
+        "at_mm": [
+          89.0625,
+          -24.1
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3
+      },
+      {
+        "kind": "track",
+        "uuid": "e9b80a44-0f78-5569-a5b6-94d7b0581461",
+        "net": "EM_MASTER_GATE",
+        "start_mm": [
+          89.3061,
+          -18.1311
+        ],
+        "end_mm": [
+          89.2,
+          -17.5
+        ],
+        "width_mm": 0.25,
+        "layer": "F.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "b4d66fe6-1825-5206-a584-46c7bf34277d",
+        "net": "EM_MASTER_GATE",
+        "start_mm": [
+          89.0625,
+          -22.95
+        ],
+        "end_mm": [
+          89.0625,
+          -24.1
+        ],
+        "width_mm": 0.25,
+        "layer": "F.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "7da6a44b-342a-54ad-a7ac-dd0c99c9c758",
+        "net": "EM_MASTER_GATE",
+        "start_mm": [
+          89.2,
+          -17.5
+        ],
+        "end_mm": [
+          89.0625,
+          -24.1
+        ],
+        "width_mm": 0.25,
+        "layer": "B.Cu"
+      },
+      {
+        "kind": "via",
+        "uuid": "c174a051-c175-57d9-8282-98bf04cc3270",
+        "net": "EM_BAT_FUSED",
+        "at_mm": [
+          90.4,
+          -14.6
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3
+      },
+      {
+        "kind": "via",
+        "uuid": "9f2b2140-6491-59f4-9e85-40c994d4c338",
+        "net": "EM_BAT_FUSED",
+        "at_mm": [
+          83.9375,
+          -22.2
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3
+      },
+      {
+        "kind": "track",
+        "uuid": "e1ec4c2e-9e50-583d-8447-7851ee633601",
+        "net": "EM_BAT_FUSED",
+        "start_mm": [
+          90.4,
+          -16
+        ],
+        "end_mm": [
+          90.4,
+          -14.6
+        ],
+        "width_mm": 1.0,
+        "layer": "F.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "6973078a-2464-5f16-8043-90dabecf2a72",
+        "net": "EM_BAT_FUSED",
+        "start_mm": [
+          83.9375,
+          -21
+        ],
+        "end_mm": [
+          83.9375,
+          -22.2
+        ],
+        "width_mm": 0.4,
+        "layer": "F.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "63fe2ada-45f8-5014-b524-9f9f7eadc8b8",
+        "net": "EM_BAT_FUSED",
+        "start_mm": [
+          90.4,
+          -14.6
+        ],
+        "end_mm": [
+          89.8,
+          -14.6
+        ],
+        "width_mm": 0.4,
+        "layer": "B.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "fa83a4b8-7587-5bb7-8954-214c471ecce2",
+        "net": "EM_BAT_FUSED",
+        "start_mm": [
+          89.8,
+          -14.6
+        ],
+        "end_mm": [
+          88.8,
+          -14.6
+        ],
+        "width_mm": 1.0,
+        "layer": "B.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "03426d79-7e11-51cc-9ef7-2c4d7e4dff73",
+        "net": "EM_BAT_FUSED",
+        "start_mm": [
+          88.8,
+          -14.6
+        ],
+        "end_mm": [
+          83.9375,
+          -19.4625
+        ],
+        "width_mm": 1.0,
+        "layer": "B.Cu"
+      },
+      {
+        "kind": "track",
+        "uuid": "c5abed10-1991-5c06-a54e-0ff89c833d53",
+        "net": "EM_BAT_FUSED",
+        "start_mm": [
+          83.9375,
+          -19.4625
+        ],
+        "end_mm": [
+          83.9375,
+          -22.2
+        ],
+        "width_mm": 1.0,
+        "layer": "B.Cu"
+      }
+    ],
+    "unconnected_before": 5,
+    "unconnected_after": 3,
+    "kelvin": {
+      "profile": "LT3041_U10_12_TO_C11_1_V1",
+      "exact_locked_seed_retained": true,
+      "no_extra_conductor_in_protected_corridor": true,
+      "protected_rectangle_nm": [
+        35000000,
+        -7725000,
+        37400000,
+        -7275000
+      ],
+      "trace_width_mm": 0.2
+    },
+    "native_nonrouting_identity_preserved": true,
+    "existing_copper_not_modified": true,
+    "required_followup": "Refill zones if present and run native DRC after integration."
+  },
+  "regulator_output_stub": {
+    "status": "STUB_ADDED_IN_MEMORY_NOT_DRC_QUALIFIED",
+    "stub": {
+      "uuid": "d2623ead-09bc-5074-9526-01112d87b2d9",
+      "start_nm": [
+        35450000,
+        -8000000
+      ],
+      "end_nm": [
+        35450000,
+        -8500000
+      ],
+      "width_nm": 250000,
+      "layer": "F.Cu",
+      "net": "ADC_5V_HELD",
+      "locked": true
+    },
+    "unconnected_before": 3,
+    "unconnected_after": 2,
+    "kelvin": {
+      "profile": "LT3041_U10_12_TO_C11_1_V1",
+      "exact_locked_seed_retained": true,
+      "no_extra_conductor_in_protected_corridor": true,
+      "protected_rectangle_nm": [
+        35000000,
+        -7725000,
+        37400000,
+        -7275000
+      ],
+      "trace_width_mm": 0.2
+    },
+    "native_nonrouting_identity_unchanged": true,
+    "ground_or_thermal_changes": false,
+    "required_followup": "Refill planes if present and run native DRC against the integrated board."
+  },
+  "bypass_stitches": {
+    "status": "THREE_LOCAL_BYPASS_STITCHES_ADDED",
+    "added_uuids": [
+      "3f0ae44b-40d8-5a51-8338-863e88055942",
+      "403a6719-1c77-57ee-be22-3086192ea737",
+      "41c3a708-d17c-510e-b603-885a18919a03",
+      "577edaa8-d647-53e2-a919-009a1e56492d",
+      "6c94babd-6a85-5087-9c32-9f6cf7c21da6",
+      "75e61fa8-d666-5e16-ab51-12eaddc773ba"
+    ],
+    "added_through_vias": 3,
+    "added_front_ground_stubs": 3,
+    "stitches": [
+      {
+        "reference": "C13.2",
+        "add": true,
+        "net": "GND",
+        "xy_mm": [
+          38.775,
+          -13.5
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3,
+        "via_in_pad": false,
+        "pad_to_annulus_clearance_min_mm": 0.3,
+        "rejected_alternatives": [],
+        "ground_stub": {
+          "layer": "F.Cu",
+          "width_mm": 0.6,
+          "from_mm": [
+            39.975,
+            -13.5
+          ],
+          "to_mm": [
+            38.775,
+            -13.5
+          ]
+        },
+        "via_uuid": "75e61fa8-d666-5e16-ab51-12eaddc773ba",
+        "stub_uuid": "3f0ae44b-40d8-5a51-8338-863e88055942"
+      },
+      {
+        "reference": "C39.2",
+        "add": true,
+        "net": "GND",
+        "xy_mm": [
+          43.775,
+          -9.0
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3,
+        "via_in_pad": false,
+        "pad_to_annulus_clearance_min_mm": 0.3,
+        "rejected_alternatives": [],
+        "ground_stub": {
+          "layer": "F.Cu",
+          "width_mm": 0.6,
+          "from_mm": [
+            44.975,
+            -9.0
+          ],
+          "to_mm": [
+            43.775,
+            -9.0
+          ]
+        },
+        "via_uuid": "6c94babd-6a85-5087-9c32-9f6cf7c21da6",
+        "stub_uuid": "577edaa8-d647-53e2-a919-009a1e56492d"
+      },
+      {
+        "reference": "C36.2",
+        "add": true,
+        "net": "GND",
+        "xy_mm": [
+          29.5,
+          -10.675
+        ],
+        "diameter_mm": 0.6,
+        "drill_mm": 0.3,
+        "via_in_pad": false,
+        "pad_to_annulus_clearance_min_mm": 0.3,
+        "rejected_alternatives": [],
+        "ground_stub": {
+          "layer": "F.Cu",
+          "width_mm": 0.6,
+          "from_mm": [
+            29.5,
+            -9.475
+          ],
+          "to_mm": [
+            29.5,
+            -10.675
+          ]
+        },
+        "via_uuid": "41c3a708-d17c-510e-b603-885a18919a03",
+        "stub_uuid": "403a6719-1c77-57ee-be22-3086192ea737"
+      }
+    ],
+    "existing_native_geometry_preserved": true
+  },
+  "native_drc_command": [
+    "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+    "pcb",
+    "drc",
+    "--format",
+    "json",
+    "--severity-all",
+    "--schematic-parity",
+    "--refill-zones",
+    "--save-board",
+    "--output",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\power_bypass_combined\\native_drc.json",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\power_bypass_combined\\candidate\\single_detector_usb_master.kicad_pcb"
+  ],
+  "native_stdout": "Found 0 violations\nFound 2 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/power_bypass_combined/native_drc.json\nSaved board\n",
+  "native_stderr": "",
+  "drc_sha256": "fb9b102e06e69d775632edca85914442c57d84108196958951ac53638eb5bd9a",
+  "protected_kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "preexisting_geometry_preserved": true,
+  "only_zone_fill_changed_after_additions": true,
+  "unconnected_count": 2,
+  "main_unchanged": true
+}

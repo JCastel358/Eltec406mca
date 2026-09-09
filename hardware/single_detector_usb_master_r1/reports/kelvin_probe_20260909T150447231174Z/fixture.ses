@@ -1,0 +1,253 @@
+(session fixture
+  (base_design fixture)
+  (placement
+    (resolution um 10)
+    (component "Eltec_Master:C_1210_3225Metric"
+      (place C11 385000 90000 front 90)
+    )
+    (component "Eltec_Master:C_1210_3225Metric::1"
+      (place C39 435000 90000 front 0)
+      (place C13 385000 135000 front 0)
+    )
+    (component "Eltec_Master:DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm"
+      (place U10 340000 70000 front 0)
+    )
+  )
+  (was_is
+  )
+  (routes 
+    (resolution um 10)
+    (parser
+      (host_cad "KiCad's Pcbnew")
+      (host_version "10.0.6")
+    )
+    (library_out 
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+      (padstack "Via[0-3]_600:300_um"
+        (shape
+          (circle F.Cu 6000 0 0)
+        )
+        (shape
+          (circle In1.Cu 6000 0 0)
+        )
+        (shape
+          (circle In2.Cu 6000 0 0)
+        )
+        (shape
+          (circle B.Cu 6000 0 0)
+        )
+        (attach off)
+      )
+    )
+    (network_out 
+      (net GND
+        (wire
+          (path F.Cu 3000
+            399750 119500
+            385000 104750
+          )
+        )
+        (wire
+          (path F.Cu 3000
+            399750 135000
+            399750 119500
+          )
+        )
+        (wire
+          (path F.Cu 3000
+            449750 90000
+            420250 119500
+            399750 119500
+          )
+        )
+      )
+      (net "ADC_5V_HELD"
+        (wire
+          (path F.Cu 4000
+            385000 84125
+            362892 84125
+            362017 85000
+          )
+        )
+        (wire
+          (path F.Cu 4000
+            420250 90000
+            390875 90000
+            385000 84125
+          )
+        )
+        (wire
+          (path F.Cu 4000
+            385000 84125
+            385000 75250
+          )
+        )
+        (wire
+          (path F.Cu 4000
+            354500 85000
+            362017 85000
+          )
+        )
+        (wire
+          (path F.Cu 4000
+            370250 135000
+            362017 126767
+            362017 85000
+          )
+        )
+      )
+      (net "DET_BAT_PROTECTED"
+        (wire
+          (path F.Cu 2498
+            325500 85000
+            325500 80000
+          )
+        )
+        (wire
+          (path F.Cu 2498
+            325500 80000
+            325500 75000
+          )
+        )
+        (wire
+          (path F.Cu 2498
+            354500 55000
+            361266 55000
+          )
+        )
+        (wire
+          (path F.Cu 2498
+            325500 75000
+            318734 75000
+          )
+        )
+        (wire
+          (path F.Cu 2498
+            314998 46731
+            314998 71264
+            318734 75000
+          )
+        )
+        (wire
+          (path F.Cu 10000
+            355502 46498
+            354998 45994
+            315735 45994
+            314998 46731
+          )
+        )
+        (wire
+          (path F.Cu 2498
+            355502 46498
+            361266 52262
+            361266 55000
+          )
+        )
+      )
+    )
+  )
+)

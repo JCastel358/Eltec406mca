@@ -1,0 +1,115 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T11:33:46",
+    "ignored_checks": [
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "single_detector_usb_master.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [ADC_5V_HELD] on F.Cu, length 0.7517 mm",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -8.5
+                    },
+                    "uuid": "a67bacc1-9edc-4092-a76c-b1373e5cb098"
+                },
+                {
+                    "description": "Pad 13 [ADC_5V_HELD] of U10 on F.Cu",
+                    "pos": {
+                        "x": 35.45,
+                        "y": -8.0
+                    },
+                    "uuid": "9e108178-8d8e-5281-937c-af602ef9b303"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [EM_MASTER_GATE] on F.Cu, length 0.4596 mm",
+                    "pos": {
+                        "x": 87.0,
+                        "y": -20.725
+                    },
+                    "uuid": "b150fcd2-8335-4581-9217-4c46897efed0"
+                },
+                {
+                    "description": "Pad 1 [EM_MASTER_GATE] of Q20 on F.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -22.95
+                    },
+                    "uuid": "c419e1c2-a58e-506e-95e5-301c2e2662bf"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 3 [EM_BAT_FUSED] of Q19 on F.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -21.0
+                    },
+                    "uuid": "f8ea217e-1ce7-568d-ac8f-6cd20c13f3c6"
+                },
+                {
+                    "description": "Pad 2 [EM_BAT_FUSED] of F2 on F.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -16.0
+                    },
+                    "uuid": "f28c7728-2a81-5aaf-8f8b-17f62aa08d43"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Clearance violation ( clearance 0.2000 mm; actual 0.1244 mm)",
+            "items": [
+                {
+                    "description": "Track [ADC_SCLK] on F.Cu, length 5.1500 mm",
+                    "pos": {
+                        "x": 50.4,
+                        "y": 88.75
+                    },
+                    "uuid": "0ebda715-f0fa-5bd2-a7ac-a1a3accf4ec0"
+                },
+                {
+                    "description": "Track [ESP_MOSI] on F.Cu, length 3.2172 mm",
+                    "pos": {
+                        "x": 55.5986,
+                        "y": 88.31
+                    },
+                    "uuid": "ff373060-10af-525f-bb6f-f1b96cb39f21"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        }
+    ]
+}

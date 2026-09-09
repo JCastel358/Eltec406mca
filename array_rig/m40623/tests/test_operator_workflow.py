@@ -41,14 +41,16 @@ class OperatorWorkflowTests(unittest.TestCase):
         self.addCleanup(controller.close)
         return controller, device
 
-    def test_offset_check_uses_full_limits_and_defaults_every_socket_to_loaded(self):
+    def test_offset_check_uses_full_limits_and_infers_near_zero_empty_sockets(self):
         controller, _ = self.controller()
         measured = controller.measure_offsets()
         self.assertEqual(measured.shape, (50,))
         self.assertTrue(controller.offset_checked)
         self.assertEqual(controller.unknown_positions(), ())
-        self.assertEqual(len([p for p in daq.POSITIONS if controller.effective_occupancy(p) is aa.Occupancy.LOADED]), 50)
-        self.assertEqual(controller.offset_bad_positions(), ("1-10", "2-4", "3-1", "4-7", "5-2", "5-10"))
+        self.assertEqual(len([p for p in daq.POSITIONS if controller.effective_occupancy(p) is aa.Occupancy.LOADED]), 48)
+        self.assertEqual(controller.offset_bad_positions(), ("2-4", "3-1", "4-7", "5-2"))
+        for position in ("1-10", "5-10"):
+            self.assertIs(controller.live_tile_state(position), aa.TileState.EMPTY)
         self.assertEqual(len(controller.offset_good_positions()), 44)
         for position in controller.offset_bad_positions():
             self.assertIs(controller.live_tile_state(position), aa.TileState.OFFSET_FAIL)
@@ -139,16 +141,16 @@ class OperatorWorkflowTests(unittest.TestCase):
         initial_bad = controller.offset_bad_positions()
         device.replace_simulated_positions(initial_bad[:2])
         controller.measure_offsets()
-        self.assertEqual(len(controller.offset_bad_positions()), 4)
+        self.assertEqual(len(controller.offset_bad_positions()), 2)
         device.replace_simulated_positions(controller.offset_bad_positions())
         controller.measure_offsets()
         self.assertEqual(controller.offset_bad_positions(), ())
-        self.assertEqual(len(controller.offset_good_positions()), 50)
+        self.assertEqual(len(controller.offset_good_positions()), 48)
         self.assertFalse(controller.csv_path.exists())
         events = tray_history.read_tray_events(controller.attempts_path)
         self.assertEqual([e.event for e in events], [tray_history.EVENT_OFFSET_MEASURED] * 3)
         self.assertEqual([json.loads(e.detail)["offset_measurement"] for e in events], [1, 2, 3])
-        self.assertEqual([len(json.loads(e.detail)["bad_positions"]) for e in events], [6, 4, 0])
+        self.assertEqual([len(json.loads(e.detail)["bad_positions"]) for e in events], [4, 2, 0])
         self.assertTrue(all(e.first_sensor_number == e.last_sensor_number == 0 for e in events))
         self.assertEqual(controller.prepare_noise().sensor_numbers["1-1"], 1)
 
@@ -183,11 +185,13 @@ class OperatorWorkflowTests(unittest.TestCase):
         self.assertIs(results["3-6"].noise.verdict, aa.NoiseVerdict.HIGH)
         self.assertIs(results["4-3"].noise.verdict, aa.NoiseVerdict.LOW)
         outcome = controller.save_tray()
-        self.assertEqual(outcome["rows"], 50)
+        self.assertEqual(outcome["rows"], 48)
         self.assertTrue(Path(outcome["raw"]).is_file())
         with controller.csv_path.open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle))
-        self.assertEqual(len(rows), 50)
+        self.assertEqual(len(rows), 48)
+        self.assertNotIn("1-10", {row["position"] for row in rows})
+        self.assertNotIn("5-10", {row["position"] for row in rows})
         self.assertEqual({r["simulated"] for r in rows}, {"YES"})
         self.assertEqual(aa.NoiseLimits(), production_limits)
         self.assertFalse(production_limits.defined)

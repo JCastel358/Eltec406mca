@@ -1,0 +1,29 @@
+{
+  "references_checked": 195,
+  "origin_native_mm": [
+    12.0,
+    115.0
+  ],
+  "axes": "positive X right, positive Y up; no mirror",
+  "native_plot_origin_and_CPL_body_centers_agree": true,
+  "vendor_library_rotations_verified": false,
+  "fabrication_plot_coordinates": {
+    "gerber_profile_vertices_checked": 4,
+    "excellon_noncollinear_witnesses_mm": [
+      [
+        4.0,
+        33.4975
+      ],
+      [
+        77.0625,
+        139.1
+      ],
+      [
+        74.08,
+        2.5999999999999943
+      ]
+    ],
+    "native_origin_transform_agrees": true,
+    "limitation": "Coordinate witnesses do not replace a complete CAM geometry/slot review"
+  }
+}

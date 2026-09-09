@@ -35,7 +35,8 @@ it. `number_attempt` says which of those a row is.
 ├── <prefix>_lot_<lot>.csv              one verdict row per TEST (the production record); a number
 │                                       that has not been passed yet repeats until a part earns it
 ├── <prefix>_lot_<lot>_attempts.csv     one row per event: measured / measure_error / stopped /
-│                                       saved  (attempt history)
+│                                       saved / stream_retry / rig_note  (attempt history; since
+│                                       2026-09-09 a reference-unit lockout is a measure_error row)
 ├── autosave\                           in-progress batch state (crash recovery)
 ├── waveform_snapshots\lot_<lot>\       PNG per "Capture waveform" (+ cycle CSV sidecars);
 │                                       automatic for failing noise captures / unstable drives
@@ -43,8 +44,9 @@ it. `number_attempt` says which of those a row is.
 │                                       1000 SPS emitter-off record (opt-in button, and automatic
 │                                       whenever any window goes over the limit)
 ├── calibration\*_cycles.csv            stability_calibration.py evidence captures (engineering)
-└── reference_sensor_calibration.json   AIN1 reference baseline (only meaningful while the
-                                        reference gate is on — it is OFF on every model today)
+└── reference_sensor_calibration.json   AIN1 reference baseline (the gate is ON again on every
+                                        model since 2026-09-09; files predating the isolated
+                                        buffer board are refused on load and kept as evidence)
 ```
 
 `<prefix>` is `405m22_esp32`, `406mca_esp32` or `449m18_esp32`. The 449 M18
@@ -58,7 +60,7 @@ Eltec_40623_Test_Results\40623_array_daq\
 │                                           after capture; every row is
 │                                           stamped calibration_status / calibration_id / verdict_status
 ├── 40623_array_lot_<lot>_attempts.csv      one row per TRAY event: offset_measured / locked / vacuum_confirmed / stabilisation_shortened /
-│                                           capture_started / capture_retry / capture_error / judged / saved / remeasure
+│                                           capture_started / capture_retry / capture_error / noise_settled / judged / saved / remeasure
 ├── noise_captures\lot_<lot>\tray_<n>_raw.npz   the RAW 1000 SPS capture of all 50 channels (float32 [50, N],
 │                                           ~4 MB compressed per 60 s tray) + 310-sample edge contexts, channel/
 │                                           position/sensor-number arrays and metadata — the evidence for the
@@ -71,6 +73,18 @@ Columns: `array_rig/m40623/README.md`. Sensor numbers are assigned when
 loaded positions, continuing the batch's highest number. Offset screening
 reserves no numbers: each `offset_measured` event retains JSON with all fifty
 readings, occupancy and classifications, including failures before replacement.
+Since 2026-09-08 this also keeps initial/recheck voltages, occupancy source,
+the inferred-empty cutoff/policy, actual recheck delay, and each position's
+classification **if loaded**, so zero-output readings excluded as likely empty
+remain reviewable. `locked` records the accepted map and manual overrides;
+`vacuum_confirmed` records the operator's map/count and gauge confirmation.
+`stabilisation_shortened` explains the deliberate departure from TP120's
+five-minute power-on delay (the app cannot measure time since power-on).
+`noise_settled` retains the successful capture's settling trace, including
+unsettled deadline starts. Each one-second window records loaded-channel
+maxima/minima and their deltas. The raw NPZ duplicates that trace in
+`quiet_diagnostics_json`; CSV and NPZ record `noise_timing_policy`, the
+criterion/tolerance, minimum/maximum wait, actual wait and stop reason.
 A noise retry keeps its numbers (`tray_attempt` increments). The legacy
 engineering lock API still records high-offset failure rows at lock time.
 
@@ -102,7 +116,7 @@ convention for future manual archiving: `<original name>_<YYYYMMDD>_<reason>`.
 | Folder | Size | Contents that matter |
 | --- | --- | --- |
 | `Eltec_405M22_Test_Results\405m22_esp32\` | ~15 MB, 75 files | **lot 500** (`405m22_esp32_lot_500.csv` + `_backup_all50_20260818` + `_superseded_20260817_reference_crosstalk`), test lots (`lot_test`, `lot_test2`, `lot_test_2`), `noise_captures\` (39 files, 9.7 MB — the raw captures behind the 15 % rule, the 60 s soak and the FIR change), `waveform_snapshots\` (18 files), `noise_experiments\` (2026-08-13 bench A/B: `part_in`, `part_out`, `covered`, `fan_off` `.npz` + `noise_experiment.py`), copies of the lot-500 Excel pair data, `reference_sensor_calibration_crosstalk_contaminated_20260817.json.bak` |
-| `Eltec_406MCA_Test_Results\v6_1_esp32\` | ~16 KB | `406mca_esp32_lot_test.csv` + attempts, `reference_sensor_calibration.json` (historical baseline, unused while the gate is off) |
+| `Eltec_406MCA_Test_Results\v6_1_esp32\` | ~16 KB | `406mca_esp32_lot_test.csv` + attempts, `reference_sensor_calibration.json` (historical schema-v2 baseline; refused on load since the 2026-09-09 schema v3 bump — kept as evidence, recalibrate instead) |
 | `Eltec_449M18_Test_Results\449m18_esp32\` | ~5 KB | one attempts log — no production batch yet (calibration pending) |
 
 Related folders outside this repository:

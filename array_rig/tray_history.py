@@ -8,12 +8,13 @@ per position into its lot CSV; this module keeps the sibling
 rig's ``attempt_history.py``):
 
     offset_measured          explicit offset check, readings retained before replacements
-    vacuum_confirmed         operator checked the rig gauge before noise
+    vacuum_confirmed         operator checked detected tray map/count and rig gauge before noise
     locked                   occupancy frozen, sensor numbers assigned, HO parts recorded
-    stabilisation_shortened  the technician cut the TP120 5-minute wait short (actual wait recorded)
+    stabilisation_shortened  TP120 power-on delay departure (timing policy and actual wait recorded)
     capture_started          the noise stream started (attempt n)
     capture_retry            a stream integrity failure -> the capture restarts
     capture_error            every attempt failed; positions recorded NOT MEASURED
+    noise_settled            waveform settling trace and early-start/deadline reason (may be unsettled)
     judged                   verdicts computed and shown
     saved                    rows written to the lot CSV (+ raw capture, grid snapshot)
     remeasure                the technician discarded the shown verdicts and re-ran the tray
@@ -39,6 +40,7 @@ EVENT_STABILISATION_SHORTENED = "stabilisation_shortened"
 EVENT_CAPTURE_STARTED = "capture_started"
 EVENT_CAPTURE_RETRY = "capture_retry"
 EVENT_CAPTURE_ERROR = "capture_error"
+EVENT_NOISE_SETTLED = "noise_settled"
 EVENT_JUDGED = "judged"
 EVENT_SAVED = "saved"
 EVENT_REMEASURE = "remeasure"
@@ -51,6 +53,7 @@ TRAY_EVENTS = (
     EVENT_CAPTURE_STARTED,
     EVENT_CAPTURE_RETRY,
     EVENT_CAPTURE_ERROR,
+    EVENT_NOISE_SETTLED,
     EVENT_JUDGED,
     EVENT_SAVED,
     EVENT_REMEASURE,

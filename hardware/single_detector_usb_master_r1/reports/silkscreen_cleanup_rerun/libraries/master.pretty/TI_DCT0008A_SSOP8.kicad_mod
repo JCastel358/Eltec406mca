@@ -1,0 +1,192 @@
+(footprint "TI_DCT0008A_SSOP8"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "Texas Instruments DCT0008A SSOP8; land pattern4220784/D10/2025; pitch0.65mm, pad1.1x0.4mm, row center span3.8mm; https://www.ti.com/lit/ds/symlink/sn74lvc2g125.pdf")
+	(property "Reference" "REF**"
+		(at 0 -2.65 0)
+		(layer "F.SilkS")
+		(uuid "febaf410-ac7b-4f38-8584-37fd1ee87c16")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "TI_DCT0008A_SSOP8"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "eda8ac68-68f8-46d6-95ce-952e9940b878")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "ff686274-2450-4ab8-a363-990ace6020ad")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "30d8a872-9a79-405f-946e-ae010cc13b05")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.5 -1.65)
+		(end 1.5 -1.65)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "d79d06e3-6698-4a22-87ae-5a260978ae5f")
+	)
+	(fp_line
+		(start -1.5 1.65)
+		(end 1.5 1.65)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "8eb3501c-5148-4cf8-b1d8-b004f53b9d2b")
+	)
+	(fp_rect
+		(start -2.75 -1.95)
+		(end 2.75 1.95)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "2eebee80-9fac-401a-bce3-8a898135b7be")
+	)
+	(fp_line
+		(start -2.6 -1.2)
+		(end -2.6 -0.75)
+		(stroke
+			(width 0.15)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "cf7622dc-6cd0-4bc4-9535-287028c5e1d2")
+	)
+	(fp_rect
+		(start -1.5 -1.5)
+		(end 1.5 1.5)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "93ac0a2d-0f9e-4f04-a46a-ac13ba6a9c43")
+	)
+	(fp_text user "1"
+		(at -1.1 -1.05 0)
+		(layer "F.Fab")
+		(uuid "b2126847-574e-4af8-bd5b-d3db106cecee")
+		(effects
+			(font
+				(size 0.65 0.65)
+				(thickness 0.12)
+			)
+		)
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "6cb1ae50-e2c1-44fa-b1c1-886e9e593e43")
+		(effects
+			(font
+				(size 0.7 0.7)
+				(thickness 0.12)
+			)
+		)
+	)
+	(pad "1" smd roundrect
+		(at -1.9 -0.975)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "20df1f0a-0c26-4554-92c2-2e55013073a7")
+	)
+	(pad "2" smd roundrect
+		(at -1.9 -0.325)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "73762488-9195-4a01-aae1-ab6fea47ddf1")
+	)
+	(pad "3" smd roundrect
+		(at -1.9 0.325)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "477e420a-13c4-40a7-ad65-c2af05e67e3b")
+	)
+	(pad "4" smd roundrect
+		(at -1.9 0.975)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "02d8b30d-36a1-47a8-aa4c-91b0c7724b27")
+	)
+	(pad "5" smd roundrect
+		(at 1.9 0.975)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "aac227b0-fd5f-4e7e-8d15-737db2dadd6b")
+	)
+	(pad "6" smd roundrect
+		(at 1.9 0.325)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "ab06b259-1730-4c56-9c60-87622e895800")
+	)
+	(pad "7" smd roundrect
+		(at 1.9 -0.325)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "cde48ab6-f122-48f1-a9f6-d036b1f2dbb9")
+	)
+	(pad "8" smd roundrect
+		(at 1.9 -0.975)
+		(size 1.1 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.125)
+		(thermal_bridge_angle 45)
+		(uuid "4d97d6ac-064c-48f5-9093-b243e6533620")
+	)
+	(embedded_fonts no)
+)

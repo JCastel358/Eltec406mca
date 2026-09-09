@@ -1,0 +1,15 @@
+{
+  "result": {
+    "status": "EXACT_STITCH_SET_ALREADY_PRESENT",
+    "added_uuids": [],
+    "expected_uuids": [
+      "3f0ae44b-40d8-5a51-8338-863e88055942",
+      "403a6719-1c77-57ee-be22-3086192ea737",
+      "41c3a708-d17c-510e-b603-885a18919a03",
+      "577edaa8-d647-53e2-a919-009a1e56492d",
+      "6c94babd-6a85-5087-9c32-9f6cf7c21da6",
+      "75e61fa8-d666-5e16-ab51-12eaddc773ba"
+    ]
+  },
+  "track_count_unchanged": true
+}

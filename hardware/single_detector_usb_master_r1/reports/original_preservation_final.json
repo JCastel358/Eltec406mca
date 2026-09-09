@@ -1,0 +1,145 @@
+{
+  "status": "ORIGINAL_ARCHIVE_MEMBERS_AND_RETAINED_COPIES_UNCHANGED",
+  "checks": [
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/ADS1256_BOARD.kicad_mod",
+      "sha256": "d8e3a4a31461fe502aabed75ad692368c3ba8ce320b66e30296239f33d006c0a",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/AMS1117.kicad_mod",
+      "sha256": "c73e210551d53ccbd75e577d7e0103c037a54bb277ca07ede1fa28bb7c8589ed",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/Battery.kicad_mod",
+      "sha256": "4e5b549cd392829969cd8b6159b426ca14ac35813783e5fcfbb0acdc5a0fd739",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/Emitter.kicad_mod",
+      "sha256": "0483ea294567963fc24b6a7bcbaafee03a5d1e3548fa22c7b45d583a25c1f973",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/ESP32_DEVKITV1.kicad_mod",
+      "sha256": "0517862fc1a10deebf5722e24c091e3941e35b62b5eee8c007b7c4368214da18",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/IRLB8748.kicad_mod",
+      "sha256": "41c9f7688f46276d6d31c162f26c3d59a7f59b5ef03a9d231e158cc77beba385",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/LMC6062.kicad_mod",
+      "sha256": "c07023b43925fac65d4534e828acb566fc25b77e4bba9f8e57a7319dc0e70fdd",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/Sensor.kicad_mod",
+      "sha256": "01e2dcdc6f2bfdfb38a8c434d784423ecc6091243e32f3f7d0ef112e0c94f2ce",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/Eltec Footprints.pretty/Untitled.kicad_mod",
+      "sha256": "56d48eb52bbafe8c934772bfc04c6a3b23caae0087b39171b095718717b777cf",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/ESP32_test_board-Edge_Cuts.gm1",
+      "sha256": "9b0d8ec5b219ee489a2793eb6a6835ab25009ded40104c878b2e0b0ebc0307bb",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/ESP32_test_board-NPTH.drl",
+      "sha256": "0e3233afc79435284a6ff3249c8d24d9eae73c92ededf5fb7be9866ac4eeb106",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/ESP32_test_board-PTH.drl",
+      "sha256": "f8b1eab8707fbb1b0305a887a67c9a31fcffe0d26dbed5b0e1958caf8b119c51",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/ESP32_test_board.kicad_pcb",
+      "sha256": "9a4d2f2caba80031463d3540b79024ce9e34d5625d32769739845703f8eaea64",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/ESP32_test_board.kicad_pro",
+      "sha256": "61f5afc5841d5df5edee4f90a96eb91648cf93f5c522c01b3aeca97d9c2d84b8",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/ESP32_test_board.kicad_sch",
+      "sha256": "8cf750ab7967e7993ef7ba2ea656df6e8eec73faeb421930f8cc7b3901ad3f88",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/fabrication-toolkit-options.json",
+      "sha256": "bf5ebbff94e4423a865eca80e20e6b041f93a52c4a38e1bfa3f52b59f960aac8",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/fp-lib-table",
+      "sha256": "d77afb995de84136120f56e330347c00a36a366b70eb00fc8608b42f1c1e34ba",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/production/bom.csv",
+      "sha256": "67b685977de9557cd9ae963d7ec969a3c7c002aef36a68fe436facee77ff8e82",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/production/designators.csv",
+      "sha256": "1f331e5f1c905bca69c1394a36d0b6c56b5aa9fdc005c25c02b045957c6f9cd4",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\ESP32_test_board.zip",
+      "member": "ESP32_test_board/production/positions.csv",
+      "sha256": "357c75fc19d1b681c733dddc97ab89e87ebd857f0ad9522837d7e65e21953acf",
+      "archive_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\SingleDetectorCase",
+      "sha256": "b838e911c1d69d2d3c734da472c0984e985d132199f67bce1357bbdbbb59a507",
+      "original_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\SingleDetectorPCB",
+      "sha256": "dbc864a8e4f10d509755640133451c7ec7bc1c81d608f28086711269a60cba8d",
+      "original_and_retained_copy_match": true
+    },
+    {
+      "source": "C:\\Users\\JoseCastelblanco\\Downloads\\SingleDetectorPCBschematic.png",
+      "sha256": "192773ce65233a36a5e443fc388fcc667aff6c681a1ae78b5feede98f2b0898d",
+      "original_and_retained_copy_match": true
+    }
+  ],
+  "firmware_sha256": {
+    "original": "ded93d6270e217e0b35a20470bb8e9490321be4eca5b9ffb6a42077f57c0fb54",
+    "r1": "753437ecdca873d92a8e545318515d49c33812aac60535c2385d4d08cb5bdd0c"
+  },
+  "no_original_written": true
+}

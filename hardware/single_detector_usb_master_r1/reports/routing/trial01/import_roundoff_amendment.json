@@ -1,0 +1,68 @@
+{
+  "status": "IMPORTED_WITH_ORIGINAL_GUARDS_PASSED",
+  "created_utc": "2026-09-09T15:15:11.159893+00:00",
+  "adapter": "tools/import_trial01_roundoff.py",
+  "adapter_sha256": "73e3be437d780fcf74668dcd34d2ee9399dbcb2f68d747b04df7d27ed7b357aa",
+  "unchanged_original_importer_sha256": "38d883c9e721679d78802072fa2db492a52064da62ef0bae4f78b1982969a74c",
+  "source_board_sha256": "d521b5ccd8612cdf9124a9c9deba861d1cd8b8a23226c328b7ebdb7d1327707e",
+  "handoff_sha256": "57f7e2c4a3baeef6bb24d672aa2fa0723fe2a4b46e87367cc840e84cba3c3270",
+  "session_sha256": "106fadd58b35149c37d3ee0aa6dd6ce3e9faa992c3800cddc18309a3c3c65d6a",
+  "native_dsn_sha256": "fb51604c60339b916110fe4bda3a4eececd61ffd5b2d436a2e9c4d7604a815b4",
+  "permitted_reference": "R52",
+  "original_position_nm": [
+    64666667,
+    97666667
+  ],
+  "quantized_position_nm": [
+    64666700,
+    97666700
+  ],
+  "permitted_delta_nm": [
+    33,
+    33
+  ],
+  "native_import_callback_count": 1,
+  "original_handoff_router_run_and_importer_files_modified": false,
+  "footprint_before": {
+    "reference": "R52",
+    "uuid": "67f54aaa-699a-5bfe-af6e-cb9ddae52edd",
+    "path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5/a3d000b4-5b33-5409-93f6-7dea47b2d862",
+    "layer": 0,
+    "rotation_deg": 0.0,
+    "position_nm": [
+      64666667,
+      97666667
+    ]
+  },
+  "footprint_quantized": {
+    "reference": "R52",
+    "uuid": "67f54aaa-699a-5bfe-af6e-cb9ddae52edd",
+    "path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5/a3d000b4-5b33-5409-93f6-7dea47b2d862",
+    "layer": 0,
+    "rotation_deg": 0.0,
+    "position_nm": [
+      64666700,
+      97666700
+    ]
+  },
+  "footprint_restored": {
+    "reference": "R52",
+    "uuid": "67f54aaa-699a-5bfe-af6e-cb9ddae52edd",
+    "path": "/f210eded-3684-57b5-b379-c4d7eb0e6167/51444993-0e25-5fd9-aea5-765bd288fff5/a3d000b4-5b33-5409-93f6-7dea47b2d862",
+    "layer": 0,
+    "rotation_deg": 0.0,
+    "position_nm": [
+      64666667,
+      97666667
+    ]
+  },
+  "strict_nonrouting_identity_restored": true,
+  "netclasses_unchanged": true,
+  "routing_expressions_unchanged": true,
+  "unconnected_before_restoration": 12,
+  "unconnected_after_restoration": 12,
+  "completed_utc": "2026-09-09T15:15:13.340134+00:00",
+  "source_after_sha256": "b8aba916f5bf17d38e75646580d3358245f5783a342c14b3a16379d83a4af60e",
+  "unconnected_after_import": 12,
+  "fabrication_or_electrical_qualification": false
+}

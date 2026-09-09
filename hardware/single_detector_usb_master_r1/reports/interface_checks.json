@@ -1,0 +1,347 @@
+{
+  "scope": "Interface connectivity only; power/analog/emitter design not certified",
+  "netlist_sha256": "34790f936a7f19268ae516ae7bd5360d8f28eb90dea749e9d0227ebcf84081f9",
+  "all_passed": true,
+  "checks": [
+    {
+      "description": "ESP32 used pin1 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 1), 'ESP_3V3'), (('J3', 1), 'ESP_3V3')]"
+    },
+    {
+      "description": "ESP32 used pin2 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 2), 'GND'), (('J3', 2), 'GND')]"
+    },
+    {
+      "description": "ESP32 used pin5 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 5), 'ESP_DRDY'), (('J3', 5), 'ESP_DRDY')]"
+    },
+    {
+      "description": "ESP32 used pin8 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 8), 'ESP_CS_N'), (('J3', 8), 'ESP_CS_N')]"
+    },
+    {
+      "description": "ESP32 used pin9 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 9), 'ESP_SCLK'), (('J3', 9), 'ESP_SCLK')]"
+    },
+    {
+      "description": "ESP32 used pin10 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 10), 'ESP_MISO'), (('J3', 10), 'ESP_MISO')]"
+    },
+    {
+      "description": "ESP32 used pin15 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 15), 'ESP_MOSI'), (('J3', 15), 'ESP_MOSI')]"
+    },
+    {
+      "description": "ESP32 used pin16 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 16), 'USB_PRESENT_5V'), (('J4', 1), 'USB_PRESENT_5V')]"
+    },
+    {
+      "description": "ESP32 used pin17 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 17), 'GND'), (('J4', 2), 'GND')]"
+    },
+    {
+      "description": "ESP32 used pin22 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 22), 'ESP_EMIT3'), (('J4', 7), 'ESP_EMIT3')]"
+    },
+    {
+      "description": "ESP32 used pin23 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 23), 'ESP_EMIT2'), (('J4', 8), 'ESP_EMIT2')]"
+    },
+    {
+      "description": "ESP32 used pin24 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 24), 'ESP_EMIT1'), (('J4', 9), 'ESP_EMIT1')]"
+    },
+    {
+      "description": "ESP32 used pin26 mates to correct socket",
+      "passed": true,
+      "detail": "[(('U1', 26), 'ESP_POWER_NOT_READY'), (('J4', 11), 'ESP_POWER_NOT_READY')]"
+    },
+    {
+      "description": "ADC digital pin1 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 1), 'ADC_5V_HELD'), (('J5', 1), 'ADC_5V_HELD')]"
+    },
+    {
+      "description": "ADC digital pin2 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 2), 'GND'), (('J5', 2), 'GND')]"
+    },
+    {
+      "description": "ADC digital pin3 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 3), 'ADC_SCLK'), (('J5', 3), 'ADC_SCLK')]"
+    },
+    {
+      "description": "ADC digital pin4 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 4), 'ADC_MOSI'), (('J5', 4), 'ADC_MOSI')]"
+    },
+    {
+      "description": "ADC digital pin5 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 5), 'ADC_MISO'), (('J5', 5), 'ADC_MISO')]"
+    },
+    {
+      "description": "ADC digital pin6 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 6), 'ADC_DRDY_N'), (('J5', 6), 'ADC_DRDY_N')]"
+    },
+    {
+      "description": "ADC digital pin7 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 7), 'ADC_CS_N'), (('J5', 7), 'ADC_CS_N')]"
+    },
+    {
+      "description": "ADC digital pin8 mates to J5",
+      "passed": true,
+      "detail": "[(('U2', 8), 'ADC_PDWN_N'), (('J5', 8), 'ADC_PDWN_N')]"
+    },
+    {
+      "description": "ADC AIN0 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 9), 'ADC_AIN0'), (('J6', 1), 'ADC_AIN0')]"
+    },
+    {
+      "description": "ADC ground0 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 17), 'GND'), (('J6', 2), 'GND')]"
+    },
+    {
+      "description": "ADC AIN1 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 10), 'ADC_AIN1'), (('J6', 3), 'ADC_AIN1')]"
+    },
+    {
+      "description": "ADC ground1 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 18), 'GND'), (('J6', 4), 'GND')]"
+    },
+    {
+      "description": "ADC AIN2 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 11), 'ADC_AIN2'), (('J6', 5), 'ADC_AIN2')]"
+    },
+    {
+      "description": "ADC ground2 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 19), 'GND'), (('J6', 6), 'GND')]"
+    },
+    {
+      "description": "ADC AIN3 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 12), 'ADC_AIN3'), (('J6', 7), 'ADC_AIN3')]"
+    },
+    {
+      "description": "ADC ground3 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 20), 'GND'), (('J6', 8), 'GND')]"
+    },
+    {
+      "description": "ADC AIN4 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 13), 'ADC_AIN4'), (('J6', 9), 'ADC_AIN4')]"
+    },
+    {
+      "description": "ADC ground4 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 21), 'GND'), (('J6', 10), 'GND')]"
+    },
+    {
+      "description": "ADC AIN5 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 14), 'ADC_AIN5'), (('J6', 11), 'ADC_AIN5')]"
+    },
+    {
+      "description": "ADC ground5 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 22), 'GND'), (('J6', 12), 'GND')]"
+    },
+    {
+      "description": "ADC AIN6 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 15), 'GND'), (('J6', 13), 'GND')]"
+    },
+    {
+      "description": "ADC ground6 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 23), 'GND'), (('J6', 14), 'GND')]"
+    },
+    {
+      "description": "ADC AIN7 mates to J6 odd pin",
+      "passed": true,
+      "detail": "[(('U2', 16), 'GND'), (('J6', 15), 'GND')]"
+    },
+    {
+      "description": "ADC ground7 mates to J6 even pin",
+      "passed": true,
+      "detail": "[(('U2', 24), 'GND'), (('J6', 16), 'GND')]"
+    },
+    {
+      "description": "All carrier module grounds explicitly common",
+      "passed": true,
+      "detail": "[(('U1', 2), 'GND'), (('U1', 17), 'GND'), (('U2', 2), 'GND'), (('U2', 17), 'GND'), (('U2', 18), 'GND'), (('U2', 19), 'GND'), (('U2', 20), 'GND'), (('U2', 21), 'GND'), (('U2', 22), 'GND'), (('U2', 23), 'GND'), (('U2', 24), 'GND')]"
+    },
+    {
+      "description": "Unused AIN6 grounded",
+      "passed": true,
+      "detail": "[(('U2', 15), 'GND'), (('U2', 2), 'GND')]"
+    },
+    {
+      "description": "Unused AIN7 grounded; no legacy battery divider",
+      "passed": true,
+      "detail": "[(('U2', 16), 'GND'), (('U2', 2), 'GND')]"
+    },
+    {
+      "description": "SCLK enters correct buffer input",
+      "passed": true,
+      "detail": "[(('U1', 9), 'ESP_SCLK'), (('U50', 2), 'ESP_SCLK')]"
+    },
+    {
+      "description": "SCLK buffer output enters damping resistor",
+      "passed": true,
+      "detail": "[(('U50', 6), 'ADC_SCLK_DRV'), (('R56', 1), 'ADC_SCLK_DRV')]"
+    },
+    {
+      "description": "SCLK damping resistor reaches correct receiver",
+      "passed": true,
+      "detail": "[(('R56', 2), 'ADC_SCLK'), (('U2', 3), 'ADC_SCLK')]"
+    },
+    {
+      "description": "SCLK does not bypass its buffer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "MOSI enters correct buffer input",
+      "passed": true,
+      "detail": "[(('U1', 15), 'ESP_MOSI'), (('U50', 5), 'ESP_MOSI')]"
+    },
+    {
+      "description": "MOSI buffer output enters damping resistor",
+      "passed": true,
+      "detail": "[(('U50', 3), 'ADC_MOSI_DRV'), (('R57', 1), 'ADC_MOSI_DRV')]"
+    },
+    {
+      "description": "MOSI damping resistor reaches correct receiver",
+      "passed": true,
+      "detail": "[(('R57', 2), 'ADC_MOSI'), (('U2', 4), 'ADC_MOSI')]"
+    },
+    {
+      "description": "MOSI does not bypass its buffer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "CS enters correct buffer input",
+      "passed": true,
+      "detail": "[(('U1', 8), 'ESP_CS_N'), (('U51', 2), 'ESP_CS_N')]"
+    },
+    {
+      "description": "CS buffer output enters damping resistor",
+      "passed": true,
+      "detail": "[(('U51', 6), 'ADC_CS_DRV'), (('R58', 1), 'ADC_CS_DRV')]"
+    },
+    {
+      "description": "CS damping resistor reaches correct receiver",
+      "passed": true,
+      "detail": "[(('R58', 2), 'ADC_CS_N'), (('U2', 7), 'ADC_CS_N')]"
+    },
+    {
+      "description": "CS does not bypass its buffer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "MISO enters correct buffer input",
+      "passed": true,
+      "detail": "[(('U2', 5), 'ADC_MISO'), (('U52', 2), 'ADC_MISO')]"
+    },
+    {
+      "description": "MISO buffer output enters damping resistor",
+      "passed": true,
+      "detail": "[(('U52', 6), 'ESP_MISO_DRV'), (('R59', 1), 'ESP_MISO_DRV')]"
+    },
+    {
+      "description": "MISO damping resistor reaches correct receiver",
+      "passed": true,
+      "detail": "[(('R59', 2), 'ESP_MISO'), (('U1', 10), 'ESP_MISO')]"
+    },
+    {
+      "description": "MISO does not bypass its buffer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "DRDY enters correct buffer input",
+      "passed": true,
+      "detail": "[(('U2', 6), 'ADC_DRDY_N'), (('U52', 5), 'ADC_DRDY_N')]"
+    },
+    {
+      "description": "DRDY buffer output enters damping resistor",
+      "passed": true,
+      "detail": "[(('U52', 3), 'ESP_DRDY_DRV'), (('R60', 1), 'ESP_DRDY_DRV')]"
+    },
+    {
+      "description": "DRDY damping resistor reaches correct receiver",
+      "passed": true,
+      "detail": "[(('R60', 2), 'ESP_DRDY'), (('U1', 5), 'ESP_DRDY')]"
+    },
+    {
+      "description": "DRDY does not bypass its buffer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "Forward buffers use ADC 3.3V domain",
+      "passed": true,
+      "detail": "[(('U50', 8), 'ADC_IO_3V3'), (('U51', 8), 'ADC_IO_3V3'), (('R52', 1), 'ADC_IO_3V3')]"
+    },
+    {
+      "description": "Return buffer uses ESP32 3.3V domain",
+      "passed": true,
+      "detail": "[(('U52', 8), 'ESP_3V3'), (('U1', 1), 'ESP_3V3'), (('R55', 1), 'ESP_3V3')]"
+    },
+    {
+      "description": "Buffer supply rails not shorted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "OE collectors not shorted across supplies",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "description": "Forward OE separate local pull-up",
+      "passed": true,
+      "detail": "[(('U50', 1), 'ADC_IF_OE_N'), (('U50', 7), 'ADC_IF_OE_N'), (('U51', 1), 'ADC_IF_OE_N'), (('Q50', 3), 'ADC_IF_OE_N'), (('R52', 2), 'ADC_IF_OE_N')]"
+    },
+    {
+      "description": "Return OE separate local pull-up",
+      "passed": true,
+      "detail": "[(('U52', 1), 'ESP_IF_OE_N'), (('U52', 7), 'ESP_IF_OE_N'), (('Q51', 3), 'ESP_IF_OE_N'), (('R55', 2), 'ESP_IF_OE_N')]"
+    },
+    {
+      "description": "Spare buffer input grounded",
+      "passed": true,
+      "detail": "[(('U51', 5), 'GND'), (('U2', 2), 'GND')]"
+    },
+    {
+      "description": "Spare buffer disabled",
+      "passed": true,
+      "detail": "[(('U51', 7), 'ADC_IO_3V3'), (('U51', 8), 'ADC_IO_3V3')]"
+    }
+  ]
+}

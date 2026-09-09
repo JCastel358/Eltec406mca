@@ -774,26 +774,46 @@ def quiet_wait_settled(
     *,
     delta_mv: float,
     blocks_required: int,
+    block_minima_v: Any | None = None,
 ) -> bool:
-    """True when the last ``blocks_required`` block-to-block mean changes of every LOADED channel are within ``delta_mv``.
+    """Whether every loaded channel's consecutive block changes are small.
 
-    ``block_means_v`` is ``[blocks, channels]`` (one mean per 1 s block).
-    Mirrors the 405's adaptive noise wait: it only decides WHEN the capture
-    starts (the deadline measures anyway), never whether a part passes.
+    The first argument keeps its historical name for engineering callers,
+    but the tester now supplies each one-second block's MAXIMUM there and
+    its MINIMUM in ``block_minima_v``. Both extrema must change by no more
+    than ``delta_mv`` over the last ``blocks_required`` consecutive pairs.
+    Watching both catches DC drift and changing amplitude even when the
+    block means stay constant. Omitting minima preserves the legacy helper
+    API. This only schedules capture; the deadline measures anyway and
+    neither a settling timeout nor this delta is a noise verdict.
     """
 
-    means = np.asarray(block_means_v, dtype=np.float64)
+    values = np.asarray(block_means_v, dtype=np.float64)
     mask = np.asarray(loaded_mask, dtype=bool)
-    if blocks_required < 1:
-        raise ValueError("blocks_required must be >= 1")
-    if means.ndim != 2 or means.shape[1] != mask.shape[0]:
+    if isinstance(blocks_required, bool) or not isinstance(blocks_required, int) or blocks_required < 1:
+        raise ValueError("blocks_required must be a positive integer")
+    if not math.isfinite(float(delta_mv)) or float(delta_mv) < 0:
+        raise ValueError("delta_mv must be finite and nonnegative")
+    if mask.ndim != 1 or values.ndim != 2 or values.shape[1] != mask.size:
         raise ValueError("block_means_v must be [blocks, channels] matching loaded_mask")
-    if means.shape[0] < blocks_required + 1:
+    series = [values]
+    if block_minima_v is not None:
+        minima = np.asarray(block_minima_v, dtype=np.float64)
+        if minima.shape != values.shape:
+            raise ValueError("block_minima_v must match the block maxima shape")
+        series.append(minima)
+    if values.shape[0] < blocks_required + 1:
         return False
     if not mask.any():
         return True
-    deltas = np.abs(np.diff(means[:, mask], axis=0))[-blocks_required:]
-    return bool(np.all(at_or_below_threshold(deltas * 1000.0, float(delta_mv))))
+    for blocks in series:
+        recent = blocks[-blocks_required - 1:, mask]
+        if not np.isfinite(recent).all():
+            return False
+        deltas = np.abs(np.diff(recent, axis=0)) * 1000.0
+        if not np.all(at_or_below_threshold(deltas, float(delta_mv))):
+            return False
+    return True
 
 
 __all__ = [

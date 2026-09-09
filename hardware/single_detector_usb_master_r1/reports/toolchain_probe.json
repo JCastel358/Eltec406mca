@@ -1,0 +1,519 @@
+{
+  "schema": 1,
+  "generated_at_utc": "2026-09-09T13:13:49.612972+00:00",
+  "python": {
+    "executable": "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+    "version": "3.11.5 (main, Jan 23 2026, 07:39:48) [MSC v.1944 64 bit (AMD64)]"
+  },
+  "platform": "Windows-10-10.0.26200-SP0",
+  "kicad_cli": {
+    "argv": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+      "version"
+    ],
+    "returncode": 0,
+    "stdout": "10.0.6\n",
+    "stderr": ""
+  },
+  "footprint_library_root": "C:\\Program Files\\KiCad\\10.0\\share\\kicad\\footprints",
+  "footprint_library_root_exists": true,
+  "cli_help": [
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: kicad-cli [--version] [--help] {fp,jobset,pcb,sch,sym,version}\n\nOptional arguments:\n  -v, --version  prints version information and exits \n  -h, --help     Shows help message and exits \n\nSubcommands:\n  fp            Footprint and Footprint Libraries\n  jobset        Jobset\n  pcb           PCB\n  sch           Schematics\n  sym           Symbol and Symbol Libraries\n  version       Reports the version info in various formats\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: kicad-cli pcb [--help] {drc,export,import,render,upgrade}\n\nPCB\n\nOptional arguments:\n  -h, --help  Shows help message and exits \n\nSubcommands:\n  drc        Runs the Design Rules Check (DRC) on the PCB and creates a report\n  export     Export utilities (Gerbers, drill, position files, etc)\n  import     Import a non-KiCad PCB file to KiCad format\n  render     Renders the PCB in 3D view to PNG or JPEG image\n  upgrade    Upgrade the board file's format to the latest one\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "drc",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: pcb drc [--help] [--output OUTPUT_FILE] [--define-var KEY=VALUE]... [--format FORMAT] [--all-track-errors] [--schematic-parity] [--units UNITS] [--severity-all] [--severity-error] [--severity-warning] [--severity-exclusions] [--exit-code-violations] [--refill-zones] [--save-board] INPUT_FILE\n\nRuns the Design Rules Check (DRC) on the PCB and creates a report\n\nPositional arguments:\n  INPUT_FILE              Input file \n\nOptional arguments:\n  -h, --help              Shows help message and exits \n  -o, --output            Output file [nargs=0..1] [default: \"\"]\n  -D, --define-var        Overrides or adds project variables, can be used multiple times to declare multiple variables.\n                          Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]\n  --format                Output file format, options: json, report [nargs=0..1] [default: \"report\"]\n  --all-track-errors      Report all errors for each track \n  --schematic-parity      Test for parity between PCB and schematic \n  --units                 Report units; valid options: in, mm, mils [nargs=0..1] [default: \"mm\"]\n  --severity-all          Report all DRC violations, this is equivalent to including all the other severity arguments \n  --severity-error        Report all DRC error level violations, this can be combined with the other severity arguments \n  --severity-warning      Report all DRC warning level violations, this can be combined with the other severity arguments \n  --severity-exclusions   Report all excluded DRC violations, this can be combined with the other severity arguments \n  --exit-code-violations  Return a nonzero exit code if DRC violations exist \n  --refill-zones          Refill zones before running DRC \n  --save-board            Save the board after DRC, must be used with --refill-zones \n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: pcb export [--help] {3dpdf,brep,drill,dxf,gencad,gerbers,glb,hpgl,ipc2581,ipcd356,odb,pdf,ply,pos,ps,stats,step,stl,stpz,svg,u3d,vrml,xao}\n\nExport utilities (Gerbers, drill, position files, etc)\n\nOptional arguments:\n  -h, --help  Shows help message and exits \n\nSubcommands:\n  3dpdf      Export PDF\n  brep       Export BREP\n  drill      Generate Drill Files\n  dxf        Generate a DXF from a list of layers\n  gencad     Export the PCB in Gencad format\n  gerbers    Plot multiple Gerbers for a PCB, including the ability to use stored board plot settings\n  glb        Export GLB (binary GLTF)\n  hpgl       No longer supported as of KiCad 10.0.\n  ipc2581    Export the PCB in IPC-2581 format\n  ipcd356    Generate IPC-D-356 netlist file\n  odb        Export the PCB in ODB++ format\n  pdf        Generate PDF from a list of layers\n  ply        Export PLY\n  pos        Generate Position File\n  ps         Generate Postscript from a list of layers\n  stats      Generate a board statistics report\n  step       Export STEP\n  stl        Export STL\n  stpz       Export STEPZ\n  svg        Generate SVG outputs of a given layer list\n  u3d        Export U3D\n  vrml       Export VRML\n  xao        Export XAO\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "import",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: pcb import [--help] [--output OUTPUT_FILE] [--format FORMAT] [--report-format FORMAT] [--report-file FILE] INPUT_FILE\n\nImport a non-KiCad PCB file to KiCad format\n\nPositional arguments:\n  INPUT_FILE       Input file \n\nOptional arguments:\n  -h, --help       Shows help message and exits \n  -o, --output     Output file [nargs=0..1] [default: \"\"]\n  --format         Input format hint: auto, pads, altium, eagle, cadstar, fabmaster, pcad, solidworks (default: auto) [nargs=0..1] [default: \"auto\"]\n  --report-format  Import report format: none, json, text (default: none) [nargs=0..1] [default: \"none\"]\n  --report-file    File path for import report (default: stdout) [nargs=0..1] [default: \"\"]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "gerbers",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export gerbers [--help] [--output OUTPUT_DIR] [--layers LAYER_LIST] [--common-layers COMMON_LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--exclude-refdes] [--exclude-value] [--include-border-title] [--sketch-pads-on-fab-layers] [--hide-DNP-footprints-on-fab-layers] [--sketch-DNP-footprints-on-fab-layers] [--crossout-DNP-footprints-on-fab-layers] [--no-x2] [--no-netlist] [--subtract-soldermask] [--disable-aperture-macros] [--use-drill-file-origin] [--precision PRECISION] [--no-protel-ext] [--check-zones] [--variant VAR]... [--board-plot-params] INPUT_FILE\n\nPlot multiple Gerbers for a PCB, including the ability to use stored board plot settings\n\nPositional arguments:\n  INPUT_FILE                                       Input file \n\nOptional arguments:\n  -h, --help                                       Shows help message and exits \n  -o, --output                                     Output directory [nargs=0..1] [default: \"\"]\n  -l, --layers                                     Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: \"\"]\n  --cl, --common-layers                            Layers to include on each plot, comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: \"\"]\n  --drawing-sheet                                  Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: \"\"]\n  -D, --define-var                                 Overrides or adds project variables, can be used multiple times to declare multiple variables.\n                                                   Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]\n  --erd, --exclude-refdes                          Exclude the reference designator text \n  --ev, --exclude-value                            Exclude the value text \n  --ibt, --include-border-title                    Include the border and title block \n  --sp, --sketch-pads-on-fab-layers                Draw pad outlines and their numbers on front and back fab layers \n  --hdnp, --hide-DNP-footprints-on-fab-layers      Don't plot text & graphics of DNP footprints on fab layers \n  --sdnp, --sketch-DNP-footprints-on-fab-layers    Plot graphics of DNP footprints in sketch mode on fab layers \n  --cdnp, --crossout-DNP-footprints-on-fab-layers  Plot an 'X' over the courtyard of DNP footprints on fab layers, and strikeout their reference designators \n  --no-x2                                          Do not use the extended X2 format \n  --no-netlist                                     Do not generate netlist attributes \n  --subtract-soldermask                            Subtract soldermask from silkscreen \n  --disable-aperture-macros                        Disable aperture macros \n  --use-drill-file-origin                          Use drill/place file origin \n  --precision                                      Precision of Gerber coordinates, valid options: 5 or 6 [nargs=0..1] [default: 6]\n  --no-protel-ext                                  Use KiCad Gerber file extension \n  --check-zones                                    Check and refill zones if required \n  --variant                                        The variant name(s) to output, can be used multiple times to specify multiple variants.\n                                                   When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                                                   When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n  --board-plot-params                              Use the Gerber plot settings already configured in the board file \n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "drill",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export drill [--help] [--output OUTPUT_DIR] [--format FORMAT] [--drill-origin DRILL_ORIGIN] [--excellon-zeros-format ZEROS_FORMAT] [--excellon-oval-format OVAL_FORMAT] [--excellon-units UNITS] [--excellon-mirror-y] [--excellon-min-header] [--excellon-separate-th] [--generate-map] [--generate-report] [--report-path REPORT_FILE] [--generate-tenting] [--map-format MAP_FORMAT] [--gerber-precision VAR] INPUT_FILE\n\nGenerate Drill Files\n\nPositional arguments:\n  INPUT_FILE               Input file \n\nOptional arguments:\n  -h, --help               Shows help message and exits \n  -o, --output             Output directory [nargs=0..1] [default: \"\"]\n  --format                 Valid options excellon, gerber. [nargs=0..1] [default: \"excellon\"]\n  --drill-origin           Valid options are: absolute, plot [nargs=0..1] [default: \"absolute\"]\n  --excellon-zeros-format  Valid options are: decimal, suppressleading, suppresstrailing, keep. [nargs=0..1] [default: \"decimal\"]\n  --excellon-oval-format   Valid options are: route, alternate. [nargs=0..1] [default: \"alternate\"]\n  -u, --excellon-units     Output units, valid options: in, mm [nargs=0..1] [default: \"mm\"]\n  --excellon-mirror-y      Mirror Y axis \n  --excellon-min-header    Minimal header \n  --excellon-separate-th   Generate independent files for NPTH and PTH holes \n  --generate-map           Generate map / summary of drill hits \n  --generate-report        Generate report of drill hits \n  --report-path            Report output file path [nargs=0..1] [default: \"\"]\n  --generate-tenting       Generate a file specifically for tenting \n  --map-format             Valid options: pdf, gerberx2, ps, dxf, svg [nargs=0..1] [default: \"pdf\"]\n  --gerber-precision       Precision of Gerber coordinates (5 or 6) [nargs=0..1] [default: 6]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pos",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export pos [--help] [--output OUTPUT_FILE] [--side VAR] [--format FORMAT] [--units UNITS] [--bottom-negate-x] [--use-drill-file-origin] [--smd-only] [--exclude-fp-th] [--exclude-dnp] [--gerber-board-edge] [--variant VAR]... INPUT_FILE\n\nGenerate Position File\n\nPositional arguments:\n  INPUT_FILE               Input file \n\nOptional arguments:\n  -h, --help               Shows help message and exits \n  -o, --output             Output file [nargs=0..1] [default: \"\"]\n  --side                   Valid options: front, back, both. Gerber format only supports \"front\" or \"back\". [nargs=0..1] [default: \"both\"]\n  --format                 Valid options: ascii, csv, gerber [nargs=0..1] [default: \"ascii\"]\n  --units                  Output units; ascii or csv format only; valid options: in, mm [nargs=0..1] [default: \"in\"]\n  --bottom-negate-x        Use negative X coordinates for footprints on bottom layer (ascii or csv formats only) \n  --use-drill-file-origin  Use drill/place file origin (ascii or csv only) \n  --smd-only               Include only SMD footprints (ascii or csv only) \n  --exclude-fp-th          Exclude all footprints with through-hole pads (ascii or csv only) \n  --exclude-dnp            Exclude all footprints with the Do Not Populate flag set \n  --gerber-board-edge      Include board edge layer (Gerber only) \n  --variant                The variant name(s) to output, can be used multiple times to specify multiple variants.\n                           When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                           When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pdf",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export pdf [--help] [--output OUTPUT_DIR] [--layers LAYER_LIST] [--common-layers COMMON_LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--mirror] [--exclude-refdes] [--exclude-value] [--include-border-title] [--subtract-soldermask] [--sketch-pads-on-fab-layers] [--hide-DNP-footprints-on-fab-layers] [--sketch-DNP-footprints-on-fab-layers] [--crossout-DNP-footprints-on-fab-layers] [--negative] [--black-and-white] [--theme THEME_NAME] [--drill-shape-opt VAR] [--mode-single] [--mode-separate] [--mode-multipage] [--scale SCALE] [--bg-color COLOR] [--check-zones] [--no-property-popups] [--variant VAR]... INPUT_FILE\n\nGenerate PDF from a list of layers\n\nPositional arguments:\n  INPUT_FILE                                       Input file \n\nOptional arguments:\n  -h, --help                                       Shows help message and exits \n  -o, --output                                     Output directory [nargs=0..1] [default: \"\"]\n  -l, --layers                                     Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: \"\"]\n  --cl, --common-layers                            Layers to include on each plot, comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: \"\"]\n  --drawing-sheet                                  Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: \"\"]\n  -D, --define-var                                 Overrides or adds project variables, can be used multiple times to declare multiple variables.\n                                                   Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]\n  -m, --mirror                                     Mirror the board (useful for trying to show bottom layers) \n  --erd, --exclude-refdes                          Exclude the reference designator text \n  --ev, --exclude-value                            Exclude the value text \n  --ibt, --include-border-title                    Include the border and title block \n  --subtract-soldermask                            Subtract soldermask from silkscreen \n  --sp, --sketch-pads-on-fab-layers                Draw pad outlines and their numbers on front and back fab layers \n  --hdnp, --hide-DNP-footprints-on-fab-layers      Don't plot text & graphics of DNP footprints on fab layers \n  --sdnp, --sketch-DNP-footprints-on-fab-layers    Plot graphics of DNP footprints in sketch mode on fab layers \n  --cdnp, --crossout-DNP-footprints-on-fab-layers  Plot an 'X' over the courtyard of DNP footprints on fab layers, and strikeout their reference designators \n  -n, --negative                                   Plot as negative (useful for directly etching from the export) \n  --black-and-white                                Black and white only \n  -t, --theme                                      Color theme to use (will default to PCB Editor settings) [nargs=0..1] [default: \"\"]\n  --drill-shape-opt                                Set pad/via drill shape option (0 = no shape, 1 = small shape, 2 = actual shape) [nargs=0..1] [default: 2]\n  --mode-single                                    Generates a single file with the output arg path acting as the complete directory and filename path. COMMON_LAYER_LIST does not function in this mode. Instead LAYER_LIST controls all layers plotted. \n  --mode-separate                                  Plot the layers to individual PDF files \n  --mode-multipage                                 Plot the layers to a single PDF file with multiple pages \n  --scale                                          Scale for the PCB, not for the border and title. Use 0 for autoscale [nargs=0..1] [default: 1]\n  --bg-color                                       Background color, can be in hex #rrggbb, #rrggbbaa; or css rgb(r,g,b), rgba(r,g,b,a) format [nargs=0..1] [default: \"\"]\n  --check-zones                                    Check and refill zones if required \n  --no-property-popups                             Suppress footprint property popups \n  --variant                                        The variant name(s) to output, can be used multiple times to specify multiple variants.\n                                                   When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                                                   When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "svg",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export svg [--help] [--output OUTPUT_DIR] [--layers LAYER_LIST] [--common-layers COMMON_LAYER_LIST] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--subtract-soldermask] [--mirror] [--theme THEME_NAME] [--negative] [--black-and-white] [--sketch-pads-on-fab-layers] [--hide-DNP-footprints-on-fab-layers] [--sketch-DNP-footprints-on-fab-layers] [--crossout-DNP-footprints-on-fab-layers] [--page-size-mode MODE] [--fit-page-to-board] [--exclude-drawing-sheet] [--drill-shape-opt SHAPE_OPTION] [--mode-single] [--mode-multi] [--scale SCALE] [--check-zones] [--variant VAR]... INPUT_FILE\n\nGenerate SVG outputs of a given layer list\n\nPositional arguments:\n  INPUT_FILE                                       Input file \n\nOptional arguments:\n  -h, --help                                       Shows help message and exits \n  -o, --output                                     Output directory [nargs=0..1] [default: \"\"]\n  -l, --layers                                     Comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: \"\"]\n  --cl, --common-layers                            Layers to include on each plot, comma separated list of untranslated layer names to include such as F.Cu,B.Cu [nargs=0..1] [default: \"\"]\n  --drawing-sheet                                  Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: \"\"]\n  -D, --define-var                                 Overrides or adds project variables, can be used multiple times to declare multiple variables.\n                                                   Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]\n  --subtract-soldermask                            Subtract soldermask from silkscreen \n  -m, --mirror                                     Mirror the board (useful for trying to show bottom layers) \n  -t, --theme                                      Color theme to use (will default to PCB editor settings) [nargs=0..1] [default: \"\"]\n  -n, --negative                                   Plot as negative (useful for directly etching from the export) \n  --black-and-white                                Black and white only \n  --sp, --sketch-pads-on-fab-layers                Draw pad outlines and their numbers on front and back fab layers \n  --hdnp, --hide-DNP-footprints-on-fab-layers      Don't plot text & graphics of DNP footprints on fab layers \n  --sdnp, --sketch-DNP-footprints-on-fab-layers    Plot graphics of DNP footprints in sketch mode on fab layers \n  --cdnp, --crossout-DNP-footprints-on-fab-layers  Plot an 'X' over the courtyard of DNP footprints on fab layers, and strikeout their reference designators \n  --page-size-mode                                 Set page sizing mode (0 = page with frame and title block, 1 = current page size, 2 = board area only) [nargs=0..1] [default: 0]\n  --fit-page-to-board                              Fit the page to the board \n  --exclude-drawing-sheet                          No drawing sheet \n  --drill-shape-opt                                Set pad/via drill shape option (0 = no shape, 1 = small shape, 2 = actual shape) [nargs=0..1] [default: 2]\n  --mode-single                                    Generates a single file with the output arg path acting as the complete directory and filename path. COMMON_LAYER_LIST does not function in this mode. Instead LAYER_LIST controls all layers plotted. \n  --mode-multi                                     Generates one or more files with behavior similar to the KiCad GUI plotting. The given output path specifies a directory in which files may be output. \n  --scale                                          Scale for the PCB, not for the border and title. Use 0 for autoscale [nargs=0..1] [default: 1]\n  --check-zones                                    Check and refill zones if required \n  --variant                                        The variant name(s) to output, can be used multiple times to specify multiple variants.\n                                                   When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                                                   When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: kicad-cli sch [--help] {erc,export,upgrade}\n\nSchematics\n\nOptional arguments:\n  -h, --help  Shows help message and exits \n\nSubcommands:\n  erc        Runs the Electrical Rules Check (ERC) on the schematic and creates a report\n  export     Export utilities (netlist, pdf, bom, etc)\n  upgrade    Upgrade the schematic file's format to the latest one\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "erc",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: sch erc [--help] [--output OUTPUT_FILE] [--define-var KEY=VALUE]... [--format VAR] [--units VAR] [--severity-all] [--severity-error] [--severity-warning] [--severity-exclusions] [--exit-code-violations] INPUT_FILE\n\nRuns the Electrical Rules Check (ERC) on the schematic and creates a report\n\nPositional arguments:\n  INPUT_FILE              Input file \n\nOptional arguments:\n  -h, --help              Shows help message and exits \n  -o, --output            Output file [nargs=0..1] [default: \"\"]\n  -D, --define-var        Overrides or adds project variables, can be used multiple times to declare multiple variables.\n                          Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]\n  --format                Output file format, options: json, report [nargs=0..1] [default: \"report\"]\n  --units                 Report units; valid options: in, mm, mils [nargs=0..1] [default: \"mm\"]\n  --severity-all          Report all ERC violations, this is equivalent to including all the other severity arguments \n  --severity-error        Report all ERC error level violations, this can be combined with the other severity arguments \n  --severity-warning      Report all ERC warning level violations, this can be combined with the other severity arguments \n  --severity-exclusions   Report all excluded ERC violations, this can be combined with the other severity arguments \n  --exit-code-violations  Return a nonzero exit code if ERC violations exist \n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: sch export [--help] {bom,dxf,hpgl,netlist,pdf,ps,python-bom,svg}\n\nExport utilities (netlist, pdf, bom, etc)\n\nOptional arguments:\n  -h, --help  Shows help message and exits \n\nSubcommands:\n  bom        Generate a Bill of Materials (BOM)\n  dxf        Export DXF\n  hpgl       Export HPGL\n  netlist    Export a netlist\n  pdf        Export PDF\n  ps         Export PS\n  python-bom Export the legacy BOM XML format used in the schematic editor with Python scripts\n  svg        Export SVG\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "netlist",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export netlist [--help] [--output OUTPUT_FILE] [--variant VAR]... [--format FORMAT] INPUT_FILE\n\nExport a netlist\n\nPositional arguments:\n  INPUT_FILE    Input file \n\nOptional arguments:\n  -h, --help    Shows help message and exits \n  -o, --output  Output file [nargs=0..1] [default: \"\"]\n  --variant     The variant name(s) to output, can be used multiple times to specify multiple variants.\n                When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n  --format      Netlist output format, valid options: kicadsexpr, kicadxml, cadstar, orcadpcb2, spice, spicemodel, pads, allegro [nargs=0..1] [default: \"kicadsexpr\"]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "bom",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export bom [--help] [--output OUTPUT_FILE] [--variant VAR]... [--preset PRESET] [--format-preset FMT_PRESET] [--fields FIELDS] [--labels LABELS] [--group-by GROUP_BY] [--sort-field SORT_BY] [--sort-asc VAR] [--filter FILTER] [--exclude-dnp] [--include-excluded-from-bom] [--field-delimiter FIELD_DELIM] [--string-delimiter STR_DELIM] [--ref-delimiter REF_DELIM] [--ref-range-delimiter REF_RANGE_DELIM] [--keep-tabs] [--keep-line-breaks] INPUT_FILE\n\nGenerate a Bill of Materials (BOM)\n\nPositional arguments:\n  INPUT_FILE                   Input file \n\nOptional arguments:\n  -h, --help                   Shows help message and exits \n  -o, --output                 Output file [nargs=0..1] [default: \"\"]\n  --variant                    The variant name(s) to output, can be used multiple times to specify multiple variants.\n                               When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                               When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n  --preset                     Use a named BOM preset setting from the schematic, e.g. \"Grouped By Value\". [nargs=0..1] [default: \"\"]\n  --format-preset              Use a named BOM format preset setting from the schematic, e.g. CSV. [nargs=0..1] [default: \"\"]\n  --fields                     An ordered list of fields to export. Generated fields such as QUANTITY, ITEM_NUMBER, DNP, EXCLUDE_FROM_BOM, EXCLUDE_FROM_BOARD, and EXCLUDE_FROM_SIM can be specified with or without ${} delimiters. [nargs=0..1] [default: \"Reference,Value,Footprint,QUANTITY,DNP\"]\n  --labels                     An ordered list of labels to apply the exported fields. [nargs=0..1] [default: \"Refs,Value,Footprint,Qty,DNP\"]\n  --group-by                   Fields to group references by when field values match. [nargs=0..1] [default: \"\"]\n  --sort-field                 Field name to sort by. [nargs=0..1] [default: \"Reference\"]\n  --sort-asc                   Sort ascending (true) or descending (false). [nargs=0..1] [default: true]\n  --filter                     Filter string to remove output lines. [nargs=0..1] [default: \"\"]\n  --exclude-dnp                Exclude symbols marked Do-Not-Populate. \n  --include-excluded-from-bom  Deprecated.  Has no effect. \n  --field-delimiter            Separator between output fields/columns. [nargs=0..1] [default: \",\"]\n  --string-delimiter           Character to surround fields with. [nargs=0..1] [default: \"\"\"]\n  --ref-delimiter              Character to place between individual references. [nargs=0..1] [default: \",\"]\n  --ref-range-delimiter        Character to place in ranges of references. Leave blank for no ranges. [nargs=0..1] [default: \"-\"]\n  --keep-tabs                  Keep tab characters from input fields. Stripped by default. \n  --keep-line-breaks           Keep line break characters from input fields. Stripped by default. \n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "pdf",
+        "--help"
+      ],
+      "returncode": 0,
+      "stdout": "Usage: export pdf [--help] [--output OUTPUT_FILE] [--drawing-sheet SHEET_PATH] [--define-var KEY=VALUE]... [--variant VAR]... [--theme THEME_NAME] [--black-and-white] [--exclude-drawing-sheet] [--default-font VAR] [--draw-hop-over] [--exclude-pdf-property-popups] [--exclude-pdf-hierarchical-links] [--exclude-pdf-metadata] [--no-background-color] [--pages PAGE_LIST] INPUT_FILE\n\nExport PDF\n\nPositional arguments:\n  INPUT_FILE                        Input file \n\nOptional arguments:\n  -h, --help                        Shows help message and exits \n  -o, --output                      Output file [nargs=0..1] [default: \"\"]\n  --drawing-sheet                   Path to drawing sheet, this overrides any existing project defined sheet when used [nargs=0..1] [default: \"\"]\n  -D, --define-var                  Overrides or adds project variables, can be used multiple times to declare multiple variables.\n                                    Use in the format of '--define-var key=value' or '-D key=value' [nargs=0..1] [default: {}] [may be repeated]\n  --variant                         The variant name(s) to output, can be used multiple times to specify multiple variants.\n                                    When specifying multiple variants, use ${VARIANT} in the output path to generate separate files for each variant.\n                                    When no --variant argument is provided, the default variant is output. [nargs=0..1] [default: {}] [may be repeated]\n  -t, --theme                       Color theme to use (will default to schematic settings) [nargs=0..1] [default: \"\"]\n  -b, --black-and-white             Black and white only \n  -e, --exclude-drawing-sheet       No drawing sheet \n  --default-font                    Default font name [nargs=0..1] [default: \"\"]\n  --draw-hop-over                   Draw hop over at wire crossings \n  --exclude-pdf-property-popups     Do not generate property popups in PDF \n  --exclude-pdf-hierarchical-links  Do not generate clickable links for hierarchical elements in PDF \n  --exclude-pdf-metadata            Do not generate PDF metadata from AUTHOR and SUBJECT variables \n  -n, --no-background-color         Avoid setting a background color (regardless of theme) \n  --pages                           List of page numbers separated by comma to print, blank or unspecified is equivalent to all pages [nargs=0..1] [default: \"\"]\n",
+      "stderr": ""
+    }
+  ],
+  "native_process": {
+    "argv": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tools\\probe_kicad.py",
+      "--native-child"
+    ],
+    "returncode": 0,
+    "stdout": "{\"check\": \"native_api_presence\", \"status\": \"passed\", \"evidence\": {\"pcbnew\": {\"LoadBoard\": {\"available\": true, \"doc\": \"\\n    LoadBoard(wxString aFileName, PCB_IO_MGR::PCB_FILE_T aFormat) -> BOARD\\n    LoadBoard(wxString aFileName) -> BOARD\\n    \"}, \"SaveBoard\": {\"available\": true, \"doc\": \"SaveBoard(wxString aFileName, BOARD aBoard, bool aSkipSettings=False) -> bool\"}, \"FootprintLoad\": {\"available\": true, \"doc\": null}, \"KIID_PATH\": {\"available\": true, \"doc\": \"Proxy of C++ KIID_PATH class.\"}, \"ExportSpecctraDSN\": {\"available\": true, \"doc\": \"\\n    ExportSpecctraDSN(wxString aFullFilename) -> bool\\n    ExportSpecctraDSN(BOARD aBoard, wxString aFullFilename) -> bool\\n    \"}, \"ImportSpecctraSES\": {\"available\": true, \"doc\": \"\\n    ImportSpecctraSES(wxString aFullFilename) -> bool\\n    ImportSpecctraSES(BOARD aBoard, wxString aFullFilename) -> bool\\n    \"}, \"ZONE_FILLER\": {\"available\": true, \"doc\": \"Proxy of C++ ZONE_FILLER class.\"}}, \"BOARD\": {\"BuildConnectivity\": {\"available\": true, \"doc\": \"BuildConnectivity(BOARD self, PROGRESS_REPORTER * aReporter=None) -> bool\"}, \"GetConnectivity\": {\"available\": true, \"doc\": \"GetConnectivity(BOARD self) -> std::shared_ptr< CONNECTIVITY_DATA >\"}, \"FindFootprintByPath\": {\"available\": true, \"doc\": \"FindFootprintByPath(BOARD self, KIID_PATH aPath) -> FOOTPRINT\"}, \"GetNetClasses\": {\"available\": true, \"doc\": null}, \"GetAllNetClasses\": {\"available\": true, \"doc\": \"\\n        Return a dictionary like object with net_class_name as key and NETCLASSPTR as value\\n        GetNetClasses(BOARD self) -> { wxString net_class_name : NETCLASSPTR }\\n        Include the \\\"Default\\\" netclass also.\\n        \"}, \"SynchronizeNetsAndNetClasses\": {\"available\": true, \"doc\": \"SynchronizeNetsAndNetClasses(BOARD self, bool aResetTrackAndViaSizes)\"}}, \"FOOTPRINT\": {\"SetPath\": {\"available\": true, \"doc\": \"SetPath(FOOTPRINT self, KIID_PATH aPath)\"}, \"GetPath\": {\"available\": true, \"doc\": \"GetPath(FOOTPRINT self) -> KIID_PATH\"}}, \"CONNECTIVITY_DATA\": {\"GetUnconnectedCount\": {\"available\": true, \"doc\": \"GetUnconnectedCount(CONNECTIVITY_DATA self, bool aVisibileOnly) -> unsigned int\"}, \"GetConnectedPads\": {\"available\": true, \"doc\": \"\\n        GetConnectedPads(CONNECTIVITY_DATA self, BOARD_CONNECTED_ITEM aItem) -> PADS_VEC\\n        GetConnectedPads(CONNECTIVITY_DATA self, BOARD_CONNECTED_ITEM aItem, std::set< PAD *,std::less< PAD * >,std::allocator< PAD * > > * pads)\\n        \"}, \"GetConnectedTracks\": {\"available\": true, \"doc\": \"GetConnectedTracks(CONNECTIVITY_DATA self, BOARD_CONNECTED_ITEM aItem) -> TRACKS_VEC\"}, \"RecalculateRatsnest\": {\"available\": true, \"doc\": \"RecalculateRatsnest(CONNECTIVITY_DATA self, BOARD_COMMIT * aCommit=None)\"}}, \"ZONE_FILLER\": {\"Fill\": {\"available\": true, \"doc\": \"Fill(ZONE_FILLER self, ZONES aZones, bool aCheck=False, wxWindow * aParent=None) -> bool\"}}, \"NET_SETTINGS\": {\"SetNetclass\": {\"available\": true, \"doc\": \"SetNetclass(NET_SETTINGS self, wxString netclassName, std::shared_ptr< NETCLASS > & netclass)\"}, \"SetNetclassPatternAssignment\": {\"available\": true, \"doc\": \"SetNetclassPatternAssignment(NET_SETTINGS self, wxString pattern, wxString netclass)\"}, \"GetEffectiveNetClass\": {\"available\": true, \"doc\": \"GetEffectiveNetClass(NET_SETTINGS self, wxString aNetName) -> std::shared_ptr< NETCLASS >\"}, \"GetDefaultNetclass\": {\"available\": true, \"doc\": \"GetDefaultNetclass(NET_SETTINGS self) -> std::shared_ptr< NETCLASS >\"}}, \"schematic_python_editor\": {\"eeschema_module_importable\": false, \"note\": \"pcbnew is the board API. Schematic generation must preserve native file semantics; CLI is a checker/exporter.\"}}}\n{\"check\": \"load_original_without_mutation\", \"status\": \"passed\", \"evidence\": {\"source\": \"C:\\\\Users\\\\JoseCastelblanco\\\\Documents\\\\Eltec_TestRig\\\\hardware\\\\single_detector_usb_master_r1\\\\source_reference\\\\ESP32_test_board\\\\ESP32_test_board.kicad_pcb\", \"sha256_before\": \"9a4d2f2caba80031463d3540b79024ce9e34d5625d32769739845703f8eaea64\", \"sha256_after\": \"9a4d2f2caba80031463d3540b79024ce9e34d5625d32769739845703f8eaea64\", \"footprint_count\": 55, \"copper_layer_count\": 2, \"selected_footprints\": {\"U1\": {\"uuid\": \"46a11bfb-095c-4cef-ab43-ef908c5cad4d\", \"schematic_path\": \"/e9dd93db-7447-4e17-bc06-2d343ea8098d\", \"library_id\": \"Eltec Footprints:ESP32_DEVKITV1\"}, \"J1\": {\"uuid\": \"72c1356b-6b10-4978-ad95-4d2ccd9eda8f\", \"schematic_path\": \"/43e58ba7-17d0-41cd-b30a-bc8e3d3f5470\", \"library_id\": \"Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal\"}, \"U2\": {\"uuid\": \"c8070443-15e4-4e88-b56b-0b1c37e2222e\", \"schematic_path\": \"/5660a232-6f1c-4367-bfee-deafe5f1765d\", \"library_id\": \"Eltec Footprints:ADS1256_BOARD\"}, \"J2\": {\"uuid\": \"e8675234-466b-4d9c-a068-5374630879df\", \"schematic_path\": \"/6e9932e6-d463-49d8-a327-c1046baf3e26\", \"library_id\": \"Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal\"}}}}\n{\"check\": \"footprint_load_save_reopen_and_schematic_path\", \"status\": \"passed\", \"evidence\": {\"save_returned\": true, \"footprints\": {\"R2\": {\"uuid\": \"30a8214b-06a3-4881-8556-7781f71c28f1\", \"path\": \"/11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333\"}, \"R1\": {\"uuid\": \"c5511030-f782-4ad3-960c-87833d8bb024\", \"path\": \"/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222\"}}, \"find_by_schematic_path\": \"R1\", \"format_header\": [\"(kicad_pcb\", \"\\t(version 20260206)\", \"\\t(generator \\\"pcbnew\\\")\", \"\\t(generator_version \\\"10.0\\\")\", \"\\t(general\"], \"scope\": \"Native path and UUID persistence; not full schematic parity.\"}}\n{\"check\": \"board_netclass_creation_and_assignment\", \"status\": \"passed\", \"evidence\": {\"effective_name\": \"ProbePower\", \"track_width_mm\": 0.75, \"clearance_mm\": 0.25, \"classes\": [\"Default\", \"ProbePower\"], \"persistence\": \"In-memory assignment proven. Persist classes/patterns in .kicad_pro and revalidate with CLI; board SaveBoard alone is not proof of project settings.\"}}\n{\"check\": \"connectivity_counts_detect_fixture_connection\", \"status\": \"passed\", \"evidence\": {\"before_test_segment\": 1, \"after_test_segment\": 0, \"scope\": \"Disposable two-pad fixture only; actual project not routed or certified.\"}}\n{\"check\": \"zone_fill_disposable_fixture\", \"status\": \"passed\", \"evidence\": {\"fill_returned\": true, \"zone_count\": 1, \"filled_area_internal_units_squared\": 584603828497727.5, \"scope\": \"API exercised on disposable fixture; production validation must refill before DRC.\"}}\n{\"check\": \"specctra_dsn_export\", \"status\": \"passed\", \"evidence\": {\"export_returned\": true, \"bytes\": 2525, \"sha256\": \"1de1a52fb47574f098fc73a1eeb7994b31c3eadef66fb7e55bcb9f47f1226499\", \"header\": [\"(pcb C:\\\\Users\\\\JOSECA~1\\\\AppData\\\\Local\\\\Temp\\\\eltec_kicad_dsn_aqxb0kky\\\\probe.dsn\", \"  (parser\", \"    (string_quote \\\")\", \"    (space_in_quoted_tokens on)\", \"    (host_cad \\\"KiCad's Pcbnew\\\")\", \"    (host_version \\\"10.0.6\\\")\", \"  )\", \"  (resolution um 10)\", \"  (unit um)\"], \"ses_import\": {\"available\": true, \"executed\": false, \"reason\": \"No authentic router session available; no routing requested in capability probe.\"}}}\n",
+    "stderr": "Adding duplicate image handler for 'PNG file'\nAdding duplicate image handler for 'JPEG file'\nAdding duplicate image handler for 'TIFF file'\nAdding duplicate image handler for 'GIF file'\nAdding duplicate image handler for 'PNM file'\nAdding duplicate image handler for 'PCX file'\nAdding duplicate image handler for 'IFF file'\nAdding duplicate image handler for 'Windows icon file'\nAdding duplicate image handler for 'Windows cursor file'\nAdding duplicate image handler for 'Windows animated cursor file'\nAdding duplicate image handler for 'TGA file'\nAdding duplicate image handler for 'XPM file'\nAdding duplicate image handler for 'WebP file'\n"
+  },
+  "native_checks": [
+    {
+      "check": "native_api_presence",
+      "status": "passed",
+      "evidence": {
+        "pcbnew": {
+          "LoadBoard": {
+            "available": true,
+            "doc": "\n    LoadBoard(wxString aFileName, PCB_IO_MGR::PCB_FILE_T aFormat) -> BOARD\n    LoadBoard(wxString aFileName) -> BOARD\n    "
+          },
+          "SaveBoard": {
+            "available": true,
+            "doc": "SaveBoard(wxString aFileName, BOARD aBoard, bool aSkipSettings=False) -> bool"
+          },
+          "FootprintLoad": {
+            "available": true,
+            "doc": null
+          },
+          "KIID_PATH": {
+            "available": true,
+            "doc": "Proxy of C++ KIID_PATH class."
+          },
+          "ExportSpecctraDSN": {
+            "available": true,
+            "doc": "\n    ExportSpecctraDSN(wxString aFullFilename) -> bool\n    ExportSpecctraDSN(BOARD aBoard, wxString aFullFilename) -> bool\n    "
+          },
+          "ImportSpecctraSES": {
+            "available": true,
+            "doc": "\n    ImportSpecctraSES(wxString aFullFilename) -> bool\n    ImportSpecctraSES(BOARD aBoard, wxString aFullFilename) -> bool\n    "
+          },
+          "ZONE_FILLER": {
+            "available": true,
+            "doc": "Proxy of C++ ZONE_FILLER class."
+          }
+        },
+        "BOARD": {
+          "BuildConnectivity": {
+            "available": true,
+            "doc": "BuildConnectivity(BOARD self, PROGRESS_REPORTER * aReporter=None) -> bool"
+          },
+          "GetConnectivity": {
+            "available": true,
+            "doc": "GetConnectivity(BOARD self) -> std::shared_ptr< CONNECTIVITY_DATA >"
+          },
+          "FindFootprintByPath": {
+            "available": true,
+            "doc": "FindFootprintByPath(BOARD self, KIID_PATH aPath) -> FOOTPRINT"
+          },
+          "GetNetClasses": {
+            "available": true,
+            "doc": null
+          },
+          "GetAllNetClasses": {
+            "available": true,
+            "doc": "\n        Return a dictionary like object with net_class_name as key and NETCLASSPTR as value\n        GetNetClasses(BOARD self) -> { wxString net_class_name : NETCLASSPTR }\n        Include the \"Default\" netclass also.\n        "
+          },
+          "SynchronizeNetsAndNetClasses": {
+            "available": true,
+            "doc": "SynchronizeNetsAndNetClasses(BOARD self, bool aResetTrackAndViaSizes)"
+          }
+        },
+        "FOOTPRINT": {
+          "SetPath": {
+            "available": true,
+            "doc": "SetPath(FOOTPRINT self, KIID_PATH aPath)"
+          },
+          "GetPath": {
+            "available": true,
+            "doc": "GetPath(FOOTPRINT self) -> KIID_PATH"
+          }
+        },
+        "CONNECTIVITY_DATA": {
+          "GetUnconnectedCount": {
+            "available": true,
+            "doc": "GetUnconnectedCount(CONNECTIVITY_DATA self, bool aVisibileOnly) -> unsigned int"
+          },
+          "GetConnectedPads": {
+            "available": true,
+            "doc": "\n        GetConnectedPads(CONNECTIVITY_DATA self, BOARD_CONNECTED_ITEM aItem) -> PADS_VEC\n        GetConnectedPads(CONNECTIVITY_DATA self, BOARD_CONNECTED_ITEM aItem, std::set< PAD *,std::less< PAD * >,std::allocator< PAD * > > * pads)\n        "
+          },
+          "GetConnectedTracks": {
+            "available": true,
+            "doc": "GetConnectedTracks(CONNECTIVITY_DATA self, BOARD_CONNECTED_ITEM aItem) -> TRACKS_VEC"
+          },
+          "RecalculateRatsnest": {
+            "available": true,
+            "doc": "RecalculateRatsnest(CONNECTIVITY_DATA self, BOARD_COMMIT * aCommit=None)"
+          }
+        },
+        "ZONE_FILLER": {
+          "Fill": {
+            "available": true,
+            "doc": "Fill(ZONE_FILLER self, ZONES aZones, bool aCheck=False, wxWindow * aParent=None) -> bool"
+          }
+        },
+        "NET_SETTINGS": {
+          "SetNetclass": {
+            "available": true,
+            "doc": "SetNetclass(NET_SETTINGS self, wxString netclassName, std::shared_ptr< NETCLASS > & netclass)"
+          },
+          "SetNetclassPatternAssignment": {
+            "available": true,
+            "doc": "SetNetclassPatternAssignment(NET_SETTINGS self, wxString pattern, wxString netclass)"
+          },
+          "GetEffectiveNetClass": {
+            "available": true,
+            "doc": "GetEffectiveNetClass(NET_SETTINGS self, wxString aNetName) -> std::shared_ptr< NETCLASS >"
+          },
+          "GetDefaultNetclass": {
+            "available": true,
+            "doc": "GetDefaultNetclass(NET_SETTINGS self) -> std::shared_ptr< NETCLASS >"
+          }
+        },
+        "schematic_python_editor": {
+          "eeschema_module_importable": false,
+          "note": "pcbnew is the board API. Schematic generation must preserve native file semantics; CLI is a checker/exporter."
+        }
+      }
+    },
+    {
+      "check": "load_original_without_mutation",
+      "status": "passed",
+      "evidence": {
+        "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\source_reference\\ESP32_test_board\\ESP32_test_board.kicad_pcb",
+        "sha256_before": "9a4d2f2caba80031463d3540b79024ce9e34d5625d32769739845703f8eaea64",
+        "sha256_after": "9a4d2f2caba80031463d3540b79024ce9e34d5625d32769739845703f8eaea64",
+        "footprint_count": 55,
+        "copper_layer_count": 2,
+        "selected_footprints": {
+          "U1": {
+            "uuid": "46a11bfb-095c-4cef-ab43-ef908c5cad4d",
+            "schematic_path": "/e9dd93db-7447-4e17-bc06-2d343ea8098d",
+            "library_id": "Eltec Footprints:ESP32_DEVKITV1"
+          },
+          "J1": {
+            "uuid": "72c1356b-6b10-4978-ad95-4d2ccd9eda8f",
+            "schematic_path": "/43e58ba7-17d0-41cd-b30a-bc8e3d3f5470",
+            "library_id": "Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal"
+          },
+          "U2": {
+            "uuid": "c8070443-15e4-4e88-b56b-0b1c37e2222e",
+            "schematic_path": "/5660a232-6f1c-4367-bfee-deafe5f1765d",
+            "library_id": "Eltec Footprints:ADS1256_BOARD"
+          },
+          "J2": {
+            "uuid": "e8675234-466b-4d9c-a068-5374630879df",
+            "schematic_path": "/6e9932e6-d463-49d8-a327-c1046baf3e26",
+            "library_id": "Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal"
+          }
+        }
+      }
+    },
+    {
+      "check": "footprint_load_save_reopen_and_schematic_path",
+      "status": "passed",
+      "evidence": {
+        "save_returned": true,
+        "footprints": {
+          "R2": {
+            "uuid": "30a8214b-06a3-4881-8556-7781f71c28f1",
+            "path": "/11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333"
+          },
+          "R1": {
+            "uuid": "c5511030-f782-4ad3-960c-87833d8bb024",
+            "path": "/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222"
+          }
+        },
+        "find_by_schematic_path": "R1",
+        "format_header": [
+          "(kicad_pcb",
+          "\t(version 20260206)",
+          "\t(generator \"pcbnew\")",
+          "\t(generator_version \"10.0\")",
+          "\t(general"
+        ],
+        "scope": "Native path and UUID persistence; not full schematic parity."
+      }
+    },
+    {
+      "check": "board_netclass_creation_and_assignment",
+      "status": "passed",
+      "evidence": {
+        "effective_name": "ProbePower",
+        "track_width_mm": 0.75,
+        "clearance_mm": 0.25,
+        "classes": [
+          "Default",
+          "ProbePower"
+        ],
+        "persistence": "In-memory assignment proven. Persist classes/patterns in .kicad_pro and revalidate with CLI; board SaveBoard alone is not proof of project settings."
+      }
+    },
+    {
+      "check": "connectivity_counts_detect_fixture_connection",
+      "status": "passed",
+      "evidence": {
+        "before_test_segment": 1,
+        "after_test_segment": 0,
+        "scope": "Disposable two-pad fixture only; actual project not routed or certified."
+      }
+    },
+    {
+      "check": "zone_fill_disposable_fixture",
+      "status": "passed",
+      "evidence": {
+        "fill_returned": true,
+        "zone_count": 1,
+        "filled_area_internal_units_squared": 584603828497727.5,
+        "scope": "API exercised on disposable fixture; production validation must refill before DRC."
+      }
+    },
+    {
+      "check": "specctra_dsn_export",
+      "status": "passed",
+      "evidence": {
+        "export_returned": true,
+        "bytes": 2525,
+        "sha256": "1de1a52fb47574f098fc73a1eeb7994b31c3eadef66fb7e55bcb9f47f1226499",
+        "header": [
+          "(pcb C:\\Users\\JOSECA~1\\AppData\\Local\\Temp\\eltec_kicad_dsn_aqxb0kky\\probe.dsn",
+          "  (parser",
+          "    (string_quote \")",
+          "    (space_in_quoted_tokens on)",
+          "    (host_cad \"KiCad's Pcbnew\")",
+          "    (host_version \"10.0.6\")",
+          "  )",
+          "  (resolution um 10)",
+          "  (unit um)"
+        ],
+        "ses_import": {
+          "available": true,
+          "executed": false,
+          "reason": "No authentic router session available; no routing requested in capability probe."
+        }
+      }
+    }
+  ],
+  "external_router_inventory": {
+    "path_executables": {
+      "java": null,
+      "javaw": null,
+      "freerouting": null,
+      "freerouting.exe": null
+    },
+    "java_home": null,
+    "bounded_search_roots": [
+      "C:\\Program Files",
+      "C:\\Program Files (x86)",
+      "C:\\Users\\JoseCastelblanco\\Downloads",
+      "C:\\Users\\JoseCastelblanco\\Documents\\KiCad",
+      "C:\\Users\\JoseCastelblanco\\AppData\\Roaming\\kicad",
+      "C:\\Users\\JoseCastelblanco\\.kicad_plugins",
+      "C:\\Users\\JoseCastelblanco\\AppData\\Local\\Programs"
+    ],
+    "candidates": [],
+    "scope": "Absence is bounded to PATH and listed locations, not a full-disk claim. No installation performed.",
+    "related_project_tools": {
+      "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools",
+      "exists": true,
+      "java": {
+        "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\java\\jdk-25.0.4.1+1-jre\\bin\\java.exe",
+        "sha256": "5808527e3dfc4eb285c7664ba356bc267055ef906e83ed4660d9f7976da7349b",
+        "version_command": {
+          "argv": [
+            "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\java\\jdk-25.0.4.1+1-jre\\bin\\java.exe",
+            "-version"
+          ],
+          "returncode": 0,
+          "stdout": "",
+          "stderr": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)\n"
+        }
+      },
+      "router_jars": [
+        {
+          "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\freerouting-2.1.0.jar",
+          "bytes": 66978394,
+          "sha256": "2c07d58f75dac03782664081e7a58b41c25400d871a9fcf166a2ea6fe60d5def",
+          "manifest": "Manifest-Version: 1.0\r\nAutomatic-Module-Name: app.freerouting\r\nBuilt-By: andra\r\nCreated-By: 21.0.5 (Eclipse Adoptium 21.0.5+11-LTS)\r\nBuild-Date: 2025-04-12\r\nBuild-Time: 14:27:14.724+0200\r\nBuild-Revision: 1c1edc12bd20fbb328c2a52efbeb5f6a785849de\r\nSpecification-Title: freerouting\r\nSpecification-Version: unspecified\r\nImplementation-Title: freerouting\r\nImplementation-Version: unspecified\r\nMain-Class: app.freerouting.Freerouting\r\n\r\n",
+          "version_constants": {
+            "class": "app/freerouting/settings/GlobalSettings.class",
+            "values": [
+              "2.1.0"
+            ]
+          },
+          "executed": false
+        },
+        {
+          "path": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_50Piece_board\\hardware\\ir_array_rev_b\\tools\\freerouting-2.2.4.jar",
+          "bytes": 57766203,
+          "sha256": "f5ed374182900ccc78e473518bbb9f6b869f4a07159495f663a76f52bb10523b",
+          "manifest": "Manifest-Version: 1.0\r\nAutomatic-Module-Name: app.freerouting\r\nBuilt-By: runneradmin\r\nCreated-By: 25.0.2 (Eclipse Adoptium 25.0.2+10-LTS)\r\nBuild-Date: 2026-05-13\r\nBuild-Time: 13:28:28.485+0000\r\nBuild-Revision: 20f1a72e546b9b23c7ba5127086885cfacbdd4be\r\nSpecification-Title: freerouting\r\nSpecification-Version: unspecified\r\nImplementation-Title: freerouting\r\nImplementation-Version: unspecified\r\nMain-Class: app.freerouting.Freerouting\r\n\r\n",
+          "version_constants": {
+            "class": "app/freerouting/settings/GlobalSettings.class",
+            "values": [
+              "2.2.4"
+            ]
+          },
+          "executed": false
+        }
+      ]
+    }
+  },
+  "limits": [
+    "No design ERC, DRC, or complete schematic parity is established by this capability report.",
+    "No external autorouter ran; only a disposable connectivity fixture was used.",
+    "SES import API presence is observed; a routed-session import is not yet validated."
+  ]
+}

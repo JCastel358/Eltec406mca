@@ -1,0 +1,662 @@
+{
+  "erc": {
+    "erc_exclusions": [],
+    "rule_severities": {
+      "single_global_label": "warning",
+      "four_way_junction": "warning",
+      "footprint_filter": "warning"
+    }
+  },
+  "net_settings": {
+    "classes": [
+      {
+        "name": "Default",
+        "clearance": 0.2,
+        "track_width": 0.25,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 2147483647
+      },
+      {
+        "name": "Analog",
+        "clearance": 0.2,
+        "track_width": 0.25,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 1
+      },
+      {
+        "name": "SPI",
+        "clearance": 0.2,
+        "track_width": 0.2,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 2
+      },
+      {
+        "name": "Local supply",
+        "clearance": 0.2,
+        "track_width": 0.4,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 3
+      },
+      {
+        "name": "Quiet return",
+        "clearance": 0.2,
+        "track_width": 0.3,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 4
+      },
+      {
+        "name": "Emitter return",
+        "clearance": 0.2,
+        "track_width": 1.0,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 5
+      },
+      {
+        "name": "Battery and emitter power",
+        "clearance": 0.2,
+        "track_width": 1.0,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "wire_width": 6,
+        "bus_width": 12,
+        "priority": 6
+      }
+    ],
+    "meta": {
+      "version": 5
+    },
+    "net_colors": null,
+    "netclass_assignments": null,
+    "netclass_patterns": [
+      {
+        "netclass": "Local supply",
+        "pattern": "ADC_5V_HELD"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_AIN0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_AIN1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_AIN2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_AIN3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_AIN4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_AIN5"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_COMPARATOR_GOOD"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_CS_DRV"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_CS_N"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_DRDY_N"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_IF_OE_N"
+      },
+      {
+        "netclass": "Local supply",
+        "pattern": "ADC_IO_3V3"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_LDO_ILIM"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_LDO_SET"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_LDO_SET_RETURN"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_MISO"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_MOSI"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_MOSI_DRV"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_OE_BASE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_PDWN_N"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "ADC_RAIL_SENSE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_READY_RAW"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_REG_EN"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_SCLK"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ADC_SCLK_DRV"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_SUP_CT"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ADC_SUP_MR_N"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_FB0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_FB1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_FB2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_FB3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_FB4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_FB5"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_IN0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_IN1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_IN2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_IN3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_IN4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_IN5"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_OUT0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_OUT1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_OUT2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_OUT3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_OUT4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_OUT5"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_SERIES0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_SERIES1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_SERIES2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_SERIES3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_SERIES4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "AMP_SERIES5"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "CLAMP_GND0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "CLAMP_GND1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "CLAMP_GND2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "CLAMP_GND3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "CLAMP_GND4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "CLAMP_GND5"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "DET_BAT_FUSED"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "DET_BAT_PROTECTED"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "DET_BAT_RAW"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "DET_MASTER_GATE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "DET_MASTER_SINK"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "DET_RPOL_GATE"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EMIT1_LOW"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EMIT2_LOW"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EMIT3_LOW"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_ADJ"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EM_BAT_FUSED"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EM_BAT_PROTECTED"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EM_BAT_RAW"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EM_BAT_SW"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_GATE1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_GATE1_DRIVE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_GATE2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_GATE2_DRIVE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_GATE3"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_GATE3_DRIVE"
+      },
+      {
+        "netclass": "Emitter return",
+        "pattern": "EM_GND"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_LED1_A"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_LED2_A"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_LED3_A"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_LED_ENABLE_GATE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_LED_RETURN"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_MASTER_GATE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_MASTER_LED_A"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_MASTER_LED_K"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_OPTO_C"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "EM_REG"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_RPOL_GATE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "EM_TRIM_TOP"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ENABLE_AND_MID"
+      },
+      {
+        "netclass": "Local supply",
+        "pattern": "ESP_3V3"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_CS_N"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_DRDY"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_DRDY_DRV"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_EMIT1"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_EMIT2"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_EMIT3"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_IF_OE_N"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_MISO"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_MISO_DRV"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_MOSI"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_OE_BASE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_POWER_NOT_READY"
+      },
+      {
+        "netclass": "SPI",
+        "pattern": "ESP_SCLK"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_SUP_CT"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ESP_VALID_RAW"
+      },
+      {
+        "netclass": "Quiet return",
+        "pattern": "GND"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "ISOLATE_H"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "MASTER_PERMIT"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "OFF_BIAS_RAIL"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "POWER_OFF_NODE"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "PWR_REF_4V096"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "REF_CLAMP_RELEASE"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "REF_NOT_READY"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "REF_READY_RAW"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "SENSOR0"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "SENSOR1"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "SENSOR2"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "SENSOR3"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "SENSOR4"
+      },
+      {
+        "netclass": "Analog",
+        "pattern": "SENSOR5"
+      },
+      {
+        "netclass": "Battery and emitter power",
+        "pattern": "SENSOR_BAT_SW"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "SPI_PERMIT"
+      },
+      {
+        "netclass": "Local supply",
+        "pattern": "USB_PRESENT_5V"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "USB_SUP_CT"
+      },
+      {
+        "netclass": "Default",
+        "pattern": "USB_VALID_RAW"
+      }
+    ]
+  },
+  "board": {
+    "design_settings": {
+      "rules": {
+        "min_clearance": 0.2,
+        "min_track_width": 0.2,
+        "min_copper_edge_clearance": 0.5,
+        "min_hole_clearance": 0.25,
+        "min_hole_to_hole": 0.25,
+        "min_through_hole_diameter": 0.3,
+        "min_via_diameter": 0.6,
+        "min_via_annular_width": 0.15,
+        "min_silk_clearance": 0.15,
+        "min_text_height": 1.0,
+        "min_text_thickness": 0.15,
+        "min_resolved_spokes": 2,
+        "solder_mask_to_copper_clearance": 0.09
+      },
+      "defaults": {
+        "copper_line_width": 0.2,
+        "silk_line_width": 0.15
+      },
+      "drc_exclusions": []
+    }
+  }
+}

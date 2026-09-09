@@ -1,0 +1,373 @@
+{
+  "OPA2325IDR": {
+    "lcsc": "C2058909",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C2058909.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "LT3041ADE#TRPBF": {
+    "lcsc": "C7452883",
+    "manufacturer": "Analog Devices",
+    "verified_url": "https://www.lcsc.com/product-detail/C7452883.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "LM4050AIM3-4.1/NOPB": {
+    "lcsc": "C2156509",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C2156509.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "TLV3601DCKR": {
+    "lcsc": "C2974371",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C2974371.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "TPS3840PL34DBVR": {
+    "lcsc": "C2871627",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C2871627.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RT0805BRD0733KL": {
+    "lcsc": "C728650",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C728650.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RT0805BRD07499RL": {
+    "lcsc": "C865521",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C865521.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "3296W-1-102LF": {
+    "lcsc": "C57089",
+    "manufacturer": "Bourns",
+    "verified_url": "https://jlcpcb.com/partdetail/Bourns-3296W_1102LF/C57089",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "JLC Extended catalog identity verified; through-hole assembly process and allocation unconfirmed"
+  },
+  "LT1963AEQ#PBF": {
+    "lcsc": "C20415348",
+    "manufacturer": "Analog Devices",
+    "verified_url": "https://www.lcsc.com/product-detail/C20415348.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "LTV-847S": {
+    "lcsc": "C114599",
+    "manufacturer": "Lite-On",
+    "verified_url": "https://jlcpcb.com/partdetail/LiteOn-LTV847S/C114599",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "JLC catalog identity verified; assembly allocation unconfirmed"
+  },
+  "TPSD226K025R0200": {
+    "lcsc": "C284839",
+    "manufacturer": "Kyocera AVX",
+    "verified_url": "https://jlcpcb.com/partdetail/KyoceraAVX-TPSD226K025R0200/C284839",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "JLC Extended; SMT Assembly; Economic and Standard; allocation unconfirmed"
+  },
+  "AO3400A": {
+    "lcsc": "C20917",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "verified_url": "https://jlcpcb.com/partdetail/Alpha_OmegaSemicon-AO3400A/C20917",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "JLC Basic; SMT Assembly; Economic and Standard; allocation unconfirmed"
+  },
+  "AO3401A": {
+    "lcsc": "C15127",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "verified_url": "https://www.lcsc.com/product-detail/C15127.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "AP2112K-3.3TRG1": {
+    "lcsc": "C51118",
+    "manufacturer": "Diodes Incorporated",
+    "verified_url": "https://www.lcsc.com/product-detail/C51118.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "MMBT3904LT1G": {
+    "lcsc": "C81464",
+    "manufacturer": "onsemi",
+    "verified_url": "https://www.lcsc.com/product-detail/C81464.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "SN74LVC2G125DCTR": {
+    "lcsc": "C206035",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C206035.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "KH-2.54FH-1X15P-H8.5": {
+    "lcsc": "C2932676",
+    "manufacturer": "Shenzhen Kinghelm Elec",
+    "verified_url": "https://jlcpcb.com/partdetail/3278197-KH_2_54FH_1X15P_H85/C2932676",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "JLC Extended; Wave Soldering; Economic and Standard; allocation unconfirmed"
+  },
+  "KH-2.54FH-1X8P-H8.5": {
+    "lcsc": "C2905417",
+    "manufacturer": "Shenzhen Kinghelm Elec",
+    "verified_url": "https://jlcpcb.com/partdetail/3175191-KH_2_54FH_1X8P_H85/C2905417",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "JLC Extended; Wave Soldering; Economic and Standard; fixture requirements require quote confirmation; allocation unconfirmed"
+  },
+  "FG-PM2.54-2-08P-H8.5": {
+    "lcsc": "C25687193",
+    "manufacturer": "FG",
+    "verified_url": "https://www.lcsc.com/product-detail/C25687193.html",
+    "checked_utc": "2026-09-09T14:26:28Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "2N7002LT1G": {
+    "lcsc": "C16338",
+    "manufacturer": "onsemi",
+    "verified_url": "https://www.lcsc.com/product-detail/C16338.html",
+    "checked_utc": "2026-09-09T14:28:32Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "SN74LVC1G132DBVR": {
+    "lcsc": "C403723",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C403723.html",
+    "checked_utc": "2026-09-09T14:28:32Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "SN74LVC1G14DBVR": {
+    "lcsc": "C7835",
+    "manufacturer": "Texas Instruments",
+    "verified_url": "https://www.lcsc.com/product-detail/C7835.html",
+    "checked_utc": "2026-09-09T14:28:32Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "AO3414": {
+    "lcsc": "C48850",
+    "manufacturer": "Alpha & Omega Semiconductor",
+    "verified_url": "https://www.lcsc.com/product-detail/C48850.html",
+    "checked_utc": "2026-09-09T14:31:27Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0805FR-0710KL": {
+    "lcsc": "C84376",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C84376.html",
+    "checked_utc": "2026-09-09T14:31:27Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0805FR-07100KL": {
+    "lcsc": "C96346",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C96346.html",
+    "checked_utc": "2026-09-09T14:31:27Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0805FR-0733RL": {
+    "lcsc": "C126353",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C126353.html",
+    "checked_utc": "2026-09-09T14:31:27Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0805FR-07100RL": {
+    "lcsc": "C105577",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C105577.html",
+    "checked_utc": "2026-09-09T14:32:04Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0805FR-07220RL": {
+    "lcsc": "C114519",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C114519.html",
+    "checked_utc": "2026-09-09T14:32:04Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "CL21B104KBCNNNC": {
+    "lcsc": "C1711",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "verified_url": "https://www.lcsc.com/product-detail/C1711.html",
+    "checked_utc": "2026-09-09T14:32:04Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0805FR-07240RL": {
+    "lcsc": "C185292",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C185292.html",
+    "checked_utc": "2026-09-09T14:34:20Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "1N4148W-7-F": {
+    "lcsc": "C83528",
+    "manufacturer": "Diodes Incorporated",
+    "verified_url": "https://www.lcsc.com/product-detail/C83528.html",
+    "checked_utc": "2026-09-09T14:34:20Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "GRM32ER71E226KE15L": {
+    "lcsc": "C21397",
+    "manufacturer": "Murata",
+    "verified_url": "https://www.lcsc.com/product-detail/C21397.html",
+    "checked_utc": "2026-09-09T14:34:20Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "CL21B475KAFNNNE": {
+    "lcsc": "C98195",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "verified_url": "https://www.lcsc.com/product-detail/C98195.html",
+    "checked_utc": "2026-09-09T14:34:20Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "0468001.NRHF": {
+    "lcsc": "C45157",
+    "manufacturer": "Littelfuse",
+    "verified_url": "https://www.lcsc.com/product-detail/C45157.html",
+    "checked_utc": "2026-09-09T14:34:21Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "046801.5NRHF": {
+    "lcsc": "C151143",
+    "manufacturer": "Littelfuse",
+    "verified_url": "https://www.lcsc.com/product-detail/C151143.html",
+    "checked_utc": "2026-09-09T14:34:21Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "GRM31C5C1H104JA01K": {
+    "lcsc": "C398933",
+    "manufacturer": "Murata",
+    "verified_url": "https://www.lcsc.com/product-detail/C398933.html",
+    "checked_utc": "2026-09-09T14:35:10Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "GRM1885C1H103JA01D": {
+    "lcsc": "C85973",
+    "manufacturer": "Murata",
+    "verified_url": "https://www.lcsc.com/product-detail/C85973.html",
+    "checked_utc": "2026-09-09T14:35:09Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "CL10B104KB8NNNC": {
+    "lcsc": "C1591",
+    "manufacturer": "Samsung Electro-Mechanics",
+    "verified_url": "https://www.lcsc.com/product-detail/C1591.html",
+    "checked_utc": "2026-09-09T14:35:10Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "LTV-817S-TA1-B": {
+    "lcsc": "C109226",
+    "manufacturer": "Lite-On",
+    "verified_url": "https://www.lcsc.com/product-detail/C109226.html",
+    "checked_utc": "2026-09-09T14:35:09Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RT0603BRD071KL": {
+    "lcsc": "C110776",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C110776.html",
+    "checked_utc": "2026-09-09T14:35:51Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-07100KL": {
+    "lcsc": "C14675",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C14675.html",
+    "checked_utc": "2026-09-09T14:35:52Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-0710KL": {
+    "lcsc": "C98220",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C98220.html",
+    "checked_utc": "2026-09-09T14:35:51Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-071KL": {
+    "lcsc": "C22548",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C22548.html",
+    "checked_utc": "2026-09-09T14:35:51Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-074K7L": {
+    "lcsc": "C99782",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C99782.html",
+    "checked_utc": "2026-09-09T14:35:52Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-07390RL": {
+    "lcsc": "C114620",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C114620.html",
+    "checked_utc": "2026-09-09T14:35:52Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-071K5L": {
+    "lcsc": "C114668",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C114668.html",
+    "checked_utc": "2026-09-09T14:35:52Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-07100RL": {
+    "lcsc": "C105588",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C105588.html",
+    "checked_utc": "2026-09-09T14:37:04Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603FR-07150RL": {
+    "lcsc": "C114608",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C114608.html",
+    "checked_utc": "2026-09-09T14:37:04Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RC0603JR-070RL": {
+    "lcsc": "C95177",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C95177.html",
+    "checked_utc": "2026-09-09T14:37:04Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RT0603BRD07300RL": {
+    "lcsc": "C705763",
+    "manufacturer": "Yageo",
+    "verified_url": "https://www.lcsc.com/product-detail/C705763.html",
+    "checked_utc": "2026-09-09T14:38:06Z",
+    "assembly_status": "LCSC identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RT0603BRD07221RL": {
+    "lcsc": "C705749",
+    "manufacturer": "YAGEO",
+    "verified_url": "https://www.lcsc.com/product-detail/C705749.html",
+    "checked_utc": "2026-09-09T14:52:24Z",
+    "assembly_status": "LCSC exact MPN and manufacturer identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "RN73C1J51K1BTDF": {
+    "lcsc": "C4226875",
+    "manufacturer": "TE Connectivity",
+    "verified_url": "https://www.lcsc.com/product-detail/C4226875.html",
+    "checked_utc": "2026-09-09T14:52:24Z",
+    "assembly_status": "LCSC exact MPN and manufacturer identity verified; JLC assembly match and allocation unconfirmed"
+  },
+  "PCJ0J821MCL4GS": {
+    "lcsc": "C2161767",
+    "manufacturer": "Nichicon",
+    "verified_url": "https://www.lcsc.com/product-detail/C2161767.html",
+    "checked_utc": "2026-09-09T14:52:58Z",
+    "assembly_status": "LCSC exact MPN and manufacturer identity verified; JLC assembly match and allocation unconfirmed"
+  }
+}

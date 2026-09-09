@@ -1,0 +1,196 @@
+﻿Designator,Value,Manufacturer,MPN,Footprint,JLCPCB Part #,Assembly,Catalog source,Assembly status
+C10,22uF 25V tantalum +/-10%,Kyocera AVX,TPSD226K025R0200,Eltec_Master:CP_EIA-7343-31_Kemet-D,C284839,SMT,https://jlcpcb.com/partdetail/KyoceraAVX-TPSD226K025R0200/C284839,JLC Extended; SMT Assembly; Economic and Standard; allocation unconfirmed
+C11,22uF 25V X7R +/-10%,Murata,GRM32ER71E226KE15L,Eltec_Master:C_1210_3225Metric,C21397,SMT,https://www.lcsc.com/product-detail/C21397.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C12,820uF 6.3V polymer +/-20%,Nichicon,PCJ0J821MCL4GS,Eltec_Master:CP_Elec_8x11.9,C2161767,SMT,https://www.lcsc.com/product-detail/C2161767.html,LCSC exact MPN and manufacturer identity verified; JLC assembly match and allocation unconfirmed
+C13,22uF 25V X7R +/-10%,Murata,GRM32ER71E226KE15L,Eltec_Master:C_1210_3225Metric,C21397,SMT,https://www.lcsc.com/product-detail/C21397.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C14,100nF 5% C0G,Murata,GRM31C5C1H104JA01K,Eltec_Master:C_1206_3216Metric,C398933,SMT,https://www.lcsc.com/product-detail/C398933.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C15,100nF 50V 5% C0G,Murata,GRM31C5C1H104JA01K,Eltec_Master:C_1206_3216Metric,C398933,SMT,https://www.lcsc.com/product-detail/C398933.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C16,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C17,4.7uF 25V X7R,Samsung Electro-Mechanics,CL21B475KAFNNNE,Eltec_Master:C_0805_2012Metric,C98195,SMT,https://www.lcsc.com/product-detail/C98195.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C18,4.7uF 25V X7R,Samsung Electro-Mechanics,CL21B475KAFNNNE,Eltec_Master:C_0805_2012Metric,C98195,SMT,https://www.lcsc.com/product-detail/C98195.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C19,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C20,10nF 5% C0G,Murata,GRM1885C1H103JA01D,Eltec_Master:C_0603_1608Metric,C85973,SMT,https://www.lcsc.com/product-detail/C85973.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C21,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C22,10nF 5% C0G,Murata,GRM1885C1H103JA01D,Eltec_Master:C_0603_1608Metric,C85973,SMT,https://www.lcsc.com/product-detail/C85973.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C23,100nF 5% C0G,Murata,GRM31C5C1H104JA01K,Eltec_Master:C_1206_3216Metric,C398933,SMT,https://www.lcsc.com/product-detail/C398933.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C24,100nF 5% C0G,Murata,GRM31C5C1H104JA01K,Eltec_Master:C_1206_3216Metric,C398933,SMT,https://www.lcsc.com/product-detail/C398933.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C25,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C26,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C27,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C28,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C29,100nF 50V X7R,Samsung Electro-Mechanics,CL10B104KB8NNNC,Eltec_Master:C_0603_1608Metric,C1591,SMT,https://www.lcsc.com/product-detail/C1591.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C30,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C31,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C32,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C33,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C34,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C35,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C36,22uF 25V X7R +/-10%,Murata,GRM32ER71E226KE15L,Eltec_Master:C_1210_3225Metric,C21397,SMT,https://www.lcsc.com/product-detail/C21397.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C37,100nF 50V 5% C0G,Murata,GRM31C5C1H104JA01K,Eltec_Master:C_1206_3216Metric,C398933,SMT,https://www.lcsc.com/product-detail/C398933.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C38,100nF 50V 5% C0G,Murata,GRM31C5C1H104JA01K,Eltec_Master:C_1206_3216Metric,C398933,SMT,https://www.lcsc.com/product-detail/C398933.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C39,22uF 25V X7R +/-10%,Murata,GRM32ER71E226KE15L,Eltec_Master:C_1210_3225Metric,C21397,SMT,https://www.lcsc.com/product-detail/C21397.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C50,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C51,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C52,100nF 50V X7R,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C100,22uF 25V 10% TPS,Kyocera AVX,TPSD226K025R0200,Eltec_Master:CP_EIA-7343-31_Kemet-D,C284839,SMT,https://jlcpcb.com/partdetail/KyoceraAVX-TPSD226K025R0200/C284839,JLC Extended; SMT Assembly; Economic and Standard; allocation unconfirmed
+C101,100nF 50V X7R 10%,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+C102,22uF 25V 10% TPS,Kyocera AVX,TPSD226K025R0200,Eltec_Master:CP_EIA-7343-31_Kemet-D,C284839,SMT,https://jlcpcb.com/partdetail/KyoceraAVX-TPSD226K025R0200/C284839,JLC Extended; SMT Assembly; Economic and Standard; allocation unconfirmed
+C103,100nF 50V X7R 10%,Samsung Electro-Mechanics,CL21B104KBCNNNC,Eltec_Master:C_0805_2012Metric,C1711,SMT,https://www.lcsc.com/product-detail/C1711.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+D10,1N4148W,Diodes Incorporated,1N4148W-7-F,Eltec_Master:D_SOD-123,C83528,SMT,https://www.lcsc.com/product-detail/C83528.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+D11,1N4148W,Diodes Incorporated,1N4148W-7-F,Eltec_Master:D_SOD-123,C83528,SMT,https://www.lcsc.com/product-detail/C83528.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+D12,BZT52C6V8GW,Diotec Semiconductor,BZT52C6V8GW,Eltec_Master:D_SOD-123,,SMT,,Allocation and library rotation unverified
+F1,1A Slo-Blo,Littelfuse,0468001.NRHF,Eltec_Master:Fuse_1206_3216Metric,C45157,SMT,https://www.lcsc.com/product-detail/C45157.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+F2,1.5A Slo-Blo,Littelfuse,046801.5NRHF,Eltec_Master:Fuse_1206_3216Metric,C151143,SMT,https://www.lcsc.com/product-detail/C151143.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+J3,1x15 female socket - row A,Kinghelm,KH-2.54FH-1X15P-H8.5,Eltec_Master:Socket_Kinghelm_1x15_P2.54_H8.5,C2932676,THT,https://jlcpcb.com/partdetail/3278197-KH_2_54FH_1X15P_H85/C2932676,JLC Extended; Wave Soldering; Economic and Standard; allocation unconfirmed
+J4,1x15 female socket - row B,Kinghelm,KH-2.54FH-1X15P-H8.5,Eltec_Master:Socket_Kinghelm_1x15_P2.54_H8.5,C2932676,THT,https://jlcpcb.com/partdetail/3278197-KH_2_54FH_1X15P_H85/C2932676,JLC Extended; Wave Soldering; Economic and Standard; allocation unconfirmed
+J5,1x8 female ADC digital socket,Kinghelm,KH-2.54FH-1X8P-H8.5,Eltec_Master:Socket_Kinghelm_1x08_P2.54_H8.5,C2905417,THT,https://jlcpcb.com/partdetail/3175191-KH_2_54FH_1X8P_H85/C2905417,JLC Extended; Wave Soldering; Economic and Standard; fixture requirements require quote confirmation; allocation unconfirmed
+J6,2x8 female ADC analog socket,FG,FG-PM2.54-2-08P-H8.5,Eltec_Master:Socket_FG_2x08_P2.54_H8.5,C25687193,THT,https://www.lcsc.com/product-detail/C25687193.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q10,AO3414,Alpha & Omega Semiconductor,AO3414,Eltec_Master:SOT-23,C48850,SMT,https://www.lcsc.com/product-detail/C48850.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q11,AO3414,Alpha & Omega Semiconductor,AO3414,Eltec_Master:SOT-23,C48850,SMT,https://www.lcsc.com/product-detail/C48850.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q12,2N7002LT1G,onsemi,2N7002LT1G,Eltec_Master:SOT-23,C16338,SMT,https://www.lcsc.com/product-detail/C16338.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q13,2N7002LT1G,onsemi,2N7002LT1G,Eltec_Master:SOT-23,C16338,SMT,https://www.lcsc.com/product-detail/C16338.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q14,2N7002LT1G,onsemi,2N7002LT1G,Eltec_Master:SOT-23,C16338,SMT,https://www.lcsc.com/product-detail/C16338.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q15,2N7002LT1G,onsemi,2N7002LT1G,Eltec_Master:SOT-23,C16338,SMT,https://www.lcsc.com/product-detail/C16338.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q16,AO3401A,Alpha & Omega Semiconductor,AO3401A,Eltec_Master:SOT-23,C15127,SMT,https://www.lcsc.com/product-detail/C15127.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q17,AO3401A,Alpha & Omega Semiconductor,AO3401A,Eltec_Master:SOT-23,C15127,SMT,https://www.lcsc.com/product-detail/C15127.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q18,2N7002LT1G,onsemi,2N7002LT1G,Eltec_Master:SOT-23,C16338,SMT,https://www.lcsc.com/product-detail/C16338.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q19,AO3401A,Alpha & Omega Semiconductor,AO3401A,Eltec_Master:SOT-23,C15127,SMT,https://www.lcsc.com/product-detail/C15127.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q20,AO3401A,Alpha & Omega Semiconductor,AO3401A,Eltec_Master:SOT-23,C15127,SMT,https://www.lcsc.com/product-detail/C15127.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q21,2N7002LT1G,onsemi,2N7002LT1G,Eltec_Master:SOT-23,C16338,SMT,https://www.lcsc.com/product-detail/C16338.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q22,AO3400A,Alpha & Omega Semiconductor,AO3400A,Eltec_Master:SOT-23,C20917,SMT,https://jlcpcb.com/partdetail/Alpha_OmegaSemicon-AO3400A/C20917,JLC Basic; SMT Assembly; Economic and Standard; allocation unconfirmed
+Q23,AO3414,Alpha & Omega Semiconductor,AO3414,Eltec_Master:SOT-23,C48850,SMT,https://www.lcsc.com/product-detail/C48850.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q24,AO3414,Alpha & Omega Semiconductor,AO3414,Eltec_Master:SOT-23,C48850,SMT,https://www.lcsc.com/product-detail/C48850.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q26,AO3414,Alpha & Omega Semiconductor,AO3414,Eltec_Master:SOT-23,C48850,SMT,https://www.lcsc.com/product-detail/C48850.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q50,MMBT3904LT1G,onsemi,MMBT3904LT1G,Eltec_Master:SOT-23,C81464,SMT,https://www.lcsc.com/product-detail/C81464.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q51,MMBT3904LT1G,onsemi,MMBT3904LT1G,Eltec_Master:SOT-23,C81464,SMT,https://www.lcsc.com/product-detail/C81464.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+Q101,AO3400A,Alpha & Omega Semiconductor,AO3400A,Eltec_Master:SOT-23,C20917,SMT,https://jlcpcb.com/partdetail/Alpha_OmegaSemicon-AO3400A/C20917,JLC Basic; SMT Assembly; Economic and Standard; allocation unconfirmed
+Q102,AO3400A,Alpha & Omega Semiconductor,AO3400A,Eltec_Master:SOT-23,C20917,SMT,https://jlcpcb.com/partdetail/Alpha_OmegaSemicon-AO3400A/C20917,JLC Basic; SMT Assembly; Economic and Standard; allocation unconfirmed
+Q103,AO3400A,Alpha & Omega Semiconductor,AO3400A,Eltec_Master:SOT-23,C20917,SMT,https://jlcpcb.com/partdetail/Alpha_OmegaSemicon-AO3400A/C20917,JLC Basic; SMT Assembly; Economic and Standard; allocation unconfirmed
+R10,51.1k 0.1% 10ppm/K,TE Connectivity,RN73C1J51K1BTDF,Eltec_Master:R_0603_1608Metric,C4226875,SMT,https://www.lcsc.com/product-detail/C4226875.html,LCSC exact MPN and manufacturer identity verified; JLC assembly match and allocation unconfirmed
+R11,300 0.1%,Yageo,RT0603BRD07300RL,Eltec_Master:R_0603_1608Metric,C705763,SMT,https://www.lcsc.com/product-detail/C705763.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R12,4.7k 1%,Yageo,RC0603FR-074K7L,Eltec_Master:R_0603_1608Metric,C99782,SMT,https://www.lcsc.com/product-detail/C99782.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R13,10k 1%,Yageo,RC0603FR-0710KL,Eltec_Master:R_0603_1608Metric,C98220,SMT,https://www.lcsc.com/product-detail/C98220.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R14,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R15,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R16,1k 1%,Yageo,RC0603FR-071KL,Eltec_Master:R_0603_1608Metric,C22548,SMT,https://www.lcsc.com/product-detail/C22548.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R17,1k 1%,Yageo,RC0603FR-071KL,Eltec_Master:R_0603_1608Metric,C22548,SMT,https://www.lcsc.com/product-detail/C22548.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R18,10k 1%,Yageo,RC0603FR-0710KL,Eltec_Master:R_0603_1608Metric,C98220,SMT,https://www.lcsc.com/product-detail/C98220.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R19,0,Yageo,RC0603JR-070RL,Eltec_Master:R_0603_1608Metric,C95177,SMT,https://www.lcsc.com/product-detail/C95177.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R20,4.7k 1%,Yageo,RC0603FR-074K7L,Eltec_Master:R_0603_1608Metric,C99782,SMT,https://www.lcsc.com/product-detail/C99782.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R21,10k 1%,Yageo,RC0603FR-0710KL,Eltec_Master:R_0603_1608Metric,C98220,SMT,https://www.lcsc.com/product-detail/C98220.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R22,1k 1%,Yageo,RC0603FR-071KL,Eltec_Master:R_0603_1608Metric,C22548,SMT,https://www.lcsc.com/product-detail/C22548.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R23,10k 1%,Yageo,RC0603FR-0710KL,Eltec_Master:R_0603_1608Metric,C98220,SMT,https://www.lcsc.com/product-detail/C98220.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R24,1k 1%,Yageo,RC0603FR-071KL,Eltec_Master:R_0603_1608Metric,C22548,SMT,https://www.lcsc.com/product-detail/C22548.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R25,390 1%,Yageo,RC0603FR-07390RL,Eltec_Master:R_0603_1608Metric,C114620,SMT,https://www.lcsc.com/product-detail/C114620.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R26,100 1%,Yageo,RC0603FR-07100RL,Eltec_Master:R_0603_1608Metric,C105588,SMT,https://www.lcsc.com/product-detail/C105588.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R27,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R28,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R29,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R30,1.5k 1%,Yageo,RC0603FR-071K5L,Eltec_Master:R_0603_1608Metric,C114668,SMT,https://www.lcsc.com/product-detail/C114668.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R31,221 0.1% 25ppm/K,Yageo,RT0603BRD07221RL,Eltec_Master:R_0603_1608Metric,C705749,SMT,https://www.lcsc.com/product-detail/C705749.html,LCSC exact MPN and manufacturer identity verified; JLC assembly match and allocation unconfirmed
+R32,1.00k 0.1% 25ppm/K,Yageo,RT0603BRD071KL,Eltec_Master:R_0603_1608Metric,C110776,SMT,https://www.lcsc.com/product-detail/C110776.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R33,10k 1%,Yageo,RC0603FR-0710KL,Eltec_Master:R_0603_1608Metric,C98220,SMT,https://www.lcsc.com/product-detail/C98220.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R34,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R35,100k 1%,Yageo,RC0603FR-07100KL,Eltec_Master:R_0603_1608Metric,C14675,SMT,https://www.lcsc.com/product-detail/C14675.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R38,10k 1%,Yageo,RC0603FR-0710KL,Eltec_Master:R_0603_1608Metric,C98220,SMT,https://www.lcsc.com/product-detail/C98220.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R39,698 0.1% 10ppm/K,TE Connectivity,RN73C1J698RBTDF,Eltec_Master:R_0603_1608Metric,,SMT,,Allocation and library rotation unverified
+R40,150 1%,Yageo,RC0603FR-07150RL,Eltec_Master:R_0603_1608Metric,C114608,SMT,https://www.lcsc.com/product-detail/C114608.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R50,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R51,100k,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R52,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R53,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R54,100k,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R55,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R56,33,Yageo,RC0805FR-0733RL,Eltec_Master:R_0805_2012Metric,C126353,SMT,https://www.lcsc.com/product-detail/C126353.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R57,33,Yageo,RC0805FR-0733RL,Eltec_Master:R_0805_2012Metric,C126353,SMT,https://www.lcsc.com/product-detail/C126353.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R58,33,Yageo,RC0805FR-0733RL,Eltec_Master:R_0805_2012Metric,C126353,SMT,https://www.lcsc.com/product-detail/C126353.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R59,33,Yageo,RC0805FR-0733RL,Eltec_Master:R_0805_2012Metric,C126353,SMT,https://www.lcsc.com/product-detail/C126353.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R60,33,Yageo,RC0805FR-0733RL,Eltec_Master:R_0805_2012Metric,C126353,SMT,https://www.lcsc.com/product-detail/C126353.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R61,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R62,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R63,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R64,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R65,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R66,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R67,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R68,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R69,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R70,10k,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R100,210R 1% 0.125W,Yageo,RC0805FR-07210RL,Eltec_Master:R_0805_2012Metric,,SMT,,Allocation and library rotation unverified
+R101,7R5 1% 0.125W,Yageo,RC0805FR-077R5L,Eltec_Master:R_0805_2012Metric,,SMT,,Allocation and library rotation unverified
+R110,240R 1% 0.125W,Yageo,RC0805FR-07240RL,Eltec_Master:R_0805_2012Metric,C185292,SMT,https://www.lcsc.com/product-detail/C185292.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R111,100k 1% 0.125W,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R112,100R 1% 0.125W,Yageo,RC0805FR-07100RL,Eltec_Master:R_0805_2012Metric,C105577,SMT,https://www.lcsc.com/product-detail/C105577.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R113,10k 1% 0.125W,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R115,240R 1% 0.125W,Yageo,RC0805FR-07240RL,Eltec_Master:R_0805_2012Metric,C185292,SMT,https://www.lcsc.com/product-detail/C185292.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R116,100k 1% 0.125W,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R117,100R 1% 0.125W,Yageo,RC0805FR-07100RL,Eltec_Master:R_0805_2012Metric,C105577,SMT,https://www.lcsc.com/product-detail/C105577.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R118,10k 1% 0.125W,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R120,240R 1% 0.125W,Yageo,RC0805FR-07240RL,Eltec_Master:R_0805_2012Metric,C185292,SMT,https://www.lcsc.com/product-detail/C185292.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R121,100k 1% 0.125W,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R122,100R 1% 0.125W,Yageo,RC0805FR-07100RL,Eltec_Master:R_0805_2012Metric,C105577,SMT,https://www.lcsc.com/product-detail/C105577.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R123,10k 1% 0.125W,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R200,100k 1%,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R201,100k 1%,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R202,100k 1%,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R203,100k 1%,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R204,100k 1%,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R205,100k 1%,Yageo,RC0805FR-07100KL,Eltec_Master:R_0805_2012Metric,C96346,SMT,https://www.lcsc.com/product-detail/C96346.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R210,10k 1%,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R211,10k 1%,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R212,10k 1%,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R213,10k 1%,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R214,10k 1%,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R215,10k 1%,Yageo,RC0805FR-0710KL,Eltec_Master:R_0805_2012Metric,C84376,SMT,https://www.lcsc.com/product-detail/C84376.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R220,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R221,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R222,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R223,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R224,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R225,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R230,220R 1%,Yageo,RC0805FR-07220RL,Eltec_Master:R_0805_2012Metric,C114519,SMT,https://www.lcsc.com/product-detail/C114519.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R231,220R 1%,Yageo,RC0805FR-07220RL,Eltec_Master:R_0805_2012Metric,C114519,SMT,https://www.lcsc.com/product-detail/C114519.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R232,220R 1%,Yageo,RC0805FR-07220RL,Eltec_Master:R_0805_2012Metric,C114519,SMT,https://www.lcsc.com/product-detail/C114519.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R233,220R 1%,Yageo,RC0805FR-07220RL,Eltec_Master:R_0805_2012Metric,C114519,SMT,https://www.lcsc.com/product-detail/C114519.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R234,220R 1%,Yageo,RC0805FR-07220RL,Eltec_Master:R_0805_2012Metric,C114519,SMT,https://www.lcsc.com/product-detail/C114519.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R235,220R 1%,Yageo,RC0805FR-07220RL,Eltec_Master:R_0805_2012Metric,C114519,SMT,https://www.lcsc.com/product-detail/C114519.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R240,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R241,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R242,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R243,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R244,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R245,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R250,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R251,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R252,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R253,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R254,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R255,499R 0.1%,Yageo,RT0805BRD07499RL,Eltec_Master:R_0805_2012Metric,C865521,SMT,https://www.lcsc.com/product-detail/C865521.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R260,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R261,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R262,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R263,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R264,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+R265,33k 0.1%,Yageo,RT0805BRD0733KL,Eltec_Master:R_0805_2012Metric,C728650,SMT,https://www.lcsc.com/product-detail/C728650.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+RV100,1k 25-turn 0.5W,Bourns,3296W-1-102LF,Eltec_Master:Potentiometer_Bourns_3296W_Vertical,C57089,THT,https://jlcpcb.com/partdetail/Bourns-3296W_1102LF/C57089,JLC Extended catalog identity verified; through-hole assembly process and allocation unconfirmed
+U10,LT3041ADE#TRPBF,Analog Devices,LT3041ADE#TRPBF,Eltec_Master:DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm,C7452883,SMT,https://www.lcsc.com/product-detail/C7452883.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U11,AP2112K-3.3TRG1,Diodes Incorporated,AP2112K-3.3TRG1,Eltec_Master:SOT-23-5,C51118,SMT,https://www.lcsc.com/product-detail/C51118.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U12,TPS3840PL42DBVR,Texas Instruments,TPS3840PL42DBVR,Eltec_Master:SOT-23-5,,SMT,,Allocation and library rotation unverified
+U13,TPS3840PL30DBVR,Texas Instruments,TPS3840PL30DBVR,Eltec_Master:SOT-23-5,,SMT,,Allocation and library rotation unverified
+U14,TPS3840PL34DBVR,Texas Instruments,TPS3840PL34DBVR,Eltec_Master:SOT-23-5,C2871627,SMT,https://www.lcsc.com/product-detail/C2871627.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U15,SN74LVC1G14DBVR,Texas Instruments,SN74LVC1G14DBVR,Eltec_Master:SOT-23-5,C7835,SMT,https://www.lcsc.com/product-detail/C7835.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U16,LTV-817S-TA1-B,Lite-On,LTV-817S-TA1-B,Eltec_Master:SMDIP-4_W7.62mm,C109226,SMT,https://www.lcsc.com/product-detail/C109226.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U17,LM4050AIM3-4.1/NOPB,Texas Instruments,LM4050AIM3-4.1/NOPB,Eltec_Master:SOT-23,C2156509,SMT,https://www.lcsc.com/product-detail/C2156509.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U18,TLV3601DCKR,Texas Instruments,TLV3601DCKR,Eltec_Master:SOT-353_SC-70-5,C2974371,SMT,https://www.lcsc.com/product-detail/C2974371.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U19,SN74LVC1G132DBVR,Texas Instruments,SN74LVC1G132DBVR,Eltec_Master:SOT-23-5,C403723,SMT,https://www.lcsc.com/product-detail/C403723.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U30,ADG4613BRUZ,Analog Devices,ADG4613BRUZ,Eltec_Master:TSSOP-16_4.4x5mm_P0.65mm,,SMT,,Allocation and library rotation unverified
+U31,ADG4613BRUZ,Analog Devices,ADG4613BRUZ,Eltec_Master:TSSOP-16_4.4x5mm_P0.65mm,,SMT,,Allocation and library rotation unverified
+U32,ADG4613BRUZ,Analog Devices,ADG4613BRUZ,Eltec_Master:TSSOP-16_4.4x5mm_P0.65mm,,SMT,,Allocation and library rotation unverified
+U33,OPA2325IDR,Texas Instruments,OPA2325IDR,Eltec_Master:SOIC-8_3.9x4.9mm_P1.27mm,C2058909,SMT,https://www.lcsc.com/product-detail/C2058909.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U34,OPA2325IDR,Texas Instruments,OPA2325IDR,Eltec_Master:SOIC-8_3.9x4.9mm_P1.27mm,C2058909,SMT,https://www.lcsc.com/product-detail/C2058909.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U35,OPA2325IDR,Texas Instruments,OPA2325IDR,Eltec_Master:SOIC-8_3.9x4.9mm_P1.27mm,C2058909,SMT,https://www.lcsc.com/product-detail/C2058909.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U50,SN74LVC2G125DCTR,Texas Instruments,SN74LVC2G125DCTR,Eltec_Master:TI_DCT0008A_SSOP8,C206035,SMT,https://www.lcsc.com/product-detail/C206035.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U51,SN74LVC2G125DCTR,Texas Instruments,SN74LVC2G125DCTR,Eltec_Master:TI_DCT0008A_SSOP8,C206035,SMT,https://www.lcsc.com/product-detail/C206035.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U52,SN74LVC2G125DCTR,Texas Instruments,SN74LVC2G125DCTR,Eltec_Master:TI_DCT0008A_SSOP8,C206035,SMT,https://www.lcsc.com/product-detail/C206035.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U100,LT1963AEQ#PBF,Analog Devices,LT1963AEQ#PBF,Eltec_Master:TO-263-5_TabPin3,C20415348,SMT,https://www.lcsc.com/product-detail/C20415348.html,LCSC identity verified; JLC assembly match and allocation unconfirmed
+U101,LTV-847S,Lite-On,LTV-847S,Eltec_Master:SMDIP-16_W9.53mm,C114599,SMT,https://jlcpcb.com/partdetail/LiteOn-LTV847S/C114599,JLC catalog identity verified; assembly allocation unconfirmed

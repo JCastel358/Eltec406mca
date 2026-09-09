@@ -1,0 +1,12 @@
+{
+  "profile": "LT3041_U10_12_TO_C11_1_V1",
+  "exact_locked_seed_retained": true,
+  "no_extra_conductor_in_protected_corridor": true,
+  "protected_rectangle_nm": [
+    35000000,
+    -7725000,
+    37400000,
+    -7275000
+  ],
+  "trace_width_mm": 0.2
+}

@@ -31,9 +31,9 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
    author, never commit `.npz`/result CSVs, never delete or rename files
    there — they are evidence.
 6. **Run `python run_all_tests.py` before claiming anything is done.**
-   Baseline: glue 45, 405 201 (4 skipped), 406 203 (on Windows exactly one
+   Baseline (2026-09-08): glue 45, 405 201 (4 skipped), 406 215 (3 skipped; on Windows exactly one
    known environment-only case: `test_launcher_installation_uses_only_v6_1_identities`),
-   449 136, array glue 31, 40623 array 241 — 857 tests. Any other failure
+   449 136, array glue 34, 40623 array 297 — 928 tests. Any other failure
    is yours.
 7. **Commit and push before restructuring; tag before deleting.** Retired
    code is at `archive/pre-cleanup-2026-08-28` — recover with
@@ -71,10 +71,22 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
 - "GPIO25" in old text is the pre-2026-08-25 gate pin; the rig uses **GPIO33** and the apps send `PIN,33`.
 - The 405 noise limit is 300 mV ÷ **700** (≈429 µV at the pin), not ÷ 4000.
 - The ±0.10 mV near-limit band is a **PASS with a warning**, not a retest/quarantine.
-- The reference (AIN1) and battery gates are **off** on every model — by decision, not by accident.
+- The **battery** gate is off on every model — by decision, not by accident.
+  The **reference (AIN1)** gate was off too until 2026-09-09; it is now **on**
+  for all three models on the channel-isolated buffer board. Its crosstalk
+  re-check is still outstanding, so it may yet go back off — that is a
+  one-line flag change, never a widened `REFERENCE_TOLERANCE_PERCENT`. Every
+  pre-2026-09-09 baseline is refused by a schema bump (405/449 v5, 406 v3),
+  so each rig locks testing until "Calibrate reference unit" is run fresh;
+  the old files stay in the results folders as evidence. The old trigger was
+  a **shorted DUT** (AIN1 down ~90 %); the new buffer is a TI OPA2196. Only
+  the 406 reads AIN1 with the DUT seated — the 405/449 reject a ≈0 V part
+  first — and a lockout now writes a `measure_error` row to `_attempts.csv`.
 - `Documents/Eltec_406MCA_Test_Results/v6_1_esp32` is the correct, live 406 results path even though "v6_1_esp32" is a retired build name.
 - TP120's 40623 noise limits (10.0–37.9 mV) are **DMM readings behind amplifier 9000232 + rectifier-hold 9000272** — never apply them at the pin. The array rig's pin-level noise limits are `None` until the paired lot derives the chain factor; with `None` every noise verdict is NO_LIMIT (measured, recorded, never a failure).
 - The 40623 offset limits (0.3–1.2 V) are **PROVISIONAL** until the array PCB's loading is confirmed against fixture 9000054 (+8 V, 100 kΩ source resistor).
+- Since 2026-09-08 the array operator flow infers empty only within one ADC code on two reads (2 s wake-up recheck on hardware). This is provisional: shorted parts can also read zero, and floating empty inputs may not. Manual LOADED wins; the operator confirms the detected map/count with vacuum readiness. Do not confuse this inference with the unchanged 0.05 V dead verdict.
+- The array's five-minute app countdown was removed by user decision 2026-09-08. TP120 really specifies five minutes after power-on; record this timing departure accurately. The app checks loaded-channel one-second maxima AND minima for 3–20 s before the unchanged 60 s capture; deadline starts get warnings and the full settling trace is logged.
 - Array position labels are TP120's `row-col` (`1-3` = row 1, part 3); DAQ channel = `(row-1)*10 + (col-1)`, CH0–CH49 single-ended.
 - DAQ volts come from raw counts × our own range table, never from `ADC_GetScanV` (a `-HG` unit would mis-scale it); the range is per group of four channels, the scan is one contiguous range, there is no anti-alias filter (the rig captures wideband at 1000 scans/s and band-limits in software).
 - The DLL's immediate-read entry points (`ADC_GetScan` / `ADC_GetScanV`) rewrite the device's trigger byte (0x05 → 0x04) and never restore it; `AiousbDaq._reassert_config()` re-writes the block after every immediate read and before every stream. Never call those entry points directly and never remove the re-assert — offsets polled, then a stream started, delivered 0 scans on the unit (2026-09-02).

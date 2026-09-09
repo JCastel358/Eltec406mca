@@ -1,0 +1,2150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>C:\Users\JoseCastelblanco\Documents\Eltec_TestRig\hardware\single_detector_usb_master_r1\source_reference\ESP32_test_board\ESP32_test_board.kicad_sch</source>
+    <date>2026-09-09T09:10:50</date>
+    <tool>Eeschema 10.0.6</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>ESP32 Modular Interface</title>
+        <company>Eltec Instruments</company>
+        <rev>B</rev>
+        <date>8-4-2026</date>
+        <source>ESP32_test_board.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="C1">
+      <value>100nF</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>81e086f2-19d2-4677-a5bc-661937c477ed</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C2">
+      <value>100nF</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4a9f32bc-820c-4c66-a941-fde2059f690e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C3">
+      <value>100nF</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>94ee6c18-af22-4ae0-9b39-d0febbe5c4e4</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C4">
+      <value>100nF</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ae813a40-fb5b-4c8a-8ac2-63e7c4167c59</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C5">
+      <value>22uF</value>
+      <footprint>Capacitor_SMD:C_1206_3216Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_1206_3216Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9096cec6-e217-4586-922e-fac93d67d1ca</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C6">
+      <value>22uF</value>
+      <footprint>Capacitor_SMD:C_1206_3216Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_1206_3216Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d8d168db-3f89-498e-8bda-8348f3a2a993</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C7">
+      <value>22uF</value>
+      <footprint>Capacitor_SMD:C_1206_3216Metric</footprint>
+      <description>Unpolarized capacitor</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_1206_3216Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <libsource lib="Device" part="C" description="Unpolarized capacitor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="cap capacitor"/>
+      <property name="ki_fp_filters" value="C_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>55f2e659-bffd-4025-a5b4-741700818690</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D1">
+      <value>1N4007</value>
+      <footprint>Diode_SMD:D_SOD-123</footprint>
+      <datasheet>http://www.vishay.com/docs/88503/1n4001.pdf</datasheet>
+      <description>1000V 1A General Purpose Rectifier Diode, DO-41</description>
+      <fields>
+        <field name="Sim.Device">D</field>
+        <field name="Sim.Pins">1=K 2=A</field>
+        <field name="Footprint">Diode_SMD:D_SOD-123</field>
+        <field name="Datasheet">http://www.vishay.com/docs/88503/1n4001.pdf</field>
+        <field name="Description">1000V 1A General Purpose Rectifier Diode, DO-41</field>
+      </fields>
+      <libsource lib="Diode" part="1N4007" description="1000V 1A General Purpose Rectifier Diode, DO-41"/>
+      <property name="Sim.Device" value="D"/>
+      <property name="Sim.Pins" value="1=K 2=A"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="diode"/>
+      <property name="ki_fp_filters" value="D*DO?41*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>41d622d9-e2a6-46bc-a8ef-7afc84946c8f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="E1">
+      <value>IR-56</value>
+      <footprint>Eltec Footprints:Emitter</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Emitter</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Emitter" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>52975267-dcb9-467d-ab37-795144136efb</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="E2">
+      <value>IR-56</value>
+      <footprint>Eltec Footprints:Emitter</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Emitter</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Emitter" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7f075469-2602-496e-bbbb-1b1c3b28deb0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="E3">
+      <value>IR-56</value>
+      <footprint>Eltec Footprints:Emitter</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Emitter</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Emitter" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e93afcb4-6699-4ea1-bf98-ed5ac6fae11a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J1">
+      <value>Barrel_Jack_MountingPin</value>
+      <footprint>Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal</footprint>
+      <description>DC Barrel Jack with a mounting pin</description>
+      <fields>
+        <field name="Footprint">Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal</field>
+        <field name="Datasheet"/>
+        <field name="Description">DC Barrel Jack with a mounting pin</field>
+      </fields>
+      <libsource lib="Connector" part="Barrel_Jack_MountingPin" description="DC Barrel Jack with a mounting pin"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <property name="ki_keywords" value="DC power barrel jack connector"/>
+      <property name="ki_fp_filters" value="BarrelJack*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>43e58ba7-17d0-41cd-b30a-bc8e3d3f5470</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="MP"/>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J2">
+      <value>Barrel_Jack_MountingPin</value>
+      <footprint>Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal</footprint>
+      <description>DC Barrel Jack with a mounting pin</description>
+      <fields>
+        <field name="Footprint">Connector_BarrelJack:BarrelJack_GCT_DCJ200-10-A_Horizontal</field>
+        <field name="Datasheet"/>
+        <field name="Description">DC Barrel Jack with a mounting pin</field>
+      </fields>
+      <libsource lib="Connector" part="Barrel_Jack_MountingPin" description="DC Barrel Jack with a mounting pin"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <property name="ki_keywords" value="DC power barrel jack connector"/>
+      <property name="ki_fp_filters" value="BarrelJack*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>6e9932e6-d463-49d8-a327-c1046baf3e26</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="MP"/>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="O1">
+      <value>OPA2196</value>
+      <footprint>Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</datasheet>
+      <description>2-channel low noise op amp</description>
+      <fields>
+        <field name="Footprint">Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</field>
+        <field name="Description">2-channel low noise op amp</field>
+      </fields>
+      <libsource lib="Eltec Part" part="LMC6062" description="2-channel low noise op amp"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="lmc6062, LMC 6062, LMC, lmc, 6062, 2chn op amp"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>2869cb38-2fb0-4aae-945c-6e45421a2791</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="8"/>
+            <pin num="7"/>
+            <pin num="6"/>
+            <pin num="5"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="O2">
+      <value>OPA2196</value>
+      <footprint>Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</datasheet>
+      <description>2-channel low noise op amp</description>
+      <fields>
+        <field name="Footprint">Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</field>
+        <field name="Description">2-channel low noise op amp</field>
+      </fields>
+      <libsource lib="Eltec Part" part="LMC6062" description="2-channel low noise op amp"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="lmc6062, LMC 6062, LMC, lmc, 6062, 2chn op amp"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>05a41710-4c06-4e88-a32a-6775df9524fe</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="8"/>
+            <pin num="7"/>
+            <pin num="6"/>
+            <pin num="5"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="O3">
+      <value>OPA2196</value>
+      <footprint>Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</datasheet>
+      <description>2-channel low noise op amp</description>
+      <fields>
+        <field name="Footprint">Package_SO:SOIC-8_3.9x4.9mm_P1.27mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</field>
+        <field name="Description">2-channel low noise op amp</field>
+      </fields>
+      <libsource lib="Eltec Part" part="LMC6062" description="2-channel low noise op amp"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="lmc6062, LMC 6062, LMC, lmc, 6062, 2chn op amp"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f66782cb-02d9-46bb-bd60-a3fe7526b129</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="8"/>
+            <pin num="7"/>
+            <pin num="6"/>
+            <pin num="5"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q2">
+      <value>AO3400A</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</datasheet>
+      <description>30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</description>
+      <fields>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</field>
+        <field name="Description">30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</field>
+      </fields>
+      <libsource lib="Transistor_FET" part="AO3400A" description="30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="N-Channel MOSFET"/>
+      <property name="ki_fp_filters" value="SOT?23*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e3edb853-3746-4ebd-a080-1d61d236422c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q3">
+      <value>AO3400A</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</datasheet>
+      <description>30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</description>
+      <fields>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</field>
+        <field name="Description">30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</field>
+      </fields>
+      <libsource lib="Transistor_FET" part="AO3400A" description="30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="N-Channel MOSFET"/>
+      <property name="ki_fp_filters" value="SOT?23*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ae920d2b-1f15-42f7-ad1a-441d32666067</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q4">
+      <value>AO3400A</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</datasheet>
+      <description>30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</description>
+      <fields>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</field>
+        <field name="Description">30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</field>
+      </fields>
+      <libsource lib="Transistor_FET" part="AO3400A" description="30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="N-Channel MOSFET"/>
+      <property name="ki_fp_filters" value="SOT?23*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>c7a14e4a-6ee8-4c38-ae1d-9cddeadbb476</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1">
+      <value>100K</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>15d2040b-4811-4ee6-8085-835ce3289af3</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2">
+      <value>300k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5b2e355d-8b08-4dfd-98c8-832cda3db40b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R3">
+      <value>500</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>84396866-cfe3-48bb-9e90-0cfb3017be1e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4">
+      <value>500</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4164926c-6491-4167-960d-c8f85a283622</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R5">
+      <value>500</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9bd6e795-57c1-47d5-8fbe-c192e2590bd9</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R6">
+      <value>500</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0a265502-e71a-4ba0-83be-14c1714389b2</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R7">
+      <value>500</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f7add3fb-f102-4bda-9f77-b6debb5a5b67</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R8">
+      <value>500</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>73994cbe-5312-42a4-a240-e755ff68015b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R9">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d5820e5f-0e8b-4403-a01c-e87073e396fa</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R10">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4aef75bd-1d05-44a5-bbc1-db533b5b845e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R11">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7355680d-a33a-4ce9-bd4b-f98bb3870e4d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R12">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>12235ffe-d50d-4cdc-b373-170080d9ac38</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R13">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>71feea43-492f-40e2-b79c-0ad77fd317b0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R14">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7c2e6797-b33f-4ad2-93bb-e97214488753</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R15">
+      <value>220</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7620442a-9e90-44e9-b1bb-269489bccd87</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R16">
+      <value>330</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>65950511-e8c2-4548-a27c-16f67f7764e5</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R17">
+      <value>330</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>cf2db18f-1c8e-438e-9cce-b3d8354b195e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R18">
+      <value>330</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>942e93f2-d43c-4ef3-8676-ef41588f2d0f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R19">
+      <value>100</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d6824e02-e79d-4db2-a7f9-909bba311032</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R20">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>257a2a03-3403-478c-a842-49282fa70623</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R21">
+      <value>100</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>c2b3f050-3ab1-4707-8810-dc7177f94e3d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R22">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>102e3655-e2eb-4d51-99d8-2df3770c3019</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R23">
+      <value>100</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9cab751d-22a9-4590-90e1-bad2f01d574a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R24">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Resistor</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <libsource lib="Device" part="R" description="Resistor"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="R res resistor"/>
+      <property name="ki_fp_filters" value="R_*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>85149be8-5d9f-4f0f-815a-735352a6bc9a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Ref1">
+      <value>~</value>
+      <footprint>Eltec Footprints:Sensor</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Sensor" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>823a8a75-a736-48a4-9a7f-869a43468db6</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Ref2">
+      <value>~</value>
+      <footprint>Eltec Footprints:Sensor</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Sensor" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>fea05104-1103-4c70-b290-a7b8a0a9fb4c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Ref3">
+      <value>~</value>
+      <footprint>Eltec Footprints:Sensor</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Sensor" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4bfb0e0a-0901-45e2-a712-eb91108dfcc9</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="RV1">
+      <value>1k POT</value>
+      <footprint>Potentiometer_THT:Potentiometer_Bourns_3296W_Vertical</footprint>
+      <description>Potentiometer</description>
+      <fields>
+        <field name="Sim.Device">R</field>
+        <field name="Sim.Type">POT</field>
+        <field name="Sim.Pins">1=r0 2=wiper 3=r1</field>
+        <field name="Footprint">Potentiometer_THT:Potentiometer_Bourns_3296W_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Potentiometer</field>
+      </fields>
+      <libsource lib="Device" part="R_Potentiometer" description="Potentiometer"/>
+      <property name="Sim.Device" value="R"/>
+      <property name="Sim.Type" value="POT"/>
+      <property name="Sim.Pins" value="1=r0 2=wiper 3=r1"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <property name="ki_keywords" value="resistor variable"/>
+      <property name="ki_fp_filters" value="Potentiometer*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>463a9cd0-ed54-4288-82c8-3b1ea0a941cf</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Test1">
+      <value>~</value>
+      <footprint>Eltec Footprints:Sensor</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Sensor" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>b5dc258b-e090-4edb-bc8b-4e012c50b837</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Test2">
+      <value>~</value>
+      <footprint>Eltec Footprints:Sensor</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Sensor" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>1dbde5ab-cf01-4293-82af-b2f02c697b58</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Test3">
+      <value>~</value>
+      <footprint>Eltec Footprints:Sensor</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="Sensor" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>79210f17-48d7-4c00-b758-3e028a3c64c8</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U1">
+      <value>ESP32DEVKITV1</value>
+      <footprint>Eltec Footprints:ESP32_DEVKITV1</footprint>
+      <fields>
+        <field name="Footprint">Eltec Footprints:ESP32_DEVKITV1</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="ESP32_DEVKITV1" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e9dd93db-7447-4e17-bc06-2d343ea8098d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="30"/>
+            <pin num="29"/>
+            <pin num="28"/>
+            <pin num="27"/>
+            <pin num="26"/>
+            <pin num="25"/>
+            <pin num="24"/>
+            <pin num="23"/>
+            <pin num="22"/>
+            <pin num="21"/>
+            <pin num="20"/>
+            <pin num="19"/>
+            <pin num="18"/>
+            <pin num="17"/>
+            <pin num="16"/>
+            <pin num="15"/>
+            <pin num="14"/>
+            <pin num="13"/>
+            <pin num="12"/>
+            <pin num="11"/>
+            <pin num="10"/>
+            <pin num="9"/>
+            <pin num="8"/>
+            <pin num="7"/>
+            <pin num="6"/>
+            <pin num="5"/>
+            <pin num="4"/>
+            <pin num="3"/>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U2">
+      <value>ADS1256_BOARD</value>
+      <footprint>Eltec Footprints:ADS1256_BOARD</footprint>
+      <datasheet>8-channel ADC</datasheet>
+      <fields>
+        <field name="Footprint">Eltec Footprints:ADS1256_BOARD</field>
+        <field name="Datasheet">8-channel ADC</field>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec Part" part="ADS1256_board" description=""/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="exclude_from_bom"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5660a232-6f1c-4367-bfee-deafe5f1765d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="17"/>
+            <pin num="18"/>
+            <pin num="19"/>
+            <pin num="20"/>
+            <pin num="21"/>
+            <pin num="22"/>
+            <pin num="23"/>
+            <pin num="24"/>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="7"/>
+            <pin num="8"/>
+            <pin num="9"/>
+            <pin num="10"/>
+            <pin num="11"/>
+            <pin num="12"/>
+            <pin num="13"/>
+            <pin num="14"/>
+            <pin num="15"/>
+            <pin num="16"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U3">
+      <value>AMS1117</value>
+      <footprint>Package_TO_SOT_SMD:SOT-223-3_TabPin2</footprint>
+      <datasheet>http://www.advanced-monolithic.com/pdf/ds1117.pdf</datasheet>
+      <description>1A Low Dropout regulator, positive, adjustable output, SOT-223</description>
+      <fields>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-223-3_TabPin2</field>
+        <field name="Datasheet">http://www.advanced-monolithic.com/pdf/ds1117.pdf</field>
+        <field name="Description">1A Low Dropout regulator, positive, adjustable output, SOT-223</field>
+      </fields>
+      <libsource lib="Regulator_Linear" part="AMS1117" description="1A Low Dropout regulator, positive, adjustable output, SOT-223"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="linear regulator ldo adjustable positive"/>
+      <property name="ki_fp_filters" value="SOT?223*TabPin2*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ec21c934-3c58-466f-9c51-5aa1657e122d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U4">
+      <value>LTV-847S</value>
+      <footprint>Package_DIP:SMDIP-16_W9.53mm</footprint>
+      <datasheet>http://www.us.liteon.com/downloads/LTV-817-827-847.PDF</datasheet>
+      <description>DC Optocoupler, Vce 35V, CTR 50%, SMDIP-16</description>
+      <fields>
+        <field name="Footprint">Package_DIP:SMDIP-16_W9.53mm</field>
+        <field name="Datasheet">http://www.us.liteon.com/downloads/LTV-817-827-847.PDF</field>
+        <field name="Description">DC Optocoupler, Vce 35V, CTR 50%, SMDIP-16</field>
+      </fields>
+      <libsource lib="Isolator" part="LTV-847S" description="DC Optocoupler, Vce 35V, CTR 50%, SMDIP-16"/>
+      <property name="Sheetname" value="ESP32_test_board"/>
+      <property name="Sheetfile" value="ESP32_test_board.kicad_sch"/>
+      <property name="ki_keywords" value="NPN DC Optocoupler"/>
+      <property name="ki_fp_filters" value="SMDIP*W9.53mm*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>cf8fc177-fbde-4ba8-a74d-5413a672cd6b 4f919675-569e-447c-8f10-1b0fe206c94b c743bf27-85d6-44ca-bd72-1e10da2d7ab7 33e77d58-0d92-4e5d-969d-c64bb161006f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="16"/>
+            <pin num="15"/>
+          </pins>
+        </unit>
+        <unit name="B">
+          <pins>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="14"/>
+            <pin num="13"/>
+          </pins>
+        </unit>
+        <unit name="C">
+          <pins>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="12"/>
+            <pin num="11"/>
+          </pins>
+        </unit>
+        <unit name="D">
+          <pins>
+            <pin num="7"/>
+            <pin num="8"/>
+            <pin num="10"/>
+            <pin num="9"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Connector" part="Barrel_Jack_MountingPin">
+      <description>DC Barrel Jack with a mounting pin</description>
+      <footprints>
+        <fp>BarrelJack*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Barrel_Jack_MountingPin</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">DC Barrel Jack with a mounting pin</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+        <pin num="MP" name="MountPin" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="C">
+      <description>Unpolarized capacitor</description>
+      <footprints>
+        <fp>C_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">C</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Unpolarized capacitor</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="R">
+      <description>Resistor</description>
+      <footprints>
+        <fp>R_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Resistor</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="R_Potentiometer">
+      <description>Potentiometer</description>
+      <footprints>
+        <fp>Potentiometer*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">RV</field>
+        <field name="Value">R_Potentiometer</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Potentiometer</field>
+        <field name="Sim.Device">R</field>
+        <field name="Sim.Type">POT</field>
+        <field name="Sim.Pins">1=r0 2=wiper 3=r1</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+        <pin num="3" name="3" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Diode" part="1N4007">
+      <description>1000V 1A General Purpose Rectifier Diode, DO-41</description>
+      <docs>http://www.vishay.com/docs/88503/1n4001.pdf</docs>
+      <footprints>
+        <fp>D*DO?41*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value">1N4007</field>
+        <field name="Footprint">Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal</field>
+        <field name="Datasheet">http://www.vishay.com/docs/88503/1n4001.pdf</field>
+        <field name="Description">1000V 1A General Purpose Rectifier Diode, DO-41</field>
+        <field name="Sim.Device">D</field>
+        <field name="Sim.Pins">1=K 2=A</field>
+      </fields>
+      <pins>
+        <pin num="1" name="K" type="passive"/>
+        <pin num="2" name="A" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec Part" part="ADS1256_board">
+      <docs>8-channel ADC</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">AMS1256_BOARD</field>
+        <field name="Footprint">eltect footprintw:ADS1256_BOARD</field>
+        <field name="Datasheet">8-channel ADC</field>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="5V" type="input"/>
+        <pin num="2" name="GND" type="input"/>
+        <pin num="3" name="SCLK" type="bidirectional"/>
+        <pin num="4" name="DIN" type="bidirectional"/>
+        <pin num="5" name="DOUT" type="bidirectional"/>
+        <pin num="6" name="DRDY" type="bidirectional"/>
+        <pin num="7" name="CS" type="bidirectional"/>
+        <pin num="8" name="PDWN" type="bidirectional"/>
+        <pin num="9" name="AIN0" type="input"/>
+        <pin num="10" name="AIN1" type="input"/>
+        <pin num="11" name="AIN2" type="input"/>
+        <pin num="12" name="AIN3" type="input"/>
+        <pin num="13" name="AIN4" type="input"/>
+        <pin num="14" name="AIN5" type="input"/>
+        <pin num="15" name="AIN6" type="input"/>
+        <pin num="16" name="AIN7" type="input"/>
+        <pin num="17" name="GND0" type="input"/>
+        <pin num="18" name="GND1" type="input"/>
+        <pin num="19" name="GND2" type="input"/>
+        <pin num="20" name="GND3" type="input"/>
+        <pin num="21" name="GND4" type="input"/>
+        <pin num="22" name="GND5" type="input"/>
+        <pin num="23" name="GND6" type="input"/>
+        <pin num="24" name="GND7" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec Part" part="ESP32_DEVKITV1">
+      <fields>
+        <field name="Reference">ESP32_DEVKITV1</field>
+        <field name="Value"/>
+        <field name="Footprint">eltect footprintw:ESP32_DEVKITV1</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="3V3" type="power_out"/>
+        <pin num="2" name="GND" type="power_in"/>
+        <pin num="3" name="D15" type="bidirectional"/>
+        <pin num="4" name="D2" type="bidirectional"/>
+        <pin num="5" name="D4" type="bidirectional"/>
+        <pin num="6" name="RX2" type="input"/>
+        <pin num="7" name="TX2" type="output"/>
+        <pin num="8" name="D5" type="bidirectional"/>
+        <pin num="9" name="D18" type="bidirectional"/>
+        <pin num="10" name="D19" type="bidirectional"/>
+        <pin num="11" name="D21" type="bidirectional"/>
+        <pin num="12" name="RX0" type="input"/>
+        <pin num="13" name="TX0" type="output"/>
+        <pin num="14" name="D22" type="bidirectional"/>
+        <pin num="15" name="D23" type="bidirectional"/>
+        <pin num="16" name="VIN" type="bidirectional"/>
+        <pin num="17" name="GND" type="power_in"/>
+        <pin num="18" name="D13" type="bidirectional"/>
+        <pin num="19" name="D12" type="bidirectional"/>
+        <pin num="20" name="D14" type="bidirectional"/>
+        <pin num="21" name="D27" type="bidirectional"/>
+        <pin num="22" name="D26" type="bidirectional"/>
+        <pin num="23" name="D25" type="bidirectional"/>
+        <pin num="24" name="D33" type="bidirectional"/>
+        <pin num="25" name="D32" type="bidirectional"/>
+        <pin num="26" name="D35" type="bidirectional"/>
+        <pin num="27" name="D34" type="bidirectional"/>
+        <pin num="28" name="VN" type="bidirectional"/>
+        <pin num="29" name="VP" type="bidirectional"/>
+        <pin num="30" name="EN" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec Part" part="Emitter">
+      <fields>
+        <field name="Reference">E</field>
+        <field name="Value">IR-56</field>
+        <field name="Footprint">Eltec Footprints:Emitter</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="V+" type="input"/>
+        <pin num="2" name="GND" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec Part" part="LMC6062">
+      <description>2-channel low noise op amp</description>
+      <docs>https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">LMC6062</field>
+        <field name="Footprint">eltect footprintw:LMC6062</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/lmc6062.pdf?ts=1784177656236&amp;ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FLMC6062</field>
+        <field name="Description">2-channel low noise op amp</field>
+      </fields>
+      <pins>
+        <pin num="1" name="OUT_A" type="output"/>
+        <pin num="2" name="-IN_A" type="input"/>
+        <pin num="3" name="+IN_A" type="input"/>
+        <pin num="4" name="V-" type="input"/>
+        <pin num="5" name="+IN_B" type="input"/>
+        <pin num="6" name="-IN_B" type="input"/>
+        <pin num="7" name="OUT_B" type="output"/>
+        <pin num="8" name="V+" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec Part" part="Sensor">
+      <fields>
+        <field name="Reference">Sensor</field>
+        <field name="Value"/>
+        <field name="Footprint">Eltec Footprints:Sensor</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="V+" type="input"/>
+        <pin num="2" name="OUTPUT" type="output"/>
+        <pin num="3" name="GND/CASE" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Isolator" part="LTV-847S">
+      <description>DC Optocoupler, Vce 35V, CTR 50%, SMDIP-16</description>
+      <docs>http://www.us.liteon.com/downloads/LTV-817-827-847.PDF</docs>
+      <footprints>
+        <fp>SMDIP*W9.53mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">LTV-847S</field>
+        <field name="Footprint">Package_DIP:SMDIP-16_W9.53mm</field>
+        <field name="Datasheet">http://www.us.liteon.com/downloads/LTV-817-827-847.PDF</field>
+        <field name="Description">DC Optocoupler, Vce 35V, CTR 50%, SMDIP-16</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+        <pin num="3" name="" type="passive"/>
+        <pin num="4" name="" type="passive"/>
+        <pin num="5" name="" type="passive"/>
+        <pin num="6" name="" type="passive"/>
+        <pin num="7" name="" type="passive"/>
+        <pin num="8" name="" type="passive"/>
+        <pin num="9" name="" type="passive"/>
+        <pin num="10" name="" type="passive"/>
+        <pin num="11" name="" type="passive"/>
+        <pin num="12" name="" type="passive"/>
+        <pin num="13" name="" type="passive"/>
+        <pin num="14" name="" type="passive"/>
+        <pin num="15" name="" type="passive"/>
+        <pin num="16" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Regulator_Linear" part="AMS1117">
+      <description>1A Low Dropout regulator, positive, adjustable output, SOT-223</description>
+      <docs>http://www.advanced-monolithic.com/pdf/ds1117.pdf</docs>
+      <footprints>
+        <fp>SOT?223*TabPin2*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">AMS1117</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-223-3_TabPin2</field>
+        <field name="Datasheet">http://www.advanced-monolithic.com/pdf/ds1117.pdf</field>
+        <field name="Description">1A Low Dropout regulator, positive, adjustable output, SOT-223</field>
+      </fields>
+      <pins>
+        <pin num="1" name="ADJ" type="input"/>
+        <pin num="2" name="VO" type="power_out"/>
+        <pin num="3" name="VI" type="power_in"/>
+      </pins>
+    </libpart>
+    <libpart lib="Transistor_FET" part="AO3400A">
+      <description>30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</description>
+      <docs>http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</docs>
+      <footprints>
+        <fp>SOT?23*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">AO3400A</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">http://www.aosmd.com/pdfs/datasheet/AO3400A.pdf</field>
+        <field name="Description">30V Vds, 5.7A Id, N-Channel MOSFET, SOT-23</field>
+      </fields>
+      <pins>
+        <pin num="1" name="G" type="input"/>
+        <pin num="2" name="S" type="passive"/>
+        <pin num="3" name="D" type="passive"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Connector">
+      <uri>${KICAD10_SYMBOL_DIR}/Connector.kicad_sym</uri>
+    </library>
+    <library logical="Device">
+      <uri>${KICAD10_SYMBOL_DIR}/Device.kicad_sym</uri>
+    </library>
+    <library logical="Diode">
+      <uri>${KICAD10_SYMBOL_DIR}/Diode.kicad_sym</uri>
+    </library>
+    <library logical="Isolator">
+      <uri>${KICAD10_SYMBOL_DIR}/Isolator.kicad_sym</uri>
+    </library>
+    <library logical="Regulator_Linear">
+      <uri>${KICAD10_SYMBOL_DIR}/Regulator_Linear.kicad_sym</uri>
+    </library>
+    <library logical="Transistor_FET">
+      <uri>${KICAD10_SYMBOL_DIR}/Transistor_FET.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="/efh" class="Default">
+      <node ref="O1" pin="1" pinfunction="OUT_A_1" pintype="output"/>
+      <node ref="O1" pin="2" pinfunction="-IN_A_2" pintype="input"/>
+      <node ref="R3" pin="2" pintype="passive"/>
+    </net>
+    <net code="2" name="Net-(D1-A)" class="Default">
+      <node ref="C7" pin="2" pintype="passive"/>
+      <node ref="D1" pin="2" pinfunction="A_2" pintype="passive"/>
+      <node ref="E1" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="E2" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="E3" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="R15" pin="1" pintype="passive"/>
+      <node ref="U3" pin="2" pinfunction="VO_2" pintype="power_out"/>
+      <node ref="U4" pin="12" pintype="passive"/>
+      <node ref="U4" pin="14" pintype="passive"/>
+      <node ref="U4" pin="16" pintype="passive"/>
+    </net>
+    <net code="3" name="Net-(D1-K)" class="Default">
+      <node ref="C5" pin="2" pintype="passive"/>
+      <node ref="D1" pin="1" pinfunction="K_1" pintype="passive"/>
+    </net>
+    <net code="4" name="Net-(E1-GND)" class="Default">
+      <node ref="E1" pin="2" pinfunction="GND_2" pintype="input"/>
+      <node ref="Q2" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="5" name="Net-(E2-GND)" class="Default">
+      <node ref="E2" pin="2" pinfunction="GND_2" pintype="input"/>
+      <node ref="Q3" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="6" name="Net-(E3-GND)" class="Default">
+      <node ref="E3" pin="2" pinfunction="GND_2" pintype="input"/>
+      <node ref="Q4" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="7" name="Net-(O1-+IN_A)" class="Default">
+      <node ref="O1" pin="3" pinfunction="+IN_A_3" pintype="input"/>
+      <node ref="R9" pin="1" pintype="passive"/>
+      <node ref="Test1" pin="2" pinfunction="OUTPUT_2" pintype="output"/>
+    </net>
+    <net code="8" name="Net-(O1-+IN_B)" class="Default">
+      <node ref="O1" pin="5" pinfunction="+IN_B_5" pintype="input"/>
+      <node ref="R10" pin="1" pintype="passive"/>
+      <node ref="Ref1" pin="2" pinfunction="OUTPUT_2" pintype="output"/>
+    </net>
+    <net code="9" name="Net-(O1--IN_B)" class="Default">
+      <node ref="O1" pin="6" pinfunction="-IN_B_6" pintype="input"/>
+      <node ref="O1" pin="7" pinfunction="OUT_B_7" pintype="output"/>
+      <node ref="R4" pin="1" pintype="passive"/>
+    </net>
+    <net code="10" name="Net-(O1-V+)" class="Default">
+      <node ref="C2" pin="1" pintype="passive"/>
+      <node ref="C3" pin="1" pintype="passive"/>
+      <node ref="C4" pin="1" pintype="passive"/>
+      <node ref="J1" pin="1" pintype="passive"/>
+      <node ref="O1" pin="8" pinfunction="V+_8" pintype="input"/>
+      <node ref="O2" pin="8" pinfunction="V+_8" pintype="input"/>
+      <node ref="O3" pin="8" pinfunction="V+_8" pintype="input"/>
+      <node ref="R2" pin="1" pintype="passive"/>
+      <node ref="Ref1" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="Ref2" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="Ref3" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="Test1" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="Test2" pin="1" pinfunction="V+_1" pintype="input"/>
+      <node ref="Test3" pin="1" pinfunction="V+_1" pintype="input"/>
+    </net>
+    <net code="11" name="Net-(O1-V-)" class="Default">
+      <node ref="C1" pin="2" pintype="passive"/>
+      <node ref="C2" pin="2" pintype="passive"/>
+      <node ref="C3" pin="2" pintype="passive"/>
+      <node ref="C4" pin="2" pintype="passive"/>
+      <node ref="J1" pin="2" pintype="passive"/>
+      <node ref="O1" pin="4" pinfunction="V-_4" pintype="input"/>
+      <node ref="O2" pin="4" pinfunction="V-_4" pintype="input"/>
+      <node ref="O3" pin="4" pinfunction="V-_4" pintype="input"/>
+      <node ref="R1" pin="2" pintype="passive"/>
+      <node ref="R10" pin="2" pintype="passive"/>
+      <node ref="R11" pin="2" pintype="passive"/>
+      <node ref="R12" pin="2" pintype="passive"/>
+      <node ref="R13" pin="2" pintype="passive"/>
+      <node ref="R14" pin="2" pintype="passive"/>
+      <node ref="R9" pin="2" pintype="passive"/>
+      <node ref="Ref1" pin="3" pinfunction="GND/CASE_3" pintype="input"/>
+      <node ref="Ref2" pin="3" pinfunction="GND/CASE_3" pintype="input"/>
+      <node ref="Ref3" pin="3" pinfunction="GND/CASE_3" pintype="input"/>
+      <node ref="Test1" pin="3" pinfunction="GND/CASE_3" pintype="input"/>
+      <node ref="Test2" pin="3" pinfunction="GND/CASE_3" pintype="input"/>
+      <node ref="Test3" pin="3" pinfunction="GND/CASE_3" pintype="input"/>
+      <node ref="U2" pin="17" pinfunction="GND0_17" pintype="input"/>
+      <node ref="U2" pin="18" pinfunction="GND1_18" pintype="input"/>
+      <node ref="U2" pin="19" pinfunction="GND2_19" pintype="input"/>
+      <node ref="U2" pin="20" pinfunction="GND3_20" pintype="input"/>
+      <node ref="U2" pin="21" pinfunction="GND4_21" pintype="input"/>
+      <node ref="U2" pin="22" pinfunction="GND5_22" pintype="input"/>
+      <node ref="U2" pin="24" pinfunction="GND7_24" pintype="input"/>
+    </net>
+    <net code="12" name="Net-(O2-+IN_A)" class="Default">
+      <node ref="O2" pin="3" pinfunction="+IN_A_3" pintype="input"/>
+      <node ref="R11" pin="1" pintype="passive"/>
+      <node ref="Test2" pin="2" pinfunction="OUTPUT_2" pintype="output"/>
+    </net>
+    <net code="13" name="Net-(O2-+IN_B)" class="Default">
+      <node ref="O2" pin="5" pinfunction="+IN_B_5" pintype="input"/>
+      <node ref="R12" pin="1" pintype="passive"/>
+      <node ref="Ref2" pin="2" pinfunction="OUTPUT_2" pintype="output"/>
+    </net>
+    <net code="14" name="Net-(O2--IN_A)" class="Default">
+      <node ref="O2" pin="1" pinfunction="OUT_A_1" pintype="output"/>
+      <node ref="O2" pin="2" pinfunction="-IN_A_2" pintype="input"/>
+      <node ref="R5" pin="1" pintype="passive"/>
+    </net>
+    <net code="15" name="Net-(O2--IN_B)" class="Default">
+      <node ref="O2" pin="6" pinfunction="-IN_B_6" pintype="input"/>
+      <node ref="O2" pin="7" pinfunction="OUT_B_7" pintype="output"/>
+      <node ref="R6" pin="1" pintype="passive"/>
+    </net>
+    <net code="16" name="Net-(O3-+IN_A)" class="Default">
+      <node ref="O3" pin="3" pinfunction="+IN_A_3" pintype="input"/>
+      <node ref="R13" pin="1" pintype="passive"/>
+      <node ref="Test3" pin="2" pinfunction="OUTPUT_2" pintype="output"/>
+    </net>
+    <net code="17" name="Net-(O3-+IN_B)" class="Default">
+      <node ref="O3" pin="5" pinfunction="+IN_B_5" pintype="input"/>
+      <node ref="R14" pin="1" pintype="passive"/>
+      <node ref="Ref3" pin="2" pinfunction="OUTPUT_2" pintype="output"/>
+    </net>
+    <net code="18" name="Net-(O3--IN_A)" class="Default">
+      <node ref="O3" pin="1" pinfunction="OUT_A_1" pintype="output"/>
+      <node ref="O3" pin="2" pinfunction="-IN_A_2" pintype="input"/>
+      <node ref="R7" pin="1" pintype="passive"/>
+    </net>
+    <net code="19" name="Net-(O3--IN_B)" class="Default">
+      <node ref="O3" pin="6" pinfunction="-IN_B_6" pintype="input"/>
+      <node ref="O3" pin="7" pinfunction="OUT_B_7" pintype="output"/>
+      <node ref="R8" pin="1" pintype="passive"/>
+    </net>
+    <net code="20" name="Net-(Q2-G)" class="Default">
+      <node ref="Q2" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R19" pin="2" pintype="passive"/>
+    </net>
+    <net code="21" name="Net-(Q2-S)" class="Default">
+      <node ref="C5" pin="1" pintype="passive"/>
+      <node ref="C6" pin="1" pintype="passive"/>
+      <node ref="C7" pin="1" pintype="passive"/>
+      <node ref="J2" pin="2" pintype="passive"/>
+      <node ref="Q2" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="Q3" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="Q4" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="R20" pin="2" pintype="passive"/>
+      <node ref="R22" pin="2" pintype="passive"/>
+      <node ref="R24" pin="2" pintype="passive"/>
+      <node ref="RV1" pin="3" pinfunction="3_3" pintype="passive"/>
+    </net>
+    <net code="22" name="Net-(Q3-G)" class="Default">
+      <node ref="Q3" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R21" pin="2" pintype="passive"/>
+    </net>
+    <net code="23" name="Net-(Q4-G)" class="Default">
+      <node ref="Q4" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R23" pin="2" pintype="passive"/>
+    </net>
+    <net code="24" name="Net-(R16-Pad1)" class="Default">
+      <node ref="R16" pin="1" pintype="passive"/>
+      <node ref="U4" pin="1" pintype="passive"/>
+    </net>
+    <net code="25" name="Net-(R17-Pad1)" class="Default">
+      <node ref="R17" pin="1" pintype="passive"/>
+      <node ref="U4" pin="3" pintype="passive"/>
+    </net>
+    <net code="26" name="Net-(R18-Pad2)" class="Default">
+      <node ref="R18" pin="2" pintype="passive"/>
+      <node ref="U4" pin="5" pintype="passive"/>
+    </net>
+    <net code="27" name="Net-(R19-Pad1)" class="Default">
+      <node ref="R19" pin="1" pintype="passive"/>
+      <node ref="R20" pin="1" pintype="passive"/>
+      <node ref="U4" pin="15" pintype="passive"/>
+    </net>
+    <net code="28" name="Net-(R21-Pad1)" class="Default">
+      <node ref="R21" pin="1" pintype="passive"/>
+      <node ref="R22" pin="1" pintype="passive"/>
+      <node ref="U4" pin="13" pintype="passive"/>
+    </net>
+    <net code="29" name="Net-(R23-Pad1)" class="Default">
+      <node ref="R23" pin="1" pintype="passive"/>
+      <node ref="R24" pin="1" pintype="passive"/>
+      <node ref="U4" pin="11" pintype="passive"/>
+    </net>
+    <net code="30" name="Net-(U1-3V3)" class="Default">
+      <node ref="U1" pin="1" pinfunction="3V3_1" pintype="power_out"/>
+      <node ref="U2" pin="8" pinfunction="PDWN_8" pintype="bidirectional"/>
+    </net>
+    <net code="31" name="Net-(U1-D4)" class="Default">
+      <node ref="U1" pin="5" pinfunction="D4_5" pintype="bidirectional"/>
+      <node ref="U2" pin="6" pinfunction="DRDY_6" pintype="bidirectional"/>
+    </net>
+    <net code="32" name="Net-(U1-D5)" class="Default">
+      <node ref="U1" pin="8" pinfunction="D5_8" pintype="bidirectional"/>
+      <node ref="U2" pin="7" pinfunction="CS_7" pintype="bidirectional"/>
+    </net>
+    <net code="33" name="Net-(U1-D18)" class="Default">
+      <node ref="U1" pin="9" pinfunction="D18_9" pintype="bidirectional"/>
+      <node ref="U2" pin="3" pinfunction="SCLK_3" pintype="bidirectional"/>
+    </net>
+    <net code="34" name="Net-(U1-D19)" class="Default">
+      <node ref="U1" pin="10" pinfunction="D19_10" pintype="bidirectional"/>
+      <node ref="U2" pin="5" pinfunction="DOUT_5" pintype="bidirectional"/>
+    </net>
+    <net code="35" name="Net-(U1-D23)" class="Default">
+      <node ref="U1" pin="15" pinfunction="D23_15" pintype="bidirectional"/>
+      <node ref="U2" pin="4" pinfunction="DIN_4" pintype="bidirectional"/>
+    </net>
+    <net code="36" name="Net-(U1-D25)" class="Default">
+      <node ref="R17" pin="2" pintype="passive"/>
+      <node ref="U1" pin="23" pinfunction="D25_23" pintype="bidirectional"/>
+    </net>
+    <net code="37" name="Net-(U1-D26)" class="Default">
+      <node ref="R18" pin="1" pintype="passive"/>
+      <node ref="U1" pin="22" pinfunction="D26_22" pintype="bidirectional"/>
+    </net>
+    <net code="38" name="Net-(U1-D33)" class="Default">
+      <node ref="R16" pin="2" pintype="passive"/>
+      <node ref="U1" pin="24" pinfunction="D33_24" pintype="bidirectional"/>
+    </net>
+    <net code="39" name="Net-(U1-GND-Pad17)" class="Default">
+      <node ref="U1" pin="17" pinfunction="GND_17" pintype="power_in"/>
+      <node ref="U4" pin="2" pintype="passive"/>
+      <node ref="U4" pin="4" pintype="passive"/>
+      <node ref="U4" pin="6" pintype="passive"/>
+    </net>
+    <net code="40" name="Net-(U1-VIN)" class="Default">
+      <node ref="U1" pin="16" pinfunction="VIN_16" pintype="bidirectional"/>
+      <node ref="U2" pin="1" pinfunction="5V_1" pintype="input"/>
+    </net>
+    <net code="41" name="Net-(U2-AIN0)" class="Default">
+      <node ref="R3" pin="1" pintype="passive"/>
+      <node ref="U2" pin="9" pinfunction="AIN0_9" pintype="input"/>
+    </net>
+    <net code="42" name="Net-(U2-AIN1)" class="Default">
+      <node ref="R4" pin="2" pintype="passive"/>
+      <node ref="U2" pin="10" pinfunction="AIN1_10" pintype="input"/>
+    </net>
+    <net code="43" name="Net-(U2-AIN2)" class="Default">
+      <node ref="R5" pin="2" pintype="passive"/>
+      <node ref="U2" pin="11" pinfunction="AIN2_11" pintype="input"/>
+    </net>
+    <net code="44" name="Net-(U2-AIN3)" class="Default">
+      <node ref="R6" pin="2" pintype="passive"/>
+      <node ref="U2" pin="12" pinfunction="AIN3_12" pintype="input"/>
+    </net>
+    <net code="45" name="Net-(U2-AIN4)" class="Default">
+      <node ref="R7" pin="2" pintype="passive"/>
+      <node ref="U2" pin="13" pinfunction="AIN4_13" pintype="input"/>
+    </net>
+    <net code="46" name="Net-(U2-AIN5)" class="Default">
+      <node ref="R8" pin="2" pintype="passive"/>
+      <node ref="U2" pin="14" pinfunction="AIN5_14" pintype="input"/>
+    </net>
+    <net code="47" name="Net-(U2-AIN7)" class="Default">
+      <node ref="C1" pin="1" pintype="passive"/>
+      <node ref="R1" pin="1" pintype="passive"/>
+      <node ref="R2" pin="2" pintype="passive"/>
+      <node ref="U2" pin="16" pinfunction="AIN7_16" pintype="input"/>
+    </net>
+    <net code="48" name="Net-(U2-GND)" class="Default">
+      <node ref="U1" pin="2" pinfunction="GND_2" pintype="power_in"/>
+      <node ref="U2" pin="2" pinfunction="GND_2" pintype="input"/>
+    </net>
+    <net code="49" name="Net-(U3-ADJ)" class="Default">
+      <node ref="C6" pin="2" pintype="passive"/>
+      <node ref="R15" pin="2" pintype="passive"/>
+      <node ref="RV1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="RV1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U3" pin="1" pinfunction="ADJ_1" pintype="input"/>
+    </net>
+    <net code="50" name="Net-(U3-VI)" class="Default">
+      <node ref="J2" pin="1" pintype="passive"/>
+      <node ref="U3" pin="3" pinfunction="VI_3" pintype="power_in"/>
+    </net>
+    <net code="51" name="unconnected-(J1-MountPin-PadMP)" class="Default">
+      <node ref="J1" pin="MP" pinfunction="MountPin_MP" pintype="passive+no_connect"/>
+    </net>
+    <net code="52" name="unconnected-(J2-MountPin-PadMP)" class="Default">
+      <node ref="J2" pin="MP" pinfunction="MountPin_MP" pintype="passive+no_connect"/>
+    </net>
+    <net code="53" name="unconnected-(U1-D2-Pad4)" class="Default">
+      <node ref="U1" pin="4" pinfunction="D2_4" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="54" name="unconnected-(U1-D12-Pad19)" class="Default">
+      <node ref="U1" pin="19" pinfunction="D12_19" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="55" name="unconnected-(U1-D13-Pad18)" class="Default">
+      <node ref="U1" pin="18" pinfunction="D13_18" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="56" name="unconnected-(U1-D14-Pad20)" class="Default">
+      <node ref="U1" pin="20" pinfunction="D14_20" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="57" name="unconnected-(U1-D15-Pad3)" class="Default">
+      <node ref="U1" pin="3" pinfunction="D15_3" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="58" name="unconnected-(U1-D21-Pad11)" class="Default">
+      <node ref="U1" pin="11" pinfunction="D21_11" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="59" name="unconnected-(U1-D22-Pad14)" class="Default">
+      <node ref="U1" pin="14" pinfunction="D22_14" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="60" name="unconnected-(U1-D27-Pad21)" class="Default">
+      <node ref="U1" pin="21" pinfunction="D27_21" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="61" name="unconnected-(U1-D32-Pad25)" class="Default">
+      <node ref="U1" pin="25" pinfunction="D32_25" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="62" name="unconnected-(U1-D34-Pad27)" class="Default">
+      <node ref="U1" pin="27" pinfunction="D34_27" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="63" name="unconnected-(U1-D35-Pad26)" class="Default">
+      <node ref="U1" pin="26" pinfunction="D35_26" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="64" name="unconnected-(U1-EN-Pad30)" class="Default">
+      <node ref="U1" pin="30" pinfunction="EN_30" pintype="input+no_connect"/>
+    </net>
+    <net code="65" name="unconnected-(U1-RX0-Pad12)" class="Default">
+      <node ref="U1" pin="12" pinfunction="RX0_12" pintype="input+no_connect"/>
+    </net>
+    <net code="66" name="unconnected-(U1-RX2-Pad6)" class="Default">
+      <node ref="U1" pin="6" pinfunction="RX2_6" pintype="input+no_connect"/>
+    </net>
+    <net code="67" name="unconnected-(U1-TX0-Pad13)" class="Default">
+      <node ref="U1" pin="13" pinfunction="TX0_13" pintype="output+no_connect"/>
+    </net>
+    <net code="68" name="unconnected-(U1-TX2-Pad7)" class="Default">
+      <node ref="U1" pin="7" pinfunction="TX2_7" pintype="output+no_connect"/>
+    </net>
+    <net code="69" name="unconnected-(U1-VN-Pad28)" class="Default">
+      <node ref="U1" pin="28" pinfunction="VN_28" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="70" name="unconnected-(U1-VP-Pad29)" class="Default">
+      <node ref="U1" pin="29" pinfunction="VP_29" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="71" name="unconnected-(U2-AIN6-Pad15)" class="Default">
+      <node ref="U2" pin="15" pinfunction="AIN6_15" pintype="input+no_connect"/>
+    </net>
+    <net code="72" name="unconnected-(U2-GND6-Pad23)" class="Default">
+      <node ref="U2" pin="23" pinfunction="GND6_23" pintype="input+no_connect"/>
+    </net>
+    <net code="73" name="unconnected-(U4-Pad7)" class="Default">
+      <node ref="U4" pin="7" pintype="passive+no_connect"/>
+    </net>
+    <net code="74" name="unconnected-(U4-Pad8)" class="Default">
+      <node ref="U4" pin="8" pintype="passive+no_connect"/>
+    </net>
+    <net code="75" name="unconnected-(U4-Pad9)" class="Default">
+      <node ref="U4" pin="9" pintype="passive+no_connect"/>
+    </net>
+    <net code="76" name="unconnected-(U4-Pad10)" class="Default">
+      <node ref="U4" pin="10" pintype="passive+no_connect"/>
+    </net>
+  </nets>
+</export>

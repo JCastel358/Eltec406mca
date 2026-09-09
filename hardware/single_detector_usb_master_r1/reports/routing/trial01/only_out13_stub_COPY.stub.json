@@ -1,0 +1,41 @@
+{
+  "status": "STUB_ADDED_IN_MEMORY_NOT_DRC_QUALIFIED",
+  "stub": {
+    "uuid": "d2623ead-09bc-5074-9526-01112d87b2d9",
+    "start_nm": [
+      35450000,
+      -8000000
+    ],
+    "end_nm": [
+      35450000,
+      -8500000
+    ],
+    "width_nm": 250000,
+    "layer": "F.Cu",
+    "net": "ADC_5V_HELD",
+    "locked": true
+  },
+  "unconnected_before": 12,
+  "unconnected_after": 11,
+  "kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "native_nonrouting_identity_unchanged": true,
+  "ground_or_thermal_changes": false,
+  "required_followup": "Refill planes if present and run native DRC against the integrated board.",
+  "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\import_candidate.kicad_pcb",
+  "source_sha256": "b8aba916f5bf17d38e75646580d3358245f5783a342c14b3a16379d83a4af60e",
+  "output": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\routing\\trial01\\only_out13_stub_COPY.kicad_pcb",
+  "output_sha256": "9f36255c6cb9a8d722f5b1e45fd212a9e34e49294438351cd39c05975ba7fe27",
+  "tool_sha256": "fa08caee3df3cff3ed63ae99857adcdf9b07f7032f34c4e7bc9cdb932cd70c13",
+  "source_unchanged": true
+}

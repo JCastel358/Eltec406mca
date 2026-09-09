@@ -154,10 +154,24 @@ persisted) and `pwm_duty` in `STATUS?`; the backend programs `PWM,FREQ` and
 a port open resets the board to 10 Hz / 50 %, so the 405 M22 and 406 MCA
 paths are unchanged. Flash with `python3 Arduino/Eltec/flash_firmware.py`.
 
-The AIN1 reference gate is **disabled** (`REFERENCE_GATE_ENABLED = False`,
-op-amp crosstalk, same as the other models); its machinery runs at 10 Hz /
-50 % and is unit-tested with the flag forced on. Battery monitoring is
-disabled as on the whole fixture.
+The AIN1 reference gate is **enabled** (`REFERENCE_GATE_ENABLED = True` since
+2026-09-09, on the new **TI OPA2196** buffer; it was off from 2026-08-24 for
+op-amp crosstalk, same as the other models — a shorted DUT pulled AIN1 down
+~90 %). Like the 405, this build reads the offset first and rejects a ≈0 V
+part before AIN1 is touched, so the shorted-DUT re-check is done with
+`Arduino/Eltec/esp32_rig_readout.py ref` or on the 406 path; a reference
+lockout now writes a `measure_error` row to the batch's `_attempts.csv`. Its machinery runs at 10 Hz
+/ 50 % — the reference unit is a 406MCA part, so the reference phase never
+uses this model's 5/18 Hz 20 % blade. The gate judges the fixture's emitter,
+not the 449 part, so it is live even though this model's own sensitivity
+calibration is still pending. `REFERENCE_CALIBRATION_SCHEMA_VERSION` went
+4 → **5** with the re-enable (in step with the 405 M22, so the two builds
+still interchange baselines), which refuses every pre-isolation baseline and
+locks testing until **Calibrate reference unit** is run fresh. The crosstalk
+re-check on the new board is still outstanding; if AIN1 still follows the
+DUT, set the flag back to `False` rather than widening the window
+(CALIBRATION_RECORD §2.4). Battery monitoring stays disabled as on the whole
+fixture.
 
 ## Simulator cases
 

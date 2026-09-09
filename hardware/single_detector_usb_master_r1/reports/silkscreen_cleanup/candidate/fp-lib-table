@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "Eltec_Master")(type "KiCad")(uri "${KIPRJMOD}/../libraries/master.pretty")(options "")(descr "Reviewed candidate silk; original copper geometry"))
+)

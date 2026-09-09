@@ -1,0 +1,290 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T11:18:28",
+    "ignored_checks": [
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "single_detector_usb_master.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 2.1273 mm",
+                    "pos": {
+                        "x": 44.3869,
+                        "y": 26.4744
+                    },
+                    "uuid": "caf8cd0b-4c32-42ef-b8d9-1bd362ece342"
+                },
+                {
+                    "description": "Track [GND] on F.Cu, length 0.6500 mm",
+                    "pos": {
+                        "x": 41.325,
+                        "y": 27.0465
+                    },
+                    "uuid": "087539a6-5aaf-43cb-9fec-baee2330723e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [GND] on F.Cu, length 1.8522 mm",
+                    "pos": {
+                        "x": 55.8995,
+                        "y": 96.0402
+                    },
+                    "uuid": "9300fb86-d60e-423a-9578-535dfd7eb6c4"
+                },
+                {
+                    "description": "Track [GND] on F.Cu, length 1.2654 mm",
+                    "pos": {
+                        "x": 40.4125,
+                        "y": 93.5
+                    },
+                    "uuid": "60ca04c8-54a1-4dd0-8df5-27f2d4fafeee"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 1 [EM_MASTER_GATE] of C27 on F.Cu",
+                    "pos": {
+                        "x": 87.0,
+                        "y": -20.725
+                    },
+                    "uuid": "7bd6b06c-3c77-5a7d-9ca9-604774dcfb90"
+                },
+                {
+                    "description": "Pad 1 [EM_MASTER_GATE] of Q20 on F.Cu",
+                    "pos": {
+                        "x": 89.0625,
+                        "y": -22.95
+                    },
+                    "uuid": "c419e1c2-a58e-506e-95e5-301c2e2662bf"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [EM_GND] of C101 on F.Cu",
+                    "pos": {
+                        "x": 81.5,
+                        "y": 35.05
+                    },
+                    "uuid": "c1a1f015-e611-5a50-ba64-dd8fcf8246d6"
+                },
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 4.6625 mm",
+                    "pos": {
+                        "x": 88.75,
+                        "y": 43.5
+                    },
+                    "uuid": "2d2ee43b-0f14-4e06-99ef-616e35460b75"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 2 [EM_GND] of R29 on F.Cu",
+                    "pos": {
+                        "x": 83.825,
+                        "y": -24.0
+                    },
+                    "uuid": "e092e683-8da3-5ff6-8d6f-cf3711c867c7"
+                },
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 3.3257 mm",
+                    "pos": {
+                        "x": 82.81,
+                        "y": 6.27
+                    },
+                    "uuid": "ded9ddad-5111-41f7-8569-1a43974e529c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Track [EM_GND] on F.Cu, length 9.1500 mm",
+                    "pos": {
+                        "x": 88.75,
+                        "y": 52.65
+                    },
+                    "uuid": "0add14c7-636c-4aee-a4cc-6f9ac65f168c"
+                },
+                {
+                    "description": "Pad 2 [EM_GND] of C100 on F.Cu",
+                    "pos": {
+                        "x": 91.87,
+                        "y": 35.5
+                    },
+                    "uuid": "81a0b9a7-5c60-51c1-b170-3649eb3f0d0e"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "PTH pad 3 [ADC_SCLK] of J5",
+                    "pos": {
+                        "x": 58.29,
+                        "y": 80.975
+                    },
+                    "uuid": "c5017c32-cb1a-5eb9-b72d-34f2364b3bde"
+                },
+                {
+                    "description": "Track [ADC_SCLK] on B.Cu, length 3.1186 mm",
+                    "pos": {
+                        "x": 61.6339,
+                        "y": 89.2584
+                    },
+                    "uuid": "1f9dde0e-b34b-4fff-a5ff-dc12eb133db1"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 7 [AMP_OUT5] of U35 on F.Cu",
+                    "pos": {
+                        "x": 29.15,
+                        "y": 21.709
+                    },
+                    "uuid": "a6805ce4-eadd-5f4f-a1ae-bbd0da3a679e"
+                },
+                {
+                    "description": "Track [AMP_OUT5] on F.Cu, length 0.4505 mm",
+                    "pos": {
+                        "x": 31.2263,
+                        "y": 29.2357
+                    },
+                    "uuid": "885853a1-36ec-475f-91fb-6e84198b9493"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "Pad 3 [EM_BAT_FUSED] of Q19 on F.Cu",
+                    "pos": {
+                        "x": 83.9375,
+                        "y": -21.0
+                    },
+                    "uuid": "f8ea217e-1ce7-568d-ac8f-6cd20c13f3c6"
+                },
+                {
+                    "description": "Pad 2 [EM_BAT_FUSED] of F2 on F.Cu",
+                    "pos": {
+                        "x": 90.4,
+                        "y": -16.0
+                    },
+                    "uuid": "f28c7728-2a81-5aaf-8f8b-17f62aa08d43"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 34.4,
+                        "y": -9.3
+                    },
+                    "uuid": "0afb5c5a-1fd2-41f9-87cc-e39a0429f249"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 34.4,
+                        "y": -4.7
+                    },
+                    "uuid": "68249d26-f4c8-4954-be51-c2ec8583a64a"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 33.6,
+                        "y": -4.7
+                    },
+                    "uuid": "e0d9aeb4-e4df-4ba8-b36b-8af9d3476303"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "Via [GND] on F.Cu - B.Cu",
+                    "pos": {
+                        "x": 33.6,
+                        "y": -9.3
+                    },
+                    "uuid": "ec765874-b67b-4c0c-9e8d-855ed32ce6ac"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        }
+    ]
+}

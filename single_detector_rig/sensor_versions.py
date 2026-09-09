@@ -99,7 +99,7 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
         details=(
             "Emitter: 5 Hz then 18 Hz, both 20% ON / 80% OFF (the legacy fixture's 20/80 "
             "blade); the app sends PWM,FREQ + PWM,DUTY (firmware v3.2 required).",
-            "Flow: offset read → 5 Hz capture → 18 Hz capture → ratio 18/5 → TP443 specs 1-4.",
+            "Flow: offset read → reference gate → 5 Hz capture → 18 Hz capture → ratio 18/5 → TP443 specs 1-4.",
             "Limits: ≥ 1.2 V at 5 Hz, ≥ 0.72 V at 18 Hz, ratio 0.70-1.30, ratio ≤ 0.72 flags",
             "the tray for 100% measurement — applied on legacy-equivalent values (raw × a",
             "per-frequency fixture factor). CALIBRATION PENDING: factors not derived yet, so",

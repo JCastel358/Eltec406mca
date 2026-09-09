@@ -1,0 +1,56 @@
+{
+  "scope": "Copy-only native DRC with normally ignored applicable checks enabled",
+  "input_sha256": {
+    "single_detector_usb_master\\adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master\\adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master\\analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master\\analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master\\analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master\\emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master\\emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master\\emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master\\esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master\\power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master\\power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master\\power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_dru": "0a68d7ebbf53577634025066fc9f21378e2fa1abb019ac4f199e565bcab3f49f",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pcb": "e6961eff764b14fa3f4c7e4b72d7d752b3ee1ae0c88822cd2b5f75ad25379349",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pro": "3cf227d4406d784bd901bfeaedaec4b81d7e781376ee89d6b09216ddebb1b1ac",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master\\spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master\\spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d"
+  },
+  "enabled_checks": [
+    "missing_courtyard",
+    "track_not_centered_on_via",
+    "footprint_filters_mismatch",
+    "footprint_type_mismatch"
+  ],
+  "counts": {
+    "violations": {},
+    "unconnected_items": {
+      "unconnected_items": 462
+    },
+    "schematic_parity": {}
+  },
+  "remaining_ignored_checks": [
+    {
+      "description": "Tuning profile track geometries",
+      "key": "tuning_profile_track_geometries"
+    }
+  ],
+  "command": [
+    "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+    "pcb",
+    "drc",
+    "--format",
+    "json",
+    "--severity-all",
+    "--schematic-parity",
+    "--output",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\default_drc_probe\\drc.json",
+    "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\default_drc_probe\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb"
+  ],
+  "stdout": "Found 0 violations\nFound 462 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/default_drc_probe/drc.json\n",
+  "stderr": ""
+}

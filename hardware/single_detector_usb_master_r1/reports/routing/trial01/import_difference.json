@@ -1,0 +1,17 @@
+{
+  "same_native": false,
+  "same_classes": true,
+  "differences": [
+    [
+      "native/96/4/1",
+      "64.666667",
+      "64.6667"
+    ],
+    [
+      "native/96/4/2",
+      "97.666667",
+      "97.6667"
+    ]
+  ],
+  "unconnected_after": 12
+}

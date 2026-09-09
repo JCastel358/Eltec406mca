@@ -62,10 +62,16 @@ laptop (Windows 11 or Xubuntu) ──USB/CP210x, 500000 baud── ESP32 DevKit 
 Wiring reference: [`Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md`](../Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md).
 Two hardware facts shape everything else:
 
-- **The buffer board is a dual op-amp with no channel isolation**, so the DUT
-  couples into the AIN1 reference channel. The reference (emitter-health) gate
-  is therefore **disabled on every model** until a channel-isolated buffer
-  board exists (CALIBRATION_RECORD §2.4).
+- **The original buffer board was a dual op-amp with no channel isolation**:
+  a shorted DUT pulled the AIN1 reference down ~90 % and the app demanded a
+  recalibration, so the reference (emitter-health) gate was disabled on every
+  model from 2026-08-17/24. The buffer is now a **TI OPA2196** (channel
+  isolated) and the gates went back **on 2026-09-09** — with the shorted-DUT
+  re-check still outstanding and every stored baseline refused by a schema
+  bump (CALIBRATION_RECORD §2.4). A lockout now also writes a `measure_error`
+  row to the batch's `_attempts.csv`. If that re-check shows
+  AIN1 still following the DUT, set `REFERENCE_GATE_ENABLED` back to `False`;
+  never widen `REFERENCE_TOLERANCE_PERCENT` to make the gate fit.
 - **Opening or closing the serial port resets the ESP32** (DTR). Every
   connect therefore re-programs the board (`PIN,33`, `PWM,FREQ`, `PWM,DUTY`,
   `FE,V19` for the 406), and nothing survives a port close.
@@ -248,10 +254,10 @@ python -m unittest discover -s array_rig/tests                     # array selec
 python -m unittest discover -s array_rig/m40623/tests              # DAQ backend (fake DLL), analysis (golden parity), tester flow, readout, live viewer (Agg), engineer tools
 ```
 
-Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-09-03
-(after the stall attribution / 406 stream port): glue 45, 405 M22 200 (4
-skipped), 406 MCA 160, 449 M18 135, array glue 31, 40623 array 241 —
-**812 tests**.
+Stdlib `unittest` only (no pytest on the bench laptop). Baseline on 2026-09-08
+(after array empty inference and adaptive waveform settling): glue 45,
+405 M22 201 (4 skipped), 406 MCA 215 (3 skipped), 449 M18 136,
+array glue 34, 40623 array 297 — **928 tests**.
 Known and accepted on Windows: the 406 suite reports one error
 (`test_launcher_installation_uses_only_v6_1_identities`, runs the bash
 installer); it passes on Xubuntu. Display-only GUI tests
@@ -283,11 +289,14 @@ When more known-noisy parts exist, replay their raw captures with
 `NOISE_MAX_OVER_FRACTION` or the band; any band change means re-deriving the
 limit.
 
-**Reference-unit calibration (when the isolated buffer board arrives):** set
-`REFERENCE_GATE_ENABLED = True` in the model, run **Calibrate reference unit**
-with a known-good emitter (five adaptive readings, repeatable within 10 %),
-expect ~5 mV. Schema versions are enforced so stale baselines are rejected
-(CALIBRATION_RECORD §5).
+**Reference-unit calibration (due now on every rig — done 2026-09-09 in the
+app, pending on the bench):** `REFERENCE_GATE_ENABLED = True` on all three
+models; run **Calibrate reference unit** with a known-good emitter (five
+adaptive readings, repeatable within 10 %), expect ~5 mV. The schema bump
+(405/449 v5, 406 v3) rejects every pre-isolation baseline, so each rig stays
+locked until this is done — that is the intended safety interlock, not a bug
+(CALIBRATION_RECORD §5). Do not copy a baseline between rigs unless both run
+the same schema (the 405 and 449 share v5 by design; the 406 does not).
 
 **Array rig noise limits (open — CALIBRATION_RECORD §4b.2):** run the bench
 spike first (`daq_bench_probe.py info → selfcal → config → scan` with a known
@@ -322,7 +331,7 @@ then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
 
 1. **Flash and bench-verify firmware v3.2** (`IDN? -> v3.2`, `PWM,DUTY,20 -> OK,PWM,DUTY,20.0`); until then the 449 M18 mode cannot connect.
 2. **449 M18 calibration**: derive `K_5`/`K_18`, fill the TP443 offset band (`OFFSET_GATE_ENABLED`), confirm polarity on real parts, revisit the 0.100 mV peak-delta threshold once real amplitudes are known.
-3. **Channel-isolated buffer board** (installed 2026-09) → choose the reference part (`engineer_tools/reference_unit/`), re-check crosstalk with a DUT driven (`REF?` / AIN1 stream must not follow the DUT), then re-enable the reference gates on all models and recalibrate fresh.
+3. **Channel-isolated buffer board** (installed 2026-09) → the reference gates were re-enabled on all three models on **2026-09-09** ahead of the verification, at the user's request. Still to do, in this order: choose/mount the reference part (`engineer_tools/reference_unit/`), **re-check crosstalk with a shorted DUT seated** — the original trigger (the old board gave −90 % on AIN1). Through the app only the 406 MCA reads AIN1 with the DUT seated (calibrate, load the shorted part, Start: clean = "Reference unit passed" then "Is a sensor loaded?"; crosstalk = "outside its window" + lockout, now in `_attempts.csv`); the 405/449 reject a ≈0 V part before AIN1, so for them drive the emitter with the shorted DUT in place and watch `Arduino/Eltec/esp32_rig_readout.py ref`. Then run a fresh **Calibrate reference unit** on each rig (the schema bump already forces this before any part can be tested) and record the part, the crosstalk numbers and the baseline in CALIBRATION_RECORD §2.4. If the re-check fails, set `REFERENCE_GATE_ENABLED = False` again — the gate-off path is still unit-tested in every model.
 4. **Sensor-battery monitoring on AIN6** (≥ 4:1 divider + firmware mux entry + host thresholds) → re-enable the battery gates. Plan: step the sensor supply to ~8 V to match TP412's bench supply.
 5. **Legacy amplifier question** (405 noise): confirm the ~700× effective chain factor by checking the legacy scope's CH2 probe (1×/10×) and the amplifier's range switch, or obtain its true gain and passband corners; the factor rests on one part.
 6. **405 noise anchor**: the 15 % window rule and the 60 s soak rest on part 500-44 — refine with more failing parts.

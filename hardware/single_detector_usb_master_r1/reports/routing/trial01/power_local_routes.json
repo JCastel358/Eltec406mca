@@ -1,0 +1,1167 @@
+[
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      44975000,
+      -11350000
+    ],
+    "end": [
+      44975000,
+      -9000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "00753755-1285-4136-bcd0-1fe8ed1ed1d1"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      40600000,
+      225000
+    ],
+    "end": [
+      42825000,
+      -2000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "00b23761-46be-42c6-8be4-625bba315740"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      42825000,
+      -2000000
+    ],
+    "end": [
+      42825000,
+      -5000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "00f9f782-19d2-454f-aba9-f4efe644be85"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      29825000,
+      9210100
+    ],
+    "end": [
+      29825000,
+      -3500000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "1bac8523-317a-499e-a25a-e9d52fed161c"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      39975000,
+      -13500000
+    ],
+    "end": [
+      39975000,
+      -11950000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "23d0def6-b6fa-4c57-8e90-5023de29d1c7"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      37300000,
+      225000
+    ],
+    "end": [
+      40600000,
+      225000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "26f0a5b5-cb2d-4ebd-aca7-a847fa1f8206"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      34000000,
+      -7000000
+    ],
+    "end": [
+      34000000,
+      -9001700
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "41c7033b-c89b-44bd-ab10-cd319d27ca78"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      42825000,
+      -13500000
+    ],
+    "end": [
+      44325000,
+      -12000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "42b35972-63a0-4b60-85ed-927eb422fa81"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      29500000,
+      -9475000
+    ],
+    "end": [
+      33526700,
+      -9475000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "456da675-6e12-4770-8474-d09f508c84aa"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      32281700,
+      -1493300
+    ],
+    "end": [
+      32281700,
+      -3280000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "492d5132-8d45-422d-af5c-d9cc4c554797"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      32281700,
+      -3280000
+    ],
+    "end": [
+      34000000,
+      -4998300
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "57bf3070-42a7-45ce-a762-ff3142d3577a"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      47207600,
+      -6767500
+    ],
+    "end": [
+      44975100,
+      -9000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "6005a0dd-c526-487b-96c7-8bae4c6ce7c8"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      39975000,
+      -11950000
+    ],
+    "end": [
+      38500000,
+      -10475000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "731f1390-7ce0-41de-8f99-d708b2fe279d"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      28547500,
+      -10427500
+    ],
+    "end": [
+      29500000,
+      -9475000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "75854c72-ede8-41fe-ba70-14d4a21e4618"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      33526700,
+      -9475000
+    ],
+    "end": [
+      34000000,
+      -9001700
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "78d88a98-34bf-478e-95e4-c6e2b9a5bf68"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      39975000,
+      -13500000
+    ],
+    "end": [
+      42825000,
+      -13500000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "7c7fdcd5-ef1b-48ae-a526-b0cd116b6b0a"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      30045000,
+      -3280000
+    ],
+    "end": [
+      32281700,
+      -3280000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "97c46fd2-b323-4289-9caa-280b1f7be011"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      48025100,
+      -5950000
+    ],
+    "end": [
+      47207600,
+      -6767500
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "a162c531-375b-4162-bfaf-8fa83671b6af"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      42825000,
+      -5000000
+    ],
+    "end": [
+      42825000,
+      -6820000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "a762e768-87a1-4e6d-a019-7ebeb1905914"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      44325000,
+      -12000000
+    ],
+    "end": [
+      44975000,
+      -11350000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "abda79e0-ffba-4f40-95f3-ad5848e760ac"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      44975100,
+      -9000000
+    ],
+    "end": [
+      44975000,
+      -9000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "aeef9479-a42c-4719-8b55-159f21e8ab1d"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      26475000,
+      -22000000
+    ],
+    "end": [
+      26475000,
+      -12500000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "afa9baf3-b630-46cf-b54c-c766129732b1"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      34000000,
+      225000
+    ],
+    "end": [
+      32281700,
+      -1493300
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "b0552d4b-d079-4af9-bf92-6a7a8885b1d8"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      34000000,
+      225000
+    ],
+    "end": [
+      37300000,
+      225000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "b3c9fbc3-10ff-4ede-8c20-9e59d3f3efc2"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      26475000,
+      -12500000
+    ],
+    "end": [
+      28547500,
+      -10427500
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "b3eeada9-0374-419a-9685-e5a15419f210"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      28547500,
+      -10427500
+    ],
+    "end": [
+      25120000,
+      -7000000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "cbbc28d7-1daf-40d8-97d0-a7c1e1b43b02"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      29825000,
+      -3500000
+    ],
+    "end": [
+      30045000,
+      -3280000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "ce164168-bfd1-49c6-892a-18a343f0c992"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      45000000,
+      4625000
+    ],
+    "end": [
+      40600000,
+      225000
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "e5ca5ccb-4d30-4942-ab6d-5da34f88704c"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      34000000,
+      -7000000
+    ],
+    "end": [
+      34000000,
+      -6924800
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "e96ed6e3-777f-4f6b-ba29-47d7b4ed453e"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      34000000,
+      -6924800
+    ],
+    "end": [
+      34000000,
+      -4998300
+    ],
+    "width": 300000,
+    "layer": "F.Cu",
+    "uuid": "ee97f7ce-d10a-4b21-9882-8862a7132a14"
+  },
+  {
+    "type": "via",
+    "net": "GND",
+    "at": [
+      42825000,
+      -6820000
+    ],
+    "width": 600000,
+    "drill": 300000
+  },
+  {
+    "type": "via",
+    "net": "GND",
+    "at": [
+      47207600,
+      -6767500
+    ],
+    "width": 600000,
+    "drill": 300000
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      47155100,
+      -6820000
+    ],
+    "end": [
+      47207600,
+      -6767500
+    ],
+    "width": 300000,
+    "layer": "B.Cu",
+    "uuid": "80f845c2-d4b1-4be6-ab46-a9011e9e56d5"
+  },
+  {
+    "type": "trace",
+    "net": "GND",
+    "start": [
+      42825000,
+      -6820000
+    ],
+    "end": [
+      47155100,
+      -6820000
+    ],
+    "width": 300000,
+    "layer": "B.Cu",
+    "uuid": "d0c1d0f8-3808-4cd0-8e4a-d345eee1d21a"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      38500000,
+      -8412500
+    ],
+    "end": [
+      36289200,
+      -8412500
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "0bb4ef50-1f3c-4a0b-8694-80ba2a2df123"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      37025000,
+      -13500000
+    ],
+    "end": [
+      36201700,
+      -13500000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "20a029ec-1d5b-4a83-ba7c-4fec5bf76ee2"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      48688100,
+      -2896500
+    ],
+    "end": [
+      42675000,
+      -8909600
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "3fb57e5b-8222-4481-bac8-fd57297a65a5"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      36289200,
+      -8412500
+    ],
+    "end": [
+      36201700,
+      -8500000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "85197cba-9c1d-458e-987b-3f27a6172cb5"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      28517700,
+      -23429500
+    ],
+    "end": [
+      36201700,
+      -15745500
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "89613fa6-575c-4abb-adbb-595b7b8f27ba"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      42675000,
+      -9000000
+    ],
+    "end": [
+      42675000,
+      -12000000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "8c2c9b40-f037-4288-823d-ee6b76089799"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      36201700,
+      -15745500
+    ],
+    "end": [
+      36201700,
+      -13500000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "9536d13d-8570-4c54-89b3-35bfe0df1d9f"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      36201700,
+      -13500000
+    ],
+    "end": [
+      36201700,
+      -8500000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "9c2df82e-2817-4008-b29c-5727b92b296d"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      42675000,
+      -8909600
+    ],
+    "end": [
+      42675000,
+      -9000000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "a327f8e7-a942-439d-9928-0ceb63b86c0c"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      42025000,
+      -9000000
+    ],
+    "end": [
+      39087500,
+      -9000000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "a3bb86cd-3299-47f1-9569-7feada2f5664"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      35450000,
+      -8500000
+    ],
+    "end": [
+      36201700,
+      -8500000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "a67bacc1-9edc-4092-a76c-b1373e5cb098"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      38500000,
+      -8412500
+    ],
+    "end": [
+      38500000,
+      -7525000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "c392f2e7-ffc4-49e6-b1b6-85b35b374eec"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      42025000,
+      -9000000
+    ],
+    "end": [
+      42675000,
+      -9000000
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "cb51557a-d7ad-4ccc-a6fc-21f422d8ee4c"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      39087500,
+      -9000000
+    ],
+    "end": [
+      38500000,
+      -8412500
+    ],
+    "width": 400000,
+    "layer": "F.Cu",
+    "uuid": "f105580b-3303-4cde-b9dc-0c25851618df"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_5V_HELD",
+    "start": [
+      35450000,
+      -7500000
+    ],
+    "end": [
+      38500000,
+      -7525000
+    ],
+    "width": 200000,
+    "layer": "F.Cu",
+    "uuid": "f19b92df-adaf-5565-9d28-31c942e41c3a"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      35650000,
+      -5126000
+    ],
+    "end": [
+      35450000,
+      -5326000
+    ],
+    "width": 249800,
+    "layer": "F.Cu",
+    "uuid": "0ed08acd-57ac-4bdf-9209-4db26582c311"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      30975000,
+      -8000000
+    ],
+    "end": [
+      32448100,
+      -8000000
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "22284c60-7d69-46c5-bd51-72818d86b436"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      22303800,
+      -2413900
+    ],
+    "end": [
+      22303800,
+      -4976600
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "4304fc23-89e3-4263-a86e-ce9be5954a6d"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      29500000,
+      -6525000
+    ],
+    "end": [
+      30975000,
+      -8000000
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "4aa07bcd-a6e2-4e30-a8e5-cb366f44e21f"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      27951600,
+      -4976600
+    ],
+    "end": [
+      22303800,
+      -4976600
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "4bca67b4-0496-4a8e-8930-e6baa29f7db0"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      32550000,
+      -8500000
+    ],
+    "end": [
+      32550000,
+      -8000000
+    ],
+    "width": 249800,
+    "layer": "F.Cu",
+    "uuid": "51169567-b9e2-4f19-bb17-9883027f064f"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      35650000,
+      -5126000
+    ],
+    "end": [
+      35650000,
+      -2024700
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "6189305c-e3ba-4e03-b7e4-9ff21a9bc975"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      29500000,
+      -6525000
+    ],
+    "end": [
+      27951600,
+      -4976600
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "651e2f79-03cc-4c95-9fce-df8a2e1a12c3"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      20903400,
+      -4976600
+    ],
+    "end": [
+      22303800,
+      -4976600
+    ],
+    "width": 1000000,
+    "layer": "F.Cu",
+    "uuid": "70aba2be-2f7d-498f-ade9-8b8589510152"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      32550000,
+      -8000000
+    ],
+    "end": [
+      32550000,
+      -7500000
+    ],
+    "width": 249800,
+    "layer": "F.Cu",
+    "uuid": "90263893-fb96-4073-a762-fe91f359879d"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      32448100,
+      -8000000
+    ],
+    "end": [
+      32550000,
+      -8000000
+    ],
+    "width": 249800,
+    "layer": "F.Cu",
+    "uuid": "d3afa155-a16a-4902-b051-f182721b6f16"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      35450000,
+      -5326000
+    ],
+    "end": [
+      35450000,
+      -5500000
+    ],
+    "width": 249800,
+    "layer": "F.Cu",
+    "uuid": "e71c2db9-e93a-4402-880a-97a65e4d3be4"
+  },
+  {
+    "type": "via",
+    "net": "DET_BAT_PROTECTED",
+    "at": [
+      22303800,
+      -2413900
+    ],
+    "width": 600000,
+    "drill": 300000
+  },
+  {
+    "type": "via",
+    "net": "DET_BAT_PROTECTED",
+    "at": [
+      35650000,
+      -2024700
+    ],
+    "width": 600000,
+    "drill": 300000
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      22303800,
+      -2413900
+    ],
+    "end": [
+      22693000,
+      -2024700
+    ],
+    "width": 1000000,
+    "layer": "B.Cu",
+    "uuid": "06a56867-c370-4c80-b80c-0ad3962831a5"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      22693000,
+      -2024700
+    ],
+    "end": [
+      35650000,
+      -2024700
+    ],
+    "width": 1000000,
+    "layer": "B.Cu",
+    "uuid": "23d01b8c-164a-47db-9f8d-7cdd2b12e24c"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      36250900,
+      -1423800
+    ],
+    "end": [
+      87429800,
+      -1423800
+    ],
+    "width": 1000000,
+    "layer": "B.Cu",
+    "uuid": "4b54b875-14ec-4a2b-8f16-c3008f304fe2"
+  },
+  {
+    "type": "trace",
+    "net": "DET_BAT_PROTECTED",
+    "start": [
+      35650000,
+      -2024700
+    ],
+    "end": [
+      36250900,
+      -1423800
+    ],
+    "width": 1000000,
+    "layer": "B.Cu",
+    "uuid": "f11e203d-91a7-418a-9fce-7906881aff57"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      37300000,
+      -2725000
+    ],
+    "end": [
+      37587900,
+      -3012900
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "083ef2d7-f74c-4531-b7c6-f087891b3ee4"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      35984300,
+      -1184800
+    ],
+    "end": [
+      35310000,
+      -1184800
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "1002e7a1-f34b-458f-95a8-198cb51cf273"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      37587900,
+      -4637100
+    ],
+    "end": [
+      37475000,
+      -4750000
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "1a06079e-3167-443f-ad8c-3d455030dde0"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      35450000,
+      -6000000
+    ],
+    "end": [
+      36225000,
+      -6000000
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "30884716-4f86-4519-ad9e-64e7c0657f1c"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      40312100,
+      -3012900
+    ],
+    "end": [
+      37587900,
+      -3012900
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "5ec04ce0-d6cb-47b6-bba8-d6a667fe02aa"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      37300000,
+      -2725000
+    ],
+    "end": [
+      37300000,
+      -2500500
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "644d0adc-dd7e-49c3-ab76-cd04a9cfbc81"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      35310000,
+      -1184800
+    ],
+    "end": [
+      34000000,
+      -2494800
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "781e91c8-f42d-4bb9-b611-349e1e44c07c"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      37587900,
+      -3012900
+    ],
+    "end": [
+      37587900,
+      -4637100
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "8e6c6c8e-6daa-49fc-8fe6-dd6fdeccc5a1"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      37300000,
+      -2500500
+    ],
+    "end": [
+      35984300,
+      -1184800
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "9b6bc71b-dadc-4a98-9f8e-d85301fac779"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      40600000,
+      -2725000
+    ],
+    "end": [
+      40312100,
+      -3012900
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "c6c01df5-7604-4ff0-8d9d-d96ee8d6f555"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      36225000,
+      -6000000
+    ],
+    "end": [
+      37475000,
+      -4750000
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "de13c6b6-7ed9-42fa-8733-c6fa9cc012be"
+  },
+  {
+    "type": "trace",
+    "net": "ADC_LDO_SET",
+    "start": [
+      34000000,
+      -2494800
+    ],
+    "end": [
+      34000000,
+      -2725000
+    ],
+    "width": 250000,
+    "layer": "F.Cu",
+    "uuid": "e16afb1d-79e3-4142-9afc-675f8ecaf038"
+  }
+]

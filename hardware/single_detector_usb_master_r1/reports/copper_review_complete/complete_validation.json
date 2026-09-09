@@ -1,0 +1,111 @@
+{
+  "status": "FINAL_INTEGRATED_COPPER_REVIEW_COMPLETE",
+  "source_sha256": "2ab4937f2ec558227736722549489c8d60b382db2a86436887f104acd336f4e2",
+  "integration_native_DRC": {
+    "violations": 0,
+    "unconnected": 0,
+    "parity": 0
+  },
+  "native_DRC_report_hash_verified": true,
+  "reference_sampling_identical_to_pre_stitch_signal_audit": true,
+  "selected_signal_track_count": 562,
+  "selected_signal_net_count": 58,
+  "EM_GND_or_antenna_intrusions": 0,
+  "reference_void_run_count": 179,
+  "max_individual_reference_void_mm": 1.496,
+  "local_signal_return_improvements": [
+    {
+      "signal": "ADC_SCLK",
+      "signal_via_mm": [
+        55.8,
+        91.25
+      ],
+      "GND_via_mm": [
+        55.9,
+        92.25
+      ],
+      "GND_via_uuid": "59e6a54c-ef23-580a-8602-b5435bda8d4c",
+      "before_nearest_GND_through_mm": 7.9944,
+      "after_nearest_GND_through_mm": 1.005,
+      "actual_GND_fill_layers": [
+        "In1.Cu",
+        "In2.Cu"
+      ]
+    },
+    {
+      "signal": "AMP_OUT5_A",
+      "signal_via_mm": [
+        31.35,
+        20.25
+      ],
+      "GND_via_mm": [
+        28.65,
+        19.55
+      ],
+      "GND_via_uuid": "7380bdc3-ebaa-5355-8e4a-34f59b74f065",
+      "before_nearest_GND_through_mm": 18.1198,
+      "after_nearest_GND_through_mm": 2.7893,
+      "actual_GND_fill_layers": [
+        "In1.Cu",
+        "In2.Cu"
+      ]
+    },
+    {
+      "signal": "AMP_OUT5_B",
+      "signal_via_mm": [
+        32.5,
+        22.5
+      ],
+      "GND_via_mm": [
+        32.6,
+        24.5
+      ],
+      "GND_via_uuid": "44ed5f42-fa44-5031-a26e-9767d610312f",
+      "before_nearest_GND_through_mm": 18.8626,
+      "after_nearest_GND_through_mm": 2.0025,
+      "actual_GND_fill_layers": [
+        "In1.Cu",
+        "In2.Cu"
+      ]
+    },
+    {
+      "signal": "AMP_OUT5_C",
+      "signal_via_mm": [
+        31.7,
+        24.4
+      ],
+      "GND_via_mm": [
+        32.6,
+        24.5
+      ],
+      "GND_via_uuid": "44ed5f42-fa44-5031-a26e-9767d610312f",
+      "before_nearest_GND_through_mm": 18.0656,
+      "after_nearest_GND_through_mm": 0.9055,
+      "actual_GND_fill_layers": [
+        "In1.Cu",
+        "In2.Cu"
+      ]
+    }
+  ],
+  "local_bypass_surface_access_mm": {
+    "C11": 1.2,
+    "C39": 1.2,
+    "C13": 1.2,
+    "C36": 1.2
+  },
+  "protected_kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "additional_native_repair_requested": false,
+  "main_CAD_unchanged_by_audit": true,
+  "limits": "Sampling/connectivity/clearance review, not RF, noise, impedance or mounted ESL qualification."
+}

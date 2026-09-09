@@ -102,8 +102,8 @@ the sequence proceeds, tick marks at the step boundaries):
 
 ## TP412 noise test (emitter off)
 
-The noise step runs on the same stream plumbing with the emitter off (it has
-been off since the reference gate). The old settle detection is gone — with
+The noise step runs on the same stream plumbing with the emitter off (it is
+turned off after the reference phase). The old settle detection is gone — with
 the emitter off there is no signal to stabilize, only the noise being
 measured — so the app now:
 
@@ -521,35 +521,57 @@ summary, NOT MEASURED rows get their own chip and a grey row, and are
 excluded from both the tested count and the yield (a rig fault must not read
 as a batch of bad sensors).
 
-### Reference gate DISABLED — op-amp channel crosstalk (2026-08-17)
+### Reference gate — off 2026-08-17 (op-amp crosstalk), back on 2026-09-09
 
-`REFERENCE_GATE_ENABLED = False`: the fixture's buffer/voltage-follower stage
-is a dual op-amp with no channel isolation, so the sensor under test couples
-into the AIN1 reference signal. Observed as the reference reading collapsing
-from ~4.94 mV to ~0.30 mV with a DUT loaded (lot_500, 2026-08-17 10:50). The
-consequence is fundamental: the reference reading tracks whichever sensor is
-loaded, so a baseline captured with one part is invalid the moment another is
-inserted — no recalibration can make the gate trustworthy on this hardware.
-It would randomly lock out good parts or pass a weak emitter.
+**Why it was off.** The fixture's original buffer/voltage-follower stage was
+a dual op-amp with no channel isolation, so the sensor under test coupled
+into the AIN1 reference signal. Observed with a **shorted DUT** seated: the
+reference reading collapsed ~90 %, from ~4.94 mV to ~0.30 mV (lot_500,
+2026-08-17 10:50), and the app demanded a recalibration for the part's
+fault — correctly, given what it saw: the failure suppression is one-sided
+and only forgives an above-window spike with a high-offset DUT. The
+consequence was fundamental: the reference tracked whichever sensor was
+loaded, so a baseline captured with one part was invalid the moment another
+was inserted — no recalibration could make the gate trustworthy on that
+hardware. It would randomly lock out good parts or pass a weak emitter. From
+2026-08-17 to 2026-09-09 the ladder was therefore 3 steps (offset → noise →
+sensitivity), no calibration was required, the CSV reference columns stayed
+empty, and the operator rule was: several low-sensitivity failures in a row →
+suspect the emitter before condemning the parts. Sensor verdicts were never
+affected; everything is measured on AIN0.
 
-While disabled:
+**Why it is on again (2026-09-09).** The buffer is now a **TI OPA2196** dual
+precision op-amp, chosen for its channel isolation, so
+`REFERENCE_GATE_ENABLED = True`. A lockout now also writes a `measure_error`
+row (reading, drift, AIN0 re-check) to the batch's `_attempts.csv` instead
+of leaving only a warning box. The ladder is back to 4 steps (reference →
+offset → noise → sensitivity), the setup screen shows the calibrate button
+again, and the `reference_*` CSV columns are populated.
 
-* Sensor verdicts are unaffected — offset, noise, sensitivity, and polarity
-  are all measured on AIN0. Only automatic emitter-health monitoring is lost.
-* The setup screen shows a "Reference gate disabled (op-amp crosstalk)" card
-  instead of the calibrate button; no calibration is required to test.
-* The test ladder is 3 steps (offset → noise → sensitivity); the CSV
-  reference columns stay empty instead of recording contaminated readings.
-* **Operator mitigation:** if several sensors in a row fail low sensitivity,
-  suspect the emitter before condemning the parts.
+**Before the next batch: run "Calibrate reference unit".**
+`REFERENCE_CALIBRATION_SCHEMA_VERSION` went 4 → **5** in the same change, so
+the stored baseline — recorded through the old shared buffer, and therefore a
+measurement of the crosstalk rather than of the emitter — is refused on load
+and the app locks testing until a fresh one exists. That is deliberate. The
+app names the mismatch ("schema v4, but this build requires v5 … run
+Calibrate reference unit"); it never edits or deletes the stored file, which
+stays as evidence alongside the older
+`reference_sensor_calibration_crosstalk_contaminated_20260817.json.bak`.
+Expect the fresh baseline back near ~5 mV.
 
-The reworked buffer board uses per-channel isolated op-amps. When it is
-installed: set `REFERENCE_GATE_ENABLED = True`, run "Calibrate reference
-unit" fresh on the new hardware (the pre-crosstalk baseline was archived as
-`reference_sensor_calibration_crosstalk_contaminated_20260817.json.bak`),
-and expect the baseline back near ~5 mV. All gate machinery and its tests
-(`HardwareWorkflowTests`, run with the flag forced on) are kept working for
-that day; `ReferenceGateDisabledTests` covers today's shipping default.
+**Still outstanding: the crosstalk re-check on the new board.** The gate was
+turned on ahead of it: seat a shorted DUT, drive the emitter and confirm
+AIN1 does not move. Note this build reads the offset *first* and rejects a
+≈0 V part ("Is a sensor loaded?") before AIN1 is touched, so the app itself
+never reads the reference with a shorted part seated — use
+`Arduino/Eltec/esp32_rig_readout.py ref` with the shorted DUT in place, or
+run the check on the 406 MCA path, which reads AIN1 with the DUT seated. **If the reference still tracks the loaded part, set the flag back
+to `False` — do not widen `REFERENCE_TOLERANCE_PERCENT`**, because a gate
+that moves with the DUT is measuring the wrong thing at any tolerance.
+`ReferenceGateDisabledTests` keeps that fallback covered (it patches the flag
+off), `HardwareWorkflowTests` covers the gate-on path, and
+`ReferenceGateShippingDefaultTests` pins the shipping flag, the stale-schema
+refusal and the measurement lockout.
 
 ### Reference unit drive frequency (10 Hz)
 

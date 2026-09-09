@@ -35,7 +35,8 @@ v3.2 (PWM,DUTY for the 20/80 drive; the gain-1/unbuffered front end).
 Wiring / power (batteries isolated 2026-08-12 to fix the emitter spike):
     ADS AIN0 = buffered DUT sensor (DC offset + AC waveform), +/-5 V range
     ADS AIN1 = permanently-mounted reference sensor (emitter-health gate,
-               currently disabled - op-amp crosstalk, see REFERENCE_GATE_ENABLED)
+               live again since 2026-09-09 on the channel-isolated buffer
+               board, see REFERENCE_GATE_ENABLED)
     ADS AIN7 = legacy battery divider tap - NOT MONITORED anymore (see below)
     GPIO33   = PWM output to the MOSFET module (20 % ON / 80 % OFF for the DUT)
     sync     = the ESP32 PWM state included with every streamed sample
@@ -308,18 +309,32 @@ BATTERY_MONITORING_ENABLED = False
 BATTERY_MIN_V = 5.8               # hard block: recharge at or below this
 BATTERY_WARN_V = 6.0              # early warning band (testing is still allowed)
 
-# Reference gate is DISABLED (2026-08-17): the fixture's buffer/voltage
-# follower is a dual op-amp with no channel isolation, so the sensor under
-# test couples into the AIN1 reference signal (seen as the reference reading
-# collapsing 4.94 -> 0.30 mV with a DUT loaded). A baseline captured with one
-# sensor is invalid the moment another is loaded, so no recalibration can
-# make the gate trustworthy on this hardware - it would randomly block good
-# parts or pass a weak emitter. All reference machinery below is kept intact:
-# when the reworked buffer board (per-channel isolated op-amps) is installed,
-# set this back to True and run a fresh "Calibrate reference unit".
-# Operator mitigation meanwhile: if several sensors in a row fail low
-# sensitivity, suspect the emitter before condemning the parts.
-REFERENCE_GATE_ENABLED = False
+# Reference gate is ENABLED (2026-09-09). It was off from 2026-08-17 because
+# the old buffer/voltage follower was a dual op-amp with no channel
+# isolation: the sensor under test coupled into the AIN1 reference signal
+# (a SHORTED DUT dragged the reference reading down ~90 %, 4.94 -> 0.30 mV,
+# and the app demanded a recalibration for a fault that was the part's),
+# which made every baseline worthless the moment another part was loaded.
+# The replacement buffer (TI OPA2196 dual precision op-amp, installed
+# 2026-09) is channel-isolated, so the emitter-health check runs again
+# before every sensor.
+#
+# The crosstalk RE-CHECK on the new board is still outstanding (it is being
+# run right after this change): drive a DUT and confirm the AIN1 stream does
+# NOT follow it. If the reference still tracks the loaded part, set this back
+# to False rather than widening REFERENCE_TOLERANCE_PERCENT - a gate that
+# moves with the DUT cannot be calibrated at any tolerance.
+#
+# This gate is INDEPENDENT of the model's own CALIBRATION PENDING state: it
+# judges the fixture's emitter, not the 449 part, so it is live here while
+# SENSITIVITY_GATE_ENABLED is still False.
+#
+# Every stored baseline predates the new buffer board, so
+# REFERENCE_CALIBRATION_SCHEMA_VERSION was bumped to 5 in the same change:
+# those files are rejected on load and the app locks testing until
+# "Calibrate reference unit" is run fresh on the isolated hardware. Do not
+# copy an old baseline forward.
+REFERENCE_GATE_ENABLED = True
 # Reuse the load-step battery check instead of re-reading before the capture
 # when the reading is healthy and at most this old (the battery sags slowly).
 BATTERY_REUSE_WINDOW_S = 30.0
@@ -480,11 +495,17 @@ STALL_KIND_HOST = "host-stall"
 STALL_KIND_BOARD_RESET = "board-reset"
 STALL_KIND_BOARD_SILENT = "board-silent"
 STALL_KIND_NO_REPLY = "no-reply"
-# Schema v4 marks baselines whose reference readings were driven at the
+# Schema v4 marked baselines whose reference readings were driven at the
 # 406MCA reference unit's qualified 10 Hz / 50 % on the gain-1 front end -
 # the same drive this build uses for its reference phases, so a baseline
-# recorded by the 405 M22 build is compatible. Older schemas are rejected.
-REFERENCE_CALIBRATION_SCHEMA_VERSION = 4
+# recorded by the 405 M22 build is compatible (both models moved to v5
+# together, which keeps that interchange). Schema v5 (2026-09-09) marks
+# baselines recorded through the CHANNEL-ISOLATED buffer board: every v4
+# file was measured on the shared dual op-amp, where a loaded DUT dragged
+# the reference down to a fraction of its true value, so those means and
+# windows describe the crosstalk, not the emitter. Older schemas are
+# rejected, which forces a fresh "Calibrate reference unit" run.
+REFERENCE_CALIBRATION_SCHEMA_VERSION = 5
 # TP443-specific simulator cases on top of the shared engine's list.
 SIM_TRACKING_CASES = (
     "Borderline sensitivity",
@@ -1424,9 +1445,27 @@ class ReferenceCalibration:
 
     @classmethod
     def from_dict(cls, payload: dict) -> "ReferenceCalibration":
+        # A superseded schema is NOT a corrupt file: it is a baseline recorded
+        # on a fixture this build no longer matches (2026-09-09: the
+        # channel-isolated buffer board). Report that separately, or the
+        # technician goes hunting for a damaged results folder instead of
+        # simply running a fresh calibration.
         try:
-            if int(payload.get("schema_version")) != REFERENCE_CALIBRATION_SCHEMA_VERSION:
-                raise ValueError("unsupported schema version")
+            schema_version = int(payload.get("schema_version"))
+        except (TypeError, ValueError) as exc:
+            raise ReferenceCalibrationError(
+                "Reference calibration file has no usable schema version; "
+                "calibrate the reference unit again."
+            ) from exc
+        if schema_version != REFERENCE_CALIBRATION_SCHEMA_VERSION:
+            raise ReferenceCalibrationError(
+                f"Reference calibration is schema v{schema_version}, but this build "
+                f"requires v{REFERENCE_CALIBRATION_SCHEMA_VERSION} (a baseline recorded "
+                "through the channel-isolated buffer board). The stored file is left "
+                'untouched as evidence - run "Calibrate reference unit" to record a '
+                "fresh baseline on the current hardware."
+            )
+        try:
             readings = tuple(float(value) for value in payload["readings_mv"])
             mean_mv = float(payload["mean_mv"])
             tolerance = float(payload["tolerance_percent"])
@@ -7725,6 +7764,13 @@ class EmitterTesterApp(tk.Tk):
             return
         self.measuring = False
         self.busy = False
+        # A lockout is a per-part event the batch must remember (2026-09-09,
+        # with the gate live again): the reading, the drift and the AIN0
+        # re-check all sit in the message, and this row is the only place
+        # they survive once the technician closes the warning - the
+        # invalidated calibration file keeps the reading but not the part.
+        self.last_measure_error = str(exc)
+        self._log_attempt(attempt_history.EVENT_MEASURE_ERROR, reason=str(exc))
         self.step = self.RESULT_STEP
         self.status_var.set("Reference-unit lockout — the sensor was not read.")
         self.measure_status_var.set("")

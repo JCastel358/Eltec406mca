@@ -1,0 +1,316 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-09T09:10:53",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/cefb12ce-6745-4b6c-98b0-906a63fcda5f",
+            "violations": [
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol U3 Pin 3 [VI, Power input, Line]",
+                            "pos": {
+                                "x": 0.3175,
+                                "y": 1.524
+                            },
+                            "uuid": "701ae643-eafb-4db1-ba5d-b4fcfad348f6"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol U1 Pin 17 [GND, Power input, Line]",
+                            "pos": {
+                                "x": 0.7493,
+                                "y": 0.5588
+                            },
+                            "uuid": "32b90627-c702-4707-bb31-fbf6852458dc"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "Input Power pin not driven by any Output Power pins",
+                    "items": [
+                        {
+                            "description": "Symbol U1 Pin 2 [GND, Power input, Line]",
+                            "pos": {
+                                "x": 1.0414,
+                                "y": 0.5588
+                            },
+                            "uuid": "3aac02fe-eb2f-4689-9af1-b11e6731f088"
+                        }
+                    ],
+                    "severity": "error",
+                    "type": "power_pin_not_driven"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol E1 [Emitter]",
+                            "pos": {
+                                "x": 0.1778,
+                                "y": 0.2667
+                            },
+                            "uuid": "52975267-dcb9-467d-ab37-795144136efb"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol E2 [Emitter]",
+                            "pos": {
+                                "x": 0.1778,
+                                "y": 0.4318
+                            },
+                            "uuid": "7f075469-2602-496e-bbbb-1b1c3b28deb0"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol E3 [Emitter]",
+                            "pos": {
+                                "x": 0.1778,
+                                "y": 0.6096
+                            },
+                            "uuid": "e93afcb4-6699-4ea1-bf98-ed5ac6fae11a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol U1 [ESP32_DEVKITV1]",
+                            "pos": {
+                                "x": 0.7747,
+                                "y": 0.2032
+                            },
+                            "uuid": "e9dd93db-7447-4e17-bc06-2d343ea8098d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol U2 [ADS1256_board]",
+                            "pos": {
+                                "x": 0.9525,
+                                "y": 0.7112
+                            },
+                            "uuid": "5660a232-6f1c-4367-bfee-deafe5f1765d"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "Pins of type Bidirectional and Power output are connected",
+                    "items": [
+                        {
+                            "description": "Symbol U2 Pin 8 [PDWN, Bidirectional, Line]",
+                            "pos": {
+                                "x": 1.2065,
+                                "y": 0.6858
+                            },
+                            "uuid": "c8992d1f-72d4-4fc7-8858-6ab452419a02"
+                        },
+                        {
+                            "description": "Symbol U1 Pin 1 [3V3, Power output, Line]",
+                            "pos": {
+                                "x": 1.0414,
+                                "y": 0.5842
+                            },
+                            "uuid": "7347b6a2-10de-40ea-ac16-09d71f6c4a9a"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "pin_to_pin"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol O1 [LMC6062]",
+                            "pos": {
+                                "x": 1.5621,
+                                "y": 0.3175
+                            },
+                            "uuid": "2869cb38-2fb0-4aae-945c-6e45421a2791"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol O3 [LMC6062]",
+                            "pos": {
+                                "x": 1.7272,
+                                "y": 1.2319
+                            },
+                            "uuid": "f66782cb-02d9-46bb-bd60-a3fe7526b129"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol O2 [LMC6062]",
+                            "pos": {
+                                "x": 2.032,
+                                "y": 0.635
+                            },
+                            "uuid": "05a41710-4c06-4e88-a32a-6775df9524fe"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol Test1 [Sensor]",
+                            "pos": {
+                                "x": 2.5654,
+                                "y": 0.1778
+                            },
+                            "uuid": "b5dc258b-e090-4edb-bc8b-4e012c50b837"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol Ref1 [Sensor]",
+                            "pos": {
+                                "x": 2.5654,
+                                "y": 0.381
+                            },
+                            "uuid": "823a8a75-a736-48a4-9a7f-869a43468db6"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol Test2 [Sensor]",
+                            "pos": {
+                                "x": 2.5654,
+                                "y": 0.5842
+                            },
+                            "uuid": "1dbde5ab-cf01-4293-82af-b2f02c697b58"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol Ref2 [Sensor]",
+                            "pos": {
+                                "x": 2.5654,
+                                "y": 0.7874
+                            },
+                            "uuid": "fea05104-1103-4c70-b290-a7b8a0a9fb4c"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol Test3 [Sensor]",
+                            "pos": {
+                                "x": 2.5654,
+                                "y": 0.9906
+                            },
+                            "uuid": "79210f17-48d7-4c00-b758-3e028a3c64c8"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                },
+                {
+                    "description": "The current configuration does not include the symbol library 'Eltec Part'",
+                    "items": [
+                        {
+                            "description": "Symbol Ref3 [Sensor]",
+                            "pos": {
+                                "x": 2.5654,
+                                "y": 1.1938
+                            },
+                            "uuid": "4bfb0e0a-0901-45e2-a712-eb91108dfcc9"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "lib_symbol_issues"
+                }
+            ]
+        }
+    ],
+    "source": "ESP32_test_board.kicad_sch"
+}

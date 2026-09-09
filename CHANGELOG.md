@@ -13,6 +13,106 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Single-detector rigs: reference (emitter-health) gate re-enabled (2026-09-09)
+
+- `REFERENCE_GATE_ENABLED = True` again on all three single-detector models
+  (405 M22, 406 MCA, 449 M18), each edited by hand. The AIN1 reference unit
+  is read before every sensor and must stay inside its ±25 % window, so a
+  weak or failing emitter is caught by the rig instead of appearing as a run
+  of low-sensitivity parts. The gate had been off since 2026-08-17 (405) /
+  2026-08-24 (406, 449) because the shared dual op-amp buffer had no channel
+  isolation and the DUT coupled into AIN1 (4.94 → 0.30 mV with a part
+  loaded); the channel-isolated buffer board installed in 2026-09 removes
+  that coupling path. The array rig has no reference gate and is untouched.
+- **The crosstalk re-check on the new board is still outstanding** and is
+  being run immediately after this change: drive a DUT and confirm the AIN1
+  stream does not follow it. If the reference still tracks the loaded part,
+  set the flag back to False — do not widen `REFERENCE_TOLERANCE_PERCENT`, a
+  gate that moves with the DUT cannot be calibrated at any tolerance. The
+  gate-off path stays covered by tests in all three models for exactly that.
+- **Every stored baseline is now rejected on load**:
+  `REFERENCE_CALIBRATION_SCHEMA_VERSION` 4 → **5** (405, 449, kept equal so
+  the two builds still interchange baselines) and 2 → **3** (406). Those
+  files were all measured through the shared dual op-amp, so their means and
+  windows describe the crosstalk, not the emitter. Each rig therefore locks
+  testing until **Calibrate reference unit** is run fresh on the isolated
+  hardware. The old files are left in place in the results folders as
+  evidence — nothing is deleted or overwritten.
+- A superseded schema now reports itself as a hardware mismatch ("schema v4,
+  but this build requires v5 …, run Calibrate reference unit") instead of the
+  old "file is malformed", which would have sent technicians looking for a
+  damaged results folder. A file with no usable `schema_version` still reads
+  as malformed.
+- Tests: each model gains a shipping-default class asserting the flag is on,
+  that a stale-schema baseline is refused with the hardware-mismatch wording,
+  and that `reference_gate_ready()` blocks measurement until a fresh baseline
+  exists; the former "gate disabled" classes now patch the flag off
+  explicitly and keep covering the fallback. 405 noise-soak and 449
+  hardware-flow expectations updated to the four-phase production sequence
+  (offset → reference → sensitivity → settled offset). Suite: **936 tests**
+  (was 928), one known Windows-only 406 case unchanged.
+- Docs: calibration record §1/§2.1/§2.4/§3/§4/§5/§7, both rig READMEs, the
+  three model READMEs, engineer handover, technician runbook, data map and
+  `engineer_tools/reference_unit/README.md`.
+- **Same day, after review.** The hardware facts recorded precisely: the
+  old buffer's failure trigger was a **shorted DUT** — it dragged the AIN1
+  reference down by ~90 % (4.94 → 0.30 mV) and the app demanded a
+  recalibration for a fault that belonged to the part. The replacement
+  buffer is a **TI OPA2196** dual precision op-amp (the `hardware/` r1 notes
+  list it as OPA2196IDR), chosen for its channel isolation; the user's
+  re-check reproduces exactly that shorted-DUT case. Why the old prompt
+  fired is by design and unchanged: the reference-failure suppression is
+  one-sided (only an *above*-window spike with a *high*-offset DUT is
+  forgiven), so a collapsed reading with a ≈0 V DUT correctly refused to
+  blame the part and invalidated the calibration — with real crosstalk that
+  is the wrong answer, with the OPA2196 it should never arise.
+- **A reference lockout now writes a `measure_error` row to the batch's
+  `_attempts.csv`** (all three models, by hand). `on_reference_block` only
+  showed a warning box and a status line, so the very event the re-check
+  looks for would have left no per-part trace once the technician clicked
+  OK (the invalidated JSON keeps the reading, not the part). The row carries
+  the reading, the drift and the AIN0 re-check from the error text; the 405
+  and 449 also keep it in `last_measure_error` for the result screen (the
+  406 has no such field). One test per model. Suite: **939 tests**.
+- Where the shorted-DUT case can be exercised *through the app*: only the
+  **406 MCA** reads AIN1 with the DUT seated; the 405 M22 and 449 M18 read
+  the offset first and reject a ≈0 V part ("Is a sensor loaded?") before
+  AIN1 is touched. For those two, drive the emitter with the shorted DUT in
+  place and watch AIN1 with `Arduino/Eltec/esp32_rig_readout.py ref`
+  (engineer handover §4 item 3).
+
+## Array rig: infer empty sockets and shorten noise settling (2026-09-08)
+
+- Automatically mark likely empty sockets after two median-of-three offset
+  reads within one ADC code of zero, separated by two seconds on hardware.
+  Re-evaluate on every check; preserve manual loaded/empty overrides. The
+  physical map/count is confirmed with the existing vacuum confirmation.
+  This provisional inference cannot distinguish a zero-output short from
+  an empty socket or reliably detect floating empty inputs. All-zero trays
+  stay blocked with a power/connection check prompt.
+- Remove the five-minute app countdown at the user's request. The supplied
+  TP120 photo specifies five minutes after power-on and a separate 15–20 s
+  switched-position wait; document this as an intentional timing departure.
+  Compare successive one-second maxima and minima on loaded channels: two
+  stable deltas permit a start after three seconds; twenty seconds is the
+  deadline, with a warning if still moving. Retain the full sixty-second
+  capture, noise algorithm, provisional verdict thresholds and calibration ID.
+- Preserve contiguous samples at the settle/capture boundary. Extend attempts,
+  result CSV and raw NPZ metadata with timing policy, extrema/deltas and stop
+  reason. Offset audit retains inferred occupancy, overrides, initial/recheck
+  voltages and the loaded interpretation of excluded readings.
+  Raw NPZ duration now follows the recorded waveform length, including
+  engineering capture-length overrides.
+- Keep PASS/FAIL as the default display with numbers under **Show more**.
+  Update the runbook, calibration record, data map and model documentation;
+  add empty-inference and adaptive-waveform regression coverage.
+- Validation: final `python run_all_tests.py` reports **928 tests, RESULT: OK**,
+  including **297 array tests** and **34 array glue tests**, with the documented
+  Windows-only 406 launcher exception. An unrelated 20 ms single-rig stream
+  timeout failed on the initial run and passed both its suite rerun and the
+  final full run. Hardware was not connected; physical empty-input behaviour
+  still needs bench confirmation. Update the documented test baselines.
+
 ## Array rig: show pass/fail first, measurements on request (2026-09-08)
 
 - Simplify the round sockets to pass/fail and current state by default,

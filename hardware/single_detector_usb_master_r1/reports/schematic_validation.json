@@ -1,0 +1,2029 @@
+{
+  "started_utc": "2026-09-09T15:37:00.421517+00:00",
+  "scope": "Schematic build, ERC, exported connectivity and documented conditional arithmetic",
+  "complete": true,
+  "commands": [
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "netlist",
+        "--format",
+        "kicadxml",
+        "-o",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\interface_netlist.xml",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\single_detector_usb_master\\single_detector_usb_master.kicad_sch"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "erc",
+        "--format",
+        "json",
+        "--severity-all",
+        "--exit-code-violations",
+        "-o",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\interface_erc.json",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\single_detector_usb_master\\single_detector_usb_master.kicad_sch"
+      ],
+      "returncode": 0,
+      "stdout": "Found 0 violations\nSaved ERC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/interface_erc.json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tools\\check_interfaces.py"
+      ],
+      "returncode": 0,
+      "stdout": "68/68 interface checks passed\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tools\\check_analog.py"
+      ],
+      "returncode": 0,
+      "stdout": "121/121 analog connectivity/value/defined-bound checks passed.\nOff-state leakage bound: +/-0.198520V atVDD0; module discharge after control: 133.2us.\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\python.exe",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\tools\\power_corners.py"
+      ],
+      "returncode": 0,
+      "stdout": "{\n  \"status\": \"conditional_design_envelope_not_bench_or_SPICE_validation\",\n  \"acceptance_inputs_not_yet_verified\": {\n    \"effective_held_capacitance_F_min\": 0.0003,\n    \"assembled_board_SET_leakage_A_max_each_direction\": 2.5e-08,\n    \"local_output_ceramic_C_F_min_at_actual_bias_frequency_temperature\": 2e-05,\n    \"AP2112_local_bypass_C_F_min_each\": 1e-06,\n    \"scope\": \"trial laboratory assembly; temperature-stressed silicon bounds do not establish a rig environmental rating\",\n    \"SET_capacitor_IR_scope\": \"manufacturer room-temperature/post-test limits; assembled actual operating-temperature leakage must meet same budget\",\n    \"held_discharge_current_A_max_including_LDO_recovery\": 0.12,\n    \"actual_AVDD_below_header_V_max\": 0.1,\n    \"abrupt_header_step_V_max\": 0.025,\n    \"aggregate_hardware_permission_response_s_max\": 1e-05,\n    \"module_AIN_capacitance_F_max_excluding_carrier_stray\": 1.2e-07,\n    \"actual_comparator_common_mode_and_load\": \"verify offset/delay at approximately4.1V common mode and actual gate load\"\n  },\n  \"regulated_V\": {\n    \"nominal\": 5.1798,\n    \"min\": 5.115745995999999,\n    \"max\": 5.244061196,\n    \"min_with_SET_leakage_budget\": 5.110757668731444,\n    \"max_with_SET_leakage_budget\": 5.2453587359,\n    \"margin_to_5V25_operating_limit\": 0.004641264099999987\n  },\n  \"comparator\": {\n    \"divider_factor_min\": 1.219842787682334,\n    \"divider_factor_max\": 1.2221633036721393,\n    \"static_trip_header_V_min\": 4.959748748321517,\n    \"static_trip_header_V_max\": 5.042775960933308,\n    \"header_V_for_50mV_prior_underdrive_max\": 5.103884126116915,\n    \"prior_underdrive_headroom_V\": 0.0068735426145289935,\n    \"header_V_at_50mV_falling_overdrive_min\": 4.89864058313791,\n    \"actual_AVDD_V_when_permission_must_drop_min\": 4.76964058313791,\n    \"operating_margin_at_permission_drop_V\": 0.019640583137910284\n  },\n  \"analog\": {\n    \"ground_path_tau_s_max\": 4.0823999999999994e-05,\n    \"ground_to_0V2_s_max\": 0.00013336308990452702,\n    \"signal_tracking_tau_s_max\": 7.409987999999999e-05,\n    \"declining_rail_tracking_lag_V_max\": 0.029639952,\n    \"conditional_AIN_minus_AVDD_V_max_before_ground\": 0.15463995200000002,\n    \"powered_off_33k_bleed_V_max_before_temperature_drift\": 0.19819799999999999\n  },\n  \"exact_passive_closure\": {\n    \"C10_TPSD226K025R0200\": {\n      \"nominal_F\": 2.2e-05,\n      \"initial_min_F\": 1.98e-05,\n      \"illustrative_min_after_10percent_change_F\": 1.7820000000000002e-05,\n      \"DC_bias_derating\": false,\n      \"maximum_ESR_100kHz_ohm\": 0.2,\n      \"parallel_input_ceramic\": \"C36 GRM32ER71E226KE15L22uF25VX7R1210\",\n      \"limit\": \"battery lead resonance/hot-plug current and damping require actual wiring validation\"\n    },\n    \"C11_C13_C39_GRM32ER71E226KE15L\": {\n      \"count\": 3,\n      \"nominal_F_each\": 2.2e-05,\n      \"illustrative_small_signal_bias_temp_tol_F_total\": 2.8274400000000005e-05,\n      \"required_effective_F_total\": 2e-05,\n      \"required_ESR_ohm_max_each\": 0.02,\n      \"required_mounted_ESL_H_max_each\": 2e-09,\n      \"limit\": \"0.8DC and0.7smallAC factors are separate typical manufacturer curves, not a combined-condition guarantee; verify>=20uF and layout/stability\"\n    },\n    \"C15_C37_C38_GRM31C5C1H104JA01K\": {\n      \"nominal_F_total\": 3e-07,\n      \"initial_F_min\": 2.8499999999999997e-07,\n      \"post_humidity_F_min_envelope\": 2.63625e-07,\n      \"room_IR_ohm_F_min\": 500,\n      \"post_durability_IR_ohm_F_min\": 50,\n      \"post_humidity_IR_ohm_F_min\": 25,\n      \"leak_A_max_used\": 7.111125e-08,\n      \"nominal_RC_corner_Hz\": 10.242026274624203,\n      \"nominal_t90_s\": 0.035780790794071676,\n      \"nominal_initial_slew_V_per_s\": 333.33333333333337,\n      \"corner_initial_slew_V_per_s\": 383.1199620673305,\n      \"startup_total_output_C_F_envelope\": 0.0011,\n      \"corner_charging_plus120mA_A\": 0.5414319582740637,\n      \"limit\": \"startup can enter the nominal500mA programmed current limit; native ready qualification prevents conversion until settled. No4.7uF noise claim; validate inrush/thermal and release overshoot\"\n    },\n    \"C14_C23_C24\": {\n      \"mpn\": \"GRM31C5C1H104JA01K\",\n      \"footprint\": \"1206\",\n      \"nominal_F_each\": 1e-07,\n      \"tolerance\": 0.05,\n      \"C24_qualification_s_initial_min\": 0.03396990398043837,\n      \"C24_qualification_s_posthumidity_min_envelope\": 0.031422161181905495\n    },\n    \"R40_Q26_release\": {\n      \"resistance_ohm\": 150,\n      \"peak_A_max\": 0.03535353535353535,\n      \"nominal_RC_s\": 1.4999999999999999e-05,\n      \"effect\": \"startup-only clamp release; independent comparator andQ24 shutdown unaffected\"\n    },\n    \"D12_Diotec_BZT52C6V8GW\": {\n      \"Vz_5mA_25C_min_V\": 6.4,\n      \"Vz_5mA_25C_max_V\": 7.2,\n      \"tempco_max_per_K\": 0.0007,\n      \"illustrative125C_max_V\": 7.704000000000001,\n      \"AO3414_absolute_VGS_V\": 8,\n      \"limit\": \"Zener limits specified at5mA; R13 restricts normal current far below this. Verify transient clamp with actual battery wiring\"\n    }\n  },\n  \"C12_Nichicon_PCJ0J821MCL4GS\": {\n    \"nominal_F\": 0.00082,\n    \"initial_20C_min_F\": 0.000656,\n    \"after_endurance_20C_min_F\": 0.0005248000000000001,\n    \"ESR_20C_100kHz_max_ohm\": 0.01,\n    \"ESR_endurance_limit_factor\": 1.5,\n    \"impedance_temperature_ratio_100kHz_max\": 1.25,\n    \"illustrative_120mA_step_with_1p5x1p25_ESR_V\": 0.00225,\n    \"limit\": \"100kHz impedance/endurance specs are not a broadband transient or low-temperature capacitance guarantee; qualified300uF/25mV envelope still required\"\n  },\n  \"exported_netlist_checks\": {\n    \"source\": \"C:\\\\Users\\\\JoseCastelblanco\\\\Documents\\\\Eltec_TestRig\\\\hardware\\\\single_detector_usb_master_r1\\\\reports\\\\interface_netlist.xml\",\n    \"checked_pin_connections\": 83,\n    \"failures\": [],\n    \"passed\": true\n  }\n}\n",
+      "stderr": ""
+    }
+  ],
+  "rebuilt_schematic": false,
+  "source_sha256": {
+    "libraries\\master.kicad_sym": "9fed7d5ce6a479957f87f3ffa2efdd4c2115bc625d3d7df2e6b9181ccedc0bc1",
+    "libraries\\master.pretty\\BarrelJack_GCT_DCJ200_10_A.kicad_mod": "b7333718c8e71cd4b09f99e5c11256b1f16292d5e36d52623121c2ebf88e9554",
+    "libraries\\master.pretty\\C_0603_1608Metric.kicad_mod": "b2f5ee1c7e9a922f4d9e92b7844668a8154e56e06add385b88baa10a6799095f",
+    "libraries\\master.pretty\\C_0805_2012Metric.kicad_mod": "90016129533f855682ab39e9908aabc5331916aa5283639498fe052b920967f7",
+    "libraries\\master.pretty\\C_1206_3216Metric.kicad_mod": "5bc8c68afdd88552646fa8a522715397e2145af27577d07bf50393ee308207c2",
+    "libraries\\master.pretty\\C_1210_3225Metric.kicad_mod": "7cf9bedbfc2e28f87b669e54514802ed46c5c3b22633d9b013b19ff5c63b26b5",
+    "libraries\\master.pretty\\CP_EIA-7343-31_Kemet-D.kicad_mod": "ab21cd6d8e6d4e2c9ac4e7a93ae3ad565b229a9064d897d7ec92014892b56df5",
+    "libraries\\master.pretty\\CP_Elec_10x10.5.kicad_mod": "9adfed611af8618f3005c45a488d77c7ebcc78947e8125e73f9764681feda8f5",
+    "libraries\\master.pretty\\CP_Elec_8x11.9.kicad_mod": "c81a1160a19e16dcd530eb887ec04f7e217caeefae12d4aaef1cbc2d0b55349d",
+    "libraries\\master.pretty\\D_SMA.kicad_mod": "e2d049a54ef961e231eb8e7e769078a3c44feb8475a7bdafba01c6646a5144f3",
+    "libraries\\master.pretty\\D_SOD-123.kicad_mod": "a7a2c6492a58677da0f95fd3a9865974162fc52aa45173a0125135f7ca496a60",
+    "libraries\\master.pretty\\Detector_Wire_Lands.kicad_mod": "9e1942bd9bf833175822b97748b1c639f6fea42425b55a0c459c61e398f725d1",
+    "libraries\\master.pretty\\DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm.kicad_mod": "d7c5688d135afa24857896405ae3ad3c49e9c91dab6752ca971bcc3528a08e45",
+    "libraries\\master.pretty\\Emitter_Wire_Lands.kicad_mod": "715ee909e249db690a1726d4a55b057da39d4c49df2d99ea9dcdb5378f819e35",
+    "libraries\\master.pretty\\Fuse_1206_3216Metric.kicad_mod": "5de78aaa1acbb50ec18e556c08d4e9301eb5d23987149aced87ccc5bbfc65693",
+    "libraries\\master.pretty\\HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm.kicad_mod": "5b7d63555ed4f92178e31c9234eaf7a0f9a00c216de98d528d31815e2e91074c",
+    "libraries\\master.pretty\\Potentiometer_Bourns_3296W_Vertical.kicad_mod": "c9f3cfdbcf4a24af5ebf792bb188c3ecfc9c50444f50677cc4cdbd7a5f1f5a33",
+    "libraries\\master.pretty\\R_0603_1608Metric.kicad_mod": "15dde88a8cd0d4cb8f443678b8c7aaba3459473e58a0c79d392af54021f78e0d",
+    "libraries\\master.pretty\\R_0805_2012Metric.kicad_mod": "83da7a8a25143d98c2e5aff4b2ee98d5d7477c413eea6ec36e9a0b5e85b5656b",
+    "libraries\\master.pretty\\SMDIP-16_W9.53mm.kicad_mod": "e6173deb8f5aed5d5eb6cac49906f889f15e8e06f2c2962166408b3a4477b7d1",
+    "libraries\\master.pretty\\SMDIP-4_W7.62mm.kicad_mod": "817f6128ac0fab550974a026a0799dd782ac8b573b98ededf7b42e639cd0edf2",
+    "libraries\\master.pretty\\Socket_FG_2x08_P2.54_H8.5.kicad_mod": "fd7b7bba79e173b04fd34c609dbf32da733f16b02285936f9e37f91976a50df0",
+    "libraries\\master.pretty\\Socket_Kinghelm_1x08_P2.54_H8.5.kicad_mod": "8503863044bec809c3b627d634889414b7a13278eb696b96feff51a59f5872c7",
+    "libraries\\master.pretty\\Socket_Kinghelm_1x15_P2.54_H8.5.kicad_mod": "98f2b61efb23c96215baa47ddcc5d42f19a5cccdd9a09379d99428366a8b5452",
+    "libraries\\master.pretty\\SOIC-8_3.9x4.9mm_P1.27mm.kicad_mod": "0031e401b16b841d2d20331a6175ece1a4f10bb80e356286f3d17b56a445133c",
+    "libraries\\master.pretty\\SOT-23-5.kicad_mod": "724b6b8f1ab209f195e74df2cf0696b3c9b13df5fe8369c85bc21690ea06872f",
+    "libraries\\master.pretty\\SOT-23.kicad_mod": "50477a63310cc4d2f8ce5859020ebbde2ea5214fbeff07e5328f474b0e62cb18",
+    "libraries\\master.pretty\\SOT-353_SC-70-5.kicad_mod": "a05fedb991c367cfc25a92e60c7a5cdef88afc3cb559559a81ecab2df6f25feb",
+    "libraries\\master.pretty\\TI_DCT0008A_SSOP8.kicad_mod": "3b5ef66a4bba9c5893f4380054e9e34b16f394f57ce59f7326b8e9548c1521cd",
+    "libraries\\master.pretty\\TO-263-5_TabPin3.kicad_mod": "d3c596a0fbe26578c86232ef5cc1b4a3f851f3171b14df3a656d745b522abc18",
+    "libraries\\master.pretty\\TSSOP-16_4.4x5mm_P0.65mm.kicad_mod": "7ca2eb97c326e29683a118ae503c9165f51128b23c4cdeb0786b78370a911ff2",
+    "single_detector_usb_master\\adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master\\adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master\\analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master\\analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master\\analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master\\emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master\\emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master\\emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master\\esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master\\fp-lib-table": "15d72736cb413bf1d62ca9816eb9b4e2b90e5033c6d29dcd8fb7e9928283564e",
+    "single_detector_usb_master\\power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master\\power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master\\power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pro": "efa2f91b4d171408b3a2c3a0256d78477df6e959c0237632494aa48d63b3c473",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master\\spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master\\spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d",
+    "single_detector_usb_master\\sym-lib-table": "f4833790416c9256d262fb8a16296079f32b5222c610ed54b2c6710af54e075a",
+    "tools\\analog_stage.py": "67f1071f5aeb46ccf56325120223a2e5c8c552123ffb03c943922634064b4bfe",
+    "tools\\build_design.py": "d1d1f0c881278f11417281d733ecba5a9cfb3b77fd5e56593d497ae39feb3346",
+    "tools\\cad.py": "3b72bbc0fe5c517e7f230776b7b67f0dd4b3dfbaf5d39bf154ab256ac8d95290",
+    "tools\\check_analog.py": "fadc8bdfe16aff8371284181fd560b432a4ff81263ecaeeca15eb67a0b2caa60",
+    "tools\\check_interfaces.py": "d932af41b627783550f1bf5ead5113ea74467f254202aff8c01772db7212b676",
+    "tools\\emitter_stage.py": "1534c96e3a155b4215eac1aa07fffe7e5333d23b9f51abfca4f5f511c4420ec5",
+    "tools\\power_corners.py": "db06a2aa5903806d15a039740f451edafa16adf132d3e26c0d94ecf608b407a9",
+    "tools\\power_stage.py": "f9f7a15c18239cd395c55b9381f0e3cb0d8d3436c357ce1d80293d84e48f8695",
+    "tools\\spi_stage.py": "55ea91915cb31460abf98c59a57c5c1be72262c8f1a53edc78f70e72b00a20f2",
+    "tools\\validate_schematic.py": "c64a35af0b3690f8fca07e8057ec60335ce194a4df0e212b47e2af039fef9e6e"
+  },
+  "erc_violation_count": 0,
+  "erc_ignored_checks": [
+    {
+      "description": "SPICE model issue",
+      "key": "simulation_model_issue"
+    }
+  ],
+  "ignored_check_review": {
+    "simulation_model_issue": "Native schematic uses electrical pin checks; no complete SPICE simulation model is claimed."
+  },
+  "unexplained_ignored_checks": [],
+  "erc_exclusion_count": 0,
+  "interface_checks": {
+    "scope": "Interface connectivity only; power/analog/emitter design not certified",
+    "netlist_sha256": "34790f936a7f19268ae516ae7bd5360d8f28eb90dea749e9d0227ebcf84081f9",
+    "all_passed": true,
+    "checks": [
+      {
+        "description": "ESP32 used pin1 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 1), 'ESP_3V3'), (('J3', 1), 'ESP_3V3')]"
+      },
+      {
+        "description": "ESP32 used pin2 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 2), 'GND'), (('J3', 2), 'GND')]"
+      },
+      {
+        "description": "ESP32 used pin5 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 5), 'ESP_DRDY'), (('J3', 5), 'ESP_DRDY')]"
+      },
+      {
+        "description": "ESP32 used pin8 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 8), 'ESP_CS_N'), (('J3', 8), 'ESP_CS_N')]"
+      },
+      {
+        "description": "ESP32 used pin9 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 9), 'ESP_SCLK'), (('J3', 9), 'ESP_SCLK')]"
+      },
+      {
+        "description": "ESP32 used pin10 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 10), 'ESP_MISO'), (('J3', 10), 'ESP_MISO')]"
+      },
+      {
+        "description": "ESP32 used pin15 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 15), 'ESP_MOSI'), (('J3', 15), 'ESP_MOSI')]"
+      },
+      {
+        "description": "ESP32 used pin16 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 16), 'USB_PRESENT_5V'), (('J4', 1), 'USB_PRESENT_5V')]"
+      },
+      {
+        "description": "ESP32 used pin17 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 17), 'GND'), (('J4', 2), 'GND')]"
+      },
+      {
+        "description": "ESP32 used pin22 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 22), 'ESP_EMIT3'), (('J4', 7), 'ESP_EMIT3')]"
+      },
+      {
+        "description": "ESP32 used pin23 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 23), 'ESP_EMIT2'), (('J4', 8), 'ESP_EMIT2')]"
+      },
+      {
+        "description": "ESP32 used pin24 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 24), 'ESP_EMIT1'), (('J4', 9), 'ESP_EMIT1')]"
+      },
+      {
+        "description": "ESP32 used pin26 mates to correct socket",
+        "passed": true,
+        "detail": "[(('U1', 26), 'ESP_POWER_NOT_READY'), (('J4', 11), 'ESP_POWER_NOT_READY')]"
+      },
+      {
+        "description": "ADC digital pin1 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 1), 'ADC_5V_HELD'), (('J5', 1), 'ADC_5V_HELD')]"
+      },
+      {
+        "description": "ADC digital pin2 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 2), 'GND'), (('J5', 2), 'GND')]"
+      },
+      {
+        "description": "ADC digital pin3 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 3), 'ADC_SCLK'), (('J5', 3), 'ADC_SCLK')]"
+      },
+      {
+        "description": "ADC digital pin4 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 4), 'ADC_MOSI'), (('J5', 4), 'ADC_MOSI')]"
+      },
+      {
+        "description": "ADC digital pin5 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 5), 'ADC_MISO'), (('J5', 5), 'ADC_MISO')]"
+      },
+      {
+        "description": "ADC digital pin6 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 6), 'ADC_DRDY_N'), (('J5', 6), 'ADC_DRDY_N')]"
+      },
+      {
+        "description": "ADC digital pin7 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 7), 'ADC_CS_N'), (('J5', 7), 'ADC_CS_N')]"
+      },
+      {
+        "description": "ADC digital pin8 mates to J5",
+        "passed": true,
+        "detail": "[(('U2', 8), 'ADC_PDWN_N'), (('J5', 8), 'ADC_PDWN_N')]"
+      },
+      {
+        "description": "ADC AIN0 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 9), 'ADC_AIN0'), (('J6', 1), 'ADC_AIN0')]"
+      },
+      {
+        "description": "ADC ground0 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 17), 'GND'), (('J6', 2), 'GND')]"
+      },
+      {
+        "description": "ADC AIN1 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 10), 'ADC_AIN1'), (('J6', 3), 'ADC_AIN1')]"
+      },
+      {
+        "description": "ADC ground1 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 18), 'GND'), (('J6', 4), 'GND')]"
+      },
+      {
+        "description": "ADC AIN2 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 11), 'ADC_AIN2'), (('J6', 5), 'ADC_AIN2')]"
+      },
+      {
+        "description": "ADC ground2 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 19), 'GND'), (('J6', 6), 'GND')]"
+      },
+      {
+        "description": "ADC AIN3 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 12), 'ADC_AIN3'), (('J6', 7), 'ADC_AIN3')]"
+      },
+      {
+        "description": "ADC ground3 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 20), 'GND'), (('J6', 8), 'GND')]"
+      },
+      {
+        "description": "ADC AIN4 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 13), 'ADC_AIN4'), (('J6', 9), 'ADC_AIN4')]"
+      },
+      {
+        "description": "ADC ground4 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 21), 'GND'), (('J6', 10), 'GND')]"
+      },
+      {
+        "description": "ADC AIN5 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 14), 'ADC_AIN5'), (('J6', 11), 'ADC_AIN5')]"
+      },
+      {
+        "description": "ADC ground5 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 22), 'GND'), (('J6', 12), 'GND')]"
+      },
+      {
+        "description": "ADC AIN6 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 15), 'GND'), (('J6', 13), 'GND')]"
+      },
+      {
+        "description": "ADC ground6 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 23), 'GND'), (('J6', 14), 'GND')]"
+      },
+      {
+        "description": "ADC AIN7 mates to J6 odd pin",
+        "passed": true,
+        "detail": "[(('U2', 16), 'GND'), (('J6', 15), 'GND')]"
+      },
+      {
+        "description": "ADC ground7 mates to J6 even pin",
+        "passed": true,
+        "detail": "[(('U2', 24), 'GND'), (('J6', 16), 'GND')]"
+      },
+      {
+        "description": "All carrier module grounds explicitly common",
+        "passed": true,
+        "detail": "[(('U1', 2), 'GND'), (('U1', 17), 'GND'), (('U2', 2), 'GND'), (('U2', 17), 'GND'), (('U2', 18), 'GND'), (('U2', 19), 'GND'), (('U2', 20), 'GND'), (('U2', 21), 'GND'), (('U2', 22), 'GND'), (('U2', 23), 'GND'), (('U2', 24), 'GND')]"
+      },
+      {
+        "description": "Unused AIN6 grounded",
+        "passed": true,
+        "detail": "[(('U2', 15), 'GND'), (('U2', 2), 'GND')]"
+      },
+      {
+        "description": "Unused AIN7 grounded; no legacy battery divider",
+        "passed": true,
+        "detail": "[(('U2', 16), 'GND'), (('U2', 2), 'GND')]"
+      },
+      {
+        "description": "SCLK enters correct buffer input",
+        "passed": true,
+        "detail": "[(('U1', 9), 'ESP_SCLK'), (('U50', 2), 'ESP_SCLK')]"
+      },
+      {
+        "description": "SCLK buffer output enters damping resistor",
+        "passed": true,
+        "detail": "[(('U50', 6), 'ADC_SCLK_DRV'), (('R56', 1), 'ADC_SCLK_DRV')]"
+      },
+      {
+        "description": "SCLK damping resistor reaches correct receiver",
+        "passed": true,
+        "detail": "[(('R56', 2), 'ADC_SCLK'), (('U2', 3), 'ADC_SCLK')]"
+      },
+      {
+        "description": "SCLK does not bypass its buffer",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "MOSI enters correct buffer input",
+        "passed": true,
+        "detail": "[(('U1', 15), 'ESP_MOSI'), (('U50', 5), 'ESP_MOSI')]"
+      },
+      {
+        "description": "MOSI buffer output enters damping resistor",
+        "passed": true,
+        "detail": "[(('U50', 3), 'ADC_MOSI_DRV'), (('R57', 1), 'ADC_MOSI_DRV')]"
+      },
+      {
+        "description": "MOSI damping resistor reaches correct receiver",
+        "passed": true,
+        "detail": "[(('R57', 2), 'ADC_MOSI'), (('U2', 4), 'ADC_MOSI')]"
+      },
+      {
+        "description": "MOSI does not bypass its buffer",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "CS enters correct buffer input",
+        "passed": true,
+        "detail": "[(('U1', 8), 'ESP_CS_N'), (('U51', 2), 'ESP_CS_N')]"
+      },
+      {
+        "description": "CS buffer output enters damping resistor",
+        "passed": true,
+        "detail": "[(('U51', 6), 'ADC_CS_DRV'), (('R58', 1), 'ADC_CS_DRV')]"
+      },
+      {
+        "description": "CS damping resistor reaches correct receiver",
+        "passed": true,
+        "detail": "[(('R58', 2), 'ADC_CS_N'), (('U2', 7), 'ADC_CS_N')]"
+      },
+      {
+        "description": "CS does not bypass its buffer",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "MISO enters correct buffer input",
+        "passed": true,
+        "detail": "[(('U2', 5), 'ADC_MISO'), (('U52', 2), 'ADC_MISO')]"
+      },
+      {
+        "description": "MISO buffer output enters damping resistor",
+        "passed": true,
+        "detail": "[(('U52', 6), 'ESP_MISO_DRV'), (('R59', 1), 'ESP_MISO_DRV')]"
+      },
+      {
+        "description": "MISO damping resistor reaches correct receiver",
+        "passed": true,
+        "detail": "[(('R59', 2), 'ESP_MISO'), (('U1', 10), 'ESP_MISO')]"
+      },
+      {
+        "description": "MISO does not bypass its buffer",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "DRDY enters correct buffer input",
+        "passed": true,
+        "detail": "[(('U2', 6), 'ADC_DRDY_N'), (('U52', 5), 'ADC_DRDY_N')]"
+      },
+      {
+        "description": "DRDY buffer output enters damping resistor",
+        "passed": true,
+        "detail": "[(('U52', 3), 'ESP_DRDY_DRV'), (('R60', 1), 'ESP_DRDY_DRV')]"
+      },
+      {
+        "description": "DRDY damping resistor reaches correct receiver",
+        "passed": true,
+        "detail": "[(('R60', 2), 'ESP_DRDY'), (('U1', 5), 'ESP_DRDY')]"
+      },
+      {
+        "description": "DRDY does not bypass its buffer",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "Forward buffers use ADC 3.3V domain",
+        "passed": true,
+        "detail": "[(('U50', 8), 'ADC_IO_3V3'), (('U51', 8), 'ADC_IO_3V3'), (('R52', 1), 'ADC_IO_3V3')]"
+      },
+      {
+        "description": "Return buffer uses ESP32 3.3V domain",
+        "passed": true,
+        "detail": "[(('U52', 8), 'ESP_3V3'), (('U1', 1), 'ESP_3V3'), (('R55', 1), 'ESP_3V3')]"
+      },
+      {
+        "description": "Buffer supply rails not shorted",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "OE collectors not shorted across supplies",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "description": "Forward OE separate local pull-up",
+        "passed": true,
+        "detail": "[(('U50', 1), 'ADC_IF_OE_N'), (('U50', 7), 'ADC_IF_OE_N'), (('U51', 1), 'ADC_IF_OE_N'), (('Q50', 3), 'ADC_IF_OE_N'), (('R52', 2), 'ADC_IF_OE_N')]"
+      },
+      {
+        "description": "Return OE separate local pull-up",
+        "passed": true,
+        "detail": "[(('U52', 1), 'ESP_IF_OE_N'), (('U52', 7), 'ESP_IF_OE_N'), (('Q51', 3), 'ESP_IF_OE_N'), (('R55', 2), 'ESP_IF_OE_N')]"
+      },
+      {
+        "description": "Spare buffer input grounded",
+        "passed": true,
+        "detail": "[(('U51', 5), 'GND'), (('U2', 2), 'GND')]"
+      },
+      {
+        "description": "Spare buffer disabled",
+        "passed": true,
+        "detail": "[(('U51', 7), 'ADC_IO_3V3'), (('U51', 8), 'ADC_IO_3V3')]"
+      }
+    ]
+  },
+  "analog_checks": {
+    "netlist_sha256": "34790f936a7f19268ae516ae7bd5360d8f28eb90dea749e9d0227ebcf84081f9",
+    "all_passed": true,
+    "checks": [
+      {
+        "description": "Ch0 sensor sees retained100k and input resistor",
+        "passed": true,
+        "detail": [
+          "SENSOR0",
+          "SENSOR0",
+          "SENSOR0"
+        ]
+      },
+      {
+        "description": "Ch0 opamp positive input behind10k",
+        "passed": true,
+        "detail": [
+          "AMP_IN0",
+          "AMP_IN0"
+        ]
+      },
+      {
+        "description": "Ch0 feedback before output isolation",
+        "passed": true,
+        "detail": [
+          "AMP_OUT0",
+          "AMP_OUT0",
+          "AMP_OUT0"
+        ]
+      },
+      {
+        "description": "Ch0 noninverting feedback junction",
+        "passed": true,
+        "detail": [
+          "AMP_FB0",
+          "AMP_FB0",
+          "AMP_FB0"
+        ]
+      },
+      {
+        "description": "Ch0 buffer reaches correct signal switch",
+        "passed": true,
+        "detail": [
+          "AMP_SERIES0",
+          "AMP_SERIES0"
+        ]
+      },
+      {
+        "description": "Ch0 tied drains at ADC with permanent bleed",
+        "passed": true,
+        "detail": [
+          "ADC_AIN0",
+          "ADC_AIN0",
+          "ADC_AIN0",
+          "ADC_AIN0",
+          "ADC_AIN0"
+        ]
+      },
+      {
+        "description": "Ch0 grounding switch has220R path",
+        "passed": true,
+        "detail": [
+          "CLAMP_GND0",
+          "CLAMP_GND0"
+        ]
+      },
+      {
+        "description": "Ch0 local ground paths common",
+        "passed": true,
+        "detail": [
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND"
+        ]
+      },
+      {
+        "description": "Ch0 amp and switch share held ADC rail",
+        "passed": true,
+        "detail": [
+          "ADC_5V_HELD",
+          "ADC_5V_HELD",
+          "ADC_5V_HELD"
+        ]
+      },
+      {
+        "description": "Ch0 all selector controls common",
+        "passed": true,
+        "detail": [
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H"
+        ]
+      },
+      {
+        "description": "Ch0 selector does not load sensor directly",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "R200 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          100000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R210 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          10000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R220 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R230 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          220.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R240 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R250 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R260 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "Ch0 qualified opamp MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch0 qualified switch MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch1 sensor sees retained100k and input resistor",
+        "passed": true,
+        "detail": [
+          "SENSOR1",
+          "SENSOR1",
+          "SENSOR1"
+        ]
+      },
+      {
+        "description": "Ch1 opamp positive input behind10k",
+        "passed": true,
+        "detail": [
+          "AMP_IN1",
+          "AMP_IN1"
+        ]
+      },
+      {
+        "description": "Ch1 feedback before output isolation",
+        "passed": true,
+        "detail": [
+          "AMP_OUT1",
+          "AMP_OUT1",
+          "AMP_OUT1"
+        ]
+      },
+      {
+        "description": "Ch1 noninverting feedback junction",
+        "passed": true,
+        "detail": [
+          "AMP_FB1",
+          "AMP_FB1",
+          "AMP_FB1"
+        ]
+      },
+      {
+        "description": "Ch1 buffer reaches correct signal switch",
+        "passed": true,
+        "detail": [
+          "AMP_SERIES1",
+          "AMP_SERIES1"
+        ]
+      },
+      {
+        "description": "Ch1 tied drains at ADC with permanent bleed",
+        "passed": true,
+        "detail": [
+          "ADC_AIN1",
+          "ADC_AIN1",
+          "ADC_AIN1",
+          "ADC_AIN1",
+          "ADC_AIN1"
+        ]
+      },
+      {
+        "description": "Ch1 grounding switch has220R path",
+        "passed": true,
+        "detail": [
+          "CLAMP_GND1",
+          "CLAMP_GND1"
+        ]
+      },
+      {
+        "description": "Ch1 local ground paths common",
+        "passed": true,
+        "detail": [
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND"
+        ]
+      },
+      {
+        "description": "Ch1 amp and switch share held ADC rail",
+        "passed": true,
+        "detail": [
+          "ADC_5V_HELD",
+          "ADC_5V_HELD",
+          "ADC_5V_HELD"
+        ]
+      },
+      {
+        "description": "Ch1 all selector controls common",
+        "passed": true,
+        "detail": [
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H"
+        ]
+      },
+      {
+        "description": "Ch1 selector does not load sensor directly",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "R201 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          100000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R211 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          10000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R221 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R231 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          220.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R241 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R251 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R261 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "Ch1 qualified opamp MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch1 qualified switch MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch2 sensor sees retained100k and input resistor",
+        "passed": true,
+        "detail": [
+          "SENSOR2",
+          "SENSOR2",
+          "SENSOR2"
+        ]
+      },
+      {
+        "description": "Ch2 opamp positive input behind10k",
+        "passed": true,
+        "detail": [
+          "AMP_IN2",
+          "AMP_IN2"
+        ]
+      },
+      {
+        "description": "Ch2 feedback before output isolation",
+        "passed": true,
+        "detail": [
+          "AMP_OUT2",
+          "AMP_OUT2",
+          "AMP_OUT2"
+        ]
+      },
+      {
+        "description": "Ch2 noninverting feedback junction",
+        "passed": true,
+        "detail": [
+          "AMP_FB2",
+          "AMP_FB2",
+          "AMP_FB2"
+        ]
+      },
+      {
+        "description": "Ch2 buffer reaches correct signal switch",
+        "passed": true,
+        "detail": [
+          "AMP_SERIES2",
+          "AMP_SERIES2"
+        ]
+      },
+      {
+        "description": "Ch2 tied drains at ADC with permanent bleed",
+        "passed": true,
+        "detail": [
+          "ADC_AIN2",
+          "ADC_AIN2",
+          "ADC_AIN2",
+          "ADC_AIN2",
+          "ADC_AIN2"
+        ]
+      },
+      {
+        "description": "Ch2 grounding switch has220R path",
+        "passed": true,
+        "detail": [
+          "CLAMP_GND2",
+          "CLAMP_GND2"
+        ]
+      },
+      {
+        "description": "Ch2 local ground paths common",
+        "passed": true,
+        "detail": [
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND"
+        ]
+      },
+      {
+        "description": "Ch2 amp and switch share held ADC rail",
+        "passed": true,
+        "detail": [
+          "ADC_5V_HELD",
+          "ADC_5V_HELD",
+          "ADC_5V_HELD"
+        ]
+      },
+      {
+        "description": "Ch2 all selector controls common",
+        "passed": true,
+        "detail": [
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H"
+        ]
+      },
+      {
+        "description": "Ch2 selector does not load sensor directly",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "R202 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          100000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R212 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          10000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R222 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R232 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          220.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R242 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R252 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R262 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "Ch2 qualified opamp MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch2 qualified switch MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch3 sensor sees retained100k and input resistor",
+        "passed": true,
+        "detail": [
+          "SENSOR3",
+          "SENSOR3",
+          "SENSOR3"
+        ]
+      },
+      {
+        "description": "Ch3 opamp positive input behind10k",
+        "passed": true,
+        "detail": [
+          "AMP_IN3",
+          "AMP_IN3"
+        ]
+      },
+      {
+        "description": "Ch3 feedback before output isolation",
+        "passed": true,
+        "detail": [
+          "AMP_OUT3",
+          "AMP_OUT3",
+          "AMP_OUT3"
+        ]
+      },
+      {
+        "description": "Ch3 noninverting feedback junction",
+        "passed": true,
+        "detail": [
+          "AMP_FB3",
+          "AMP_FB3",
+          "AMP_FB3"
+        ]
+      },
+      {
+        "description": "Ch3 buffer reaches correct signal switch",
+        "passed": true,
+        "detail": [
+          "AMP_SERIES3",
+          "AMP_SERIES3"
+        ]
+      },
+      {
+        "description": "Ch3 tied drains at ADC with permanent bleed",
+        "passed": true,
+        "detail": [
+          "ADC_AIN3",
+          "ADC_AIN3",
+          "ADC_AIN3",
+          "ADC_AIN3",
+          "ADC_AIN3"
+        ]
+      },
+      {
+        "description": "Ch3 grounding switch has220R path",
+        "passed": true,
+        "detail": [
+          "CLAMP_GND3",
+          "CLAMP_GND3"
+        ]
+      },
+      {
+        "description": "Ch3 local ground paths common",
+        "passed": true,
+        "detail": [
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND"
+        ]
+      },
+      {
+        "description": "Ch3 amp and switch share held ADC rail",
+        "passed": true,
+        "detail": [
+          "ADC_5V_HELD",
+          "ADC_5V_HELD",
+          "ADC_5V_HELD"
+        ]
+      },
+      {
+        "description": "Ch3 all selector controls common",
+        "passed": true,
+        "detail": [
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H"
+        ]
+      },
+      {
+        "description": "Ch3 selector does not load sensor directly",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "R203 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          100000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R213 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          10000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R223 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R233 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          220.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R243 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R253 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R263 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "Ch3 qualified opamp MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch3 qualified switch MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch4 sensor sees retained100k and input resistor",
+        "passed": true,
+        "detail": [
+          "SENSOR4",
+          "SENSOR4",
+          "SENSOR4"
+        ]
+      },
+      {
+        "description": "Ch4 opamp positive input behind10k",
+        "passed": true,
+        "detail": [
+          "AMP_IN4",
+          "AMP_IN4"
+        ]
+      },
+      {
+        "description": "Ch4 feedback before output isolation",
+        "passed": true,
+        "detail": [
+          "AMP_OUT4",
+          "AMP_OUT4",
+          "AMP_OUT4"
+        ]
+      },
+      {
+        "description": "Ch4 noninverting feedback junction",
+        "passed": true,
+        "detail": [
+          "AMP_FB4",
+          "AMP_FB4",
+          "AMP_FB4"
+        ]
+      },
+      {
+        "description": "Ch4 buffer reaches correct signal switch",
+        "passed": true,
+        "detail": [
+          "AMP_SERIES4",
+          "AMP_SERIES4"
+        ]
+      },
+      {
+        "description": "Ch4 tied drains at ADC with permanent bleed",
+        "passed": true,
+        "detail": [
+          "ADC_AIN4",
+          "ADC_AIN4",
+          "ADC_AIN4",
+          "ADC_AIN4",
+          "ADC_AIN4"
+        ]
+      },
+      {
+        "description": "Ch4 grounding switch has220R path",
+        "passed": true,
+        "detail": [
+          "CLAMP_GND4",
+          "CLAMP_GND4"
+        ]
+      },
+      {
+        "description": "Ch4 local ground paths common",
+        "passed": true,
+        "detail": [
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND"
+        ]
+      },
+      {
+        "description": "Ch4 amp and switch share held ADC rail",
+        "passed": true,
+        "detail": [
+          "ADC_5V_HELD",
+          "ADC_5V_HELD",
+          "ADC_5V_HELD"
+        ]
+      },
+      {
+        "description": "Ch4 all selector controls common",
+        "passed": true,
+        "detail": [
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H"
+        ]
+      },
+      {
+        "description": "Ch4 selector does not load sensor directly",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "R204 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          100000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R214 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          10000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R224 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R234 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          220.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R244 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R254 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R264 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "Ch4 qualified opamp MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch4 qualified switch MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch5 sensor sees retained100k and input resistor",
+        "passed": true,
+        "detail": [
+          "SENSOR5",
+          "SENSOR5",
+          "SENSOR5"
+        ]
+      },
+      {
+        "description": "Ch5 opamp positive input behind10k",
+        "passed": true,
+        "detail": [
+          "AMP_IN5",
+          "AMP_IN5"
+        ]
+      },
+      {
+        "description": "Ch5 feedback before output isolation",
+        "passed": true,
+        "detail": [
+          "AMP_OUT5",
+          "AMP_OUT5",
+          "AMP_OUT5"
+        ]
+      },
+      {
+        "description": "Ch5 noninverting feedback junction",
+        "passed": true,
+        "detail": [
+          "AMP_FB5",
+          "AMP_FB5",
+          "AMP_FB5"
+        ]
+      },
+      {
+        "description": "Ch5 buffer reaches correct signal switch",
+        "passed": true,
+        "detail": [
+          "AMP_SERIES5",
+          "AMP_SERIES5"
+        ]
+      },
+      {
+        "description": "Ch5 tied drains at ADC with permanent bleed",
+        "passed": true,
+        "detail": [
+          "ADC_AIN5",
+          "ADC_AIN5",
+          "ADC_AIN5",
+          "ADC_AIN5",
+          "ADC_AIN5"
+        ]
+      },
+      {
+        "description": "Ch5 grounding switch has220R path",
+        "passed": true,
+        "detail": [
+          "CLAMP_GND5",
+          "CLAMP_GND5"
+        ]
+      },
+      {
+        "description": "Ch5 local ground paths common",
+        "passed": true,
+        "detail": [
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND",
+          "GND"
+        ]
+      },
+      {
+        "description": "Ch5 amp and switch share held ADC rail",
+        "passed": true,
+        "detail": [
+          "ADC_5V_HELD",
+          "ADC_5V_HELD",
+          "ADC_5V_HELD"
+        ]
+      },
+      {
+        "description": "Ch5 all selector controls common",
+        "passed": true,
+        "detail": [
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H",
+          "ISOLATE_H"
+        ]
+      },
+      {
+        "description": "Ch5 selector does not load sensor directly",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "R205 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          100000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R215 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          10000.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R225 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R235 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          220.0,
+          0.01
+        ]
+      },
+      {
+        "description": "R245 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R255 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          499.0,
+          0.001
+        ]
+      },
+      {
+        "description": "R265 value/tolerance matches analysis",
+        "passed": true,
+        "detail": [
+          33000.0,
+          0.001
+        ]
+      },
+      {
+        "description": "Ch5 qualified opamp MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Ch5 qualified switch MPN",
+        "passed": true,
+        "detail": null
+      },
+      {
+        "description": "Off-state leakage at specifiedVDD0 below +/-0.3V",
+        "passed": true,
+        "detail": 0.19851975
+      }
+    ],
+    "analysis": {
+      "method": "linear network arithmetic from checked netlist; not simulation or measurements",
+      "nominal_transfer": [
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 0,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9916450081971527,
+          "relative_change_pct": -0.042183173727006196,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 0,
+          "ron_ohm": 17,
+          "magnitude": 0.9914546488594912,
+          "relative_change_pct": -0.06137139496329436,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 1,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9916449379943626,
+          "relative_change_pct": -0.042183259351891156,
+          "phase_deg": -0.02155940168294734
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 1,
+          "ron_ohm": 17,
+          "magnitude": 0.9914545776601654,
+          "relative_change_pct": -0.06137158238096463,
+          "phase_deg": -0.021713965640883855
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 10,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9916379879919478,
+          "relative_change_pct": -0.0421917360954871,
+          "phase_deg": -0.21559300949169552
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 10,
+          "ron_ohm": 17,
+          "magnitude": 0.9914475290028529,
+          "relative_change_pct": -0.06139013646397906,
+          "phase_deg": -0.21713862725002248
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 18,
+          "ron_ohm": 12.5,
+          "magnitude": 0.991622263273311,
+          "relative_change_pct": -0.042210914923690446,
+          "phase_deg": -0.38806331458556775
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 18,
+          "ron_ohm": 17,
+          "magnitude": 0.991431581080581,
+          "relative_change_pct": -0.061432115484760796,
+          "phase_deg": -0.3908453376835526
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 80,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9911960154166728,
+          "relative_change_pct": -0.04273067841521483,
+          "phase_deg": -1.7242315280265958
+        },
+        {
+          "adc_impedance_ohm": 75000,
+          "frequency_hz": 80,
+          "ron_ohm": 17,
+          "magnitude": 0.9909992870307851,
+          "relative_change_pct": -0.06256977375613815,
+          "phase_deg": -1.736585371333441
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 0,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9948224567840084,
+          "relative_change_pct": -0.04023954234283478,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 0,
+          "ron_ohm": 17,
+          "magnitude": 0.9946543364328043,
+          "relative_change_pct": -0.057132275231819296,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 1,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9948223859042183,
+          "relative_change_pct": -0.04023962879260434,
+          "phase_deg": -0.021628482738513442
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 1,
+          "ron_ohm": 17,
+          "magnitude": 0.9946542645419142,
+          "relative_change_pct": -0.057132464465903254,
+          "phase_deg": -0.021784042370488286
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 10,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9948153688799838,
+          "relative_change_pct": -0.04024818719789991,
+          "phase_deg": -0.21628381033316596
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 10,
+          "ron_ohm": 17,
+          "magnitude": 0.9946471474209552,
+          "relative_change_pct": -0.05715119836972038,
+          "phase_deg": -0.21783938454982982
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 18,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9947994925247143,
+          "relative_change_pct": -0.040267550781902806,
+          "phase_deg": -0.38930671653874566
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 18,
+          "ron_ohm": 17,
+          "magnitude": 0.9946310446000497,
+          "relative_change_pct": -0.05719358422645593,
+          "phase_deg": -0.3921066601131537
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 80,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9943691361204884,
+          "relative_change_pct": -0.04079231833330477,
+          "phase_deg": -1.72975299383878
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "frequency_hz": 80,
+          "ron_ohm": 17,
+          "magnitude": 0.9941945536873666,
+          "relative_change_pct": -0.05834226136357534,
+          "phase_deg": -1.7421863454250717
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 0,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9956200031200986,
+          "relative_change_pct": -0.03975168674210661,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 0,
+          "ron_ohm": 17,
+          "magnitude": 0.9954574878823949,
+          "relative_change_pct": -0.056068216607552124,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 1,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9956199320696992,
+          "relative_change_pct": -0.03975177339976543,
+          "phase_deg": -0.021645822230003955
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 1,
+          "ron_ohm": 17,
+          "magnitude": 0.9954574158172153,
+          "relative_change_pct": -0.05606840629940324,
+          "phase_deg": -0.021801632283766633
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 10,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9956128981554682,
+          "relative_change_pct": -0.03976035238419939,
+          "phase_deg": -0.21645720280000763
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 10,
+          "ron_ohm": 17,
+          "magnitude": 0.9954502814419175,
+          "relative_change_pct": -0.05608718552119196,
+          "phase_deg": -0.21801528116334268
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 18,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9955969835866484,
+          "relative_change_pct": -0.039779762527680784,
+          "phase_deg": -0.38961881300927304
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 18,
+          "ron_ohm": 17,
+          "magnitude": 0.9954341395831721,
+          "relative_change_pct": -0.05612967390767887,
+          "phase_deg": -0.3924232637576432
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 80,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9951655918027466,
+          "relative_change_pct": -0.04030579112133115,
+          "phase_deg": -1.731138888429545
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "frequency_hz": 80,
+          "ron_ohm": 17,
+          "magnitude": 0.9949965909741734,
+          "relative_change_pct": -0.05728112797417362,
+          "phase_deg": -1.7435922369811827
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 0,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9996194504307349,
+          "relative_change_pct": -0.037305242338692146,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 0,
+          "ron_ohm": 17,
+          "magnitude": 0.999485182782764,
+          "relative_change_pct": -0.05073210783651527,
+          "phase_deg": 0.0
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 1,
+          "ron_ohm": 12.5,
+          "magnitude": 0.999619378520654,
+          "relative_change_pct": -0.03730533004382419,
+          "phase_deg": -0.021732774397442464
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 1,
+          "ron_ohm": 17,
+          "magnitude": 0.9994851098392972,
+          "relative_change_pct": -0.05073229983513228,
+          "phase_deg": -0.021889843298009037
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 10,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9996122594994901,
+          "relative_change_pct": -0.03731401272363266,
+          "phase_deg": -0.21732671213892577
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 10,
+          "ron_ohm": 17,
+          "magnitude": 0.999477888515148,
+          "relative_change_pct": -0.05075130742059342,
+          "phase_deg": -0.2188973786105435
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 18,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9995961523766299,
+          "relative_change_pct": -0.0373336574729044,
+          "phase_deg": -0.391183879582647
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 18,
+          "ron_ohm": 17,
+          "magnitude": 0.9994615499351946,
+          "relative_change_pct": -0.050794312468505076,
+          "phase_deg": -0.3940109874608288
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 80,
+          "ron_ohm": 12.5,
+          "magnitude": 0.9991595434522699,
+          "relative_change_pct": -0.037866040216760766,
+          "phase_deg": -1.738088689017901
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "frequency_hz": 80,
+          "ron_ohm": 17,
+          "magnitude": 0.9990186713657404,
+          "relative_change_pct": -0.05195975976048928,
+          "phase_deg": -1.7506425595404143
+        }
+      ],
+      "precision_tolerance_with_temperature": 0.002625,
+      "resistor_ron_corners": [
+        {
+          "adc_impedance_ohm": 75000,
+          "relative_change_pct_min": -0.07878164257963949,
+          "relative_change_pct_max": 0.02845685872050474
+        },
+        {
+          "adc_impedance_ohm": 125000,
+          "relative_change_pct_min": -0.07388612038093934,
+          "relative_change_pct_max": 0.023355045932915708
+        },
+        {
+          "adc_impedance_ohm": 150000,
+          "relative_change_pct_min": -0.07265728850038844,
+          "relative_change_pct_max": 0.022074592953047478
+        },
+        {
+          "adc_impedance_ohm": 80000000,
+          "relative_change_pct_min": -0.06649480315219503,
+          "relative_change_pct_max": 0.015654201552850466
+        }
+      ],
+      "off_state_voltage_magnitude_v": 0.19851975,
+      "module_filter_discharge": {
+        "resistance_ohm": 340.2,
+        "capacitance_f": 1.2e-07,
+        "initial_v": 5.23,
+        "target_v": 0.2,
+        "time_s": 0.00013324337935341826,
+        "excludes": "control/logic propagation, switch charge injection and unknown module parasitics"
+      },
+      "opamp_current_max_a": 0.0048000000000000004,
+      "opamp_bias_error_v_through85C": 5.5e-05,
+      "opamp_bias_error_v_through125C": 0.0011,
+      "normal_switch_leak_sensitivity_v": 0.0001032,
+      "buffer_off_bias_model": {
+        "source": "ADS1256 Fig11/Table10, typical PGA1 Za260k toAVDD/2 and Zb220k toAINCOM=0",
+        "notes": "This model exposes existing external-resistor DC error that a150k-to-ground model omits. Values are typical, not guaranteed; source-module AVDD was not measured.",
+        "examples": [
+          {
+            "detector_v": 0,
+            "original_at_nominal5V": 0.005740328416365155,
+            "revised_at_nominal5_1798V": 0.0060261888778253,
+            "change_at_same_supply_v": 7.94382516076551e-05
+          },
+          {
+            "detector_v": 0.8,
+            "original_at_nominal5V": 0.8017325354856666,
+            "revised_at_nominal5_1798V": 0.8015611424439678,
+            "change_at_same_supply_v": -0.0003778152515513389
+          },
+          {
+            "detector_v": 1.5,
+            "original_at_nominal5V": 1.4982257166713053,
+            "revised_at_nominal5_1798V": 1.4976542268143425,
+            "change_at_same_supply_v": -0.0007779120668152117
+          },
+          {
+            "detector_v": 3,
+            "original_at_nominal5V": 2.990711104926245,
+            "revised_at_nominal5_1798V": 2.989282264750859,
+            "change_at_same_supply_v": -0.0016352623852387005
+          }
+        ]
+      },
+      "limits": [
+        "Full circuit operating temperature is limited by its least-rated component; ADG4613 data used here spans-40..85C.",
+        "ADC150/PGAk differential impedance is typical and frequency dependent;75k/125k/150k/80M are simple sensitivity cases, not guaranteed resistance bounds or an exact single-ended model. See separate Za/Zb bias model.",
+        "Module100R/100nF values are seller evidence;1%/20% tolerances are explicit provisional assumptions pending installed-module verification.",
+        "Power-off3uA/drain specification is forVDD0/floating under stated datasheet test conditions. Intermediate-rail collapse requires separate power analysis.",
+        "Input-current limiting protects the opamp but does not alone prevent phantom power; all connected detector supplies are switched together.",
+        "Transfer calculation excludes opamp offset/drift/nonlinearity, ADC switched-cap transients and reference accuracy; bench correlation remains required.",
+        "No claim of zero additional noise or exact unity gain; failed high-offset detectors can saturate the held-powered amplifier."
+      ],
+      "sources": [
+        "https://www.ti.com/lit/ds/symlink/opa325.pdf",
+        "https://www.analog.com/media/en/technical-documentation/data-sheets/adg4612_4613.pdf",
+        "https://www.ti.com/lit/ds/symlink/ads1256.pdf",
+        "research/adc_seller_image_05.jpg",
+        "reports/original_netlist.xml"
+      ]
+    }
+  },
+  "power_checks": {
+    "status": "conditional_design_envelope_not_bench_or_SPICE_validation",
+    "acceptance_inputs_not_yet_verified": {
+      "effective_held_capacitance_F_min": 0.0003,
+      "assembled_board_SET_leakage_A_max_each_direction": 2.5e-08,
+      "local_output_ceramic_C_F_min_at_actual_bias_frequency_temperature": 2e-05,
+      "AP2112_local_bypass_C_F_min_each": 1e-06,
+      "scope": "trial laboratory assembly; temperature-stressed silicon bounds do not establish a rig environmental rating",
+      "SET_capacitor_IR_scope": "manufacturer room-temperature/post-test limits; assembled actual operating-temperature leakage must meet same budget",
+      "held_discharge_current_A_max_including_LDO_recovery": 0.12,
+      "actual_AVDD_below_header_V_max": 0.1,
+      "abrupt_header_step_V_max": 0.025,
+      "aggregate_hardware_permission_response_s_max": 1e-05,
+      "module_AIN_capacitance_F_max_excluding_carrier_stray": 1.2e-07,
+      "actual_comparator_common_mode_and_load": "verify offset/delay at approximately4.1V common mode and actual gate load"
+    },
+    "regulated_V": {
+      "nominal": 5.1798,
+      "min": 5.115745995999999,
+      "max": 5.244061196,
+      "min_with_SET_leakage_budget": 5.110757668731444,
+      "max_with_SET_leakage_budget": 5.2453587359,
+      "margin_to_5V25_operating_limit": 0.004641264099999987
+    },
+    "comparator": {
+      "divider_factor_min": 1.219842787682334,
+      "divider_factor_max": 1.2221633036721393,
+      "static_trip_header_V_min": 4.959748748321517,
+      "static_trip_header_V_max": 5.042775960933308,
+      "header_V_for_50mV_prior_underdrive_max": 5.103884126116915,
+      "prior_underdrive_headroom_V": 0.0068735426145289935,
+      "header_V_at_50mV_falling_overdrive_min": 4.89864058313791,
+      "actual_AVDD_V_when_permission_must_drop_min": 4.76964058313791,
+      "operating_margin_at_permission_drop_V": 0.019640583137910284
+    },
+    "analog": {
+      "ground_path_tau_s_max": 4.0823999999999994e-05,
+      "ground_to_0V2_s_max": 0.00013336308990452702,
+      "signal_tracking_tau_s_max": 7.409987999999999e-05,
+      "declining_rail_tracking_lag_V_max": 0.029639952,
+      "conditional_AIN_minus_AVDD_V_max_before_ground": 0.15463995200000002,
+      "powered_off_33k_bleed_V_max_before_temperature_drift": 0.19819799999999999
+    },
+    "exact_passive_closure": {
+      "C10_TPSD226K025R0200": {
+        "nominal_F": 2.2e-05,
+        "initial_min_F": 1.98e-05,
+        "illustrative_min_after_10percent_change_F": 1.7820000000000002e-05,
+        "DC_bias_derating": false,
+        "maximum_ESR_100kHz_ohm": 0.2,
+        "parallel_input_ceramic": "C36 GRM32ER71E226KE15L22uF25VX7R1210",
+        "limit": "battery lead resonance/hot-plug current and damping require actual wiring validation"
+      },
+      "C11_C13_C39_GRM32ER71E226KE15L": {
+        "count": 3,
+        "nominal_F_each": 2.2e-05,
+        "illustrative_small_signal_bias_temp_tol_F_total": 2.8274400000000005e-05,
+        "required_effective_F_total": 2e-05,
+        "required_ESR_ohm_max_each": 0.02,
+        "required_mounted_ESL_H_max_each": 2e-09,
+        "limit": "0.8DC and0.7smallAC factors are separate typical manufacturer curves, not a combined-condition guarantee; verify>=20uF and layout/stability"
+      },
+      "C15_C37_C38_GRM31C5C1H104JA01K": {
+        "nominal_F_total": 3e-07,
+        "initial_F_min": 2.8499999999999997e-07,
+        "post_humidity_F_min_envelope": 2.63625e-07,
+        "room_IR_ohm_F_min": 500,
+        "post_durability_IR_ohm_F_min": 50,
+        "post_humidity_IR_ohm_F_min": 25,
+        "leak_A_max_used": 7.111125e-08,
+        "nominal_RC_corner_Hz": 10.242026274624203,
+        "nominal_t90_s": 0.035780790794071676,
+        "nominal_initial_slew_V_per_s": 333.33333333333337,
+        "corner_initial_slew_V_per_s": 383.1199620673305,
+        "startup_total_output_C_F_envelope": 0.0011,
+        "corner_charging_plus120mA_A": 0.5414319582740637,
+        "limit": "startup can enter the nominal500mA programmed current limit; native ready qualification prevents conversion until settled. No4.7uF noise claim; validate inrush/thermal and release overshoot"
+      },
+      "C14_C23_C24": {
+        "mpn": "GRM31C5C1H104JA01K",
+        "footprint": "1206",
+        "nominal_F_each": 1e-07,
+        "tolerance": 0.05,
+        "C24_qualification_s_initial_min": 0.03396990398043837,
+        "C24_qualification_s_posthumidity_min_envelope": 0.031422161181905495
+      },
+      "R40_Q26_release": {
+        "resistance_ohm": 150,
+        "peak_A_max": 0.03535353535353535,
+        "nominal_RC_s": 1.4999999999999999e-05,
+        "effect": "startup-only clamp release; independent comparator andQ24 shutdown unaffected"
+      },
+      "D12_Diotec_BZT52C6V8GW": {
+        "Vz_5mA_25C_min_V": 6.4,
+        "Vz_5mA_25C_max_V": 7.2,
+        "tempco_max_per_K": 0.0007,
+        "illustrative125C_max_V": 7.704000000000001,
+        "AO3414_absolute_VGS_V": 8,
+        "limit": "Zener limits specified at5mA; R13 restricts normal current far below this. Verify transient clamp with actual battery wiring"
+      }
+    },
+    "C12_Nichicon_PCJ0J821MCL4GS": {
+      "nominal_F": 0.00082,
+      "initial_20C_min_F": 0.000656,
+      "after_endurance_20C_min_F": 0.0005248000000000001,
+      "ESR_20C_100kHz_max_ohm": 0.01,
+      "ESR_endurance_limit_factor": 1.5,
+      "impedance_temperature_ratio_100kHz_max": 1.25,
+      "illustrative_120mA_step_with_1p5x1p25_ESR_V": 0.00225,
+      "limit": "100kHz impedance/endurance specs are not a broadband transient or low-temperature capacitance guarantee; qualified300uF/25mV envelope still required"
+    },
+    "exported_netlist_checks": {
+      "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\interface_netlist.xml",
+      "checked_pin_connections": 83,
+      "failures": [],
+      "passed": true
+    }
+  },
+  "netlist_sha256": "34790f936a7f19268ae516ae7bd5360d8f28eb90dea749e9d0227ebcf84081f9",
+  "does_not_prove": [
+    "physical power sequencing or unverified acceptance inputs",
+    "PCB routing/DRC/parity",
+    "mechanical fit",
+    "assembly sourcing",
+    "production qualification"
+  ],
+  "finished_utc": "2026-09-09T15:37:07.518212+00:00"
+}

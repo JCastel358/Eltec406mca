@@ -1,0 +1,105 @@
+{
+  "status": "TWO_LOCAL_POWER_GROUND_STITCHES_ADDED",
+  "added_uuids": [
+    "b6a5e185-b4cc-5106-9c29-1fa11df85d75",
+    "bc019728-8f9a-5574-beb2-72d74524c466",
+    "d9506bba-d2eb-50b2-901f-98409f5600fd",
+    "d9aaa91c-cf39-5df4-bcdf-7a60d419b558"
+  ],
+  "stitches": [
+    {
+      "reference": "C12.2",
+      "add": true,
+      "net": "GND",
+      "xy_mm": [
+        26.475,
+        -20.05
+      ],
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "via_in_pad": false,
+      "pad_to_annulus_clearance_min_mm": 0.3,
+      "rejected_alternatives": [],
+      "ground_stub": {
+        "layer": "F.Cu",
+        "width_mm": 1.0,
+        "from_mm": [
+          26.475,
+          -22.0
+        ],
+        "to_mm": [
+          26.475,
+          -20.05
+        ]
+      },
+      "via_uuid": "b6a5e185-b4cc-5106-9c29-1fa11df85d75",
+      "stub_uuid": "d9506bba-d2eb-50b2-901f-98409f5600fd"
+    },
+    {
+      "reference": "C16.2",
+      "add": true,
+      "net": "GND",
+      "xy_mm": [
+        64.5,
+        38.5
+      ],
+      "diameter_mm": 0.6,
+      "drill_mm": 0.3,
+      "via_in_pad": false,
+      "pad_to_annulus_clearance_min_mm": 0.3,
+      "rejected_alternatives": [],
+      "ground_stub": {
+        "layer": "F.Cu",
+        "width_mm": 0.3,
+        "from_mm": [
+          65.5,
+          37.775
+        ],
+        "to_mm": [
+          64.5,
+          38.5
+        ]
+      },
+      "via_uuid": "d9aaa91c-cf39-5df4-bcdf-7a60d419b558",
+      "stub_uuid": "bc019728-8f9a-5574-beb2-72d74524c466"
+    }
+  ],
+  "existing_native_geometry_preserved": true,
+  "unconnected_before": 0,
+  "unconnected_after": 0,
+  "kelvin": {
+    "profile": "LT3041_U10_12_TO_C11_1_V1",
+    "exact_locked_seed_retained": true,
+    "no_extra_conductor_in_protected_corridor": true,
+    "protected_rectangle_nm": [
+      35000000,
+      -7725000,
+      37400000,
+      -7275000
+    ],
+    "trace_width_mm": 0.2
+  },
+  "source": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\single_detector_usb_master\\single_detector_usb_master.kicad_pcb",
+  "source_sha256": "690d80156d71a897e6ca834e49c7fc9674a03378a2d5fc5f3264eae576b5b15f",
+  "candidate": "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\power_review_final\\ground_candidate_v3\\candidate\\single_detector_usb_master.kicad_pcb",
+  "candidate_sha256": "8af917d9e8abf4a4b630a16de79c6507b03c5a2b84fb2fd2182532e8ed71b771",
+  "native_drc": {
+    "counts": {},
+    "stdout": "Found 0 violations\nFound 0 unconnected items\nFound 0 schematic parity issues\nSaved DRC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/single_detector_usb_master_r1/reports/power_review_final/ground_candidate_v3/native_drc.json\n",
+    "command": [
+      "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+      "pcb",
+      "drc",
+      "--format",
+      "json",
+      "--severity-all",
+      "--schematic-parity",
+      "--output",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\power_review_final\\ground_candidate_v3\\native_drc.json",
+      "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\reports\\power_review_final\\ground_candidate_v3\\candidate\\single_detector_usb_master.kicad_pcb"
+    ]
+  },
+  "source_unchanged": true,
+  "planes_refilled": true,
+  "tool_sha256": "95e7ab246280c6b6a4afe17e5cfd310ff7b6fddda18bd410bd0df09b0b6f0c47"
+}

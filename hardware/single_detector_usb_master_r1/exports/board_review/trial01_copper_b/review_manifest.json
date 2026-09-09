@@ -1,0 +1,3591 @@
+{
+  "status": "EXPORTED_AND_RENDERED_VISUAL_REVIEW_PENDING",
+  "phase": "routed_planes_pending",
+  "phase_is_not_a_route_or_drc_pass": true,
+  "source_hashes": {
+    "libraries\\master.pretty\\BarrelJack_GCT_DCJ200_10_A.kicad_mod": "b7333718c8e71cd4b09f99e5c11256b1f16292d5e36d52623121c2ebf88e9554",
+    "libraries\\master.pretty\\C_0603_1608Metric.kicad_mod": "b2f5ee1c7e9a922f4d9e92b7844668a8154e56e06add385b88baa10a6799095f",
+    "libraries\\master.pretty\\C_0805_2012Metric.kicad_mod": "90016129533f855682ab39e9908aabc5331916aa5283639498fe052b920967f7",
+    "libraries\\master.pretty\\C_1206_3216Metric.kicad_mod": "5bc8c68afdd88552646fa8a522715397e2145af27577d07bf50393ee308207c2",
+    "libraries\\master.pretty\\C_1210_3225Metric.kicad_mod": "7cf9bedbfc2e28f87b669e54514802ed46c5c3b22633d9b013b19ff5c63b26b5",
+    "libraries\\master.pretty\\CP_EIA-7343-31_Kemet-D.kicad_mod": "ab21cd6d8e6d4e2c9ac4e7a93ae3ad565b229a9064d897d7ec92014892b56df5",
+    "libraries\\master.pretty\\CP_Elec_10x10.5.kicad_mod": "9adfed611af8618f3005c45a488d77c7ebcc78947e8125e73f9764681feda8f5",
+    "libraries\\master.pretty\\CP_Elec_8x11.9.kicad_mod": "c81a1160a19e16dcd530eb887ec04f7e217caeefae12d4aaef1cbc2d0b55349d",
+    "libraries\\master.pretty\\D_SMA.kicad_mod": "e2d049a54ef961e231eb8e7e769078a3c44feb8475a7bdafba01c6646a5144f3",
+    "libraries\\master.pretty\\D_SOD-123.kicad_mod": "a7a2c6492a58677da0f95fd3a9865974162fc52aa45173a0125135f7ca496a60",
+    "libraries\\master.pretty\\Detector_Wire_Lands.kicad_mod": "9e1942bd9bf833175822b97748b1c639f6fea42425b55a0c459c61e398f725d1",
+    "libraries\\master.pretty\\DFN-14-1EP_3x4mm_P0.5mm_EP1.7x3.3mm.kicad_mod": "d7c5688d135afa24857896405ae3ad3c49e9c91dab6752ca971bcc3528a08e45",
+    "libraries\\master.pretty\\Emitter_Wire_Lands.kicad_mod": "715ee909e249db690a1726d4a55b057da39d4c49df2d99ea9dcdb5378f819e35",
+    "libraries\\master.pretty\\Fuse_1206_3216Metric.kicad_mod": "5de78aaa1acbb50ec18e556c08d4e9301eb5d23987149aced87ccc5bbfc65693",
+    "libraries\\master.pretty\\HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm.kicad_mod": "5b7d63555ed4f92178e31c9234eaf7a0f9a00c216de98d528d31815e2e91074c",
+    "libraries\\master.pretty\\Potentiometer_Bourns_3296W_Vertical.kicad_mod": "c9f3cfdbcf4a24af5ebf792bb188c3ecfc9c50444f50677cc4cdbd7a5f1f5a33",
+    "libraries\\master.pretty\\R_0603_1608Metric.kicad_mod": "15dde88a8cd0d4cb8f443678b8c7aaba3459473e58a0c79d392af54021f78e0d",
+    "libraries\\master.pretty\\R_0805_2012Metric.kicad_mod": "83da7a8a25143d98c2e5aff4b2ee98d5d7477c413eea6ec36e9a0b5e85b5656b",
+    "libraries\\master.pretty\\SMDIP-16_W9.53mm.kicad_mod": "e6173deb8f5aed5d5eb6cac49906f889f15e8e06f2c2962166408b3a4477b7d1",
+    "libraries\\master.pretty\\SMDIP-4_W7.62mm.kicad_mod": "817f6128ac0fab550974a026a0799dd782ac8b573b98ededf7b42e639cd0edf2",
+    "libraries\\master.pretty\\Socket_FG_2x08_P2.54_H8.5.kicad_mod": "fd7b7bba79e173b04fd34c609dbf32da733f16b02285936f9e37f91976a50df0",
+    "libraries\\master.pretty\\Socket_Kinghelm_1x08_P2.54_H8.5.kicad_mod": "8503863044bec809c3b627d634889414b7a13278eb696b96feff51a59f5872c7",
+    "libraries\\master.pretty\\Socket_Kinghelm_1x15_P2.54_H8.5.kicad_mod": "98f2b61efb23c96215baa47ddcc5d42f19a5cccdd9a09379d99428366a8b5452",
+    "libraries\\master.pretty\\SOIC-8_3.9x4.9mm_P1.27mm.kicad_mod": "0031e401b16b841d2d20331a6175ece1a4f10bb80e356286f3d17b56a445133c",
+    "libraries\\master.pretty\\SOT-23-5.kicad_mod": "724b6b8f1ab209f195e74df2cf0696b3c9b13df5fe8369c85bc21690ea06872f",
+    "libraries\\master.pretty\\SOT-23.kicad_mod": "50477a63310cc4d2f8ce5859020ebbde2ea5214fbeff07e5328f474b0e62cb18",
+    "libraries\\master.pretty\\SOT-353_SC-70-5.kicad_mod": "a05fedb991c367cfc25a92e60c7a5cdef88afc3cb559559a81ecab2df6f25feb",
+    "libraries\\master.pretty\\TI_DCT0008A_SSOP8.kicad_mod": "3b5ef66a4bba9c5893f4380054e9e34b16f394f57ce59f7326b8e9548c1521cd",
+    "libraries\\master.pretty\\TO-263-5_TabPin3.kicad_mod": "d3c596a0fbe26578c86232ef5cc1b4a3f851f3171b14df3a656d745b522abc18",
+    "libraries\\master.pretty\\TSSOP-16_4.4x5mm_P0.65mm.kicad_mod": "7ca2eb97c326e29683a118ae503c9165f51128b23c4cdeb0786b78370a911ff2",
+    "reports\\design_manifest.json": "6b26cc6bf3a1e90ad549319bc5f5376eb977d27c40787a715dbb07b0aaae15f1",
+    "single_detector_usb_master\\adc_interface.kicad_sch": "ca09b1f5bbcf1ec63357625222135c36367b8e5551a5dd7b37a061598a227631",
+    "single_detector_usb_master\\adc_supply.kicad_sch": "2788db2423c1f6ac40da85b5926712492e7bca8597bc8df458f6bf90365ddc7f",
+    "single_detector_usb_master\\analog_pair_1.kicad_sch": "b2ee3f11f898ee502f6e42c50a6d5ef5f380f241126e7a47bf5bb775fff82dda",
+    "single_detector_usb_master\\analog_pair_2.kicad_sch": "8515a794804e14c0683b57f02fe3d2d3fcf6fbebdd73ad58106a49956238e355",
+    "single_detector_usb_master\\analog_pair_3.kicad_sch": "557c4bf4f5c4211232065b9041be17f246cc095382697868addb33e3fddadea8",
+    "single_detector_usb_master\\emitter_connections.kicad_sch": "f8ca008b4953691b3a7d0d55a6ab6ee9a30605a44c5eb2198e5c7dc006245d2c",
+    "single_detector_usb_master\\emitter_pwm.kicad_sch": "b48ee0f4a0bfe9da7ed7b5cd8a967a1f4a197a4b73ade6ce774ca95ba8dd8b2e",
+    "single_detector_usb_master\\emitter_regulator.kicad_sch": "c3c261f38e01bb10ab124fbb9e93338f87664188d9da7b7555adc168679da806",
+    "single_detector_usb_master\\esp32_interface.kicad_sch": "0bc6b909d98129e37a4f99b56eabd5e9556e098b2ec16b2e895d9e292b8baa5a",
+    "single_detector_usb_master\\fp-lib-table": "15d72736cb413bf1d62ca9816eb9b4e2b90e5033c6d29dcd8fb7e9928283564e",
+    "single_detector_usb_master\\power_inputs.kicad_sch": "fc4956914cd518c2c8473f6c3a0e69925bf07f248798b6bb44b00cdef5c822a2",
+    "single_detector_usb_master\\power_permission.kicad_sch": "6af74cff86e08155656229fa733e4fd7e97cc94855702f31c3d0ad545f9cdbf5",
+    "single_detector_usb_master\\power_supervision.kicad_sch": "2094b0c141155d5c67095d99d650140461dc9f6402d1afa7072cf841208c6df4",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_dru": "0a68d7ebbf53577634025066fc9f21378e2fa1abb019ac4f199e565bcab3f49f",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pcb": "fad6bd088b9a705895c90298aca01d0d376371b9805369eec672771b68cf23af",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_pro": "efa2f91b4d171408b3a2c3a0256d78477df6e959c0237632494aa48d63b3c473",
+    "single_detector_usb_master\\single_detector_usb_master.kicad_sch": "b738f2c517b9188885e13d31a9c786d227cd5145924584c5c6b9e4b0fb8bc29b",
+    "single_detector_usb_master\\spi_defaults.kicad_sch": "0204c6faf7e6f8ac128712580b5eac35d6c9b058aa6f04d1c7ebbee40610fabf",
+    "single_detector_usb_master\\spi_protection.kicad_sch": "832f2090db50943430ffa1f06bcf9e4349d3302c3c1e48da213db862c8243c3d",
+    "single_detector_usb_master\\sym-lib-table": "f4833790416c9256d262fb8a16296079f32b5222c610ed54b2c6710af54e075a",
+    "tools\\export_board_review.py": "456bb7f92d0a30260668d3d9830f90df76d5c25c0383e2a5729eff1283f833ce",
+    "tools\\route_board.py": "38d883c9e721679d78802072fa2db492a52064da62ef0bae4f78b1982969a74c"
+  },
+  "source_tracks_and_vias": 2067,
+  "source_copper_zones": 0,
+  "source_zones_reporting_filled": 0,
+  "source_unconnected_count": 12,
+  "source_unchanged": true,
+  "kicad_version": "10.0.6",
+  "created_utc": "2026-09-09T15:18:22.896038+00:00",
+  "outputs": [
+    {
+      "file": "copper_top.pdf",
+      "sha256": "8242d2aa26ac0c0ea4fa3787be0723f473c0b57c1121fb0745f912d946c15a73",
+      "pages": 1,
+      "layers": [
+        "F.Cu",
+        "F.Silkscreen",
+        "Edge.Cuts"
+      ],
+      "mirrored": false,
+      "source_copy_sha256": "4e35ccca05ce85ba166efe94c8f4389a967f340f3d150b7d2797c4b69a0026b5",
+      "page_images": [
+        "rendered_pages\\copper_top-1.png"
+      ]
+    },
+    {
+      "file": "copper_bottom.pdf",
+      "sha256": "7c487d37f74c50574b564afe6a0ef7066b7616053e38437801d7eb293bc48876",
+      "pages": 1,
+      "layers": [
+        "B.Cu",
+        "B.Silkscreen",
+        "Edge.Cuts"
+      ],
+      "mirrored": true,
+      "source_copy_sha256": "63f194e67105620925fc2b4a2733e25b3ee8d6cd2a6644cb63dbd3deaa67671d",
+      "page_images": [
+        "rendered_pages\\copper_bottom-1.png"
+      ]
+    },
+    {
+      "file": "copper_layers.pdf",
+      "sha256": "8f34a73e6d7e0bbbc413720f596c0d2c57e40e0a508044a83d65be9657ba24e3",
+      "pages": 4,
+      "layers": [
+        "F.Cu",
+        "In1.Cu",
+        "In2.Cu",
+        "B.Cu"
+      ],
+      "mirrored": false,
+      "source_copy_sha256": "d300b02fe12ea6594536987a760e0280166ed9f0d778b78082537a79b0b5a4a4",
+      "page_images": [
+        "rendered_pages\\copper_layers-1.png",
+        "rendered_pages\\copper_layers-2.png",
+        "rendered_pages\\copper_layers-3.png",
+        "rendered_pages\\copper_layers-4.png"
+      ]
+    },
+    {
+      "file": "assembly_top.pdf",
+      "sha256": "9fb18e374b3572fd07caecb5cf830339d569d2f7bf76addb31f53bbfc14bcc59",
+      "pages": 1,
+      "layers": [
+        "F.Fab",
+        "Edge.Cuts",
+        "Dwgs.User"
+      ],
+      "mirrored": false,
+      "source_copy_sha256": "42c160477a49de0bb48417f5ad42919780b70aad42f265867883a490ebc46459",
+      "page_images": [
+        "rendered_pages\\assembly_top-1.png"
+      ]
+    }
+  ],
+  "assembly_annotations": {
+    "footprints": [
+      {
+        "reference": "U33",
+        "body_center_nm": [
+          29070000,
+          73124000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          26315000,
+          70599000,
+          31825000,
+          75649000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "F1",
+        "body_center_nm": [
+          88000000,
+          14000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86350000,
+          13015000,
+          89650000,
+          14985000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C11",
+        "body_center_nm": [
+          38500000,
+          -9000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          37065000,
+          -10650000,
+          39935000,
+          -7350000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q20",
+        "body_center_nm": [
+          90000000,
+          -22000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          89165000,
+          -23635000,
+          90835000,
+          -20365000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C10",
+        "body_center_nm": [
+          21605000,
+          -7000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          17510000,
+          -9335000,
+          25700000,
+          -4665000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C101",
+        "body_center_nm": [
+          81500000,
+          36000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80690000,
+          34950000,
+          82310000,
+          37050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R31",
+        "body_center_nm": [
+          61000000,
+          33000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          60402500,
+          32150000,
+          61597500,
+          33850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R117",
+        "body_center_nm": [
+          28500000,
+          106000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          27450000,
+          105190000,
+          29550000,
+          106810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C102",
+        "body_center_nm": [
+          88355000,
+          58250000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          84260000,
+          55915000,
+          92450000,
+          60585000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C29",
+        "body_center_nm": [
+          65000000,
+          51500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64150000,
+          50915000,
+          65850000,
+          52085000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R200",
+        "body_center_nm": [
+          27000000,
+          66734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          25950000,
+          65924000,
+          28050000,
+          67544000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R39",
+        "body_center_nm": [
+          42000000,
+          -5000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          41150000,
+          -5597500,
+          42850000,
+          -4402500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q51",
+        "body_center_nm": [
+          73000000,
+          105000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          72165000,
+          103365000,
+          73835000,
+          106635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R220",
+        "body_center_nm": [
+          42000000,
+          66734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          40950000,
+          65924000,
+          43050000,
+          67544000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R211",
+        "body_center_nm": [
+          33000000,
+          78734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          77924000,
+          34050000,
+          79544000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R40",
+        "body_center_nm": [
+          58500000,
+          37000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          57902500,
+          36150000,
+          59097500,
+          37850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R123",
+        "body_center_nm": [
+          20000000,
+          103500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          18950000,
+          102690000,
+          21050000,
+          104310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U11",
+        "body_center_nm": [
+          53610000,
+          -5140000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          52235000,
+          -6915000,
+          54985000,
+          -3365000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R118",
+        "body_center_nm": [
+          28500000,
+          103500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          27450000,
+          102690000,
+          29550000,
+          104310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R210",
+        "body_center_nm": [
+          33000000,
+          66734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          65924000,
+          34050000,
+          67544000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C37",
+        "body_center_nm": [
+          37300000,
+          -1250000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36315000,
+          -2900000,
+          38285000,
+          400000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C39",
+        "body_center_nm": [
+          43500000,
+          -9000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          41850000,
+          -10435000,
+          45150000,
+          -7565000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R234",
+        "body_center_nm": [
+          45000000,
+          20500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44190000,
+          19450000,
+          45810000,
+          21550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "D11",
+        "body_center_nm": [
+          71507500,
+          32500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          69565000,
+          31425000,
+          73450000,
+          33575000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R23",
+        "body_center_nm": [
+          87500000,
+          -19000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86650000,
+          -19597500,
+          88350000,
+          -18402500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q11",
+        "body_center_nm": [
+          64500000,
+          64000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          63665000,
+          62365000,
+          65335000,
+          65635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q103",
+        "body_center_nm": [
+          16112500,
+          105000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          15277500,
+          103365000,
+          16947500,
+          106635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R33",
+        "body_center_nm": [
+          55500000,
+          50500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          54902500,
+          49650000,
+          56097500,
+          51350000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R17",
+        "body_center_nm": [
+          69000000,
+          39500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          68150000,
+          38902500,
+          69850000,
+          40097500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U19",
+        "body_center_nm": [
+          60610000,
+          48860000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59235000,
+          47085000,
+          61985000,
+          50635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q17",
+        "body_center_nm": [
+          87000000,
+          0
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86165000,
+          -1635000,
+          87835000,
+          1635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R231",
+        "body_center_nm": [
+          45000000,
+          76500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44190000,
+          75450000,
+          45810000,
+          77550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C12",
+        "body_center_nm": [
+          23000000,
+          -22000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          18665000,
+          -26335000,
+          27335000,
+          -17665000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C22",
+        "body_center_nm": [
+          69000000,
+          63000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          68150000,
+          62415000,
+          69850000,
+          63585000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R65",
+        "body_center_nm": [
+          86000000,
+          98500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          84950000,
+          97690000,
+          87050000,
+          99310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C27",
+        "body_center_nm": [
+          87000000,
+          -21500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86415000,
+          -22350000,
+          87585000,
+          -20650000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R213",
+        "body_center_nm": [
+          33000000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          53190000,
+          34050000,
+          54810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C20",
+        "body_center_nm": [
+          56500000,
+          66000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          55915000,
+          65150000,
+          57085000,
+          66850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U12",
+        "body_center_nm": [
+          59610000,
+          65860000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          58235000,
+          64085000,
+          60985000,
+          67635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R19",
+        "body_center_nm": [
+          73000000,
+          48000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          72150000,
+          47402500,
+          73850000,
+          48597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R224",
+        "body_center_nm": [
+          42000000,
+          18184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          40950000,
+          17374000,
+          43050000,
+          18994000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R16",
+        "body_center_nm": [
+          68500000,
+          52000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67650000,
+          51402500,
+          69350000,
+          52597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q26",
+        "body_center_nm": [
+          56500000,
+          47000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          55665000,
+          45365000,
+          57335000,
+          48635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R203",
+        "body_center_nm": [
+          27000000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          25950000,
+          53190000,
+          28050000,
+          54810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R201",
+        "body_center_nm": [
+          27000000,
+          78734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          25950000,
+          77924000,
+          28050000,
+          79544000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C17",
+        "body_center_nm": [
+          50500000,
+          -5000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          49690000,
+          -6050000,
+          51310000,
+          -3950000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R32",
+        "body_center_nm": [
+          63500000,
+          33000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          62902500,
+          32150000,
+          64097500,
+          33850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R22",
+        "body_center_nm": [
+          86000000,
+          -3000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          85150000,
+          -3597500,
+          86850000,
+          -2402500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "D10",
+        "body_center_nm": [
+          66507500,
+          32500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64565000,
+          31425000,
+          68450000,
+          33575000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C18",
+        "body_center_nm": [
+          57500000,
+          -5000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          56690000,
+          -6050000,
+          58310000,
+          -3950000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C16",
+        "body_center_nm": [
+          65500000,
+          37000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64915000,
+          36150000,
+          66085000,
+          37850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q21",
+        "body_center_nm": [
+          70000000,
+          5000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          69165000,
+          3365000,
+          70835000,
+          6635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R111",
+        "body_center_nm": [
+          39500000,
+          93500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38450000,
+          92690000,
+          40550000,
+          94310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R13",
+        "body_center_nm": [
+          57500000,
+          51000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          56902500,
+          50150000,
+          58097500,
+          51850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R100",
+        "body_center_nm": [
+          81500000,
+          47000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80690000,
+          45950000,
+          82310000,
+          48050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R25",
+        "body_center_nm": [
+          68000000,
+          10000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67150000,
+          9402500,
+          68850000,
+          10597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R101",
+        "body_center_nm": [
+          81500000,
+          52000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80690000,
+          50950000,
+          82310000,
+          53050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R254",
+        "body_center_nm": [
+          34500000,
+          21000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          33450000,
+          20190000,
+          35550000,
+          21810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R53",
+        "body_center_nm": [
+          67500000,
+          103500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          66450000,
+          102690000,
+          68550000,
+          104310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R233",
+        "body_center_nm": [
+          45000000,
+          52000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44190000,
+          50950000,
+          45810000,
+          53050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R61",
+        "body_center_nm": [
+          57000000,
+          94000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          56190000,
+          92950000,
+          57810000,
+          95050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C30",
+        "body_center_nm": [
+          45500000,
+          72734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44690000,
+          71684000,
+          46310000,
+          73784000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q23",
+        "body_center_nm": [
+          69500000,
+          49000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67865000,
+          48165000,
+          71135000,
+          49835000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U30",
+        "body_center_nm": [
+          41000000,
+          73674000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38190000,
+          70349000,
+          43810000,
+          76999000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JDET3",
+        "body_center_nm": [
+          18814132,
+          53820000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          13958263,
+          49007500,
+          23670000,
+          58632500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q10",
+        "body_center_nm": [
+          60000000,
+          62000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59165000,
+          60365000,
+          60835000,
+          63635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R59",
+        "body_center_nm": [
+          82000000,
+          105500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80950000,
+          104690000,
+          83050000,
+          106310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R54",
+        "body_center_nm": [
+          69000000,
+          106000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67950000,
+          105190000,
+          70050000,
+          106810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "J1",
+        "body_center_nm": [
+          88750000,
+          26437500
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          81425000,
+          21825000,
+          96075000,
+          31050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": true
+      },
+      {
+        "reference": "J3",
+        "body_center_nm": [
+          68300000,
+          87000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          49000000,
+          85700000,
+          87599999,
+          88300000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C25",
+        "body_center_nm": [
+          70000000,
+          41500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          69150000,
+          40915000,
+          70850000,
+          42085000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C26",
+        "body_center_nm": [
+          87000000,
+          3000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86150000,
+          2415000,
+          87850000,
+          3585000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q18",
+        "body_center_nm": [
+          80000000,
+          -5000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          79165000,
+          -6635000,
+          80835000,
+          -3365000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R66",
+        "body_center_nm": [
+          58000000,
+          98000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          57190000,
+          96950000,
+          58810000,
+          99050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C100",
+        "body_center_nm": [
+          88355000,
+          35500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          84260000,
+          33165000,
+          92450000,
+          37835000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R38",
+        "body_center_nm": [
+          60500000,
+          38500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59902500,
+          37650000,
+          61097500,
+          39350000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "J4",
+        "body_center_nm": [
+          68300000,
+          112400000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          49000000,
+          111100000,
+          87599999,
+          113700000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R110",
+        "body_center_nm": [
+          39692500,
+          91300000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38642500,
+          90490000,
+          40742500,
+          92110000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R63",
+        "body_center_nm": [
+          71000000,
+          97500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          69950000,
+          96690000,
+          72050000,
+          98310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R69",
+        "body_center_nm": [
+          82000000,
+          108000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80950000,
+          107190000,
+          83050000,
+          108810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "J2",
+        "body_center_nm": [
+          88750000,
+          74437500
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          81425000,
+          69825000,
+          96075000,
+          79050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": true
+      },
+      {
+        "reference": "R214",
+        "body_center_nm": [
+          33000000,
+          18184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          17374000,
+          34050000,
+          18994000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R250",
+        "body_center_nm": [
+          34000000,
+          69500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          32950000,
+          68690000,
+          35050000,
+          70310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q102",
+        "body_center_nm": [
+          24607500,
+          104850000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          23772500,
+          103215000,
+          25442500,
+          106485000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R244",
+        "body_center_nm": [
+          37000000,
+          24000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36190000,
+          22950000,
+          37810000,
+          25050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C31",
+        "body_center_nm": [
+          45500000,
+          48000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44690000,
+          46950000,
+          46310000,
+          49050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C24",
+        "body_center_nm": [
+          56000000,
+          43500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          54350000,
+          42515000,
+          57650000,
+          44485000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R52",
+        "body_center_nm": [
+          64666667,
+          97666667
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          63616667,
+          96856667,
+          65716667,
+          98476667
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C52",
+        "body_center_nm": [
+          82000000,
+          98500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80950000,
+          97690000,
+          83050000,
+          99310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U18",
+        "body_center_nm": [
+          63000000,
+          37000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          62190000,
+          35815000,
+          63810000,
+          38185000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R241",
+        "body_center_nm": [
+          38000000,
+          67500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36950000,
+          66690000,
+          39050000,
+          68310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R264",
+        "body_center_nm": [
+          30000000,
+          18500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          29190000,
+          17450000,
+          30810000,
+          19550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R35",
+        "body_center_nm": [
+          68500000,
+          56000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67650000,
+          55402500,
+          69350000,
+          56597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R121",
+        "body_center_nm": [
+          40000000,
+          104000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          39190000,
+          102950000,
+          40810000,
+          105050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R252",
+        "body_center_nm": [
+          34500000,
+          51000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          33450000,
+          50190000,
+          35550000,
+          51810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R261",
+        "body_center_nm": [
+          30000000,
+          78500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          29190000,
+          77450000,
+          30810000,
+          79550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JDET4",
+        "body_center_nm": [
+          18814132,
+          41400000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          13958263,
+          36587500,
+          23670000,
+          46212500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U51",
+        "body_center_nm": [
+          70437500,
+          94000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          68325000,
+          92450000,
+          72550000,
+          95550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R122",
+        "body_center_nm": [
+          20087500,
+          106000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          19037500,
+          105190000,
+          21137500,
+          106810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U52",
+        "body_center_nm": [
+          81437500,
+          102000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          79325000,
+          100450000,
+          83550000,
+          103550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R205",
+        "body_center_nm": [
+          27000000,
+          30184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          25950000,
+          29374000,
+          28050000,
+          30994000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R223",
+        "body_center_nm": [
+          42000000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          40950000,
+          53190000,
+          43050000,
+          54810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R243",
+        "body_center_nm": [
+          37000000,
+          44000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36190000,
+          42950000,
+          37810000,
+          45050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R242",
+        "body_center_nm": [
+          37000000,
+          48000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36190000,
+          46950000,
+          37810000,
+          49050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R251",
+        "body_center_nm": [
+          34000000,
+          76000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          32950000,
+          75190000,
+          35050000,
+          76810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C21",
+        "body_center_nm": [
+          69000000,
+          69500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          68150000,
+          68915000,
+          69850000,
+          70085000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R67",
+        "body_center_nm": [
+          66000000,
+          100000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64950000,
+          99190000,
+          67050000,
+          100810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q50",
+        "body_center_nm": [
+          62000000,
+          105000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          61165000,
+          103365000,
+          62835000,
+          106635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U50",
+        "body_center_nm": [
+          60437500,
+          94000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          58325000,
+          92450000,
+          62550000,
+          95550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R265",
+        "body_center_nm": [
+          30000000,
+          33000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          28950000,
+          32190000,
+          31050000,
+          33810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U32",
+        "body_center_nm": [
+          41000000,
+          25124000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38190000,
+          21799000,
+          43810000,
+          28449000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C19",
+        "body_center_nm": [
+          60000000,
+          69500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59150000,
+          68915000,
+          60850000,
+          70085000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U100",
+        "body_center_nm": [
+          88750000,
+          46850000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          83475000,
+          39325000,
+          94025000,
+          54375000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R260",
+        "body_center_nm": [
+          30000000,
+          67000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          29190000,
+          65950000,
+          30810000,
+          68050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C13",
+        "body_center_nm": [
+          38500000,
+          -13500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36850000,
+          -14935000,
+          40150000,
+          -12065000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R10",
+        "body_center_nm": [
+          38300000,
+          -4750000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          37450000,
+          -5347500,
+          39150000,
+          -4152500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R56",
+        "body_center_nm": [
+          61000000,
+          90500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59950000,
+          89690000,
+          62050000,
+          91310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R120",
+        "body_center_nm": [
+          39500000,
+          101000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38450000,
+          100190000,
+          40550000,
+          101810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U13",
+        "body_center_nm": [
+          68610000,
+          65860000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67235000,
+          64085000,
+          69985000,
+          67635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R24",
+        "body_center_nm": [
+          91000000,
+          -19000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          90150000,
+          -19597500,
+          91850000,
+          -18402500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R30",
+        "body_center_nm": [
+          55000000,
+          41000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          54150000,
+          40402500,
+          55850000,
+          41597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R50",
+        "body_center_nm": [
+          62000000,
+          102000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          60950000,
+          101190000,
+          63050000,
+          102810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C34",
+        "body_center_nm": [
+          33920000,
+          47950000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          33110000,
+          46900000,
+          34730000,
+          49000000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R64",
+        "body_center_nm": [
+          78000000,
+          99500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          77190000,
+          98450000,
+          78810000,
+          100550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R262",
+        "body_center_nm": [
+          30000000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          29190000,
+          52950000,
+          30810000,
+          55050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R255",
+        "body_center_nm": [
+          30000000,
+          30000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          29190000,
+          28950000,
+          30810000,
+          31050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R230",
+        "body_center_nm": [
+          45000000,
+          69000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44190000,
+          67950000,
+          45810000,
+          70050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R240",
+        "body_center_nm": [
+          37000000,
+          72500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36190000,
+          71450000,
+          37810000,
+          73550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U31",
+        "body_center_nm": [
+          41000000,
+          48940000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38190000,
+          45615000,
+          43810000,
+          52265000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R21",
+        "body_center_nm": [
+          89500000,
+          3500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          88902500,
+          2650000,
+          90097500,
+          4350000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U101",
+        "body_center_nm": [
+          25795000,
+          94800000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          15585000,
+          91575000,
+          36005000,
+          98025000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R212",
+        "body_center_nm": [
+          33000000,
+          42000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          41190000,
+          34050000,
+          42810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R60",
+        "body_center_nm": [
+          86000000,
+          101500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          85190000,
+          100450000,
+          86810000,
+          102550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R51",
+        "body_center_nm": [
+          58500000,
+          103500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          57690000,
+          102450000,
+          59310000,
+          104550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C38",
+        "body_center_nm": [
+          40600000,
+          -1250000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          39615000,
+          -2900000,
+          41585000,
+          400000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R221",
+        "body_center_nm": [
+          42000000,
+          78734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          40950000,
+          77924000,
+          43050000,
+          79544000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R202",
+        "body_center_nm": [
+          27000000,
+          42000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          25950000,
+          41190000,
+          28050000,
+          42810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R235",
+        "body_center_nm": [
+          45000000,
+          28000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44190000,
+          26950000,
+          45810000,
+          29050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "RV100",
+        "body_center_nm": [
+          91100000,
+          64495000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86285000,
+          62030000,
+          95915000,
+          66960000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C50",
+        "body_center_nm": [
+          65000000,
+          91500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64190000,
+          90450000,
+          65810000,
+          92550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R57",
+        "body_center_nm": [
+          61000000,
+          97500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59950000,
+          96690000,
+          62050000,
+          98310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R113",
+        "body_center_nm": [
+          37000000,
+          103500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          35950000,
+          102690000,
+          38050000,
+          104310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q12",
+        "body_center_nm": [
+          60000000,
+          58000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59165000,
+          56365000,
+          60835000,
+          59635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R68",
+        "body_center_nm": [
+          76000000,
+          94500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          74950000,
+          93690000,
+          77050000,
+          95310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R55",
+        "body_center_nm": [
+          77500000,
+          103500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          76690000,
+          102450000,
+          78310000,
+          104550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R26",
+        "body_center_nm": [
+          73000000,
+          50000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          72150000,
+          49402500,
+          73850000,
+          50597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JDET1",
+        "body_center_nm": [
+          18814132,
+          78645000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          13958263,
+          73832500,
+          23670000,
+          83457500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U34",
+        "body_center_nm": [
+          29380000,
+          48390000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          26625000,
+          45865000,
+          32135000,
+          50915000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C35",
+        "body_center_nm": [
+          34285000,
+          24134000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          33475000,
+          23084000,
+          35095000,
+          25184000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C15",
+        "body_center_nm": [
+          34000000,
+          -1250000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          33015000,
+          -2900000,
+          34985000,
+          400000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R58",
+        "body_center_nm": [
+          71000000,
+          90500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          69950000,
+          89690000,
+          72050000,
+          91310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C36",
+        "body_center_nm": [
+          29500000,
+          -8000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          28065000,
+          -9650000,
+          30935000,
+          -6350000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JEM3",
+        "body_center_nm": [
+          17775000,
+          109900000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          15185000,
+          108580000,
+          20365000,
+          111220000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U16",
+        "body_center_nm": [
+          79000000,
+          5000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          75775000,
+          2410000,
+          82225000,
+          7590000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JDET6",
+        "body_center_nm": [
+          18848232,
+          17222500
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          13992363,
+          12410000,
+          23704100,
+          22035000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "D12",
+        "body_center_nm": [
+          56500000,
+          58492500
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          55425000,
+          56550000,
+          57575000,
+          60435000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U17",
+        "body_center_nm": [
+          55000000,
+          37000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          54165000,
+          35365000,
+          55835000,
+          38635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q22",
+        "body_center_nm": [
+          64750000,
+          54500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          63915000,
+          52865000,
+          65585000,
+          56135000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q13",
+        "body_center_nm": [
+          60500000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59665000,
+          52365000,
+          61335000,
+          55635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U14",
+        "body_center_nm": [
+          60610000,
+          44860000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59235000,
+          43085000,
+          61985000,
+          46635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "J5",
+        "body_center_nm": [
+          62100000,
+          80975000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          51690001,
+          79675000,
+          72510000,
+          82275000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R222",
+        "body_center_nm": [
+          42000000,
+          42000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          40950000,
+          41190000,
+          43050000,
+          42810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q16",
+        "body_center_nm": [
+          87000000,
+          7000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86165000,
+          5365000,
+          87835000,
+          8635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C14",
+        "body_center_nm": [
+          55000000,
+          33000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          53350000,
+          32015000,
+          56650000,
+          33985000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C28",
+        "body_center_nm": [
+          84000000,
+          0
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          83415000,
+          -850000,
+          84585000,
+          850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q101",
+        "body_center_nm": [
+          33112500,
+          105000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          32277500,
+          103365000,
+          33947500,
+          106635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C51",
+        "body_center_nm": [
+          75000000,
+          91500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          74190000,
+          90450000,
+          75810000,
+          92550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R18",
+        "body_center_nm": [
+          73500000,
+          45000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          72902500,
+          44150000,
+          74097500,
+          45850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R12",
+        "body_center_nm": [
+          43500000,
+          -12000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          42650000,
+          -12597500,
+          44350000,
+          -11402500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JDET5",
+        "body_center_nm": [
+          18934132,
+          29600000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          14078263,
+          24787500,
+          23790000,
+          34412500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R14",
+        "body_center_nm": [
+          65500000,
+          40000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64650000,
+          39402500,
+          66350000,
+          40597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JDET2",
+        "body_center_nm": [
+          18814132,
+          66222500
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          13958263,
+          61410000,
+          23670000,
+          71035000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R27",
+        "body_center_nm": [
+          69000000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          68150000,
+          53402500,
+          69850000,
+          54597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R253",
+        "body_center_nm": [
+          36000000,
+          54000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          35190000,
+          52950000,
+          36810000,
+          55050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R245",
+        "body_center_nm": [
+          37000000,
+          28000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36190000,
+          26950000,
+          37810000,
+          29050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R70",
+        "body_center_nm": [
+          88500000,
+          101500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          87690000,
+          100450000,
+          89310000,
+          102550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R225",
+        "body_center_nm": [
+          42000000,
+          30184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          40950000,
+          29374000,
+          43050000,
+          30994000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R263",
+        "body_center_nm": [
+          33000000,
+          56500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          55690000,
+          34050000,
+          57310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R116",
+        "body_center_nm": [
+          39500000,
+          98500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38450000,
+          97690000,
+          40550000,
+          99310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C32",
+        "body_center_nm": [
+          45500000,
+          24184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44690000,
+          23134000,
+          46310000,
+          25234000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q19",
+        "body_center_nm": [
+          83000000,
+          -21000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          82165000,
+          -22635000,
+          83835000,
+          -19365000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R20",
+        "body_center_nm": [
+          68000000,
+          37500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          67150000,
+          36902500,
+          68850000,
+          38097500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R15",
+        "body_center_nm": [
+          57500000,
+          40500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          56902500,
+          39650000,
+          58097500,
+          41350000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C103",
+        "body_center_nm": [
+          81500000,
+          58500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          80690000,
+          57450000,
+          82310000,
+          59550000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R62",
+        "body_center_nm": [
+          66000000,
+          94500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64950000,
+          93690000,
+          67050000,
+          95310000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R11",
+        "body_center_nm": [
+          29000000,
+          -3500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          28150000,
+          -4097500,
+          29850000,
+          -2902500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q15",
+        "body_center_nm": [
+          66000000,
+          43000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64365000,
+          42165000,
+          67635000,
+          43835000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R204",
+        "body_center_nm": [
+          27000000,
+          18184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          25950000,
+          17374000,
+          28050000,
+          18994000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q24",
+        "body_center_nm": [
+          64000000,
+          58500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          62365000,
+          57665000,
+          65635000,
+          59335000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JEM1",
+        "body_center_nm": [
+          34775000,
+          109900000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          32185000,
+          108580000,
+          37365000,
+          111220000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "JEM2",
+        "body_center_nm": [
+          26275000,
+          109900000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          23685000,
+          108580000,
+          28865000,
+          111220000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R112",
+        "body_center_nm": [
+          37087500,
+          106000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          36037500,
+          105190000,
+          38137500,
+          106810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C23",
+        "body_center_nm": [
+          61000000,
+          41500000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          59350000,
+          40515000,
+          62650000,
+          42485000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R34",
+        "body_center_nm": [
+          53500000,
+          47000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          52902500,
+          46150000,
+          54097500,
+          47850000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R28",
+        "body_center_nm": [
+          87000000,
+          10000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          86150000,
+          9402500,
+          87850000,
+          10597500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R215",
+        "body_center_nm": [
+          33000000,
+          30184000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31950000,
+          29374000,
+          34050000,
+          30994000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U10",
+        "body_center_nm": [
+          33502500,
+          -7157500
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          31455000,
+          -9365000,
+          35550000,
+          -4950000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "J6",
+        "body_center_nm": [
+          62100000,
+          25095000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          51640001,
+          22545000,
+          72560000,
+          27645000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R232",
+        "body_center_nm": [
+          45000000,
+          44000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          44190000,
+          42950000,
+          45810000,
+          45050000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U35",
+        "body_center_nm": [
+          29665000,
+          24574000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          26910000,
+          22049000,
+          32420000,
+          27099000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R115",
+        "body_center_nm": [
+          39500000,
+          96000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          38450000,
+          95190000,
+          40550000,
+          96810000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "Q14",
+        "body_center_nm": [
+          65500000,
+          47000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          64665000,
+          45365000,
+          66335000,
+          48635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "R29",
+        "body_center_nm": [
+          83000000,
+          -24000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          82150000,
+          -24597500,
+          83850000,
+          -23402500
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "C33",
+        "body_center_nm": [
+          34190000,
+          72734000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          33380000,
+          71684000,
+          35000000,
+          73784000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "F2",
+        "body_center_nm": [
+          89000000,
+          -16000000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          87350000,
+          -16985000,
+          90650000,
+          -15015000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      },
+      {
+        "reference": "U15",
+        "body_center_nm": [
+          69610000,
+          44860000
+        ],
+        "body_basis": "Bounding center of existing non-text Fab body geometry",
+        "native_fab_bbox_nm": [
+          68235000,
+          43085000,
+          70985000,
+          46635000
+        ],
+        "visible": true,
+        "customer_installed_dnp": false
+      }
+    ],
+    "customer_module_envelopes": [
+      "U2",
+      "U1"
+    ],
+    "pads_and_polarity_graphics_changed": false,
+    "text_placement_only_on_copy": true
+  },
+  "commands": [
+    {
+      "command": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pdf",
+        "--layers",
+        "F.Cu,F.Silkscreen,Edge.Cuts",
+        "--exclude-value",
+        "--include-border-title",
+        "--black-and-white",
+        "--no-property-popups",
+        "--scale",
+        "0",
+        "--drill-shape-opt",
+        "2",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_top.pdf",
+        "--mode-single",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\native_copies\\copper_top.kicad_pcb"
+      ],
+      "stdout": "Plotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_top.pdf'.\nDone.",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\JoseCastelblanco\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin\\pdftoppm.exe",
+        "-r",
+        "140",
+        "-png",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_top.pdf",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\rendered_pages\\copper_top"
+      ],
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pdf",
+        "--layers",
+        "B.Cu,B.Silkscreen,Edge.Cuts",
+        "--exclude-value",
+        "--include-border-title",
+        "--black-and-white",
+        "--no-property-popups",
+        "--scale",
+        "0",
+        "--drill-shape-opt",
+        "2",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_bottom.pdf",
+        "--mode-single",
+        "--mirror",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\native_copies\\copper_bottom.kicad_pcb"
+      ],
+      "stdout": "Plotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_bottom.pdf'.\nDone.",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\JoseCastelblanco\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin\\pdftoppm.exe",
+        "-r",
+        "140",
+        "-png",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_bottom.pdf",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\rendered_pages\\copper_bottom"
+      ],
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pdf",
+        "--layers",
+        "F.Cu,In1.Cu,In2.Cu,B.Cu",
+        "--exclude-value",
+        "--include-border-title",
+        "--black-and-white",
+        "--no-property-popups",
+        "--scale",
+        "0",
+        "--drill-shape-opt",
+        "2",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_layers.pdf",
+        "--mode-multipage",
+        "--common-layers",
+        "Edge.Cuts",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\native_copies\\copper_layers.kicad_pcb"
+      ],
+      "stdout": "Plotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_layers.pdf'.\nDone.",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\JoseCastelblanco\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin\\pdftoppm.exe",
+        "-r",
+        "140",
+        "-png",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\copper_layers.pdf",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\rendered_pages\\copper_layers"
+      ],
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "pcb",
+        "export",
+        "pdf",
+        "--layers",
+        "F.Fab,Edge.Cuts,Dwgs.User",
+        "--exclude-value",
+        "--include-border-title",
+        "--black-and-white",
+        "--no-property-popups",
+        "--scale",
+        "0",
+        "--drill-shape-opt",
+        "2",
+        "--output",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\assembly_top.pdf",
+        "--mode-single",
+        "--sketch-pads-on-fab-layers",
+        "--crossout-DNP-footprints-on-fab-layers",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\native_copies\\assembly_top.kicad_pcb"
+      ],
+      "stdout": "Plotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\assembly_top.pdf'.\nDone.",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\JoseCastelblanco\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\poppler\\Library\\bin\\pdftoppm.exe",
+        "-r",
+        "140",
+        "-png",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\assembly_top.pdf",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\single_detector_usb_master_r1\\exports\\board_review\\trial01_copper_b\\rendered_pages\\assembly_top"
+      ],
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "limitations": "Review only. No zone refill, DRC execution or main-CAD/library mutation. Rendered images require visual inspection before delivery. DNP modules have no duplicate fabricated footprint; their native envelope drawings are labeled customer-installed."
+}
