@@ -1,41 +1,19 @@
-"""Noise and offset analysis for the Eltec 50-position array rig - model 40623 (TP120).
+"""40623 offset/verdict model and retained wideband diagnostic analysis.
 
-Pure math and verdict logic: arrays in, dataclasses out. No hardware, no
-files, no Tkinter. The tester (``eltec_40623_array_tester.py``) owns the
-orchestration and the CSV; ``daq_backend.py`` owns the DAQ.
+The production tester uses legacy_noise.py for the nominal 3 Hz/Q=3 noise
+band established by the supplied 9000232 rev B drawing. Its detector-level
+RMS and rectified metrics require paired legacy/background qualification;
+nominal 1000x/10x gains cannot turn the final meter limits into raw ADC limits.
+See NOISE_METHOD.md for the active measurement and calibration contract.
 
-Noise pipeline
---------------
-The numbers are the single-detector rig's (405 M22 build,
-``stability_analysis.py`` "Emitter-off noise analysis"), re-expressed in
-numpy for fifty channels at once:
+The 405-derived 0.85-22 Hz FIR/detrend/peak-to-peak functions remain here for
+engineering replay, historical diagnostics and the isolated simulator demo.
+Golden tests continue to verify those diagnostic functions. Their NoiseLimits
+are not applied to hardware 40623 acceptance. ChannelNoiseAnalysis.legacy
+carries the active 3 Hz measurement and verdict when present.
 
-    raw 1000 SPS per channel
-      -> Kaiser windowed-sinc anti-alias FIR, decimate by 20 (50 SPS)
-      -> per-1-s-window least-squares detrend (mean AND slope)
-      -> per-window peak-to-peak, clipping re-checked on the RAW window
-
-The judged band is EMERGENT, not a coded band-pass: the FIR's passband
-edge (0.886 x the post-decimation Nyquist = 22.15 Hz at 1000/20) is the
-top, the 1 s detrend window (-3 dB at 0.85 Hz) is the bottom. Sampling the
-DAQ at 1000 scans/s per channel keeps every constant (factor 20, 621 taps,
-310-sample edge context) numerically identical to the single rig, so any
-number derived on one rig is comparable on the other. The pure-Python
-originals are frozen in ``tests/golden_noise_reference.py`` and every test
-run checks this port against them.
-
-Limits (docs/CALIBRATION_RECORD.md is the only authority)
----------------------------------------------------------
-TP120 rev W gives the model 40623 an OFFSET window of 0.3-1.2 V and a
-NOISE window of 10.0-37.9 mV - but the noise figures are DMM readings
-behind the legacy amplifier box 9000232 and rectifier-hold circuit
-9000272, NOT pin-level numbers. No pin-level equivalent exists yet, so the
-noise limit constants below are ``None`` until a paired lot (the same
-parts on the legacy fixture and on this rig, ``engineer_tools/
-array_parity/array_noise_parity.py``) derives the chain factor - exactly how the 405
-M22's 300 mV / 700 limit was derived. With ``None`` limits every noise
-verdict is ``NO_LIMIT``: measured, recorded, never a failure. Everything
-this module emits is stamped PROVISIONAL / CALIBRATION PENDING.
+No-limit and invalid-noise states never become overall PASS or exported PASS.
+Offset limits remain provisional until detector bias/loading is qualified.
 """
 
 from __future__ import annotations
@@ -46,6 +24,8 @@ from enum import Enum
 from typing import Any, Sequence
 
 import numpy as np
+
+import legacy_noise as ln
 
 # ----------------------------------------------------------------------
 # Limits and policy constants (provenance in docs/CALIBRATION_RECORD.md)
@@ -75,13 +55,14 @@ OFFSET_RAIL_V = 5.0 * 0.98
 # circuit 9000272 -> DMM 200 mV DC, >= 60 s hold. "Noise level must be
 # between 10.0 mV and 37.9 mV." A LOW limit exists: too little noise means
 # a dead crystal/FET. These are DMM readings at the end of an unknown
-# chain and MUST NOT be applied at the pin.
+# chain and MUST NOT be applied at the pin. The PP names below are historical;
+# these are rectified/held meter values, not peak-to-peak limits.
 NOISE_LEGACY_PP_LIMIT_LOW_MV = 10.0
 NOISE_LEGACY_PP_LIMIT_HIGH_MV = 37.9
-# Pin-level limits = legacy limits / chain factor. Not derived yet (the
-# 9000232 gain and passband are unknown): None = no noise verdict, only
-# measurement + record. Fill in from the paired lot, update
-# CALIBRATION_RECORD, bump CALIBRATION_ID, add a CHANGELOG entry.
+# Historical wideband diagnostic constants, retained for replay compatibility.
+# Hardware acceptance uses legacy_noise.LegacyNoiseCalibration instead.
+# Drawing 9000232 now establishes nominal gain 1000, 3 Hz/Q=3; this alone
+# does not establish the complete calibrated filter/rectifier/hold transfer.
 NOISE_LEGACY_CHAIN_FACTOR: float | None = None
 NOISE_PP_LIMIT_LOW_MV: float | None = None
 NOISE_PP_LIMIT_HIGH_MV: float | None = None
@@ -142,6 +123,7 @@ class NoiseVerdict(Enum):
 class PositionVerdict(Enum):
     EMPTY = "EMPTY"
     PASS = "PASS"
+    NO_LIMIT = "NO_LIMIT"
     FAIL_OFFSET = "FAIL_OFFSET"
     FAIL_NOISE_HIGH = "FAIL_NOISE_HIGH"
     NOISE_LOW = "NOISE_LOW"
@@ -208,6 +190,7 @@ class ChannelNoiseAnalysis:
     window_pp_mv: tuple[float, ...]
     clipped_windows: int
     verdict: NoiseVerdict
+    legacy: ln.LegacyNoiseAnalysis | None = None
 
     def as_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -246,6 +229,8 @@ class PositionResult:
             return "PASS"
         if self.verdict is PositionVerdict.NOT_MEASURED:
             return "NOT MEASURED"
+        if self.verdict is PositionVerdict.NO_LIMIT:
+            return "CALIBRATION PENDING"
         if self.verdict is PositionVerdict.EMPTY:
             return ""
         return "FAIL"
@@ -622,6 +607,17 @@ def _offset_reason(offset_class: OffsetClass, offset_v: float | None, limits: Of
 
 
 def _noise_reason(noise: ChannelNoiseAnalysis, limits: NoiseLimits) -> FailReason | None:
+    if noise.legacy is not None:
+        if noise.verdict in (NoiseVerdict.HIGH, NoiseVerdict.LOW):
+            code = "N" if noise.verdict is NoiseVerdict.HIGH else "NL"
+            metric = noise.legacy.calibrated_metric or "band_rms_mv"
+            value = getattr(noise.legacy, metric)
+            limit = (noise.legacy.calibrated_high_mv if noise.verdict is NoiseVerdict.HIGH
+                     else noise.legacy.calibrated_low_mv)
+            return FailReason(code, f"3 Hz noise {noise.verdict.value.lower()}: "
+                              f"{value * 1000:.3f} uV ({metric}); "
+                              f"paired calibration {noise.legacy.calibration_id}.", value, limit)
+        return None
     high_text = "the high limit" if limits.high_mv is None else f"{limits.high_mv:.4f} mV pk-pk"
     low_text = "the low limit" if limits.low_mv is None else f"{limits.low_mv:.4f} mV"
     if noise.verdict is NoiseVerdict.HIGH:
@@ -697,6 +693,9 @@ def judge_position(
         if reason:
             reasons.append(reason)
     if noise is not None:
+        if noise.legacy is not None:
+            warnings.extend(noise.legacy.warnings)
+            warnings.extend(noise.legacy.quality_reasons)
         reason = _noise_reason(noise, noise_limits)
         if reason:
             reasons.append(reason)
@@ -709,16 +708,27 @@ def judge_position(
     elif offset_v is None:
         verdict = PositionVerdict.NOT_MEASURED
         reasons.append(FailReason("NM", "Not measured: no settled offset reading."))
+    elif noise is None:
+        verdict = PositionVerdict.NOT_MEASURED
+        reasons.append(FailReason("NM", "Not measured: no noise measurement."))
+    elif noise is not None and noise.verdict is NoiseVerdict.NOT_MEASURED:
+        verdict = PositionVerdict.NOT_MEASURED
+        reasons.append(FailReason("NM", "Noise recorded, but measurement quality does not support a verdict."))
+    elif noise is not None and noise.verdict is NoiseVerdict.NO_LIMIT:
+        verdict = PositionVerdict.NO_LIMIT
+        warnings.append("Noise measured and recorded; no pin-level limit derived yet (CALIBRATION PENDING).")
     else:
         verdict = PositionVerdict.PASS
-        if noise is not None and noise.verdict is NoiseVerdict.NO_LIMIT:
-            warnings.append("Noise measured and recorded; no pin-level limit derived yet (CALIBRATION PENDING).")
     tag = suggest_failure_mode(verdict, reasons)
     return PositionResult(
         position=position, channel=channel, occupancy=occupancy, sensor_number=sensor_number,
         sensor_id=sensor_id, offset_initial_v=offset_initial_v, offset_v=offset_v,
         offset_settle_delta_v=settle_delta, offset_class=offset_class, noise=noise,
         verdict=verdict, fail_reasons=tuple(reasons), warnings=tuple(warnings), failure_mode_tag=tag,
+        calibration_status=("NOISE_QUALIFIED" if noise is not None and noise.legacy is not None
+                            and noise.legacy.quality_status == "QUALIFIED" else CALIBRATION_STATUS),
+        calibration_id=(noise.legacy.calibration_id if noise is not None and noise.legacy is not None
+                        and noise.legacy.calibration_id != "PENDING" else CALIBRATION_ID),
     )
 
 
@@ -739,6 +749,8 @@ def tile_state_for(result: PositionResult) -> TileState:
         return TileState.EMPTY
     if result.verdict is PositionVerdict.NOT_MEASURED:
         return TileState.NOT_MEASURED
+    if result.verdict is PositionVerdict.NO_LIMIT:
+        return TileState.NO_LIMIT
     if result.verdict is PositionVerdict.FAIL_OFFSET:
         return TileState.OFFSET_FAIL
     if result.verdict is PositionVerdict.FAIL_NOISE_HIGH:

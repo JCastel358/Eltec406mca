@@ -237,15 +237,16 @@ class CaptureContinuityTests(unittest.TestCase):
         self.assertEqual(int(row["quiet_settle_blocks"]), 2)
         self.assertEqual(row["noise_timing_policy"], app.NOISE_TIMING_POLICY)
 
-    def test_deadline_warns_without_changing_verdict_or_capture_duration(self):
+    def test_deadline_keeps_capture_duration_and_short_noise_remains_unqualified(self):
         sim = ScriptedDaq(changing_amplitude, chunks=(1667,))
         plan = replace(app.CapturePlan(), capture_seconds=2)
         report = app.run_tray_capture(sim, plan, lock_for(0))
         self.assertIsNone(report.rig_fault)
         self.assertEqual(report.capture.waveform_v.shape, (50, 2000))
         self.assertEqual((report.capture.quiet_wait_s, report.capture.quiet_settled), (20, False))
-        self.assertIs(report.results[0].noise.verdict, aa.NoiseVerdict.NO_LIMIT)
-        self.assertIs(report.results[0].verdict, aa.PositionVerdict.PASS)
+        self.assertIs(report.results[0].noise.verdict, aa.NoiseVerdict.NOT_MEASURED)
+        self.assertIs(report.results[0].verdict, aa.PositionVerdict.NOT_MEASURED)
+        self.assertTrue(any("at least 60" in reason for reason in report.results[0].noise.legacy.quality_reasons))
         self.assertTrue(any("settling deadline" in warning for warning in report.results[0].warnings))
 
 

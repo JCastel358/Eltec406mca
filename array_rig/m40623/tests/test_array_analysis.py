@@ -405,11 +405,11 @@ class JudgePositionTests(unittest.TestCase):
         base.update(kw)
         return aa.judge_position(**base)
 
-    def test_pass_with_no_limit_is_provisional_and_warned(self):
+    def test_no_limit_never_becomes_a_pass_in_exports(self):
         result = self.judge()
-        self.assertIs(result.verdict, aa.PositionVerdict.PASS)
-        self.assertTrue(result.passed)
-        self.assertEqual(result.pass_fail_text, "PASS")
+        self.assertIs(result.verdict, aa.PositionVerdict.NO_LIMIT)
+        self.assertFalse(result.passed)
+        self.assertEqual(result.pass_fail_text, "CALIBRATION PENDING")
         self.assertTrue(result.provisional)
         self.assertEqual(result.calibration_status, "PENDING")
         self.assertEqual(result.calibration_id, "40623_array50_daq_PENDING")
@@ -469,11 +469,17 @@ class JudgePositionTests(unittest.TestCase):
     def test_settle_warning_is_attached(self):
         result = self.judge(offset_early_v=0.60, offset_v=0.70)
         self.assertTrue(any("settling" in w for w in result.warnings))
-        self.assertIs(result.verdict, aa.PositionVerdict.PASS)
+        self.assertIs(result.verdict, aa.PositionVerdict.NO_LIMIT)
 
     def test_missing_settled_offset_is_not_measured(self):
         result = self.judge(offset_v=None, offset_early_v=None)
         self.assertIs(result.verdict, aa.PositionVerdict.NOT_MEASURED)
+
+    def test_missing_noise_cannot_pass_a_detector_with_good_offset(self):
+        result = self.judge(noise=None)
+        self.assertIs(result.verdict, aa.PositionVerdict.NOT_MEASURED)
+        self.assertFalse(result.passed)
+        self.assertEqual(result.pass_fail_text, "NOT MEASURED")
 
     def test_fail_reasons_are_structured(self):
         result = self.judge(offset_v=1.3, noise=None)

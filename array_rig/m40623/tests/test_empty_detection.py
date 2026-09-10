@@ -54,7 +54,7 @@ class EmptyDetectionTests(unittest.TestCase):
 
     def measure(self, controller, device, initial, recheck=None):
         scans = [initial, initial if recheck is None else recheck]
-        with patch.object(device, "read_scan_volts_median", side_effect=scans):
+        with patch.object(app, "read_offset_snapshot", side_effect=scans):
             return controller.measure_offsets()
 
     @staticmethod
@@ -189,13 +189,13 @@ class EmptyDetectionTests(unittest.TestCase):
         def advance(seconds):
             elapsed[0] += seconds
 
-        def read_scan(**kwargs):
+        def read_scan(*args, **kwargs):
             read_times.append(elapsed[0])
             return self.readings({"1-1": 0.0})
 
         with patch.object(app.time, "monotonic", side_effect=lambda: elapsed[0]), \
                 patch.object(app.time, "sleep", side_effect=advance), \
-                patch.object(device, "read_scan_volts_median", side_effect=read_scan):
+                patch.object(app, "read_offset_snapshot", side_effect=read_scan):
             controller.measure_offsets()
         self.assertEqual(len(read_times), 2)
         self.assertEqual(read_times[0], 0.0)
@@ -214,7 +214,7 @@ class EmptyDetectionTests(unittest.TestCase):
 
         with patch.object(app.time, "monotonic", side_effect=lambda: elapsed[0]), \
                 patch.object(app.time, "sleep", side_effect=advance), \
-                patch.object(device, "read_scan_volts_median", return_value=self.readings({"1-1": 0.0})) as read:
+                patch.object(app, "read_offset_snapshot", return_value=self.readings({"1-1": 0.0})) as read:
             with self.assertRaises(app.CaptureCancelled):
                 controller.measure_offsets(cancelled=lambda: elapsed[0] >= 0.1)
         self.assertEqual(read.call_count, 1)

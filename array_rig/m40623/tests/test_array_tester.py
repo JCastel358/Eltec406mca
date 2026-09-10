@@ -134,8 +134,8 @@ class CsvTests(unittest.TestCase):
                                                              pool_events=0, stream_attempts=1, raw_capture_path="x.npz"))
         self.assertEqual(set(row), set(app.CSV_FIELDS))
         self.assertEqual((row["row"], row["col"], row["daq_channel"]), ("2", "3", "12"))
-        self.assertEqual(row["pass_fail"], "PASS")
-        self.assertEqual(row["verdict"], "PASS")
+        self.assertEqual(row["pass_fail"], "CALIBRATION PENDING")
+        self.assertEqual(row["verdict"], "NO_LIMIT")
         self.assertEqual(row["verdict_status"], "PROVISIONAL")
         self.assertEqual(row["calibration_status"], "PENDING")
         self.assertEqual(row["calibration_id"], "40623_array50_daq_PENDING")
@@ -161,7 +161,7 @@ class CsvTests(unittest.TestCase):
         self.assertEqual(row["failure_mode_tag"], "SH")
         self.assertEqual(row["operator_comments"], "bent pin")
 
-    def test_append_keeps_an_older_header(self):
+    def test_append_extends_older_header_and_preserves_historical_values(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "lot.csv"
             with path.open("w", newline="", encoding="utf-8") as handle:
@@ -172,8 +172,11 @@ class CsvTests(unittest.TestCase):
             self.assertEqual(written, 1)
             with path.open(newline="", encoding="utf-8") as handle:
                 rows = list(csv.reader(handle))
-            self.assertEqual(rows[0], ["timestamp", "position", "pass_fail", "legacy_only"])
-            self.assertEqual(rows[2][1:3], ["2-3", "PASS"])
+            self.assertEqual(rows[0][:4], ["timestamp", "position", "pass_fail", "legacy_only"])
+            self.assertTrue(set(app.CSV_FIELDS).issubset(rows[0]))
+            self.assertEqual(rows[1][:4], ["t0", "1-1", "PASS", "x"])
+            self.assertTrue(all(value == "" for value in rows[1][4:]))
+            self.assertEqual(rows[2][1:3], ["2-3", "CALIBRATION PENDING"])
             self.assertEqual(rows[2][3], "")
             self.assertEqual(app.append_position_rows(path, []), 0)
 
@@ -274,8 +277,9 @@ class ControllerFlowTests(unittest.TestCase, HomeGuardMixin):
         self.assertEqual(len(report.results), 46)
         self.assertEqual({r.position for r in report.results}, set(lock.measured_positions))
         by = report.by_position
-        self.assertIs(by["1-1"].verdict, aa.PositionVerdict.PASS)
-        self.assertIs(aa.tile_state_for(by["1-1"]), aa.TileState.NO_LIMIT)
+        self.assertIs(by["1-1"].verdict, aa.PositionVerdict.NOT_MEASURED)
+        self.assertIs(aa.tile_state_for(by["1-1"]), aa.TileState.NOT_MEASURED)
+        self.assertTrue(any("at least 60" in reason for reason in by["1-1"].noise.legacy.quality_reasons))
         self.assertIs(by["4-7"].verdict, aa.PositionVerdict.FAIL_OFFSET)
         self.assertEqual(by["4-7"].fail_reasons[0].code, "LO")
         self.assertIs(by["5-2"].verdict, aa.PositionVerdict.FAIL_OFFSET)

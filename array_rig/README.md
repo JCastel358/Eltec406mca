@@ -16,8 +16,9 @@ repository, the docs and (later) the ESP32 firmware for the emitter board.
 Sensitivity / polarity (TP120's 3 Hz chopper test) waits for the emitter
 board. The operator screen focuses on offset and noise, with the Eltec logo
 and a 5 × 10 map of round detector sockets labelled by row and column.
-Sockets show pass/fail or their current state by default. **Show more**
-reveals measurements and assigned sensor numbers; **Show less** hides them.
+Sockets always show numerical offsets and, after capture, noise alongside status.
+**Show more** adds assigned sensor numbers. **Choose loaded sockets** supports
+partial trays; changes require a fresh offset measurement.
 
 ## Technician flow
 
@@ -60,9 +61,12 @@ app's five-minute countdown: TP120 itself separately calls for five minutes
 after power-on and 15–20 seconds after switching detectors on the legacy
 fixture. The changed timing policy and settling evidence are logged.
 
-Production noise limits are still pending: measured parts with no other
-failure show amber **NO LIMIT**, which is not a noise pass. Defined limits
-produce green passes and red failures; simulation demonstrates both.
+Noise uses the nominal **3 Hz/Q=3 band-pass** from fixture 9000232, with RMS
+and rectified metrics. Paired legacy/background qualification is still pending:
+valid measurements show amber **REVIEW**, and both the app and CSV explicitly
+withhold PASS. Short/clipped/unresolved data remains NOT MEASURED. See
+[m40623/NOISE_METHOD.md](m40623/NOISE_METHOD.md) for the method, calibration
+contract and replay tool. Simulation demonstrates example passes and failures.
 
 ## Run it
 

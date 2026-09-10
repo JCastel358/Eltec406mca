@@ -343,6 +343,28 @@ polarity (3 Hz chopper, not implemented: no emitter board), noise, offset
 check. Mechanics: [`m40623/README.md`](../array_rig/m40623/README.md).
 Added 2026-09-02.
 
+### September 10, 2026 method update (supersedes older noise derivation below)
+
+User confirmed 1x buffers and no paired reference readings. Supplied drawings
+are archived in [40623_legacy_fixture](40623_legacy_fixture/): 9000232 rev B
+specifies nominal gain 1000 and a 3 Hz/Q=3 band-pass; 9000272 specifies a
+10x rectifier/smoothing stage, 10-second time constant and 100-second peak hold.
+The 10.0-37.9 mV TP120 limits remain final meter readings, not detector RMS.
+
+The active hardware method is `legacy_noise.py` (3 Hz RMS/rectified metrics),
+with strict setup-matched paired calibration and background/resolution gates.
+No hardware noise acceptance limits have been invented. Old peak-to-peak
+constants and the 405 window-allowance rule remain historical diagnostics;
+they no longer control hardware acceptance. NO_LIMIT now also prevents CSV
+PASS and `PositionResult.passed`. Full current method and qualification steps:
+[NOISE_METHOD.md](../array_rig/m40623/NOISE_METHOD.md).
+
+Offset acquisition now uses bulk scans matching the working waveform viewer,
+with startup discard, per-MUX drop, integrity checks and stable row-5 regression.
+The exact immediate-read driver issue and physical repair remain unverified
+on the bench. Numerical readings are always visible; explicit occupancy
+selection is available without increasing the empty-voltage threshold.
+
 ### 4b.1 Constants
 
 | Constant | Value | Where | Provenance / state |
@@ -354,7 +376,7 @@ Added 2026-09-02.
 | `EMPTY_RECHECK_S` | 2 s on hardware, 0 s in simulation | tester | Near-zero candidates must stay within the cutoff on two median-of-three scans, with a brief wake-up delay. This reduces immediate power-on false empties but cannot distinguish a short or prove every detector has finished waking up. Initial/final readings, loaded interpretation, cutoff, source and actual delay are audited. |
 | `OFFSET_RAIL_V` | 4.9 V (0.98 × 5 V range) | `array_analysis.py` | A railed part = HO (405 lesson: never a wiring error). |
 | Offset policy | Explicit **Measure offset** checks the full existing band before noise. Recheck or replace out-of-range loaded parts, or remove them and mark sockets empty; every check is audited. The accepted reading becomes `offset_initial_v`; the final verdict still checks the mean of the capture's last 2 s. | tester | Operator workflow updated 2026-09-08. Low/dead readings may settle upward after power-on: recheck before rejecting. Limits remain provisional and unchanged. |
-| `NOISE_LEGACY_PP_LIMIT_LOW_MV` / `_HIGH_MV` | 10.0 / 37.9 mV | `array_analysis.py` | TP120 rev W "40623 Noise": fixture 9000233 (50 sockets, 5×10 switch box), **±5 V** supply, **under vacuum**, 5 min stabilisation, 15–20 s settle per position, amplifier box **9000232** → rectifier-hold **9000272** (Reset until < 1.0 mV, release, **≥ 60 s** hold) → DMM 200 mV DC. "Noise level must be between 10.0 mV and 37.9 mV." A LOW limit exists (dead crystal/FET). **These are DMM readings behind an amplifier of unknown gain/passband — never pin-level.** |
+| `NOISE_LEGACY_PP_LIMIT_LOW_MV` / `_HIGH_MV` | 10.0 / 37.9 mV | `array_analysis.py` | TP120 rev W "40623 Noise": fixture 9000233 (50 sockets, 5×10 switch box), **±5 V** supply, **under vacuum**, 5 min stabilisation, 15–20 s settle per position, amplifier box **9000232** → rectifier-hold **9000272** (Reset until < 1.0 mV, release, **≥ 60 s** hold) → DMM 200 mV DC. "Noise level must be between 10.0 mV and 37.9 mV." A LOW limit exists (dead crystal/FET). **These are DMM readings after the filter/rectifier/hold chain — never pin-level. Nominal 1000x, 3 Hz/Q=3 is now documented; see the September 10 update.** |
 | `NOISE_LEGACY_CHAIN_FACTOR` | **None** | `array_analysis.py` | Not derived. Derivation = the 405's §2.2/§2.3 recipe: the same parts on the legacy 9000233 fixture (DMM readings per position) and on this rig; `engineer_tools/array_parity/array_noise_parity.py` pairs them and proposes the factor. |
 | `NOISE_PP_LIMIT_LOW_MV` / `_HIGH_MV` | **None** | `array_analysis.py` | = legacy limit ÷ chain factor once derived. With `None` every noise verdict is `NO_LIMIT` (measured, recorded, never a failure); tiles show NO LIMIT, with values under Show more. |
 | `NOISE_MAX_OVER_FRACTION` | 0.15 (structural default) | `array_analysis.py` | Copied from the 405 M22's lot-500 rule. **Re-decide with the paired lot.** |
@@ -366,25 +388,15 @@ Added 2026-09-02.
 | `CALIBRATION_STATUS` / `CALIBRATION_ID` / `VERDICT_STATUS` | PENDING / `40623_array50_daq_PENDING` / PROVISIONAL | `array_analysis.py` | Stamped on every CSV row and every raw capture. Bump the id when the limits are derived. |
 | DAQ range / rate / oversample | 0–5 V (code 2, 76.3 µV/LSB) / 1000 scans/s / 3 (first conversion dropped) | tester | See §6. Recorded per row (`daq_range_code`, `daq_oversample`, `daq_drop_conversions`, `daq_scan_rate_hz`, `daq_actual_timer_hz`). |
 
-### 4b.2 Derivation plan for the noise limits
+### 4b.2 Qualification plan for noise limits
 
-1. Bench spike (`daq_bench_probe.py`): instrument floor per channel in the
-   judged band (onboard full-scale reference — the ground reference clips at
-   code 0 on a unipolar range), the -HG check with a known, metered voltage,
-   which conversion slot is unsettled, 60 s stream integrity, crosstalk —
-   numbers into §6.
-2. Paired lot: 30–50 parts (include known-noisy and known-dead ones)
-   measured on the legacy 9000233 fixture per TP120 (DMM reading per
-   position, under vacuum) and on this rig (60 s capture, same day); type
-   the legacy readings into `legacy_readings.csv` (`sensor_id, position,
-   legacy_noise_mv`) and run `engineer_tools/array_parity/array_noise_parity.py`. It
-   reports the median ratio and regression-through-origin slope for the
-   worst-window and median-window metrics, replays alternative bands from
-   the saved `.npz`, and proposes `NOISE_PP_LIMIT_LOW/HIGH = 10.0/37.9 ÷
-   factor`.
-3. Require identical pass/fail decisions to the legacy fixture on the lot,
-   set the constants, bump `CALIBRATION_ID`, update this section and the
-   §1 mini-table, CHANGELOG entry — one commit.
+Use the current procedure in [NOISE_METHOD.md](../array_rig/m40623/NOISE_METHOD.md):
+measure background and usable resolution at the actual DC bias through the
+buffer PCB, collect paired legacy/DAQ readings including marginal/noisy units,
+validate a named 3 Hz software metric, and record a setup-matched calibration.
+Revalidate independent units before reusing legacy acceptance decisions.
+The older `array_noise_parity.py` wideband/factor proposals are exploratory
+historical tools; a nominal-gain quotient must not qualify this method.
 
 ### 4b.3 Open hardware questions (flagged, not blocking)
 
@@ -393,9 +405,9 @@ Added 2026-09-02.
    limits transfer directly only if the loading matches 9000054.
 2. Vacuum: the legacy noise spec is under vacuum; the paired derivation must
    be done in the conditions this rig actually uses.
-3. Amplifier 9000232 gain and passband are unknown; a nominal gain, if found,
-   could seed a provisional limit (flagged nominal-derived — remember §2.2:
-   the 405's sticker gain was not its effective gain).
+3. Nominal 9000232 gain 1000 and 3 Hz/Q=3 are now documented. The complete
+   measured analog response, rectifier scaling, hold behavior and relationship
+   to detector-level software metrics still require paired qualification.
 4. Whether the DAQ is the `-HG` high-gain factory variant (changes the volts
    scaling). Only a known, metered voltage on an input can tell: the driver's
    `ADC_GetScanV` uses the same counts × span / 65536 formula as our own table

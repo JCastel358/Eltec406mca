@@ -77,7 +77,7 @@ class OperatorWorkflowTests(unittest.TestCase):
         measured = controller.measure_offsets()
         expected = measured.copy()
         measured[:] = 4.9  # Returning the array must not expose the stored snapshot.
-        with patch.object(device, "read_scan_volts_median", side_effect=AssertionError("Unexpected read")):
+        with patch.object(app, "read_offset_snapshot", side_effect=AssertionError("Unexpected read")):
             lock = controller.prepare_noise()
         np.testing.assert_array_equal(lock.offset_initial_v, expected)
         self.assertEqual(len(lock.loaded_positions), 50)
@@ -127,7 +127,7 @@ class OperatorWorkflowTests(unittest.TestCase):
     def test_failed_or_incomplete_offset_read_invalidates_previous_readiness(self):
         controller, device = self.controller(daq.SimProfile(settle_drop_v=0.0))
         controller.measure_offsets()
-        with patch.object(device, "read_scan_volts_median", return_value=np.zeros(49)):
+        with patch.object(app, "read_offset_snapshot", return_value=np.zeros(49)):
             with self.assertRaisesRegex(ValueError, "fifty finite"):
                 controller.measure_offsets()
         self.assertFalse(controller.offset_checked)
@@ -201,7 +201,7 @@ class OperatorWorkflowTests(unittest.TestCase):
     def test_locked_positions_cannot_change_and_legacy_lock_routes_to_snapshot(self):
         controller, device = self.controller(daq.SimProfile(settle_drop_v=0.0))
         controller.measure_offsets()
-        with patch.object(device, "read_scan_volts_median", side_effect=AssertionError("Unexpected read")):
+        with patch.object(app, "read_offset_snapshot", side_effect=AssertionError("Unexpected read")):
             controller.lock_tray()
         with self.assertRaisesRegex(RuntimeError, "cannot change"):
             controller.toggle_occupancy("1-1")
@@ -237,7 +237,8 @@ class OperatorWorkflowTests(unittest.TestCase):
             outcome = controller.save_tray()
             self.assertEqual(raw_writer.call_count, 1)
         self.assertEqual(outcome["rows"], 50)
-        self.assertTrue(csv_path.read_bytes().startswith(existing))
+        # Existing values survive an additive schema upgrade; new measurement
+        # columns must not disappear just because this lot used an older app.
         with csv_path.open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle))
         self.assertEqual(len(rows), 51)

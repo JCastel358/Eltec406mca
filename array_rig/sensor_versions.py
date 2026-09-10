@@ -76,9 +76,9 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
             "60-second capture and saving.",
             "Offset: TP120 0.3-1.2 V, PROVISIONAL until the PCB loading is confirmed "
             "against fixture 9000054 (+8 V, 100 kOhm).",
-            "Noise: measured at the pin in the single rig's 0.85-22 Hz band and recorded; "
+            "Noise: detector-level 3 Hz band-pass RMS and rectified magnitude; "
             "no pin-level limit yet (TP120's 10.0-37.9 mV are DMM readings behind the "
-            "legacy amplifier + rectifier-hold) - sockets show amber 'NO LIMIT'.",
+            "legacy amplifier + rectifier-hold) - sockets show amber 'REVIEW'.",
             "The raw 1000 SPS capture of all 50 channels is saved with every tray so the "
             "limits can be derived later without re-measuring.",
             "Sensitivity / polarity (3 Hz chopper) is not implemented yet: no emitter board.",

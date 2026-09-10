@@ -11,6 +11,11 @@ buffer, and the middle panel shows all of them at once. Engineering only:
 nothing here is a verdict - the tester (``eltec_40623_array_tester.py``)
 judges, this file looks.
 
+The lower panel retains the historical wideband pk-pk diagnostic. The tester
+now measures 3 Hz/Q=3 RMS/rectified noise (see NOISE_METHOD.md); this live
+panel is not its acceptance metric. Saved NPZ data can be re-analysed with
+replay_legacy_noise.py.
+
 Panels (top to bottom)
 ----------------------
 1. The rolling wideband trace of the selected position over the current time
@@ -39,7 +44,7 @@ Panels (top to bottom)
             pass/fail colour, whatever it reads.
 
    The selected tile carries a thick outline; clicking a tile selects it.
-3. The judged-band view of the selected position: the tester's exact noise
+3. The historical diagnostic-band view of the selected position: the older noise
    pipeline (``array_analysis``: Kaiser anti-alias FIR decimating 1000 ->
    50 SPS, then a least-squares detrend per 1 s window) applied to the
    samples in the displayed window plus the 310 samples of real history

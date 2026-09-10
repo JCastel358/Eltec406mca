@@ -324,7 +324,7 @@ class Capture:
     def band_limited_pp_mv(
         self, *, window_s: float = aa.NOISE_WINDOW_S, decimation_factor: int = aa.NOISE_DECIMATION_FACTOR
     ) -> np.ndarray:
-        """``[channels, windows]`` pk-pk in mV in the judged band (the tester's exact pipeline, nominal rate)."""
+        """Historical wideband diagnostic pk-pk; not the tester's 3 Hz acceptance metric."""
 
         return aa.band_limited_window_pp_mv(
             self.volts, self.scan_hz, decimation_factor=decimation_factor, window_s=window_s
@@ -778,7 +778,9 @@ class LiveStream(threading.Thread):
         self.header: daq.StreamHeader | None = None
         self.ready = threading.Event()      # the device stream started
         self.finished = threading.Event()   # run() has returned (started or not)
-        self._stop = threading.Event()
+        # Thread._stop() is used internally by join()/is_alive(); do not
+        # shadow that method with our cancellation event.
+        self._stop_event = threading.Event()
         self._started_wall: float | None = None
         self._stopped_wall: float | None = None
         # Arrival clock of the first and the newest chunk (see stats()).
@@ -806,7 +808,7 @@ class LiveStream(threading.Thread):
         self._started_wall = time.monotonic()
         self.ready.set()
         try:
-            while not self._stop.is_set():
+            while not self._stop_event.is_set():
                 try:
                     chunk = device.read_stream(timeout_s=self.read_timeout_s)
                 except Exception as exc:
@@ -891,7 +893,7 @@ class LiveStream(threading.Thread):
     def stop(self, timeout_s: float = 5.0) -> None:
         """Ask the thread to stop the device stream and wait for it (bounded)."""
 
-        self._stop.set()
+        self._stop_event.set()
         if self.ident is not None and self.is_alive():
             self.join(timeout_s)
 

@@ -24,6 +24,19 @@ and **SIMULATION ONLY** noise-limit provenance. Demo files go under
 `tempfile.gettempdir()/eltec-array-simulation`, or `<dir>/simulation` when
 `ELTEC_ARRAY_RESULTS_ROOT` is set.
 
+## September 10 readout and noise update
+
+Offset checks now use the working waveform viewer's bulk stream, preserving
+channel order and discarding startup/MUX transients. Numerical offset and noise
+readings remain visible on each socket. Choose loaded sockets provides an
+explicit partial-tray map and requires a fresh offset check after changes.
+
+Noise now uses a nominal **3 Hz/Q=3 band-pass** with RMS and rectified metrics.
+No paired legacy/background references are available yet; valid noise readings
+remain **REVIEW / CALIBRATION PENDING**, including in CSV, never PASS.
+See [NOISE_METHOD.md](NOISE_METHOD.md) for the measurement, qualification,
+replay instructions and the bench check still required for the readout repair.
+
 ## Hardware chain
 
 ```
@@ -81,7 +94,7 @@ tray.
 | `STREAM_RETRY_LIMIT` | 2 | a stream that fails the integrity check (rate off > 1 %, driver pool exhausted, callback error) is retried, then the tray is NOT MEASURED |
 | `STREAM_NO_DATA_TIMEOUT_S` | 5.0 s | a stream that delivers nothing for this long during the quiet wait or the capture is abandoned (`StreamTimeoutError`, "no data from the stream …") so the retry policy above runs and the tray ends NOT MEASURED instead of hanging; generous next to the ~0.16 s callback buffers |
 | trigger byte | 0x05 | onboard 8254 pacing clock triggers one whole scan per tick |
-| immediate reads | `ADC_GetScan` | the DLL rewrites the trigger byte on every immediate read (0x05 → 0x04, scan mode without the timer; oversample forced to at least 1) and never restores it; the backend re-writes its block after each read and before every stream start (bench finding 2026-09-02: three offset reads followed by a stream started without re-writing the block gave 0 scans in 12 s) |
+| engineering immediate reads (operator now uses bulk) | `ADC_GetScan` | the DLL rewrites the trigger byte on every immediate read (0x05 → 0x04, scan mode without the timer; oversample forced to at least 1) and never restores it; the backend re-writes its block after each read and before every stream start (bench finding 2026-09-02: three offset reads followed by a stream started without re-writing the block gave 0 scans in 12 s) |
 
 `daq_bench_probe.py` proves these on the real unit (`info`, `selfcal`,
 `config`, `scan` = own-scale volts per channel (the -HG question is settled
@@ -97,9 +110,9 @@ rate / pool / leftover, `crosstalk`). Its numbers go into
 
 The Eltec-branded screen has two entry fields, **Tech name** and **Batch
 number**, and a 5 × 10 map of round sockets. Each socket keeps its row-column
-position label visible and shows pass/fail or its current state by default.
-**Show more** reveals numerical measurements and assigned sensor numbers;
-**Show less** returns to the simple view. Shading gives the sockets depth
+position label, numeric offset/noise and result status visible by default.
+**Show more** adds assigned sensor numbers; **Show less** hides those numbers.
+Click a completed socket for measurements and quality/calibration details. Shading gives the sockets depth
 while keeping every row and column visible.
 
 1. **Load the tray.** Load as many detectors as needed, up to fifty. Tray
@@ -133,8 +146,8 @@ while keeping every row and column visible.
    retried. **Stop** interrupts the run and allows a retry.
 6. **Read the results.** The map shows failures in red and passes in green
    when limits are defined. Production noise limits are pending, so a part
-   with no other failure shows amber **NO LIMIT**. **Show more** displays
-   the measured values and assigned sensor numbers.
+   with valid data and no other failure shows amber **REVIEW**. Measurements
+   remain visible; **Show more** displays assigned sensor numbers.
    The settled offset (mean of the last two seconds) is checked again;
    HO / LO / D fail. Results save automatically: CSV rows, raw capture
    (`.npz`), grid snapshot (`.png`) and the tray event log. **Next tray** is
@@ -177,20 +190,19 @@ capture only and is not a calibrated noise acceptance limit.
 | Test | Applied now | Provenance | Status |
 | --- | --- | --- | --- |
 | Offset | 0.3–1.2 V; < 0.05 V on a loaded socket = D; ≥ 4.9 V = HO (railed) | TP120 rev W offset check (fixture 9000054: +8 V, 100 kΩ source resistor) | **PROVISIONAL** until the PCB loading is confirmed to match 9000054 |
-| Noise | none — `NOISE_PP_LIMIT_LOW_MV = NOISE_PP_LIMIT_HIGH_MV = None` | TP120's 10.0–37.9 mV are DMM readings behind amplifier 9000232 + rectifier-hold 9000272 (under vacuum, 60 s hold); no pin-level equivalent exists | **PENDING** — derive with a paired lot (`engineer_tools/array_parity/array_noise_parity.py`), then fill the constants, update the record, bump `CALIBRATION_ID` |
+| Noise | none — `NOISE_PP_LIMIT_LOW_MV = NOISE_PP_LIMIT_HIGH_MV = None` | TP120's 10.0–37.9 mV are DMM readings behind amplifier 9000232 + rectifier-hold 9000272 (under vacuum, 60 s hold); no pin-level equivalent exists | **PENDING** — qualify a named 3 Hz metric with paired legacy/background readings, then supply a versioned calibration JSON (NOISE_METHOD.md) |
 
-The noise *measurement* is the single rig's: Kaiser anti-alias FIR decimating
-1000 → 50 SPS, per-1-s-window least-squares detrend, windowed peak-to-peak,
-clipping re-checked on the raw window — an emergent ~0.85–22 Hz band. The
-pure-Python originals are frozen in `tests/golden_noise_reference.py` and the
-numpy port is checked against them on every test run. When limits exist the
-structural rules are: HIGH if more than 15 % of the windows are over the high
-limit (or clipped), LOW if the **median** window pk-pk is under the low limit
-(a dead crystal is quiet in every window; the median ignores one bang). Both
-rules are carried from the 405 M22 and marked "re-decide with the paired lot".
+The active noise measurement is the causal 3 Hz/Q=3 method in
+`legacy_noise.py`; see [NOISE_METHOD.md](NOISE_METHOD.md). Qualification
+requires paired legacy readings and a demonstrated background/resolution
+floor for a named software metric. A strict JSON calibration can be supplied
+through `ELTEC_ARRAY_NOISE_CALIBRATION`; malformed/mismatched records cannot
+silently enable acceptance. The old 0.85-22 Hz windowed peak-to-peak pipeline
+and its frozen golden tests remain diagnostics and simulator-demo behavior.
+Its 15% window allowance is not the hardware 40623 noise acceptance rule.
 
-Because the raw wideband capture of every tray is saved, any band or limit
-decided later can be replayed on real parts (`engineer_tools/noise_band/replot_noise_capture.py`).
+Because the raw capture is saved, `replay_legacy_noise.py` can produce 3 Hz
+JSON/CSV evidence from an existing NPZ without changing the original.
 
 ## Colours
 
@@ -199,7 +211,7 @@ decided later can be replayed on real parts (`engineer_tools/noise_band/replot_n
 | neutral, **WAITING** / **RECHECK** | loaded, awaiting its first or a fresh measurement |
 | red | offset out of range (HO / LO / D), or failed noise when limits are defined |
 | green | offset OK during screening; overall PASS after noise when limits are defined |
-| amber, **NO LIMIT** | noise measured, but production noise limits are not set; not a noise pass |
+| amber, **REVIEW** | noise measured, but production noise limits are not set; not a noise pass |
 | grey, **EMPTY** | marked empty or inferred near zero; confirm against the physical tray |
 | **NOT READ** | incomplete measurement or rig fault; retry after resolving the cause |
 

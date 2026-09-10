@@ -13,6 +13,28 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array 40623: stable offset acquisition and 3 Hz noise evidence (2026-09-10)
+
+- Operator offset reads use the same continuous bulk path as the working
+  waveform viewer, with startup/MUX discard and verified channel frames.
+  Saved September 9 readings did not match the user's physically loaded fifth
+  row. The exact driver cause is unverified; synthetic repeated row-5 tests
+  exercise fragmented callbacks and corrupt initial samples.
+- Offsets and noise values are always visible together. A loaded-socket
+  selection dialog supports partial trays without widening the empty-voltage
+  threshold; a map change requires new offset and vacuum confirmation.
+- Added nominal 3 Hz/Q=3 RMS and rectified/10-second-smoothed noise metrics
+  from the supplied fixture drawings, per-channel quality evidence, strict
+  paired calibration loading and saved-NPZ replay. No paired readings exist
+  yet; TP120's final meter limits are not applied to raw detector volts.
+- Fixed uncalibrated noise becoming PASS in exported overall results.
+  CSV schemas extend atomically with historical rows/custom columns retained;
+  raw NPZ files include the measurement method, setup and quality evidence.
+- Fixed the live reader's cancellation event overriding `Thread._stop`, which
+  caused shutdown/join errors. No real hardware was operated for this change.
+- Qualification and source drawings: `array_rig/m40623/NOISE_METHOD.md` and
+  `docs/40623_legacy_fixture/`. App version is 0.4; calibration stays pending.
+
 ## Single-detector rigs: reference (emitter-health) gate re-enabled (2026-09-09)
 
 - `REFERENCE_GATE_ENABLED = True` again on all three single-detector models
