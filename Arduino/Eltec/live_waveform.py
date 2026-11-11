@@ -45,6 +45,14 @@ The steps are 0.25, 0.5, 1, 2, 4, 6, 8, 10, 15, 20, 30, 45, 60 s, clamped to
 that was in force are simply not in the buffer, so a freshly widened plot fills
 in from the left over the next few seconds.
 
+Changing the input while watching
+--------------------------------
+Click AIN0 through AIN7 above the plot, or press a number key 0 through 7.
+Only one input is streamed at a time, measured against AINCOM. Switching
+briefly stops/restarts acquisition and clears the trace and cycle average;
+the emitter settings stay in place. Firmware v3.4 enables all eight inputs
+(v3.3 supports AIN0-AIN3; older builds support AIN0/AIN1 only).
+
 Seeing a small signal through noise: the cycle-average panel
 ------------------------------------------------------------
 When the ESP32 PWM drive is on, a third panel shows the sync-locked AVERAGE
@@ -78,6 +86,7 @@ Usage:
                                                  # board boots at 50 %)
     python3 live_waveform.py --pwm --pin 26      # retarget the gate pin first
     python3 live_waveform.py --channel ref       # reference sensor (AIN1)
+    python3 live_waveform.py --channel AIN7      # any input AIN0 through AIN7
     python3 live_waveform.py --fe v19            # watch the same signal on the
                                                  # old gain-2/buffered front end
                                                  # (firmware v2.1+; reverts to
@@ -106,6 +115,7 @@ import sys
 import threading
 import time
 from collections import deque
+from textwrap import fill
 
 import numpy as np
 
@@ -137,9 +147,35 @@ MAX_WINDOW_S = 60.0             # history buffer ceiling; raise with --max-windo
 FRAME_INTERVAL_MS = 50          # ~20 redraws/s
 GAP_FACTOR = 2.5                # dt > this x nominal period counts as a gap
 BYTES_PER_LINE_EST = 32         # "D,<t_us>,<raw>,<volts>,<sync>\n" ~ 32 bytes
-CH_COLOR_A = "#0284c7"          # AIN0 - blue
+CH_COLOR_A = "#0284c7"          # selected input - blue
 DEFAULT_FOLD_CYCLES = 64        # cycles in the sync-locked average panel
 FOLD_POINTS = 200               # phase resolution of the folded cycle
+CHANNELS = tuple(f"AIN{i}" for i in range(8))
+
+
+def normalize_channel(value: str) -> str:
+    """Accept physical input names and preserve the original CLI aliases."""
+    channel = {"SENSOR": "AIN0", "REF": "AIN1"}.get(value.upper(), value.upper())
+    if channel not in CHANNELS:
+        raise ValueError("channel must be AIN0-AIN7, sensor, or ref")
+    return channel
+
+
+def stream_command(channel: str, version: tuple[int, int] | None) -> str:
+    channel = normalize_channel(channel)
+    # Keep the legacy commands so AIN0/AIN1 still work on older bench rigs.
+    if channel == "AIN0":
+        return "STREAM,START"
+    if channel == "AIN1":
+        return "STREAM,START,REF"
+    required = (3, 3) if channel in ("AIN2", "AIN3") else (3, 4)
+    if version is None or version < required:
+        raise ValueError(
+            f"{channel} needs firmware v{required[0]}.{required[1]} or newer. "
+            "For all eight inputs, flash Eltec.ino v3.4 with "
+            "python Arduino/Eltec/flash_firmware.py"
+        )
+    return f"STREAM,START,{channel}"
 
 
 def fold_sync_cycles(t_us, volts, sync, max_cycles=DEFAULT_FOLD_CYCLES,
@@ -184,7 +220,7 @@ class StreamReader(threading.Thread):
     def __init__(self, rig: Esp32Rig, channel: str, buffer_s: float) -> None:
         super().__init__(daemon=True)
         self.rig = rig
-        self.channel = channel
+        self.channel = normalize_channel(channel)
         self.rate_hz = SAMPLE_RATE_HZ
         self.line_prefix = "D,"
         self.bytes_per_line = BYTES_PER_LINE_EST
@@ -196,8 +232,8 @@ class StreamReader(threading.Thread):
         self.lock = threading.Lock()
         self.total = 0
         self.torn = 0
-        self._stop = threading.Event()
-        self._commands: queue.Queue[str] = queue.Queue()
+        self._stop_event = threading.Event()
+        self._commands: queue.Queue[tuple[str, str]] = queue.Queue()
         self.command_error: str | None = None
         self.lag_s = 0.0        # unread receive backlog, in seconds of stream
 
@@ -208,45 +244,83 @@ class StreamReader(threading.Thread):
         consumed and discarded by the read loop below along with any other
         non-"D," line.
         """
-        self._commands.put(command)
+        self._commands.put(("command", command))
 
-    def _flush_commands(self) -> None:
-        while True:
+    def select_channel(self, channel: str) -> None:
+        channel = normalize_channel(channel)
+        stream_command(channel, self.rig.firmware_version)  # fail before stopping
+        self._commands.put(("channel", channel))
+
+    def _start_stream(self, channel: str) -> None:
+        command = stream_command(channel, self.rig.firmware_version)
+        reply = self.rig._command(command, "STREAM,BEGIN,")
+        label = {"AIN0": "SENSOR", "AIN1": "REF"}.get(channel, channel)
+        if reply != f"STREAM,BEGIN,{self.rate_hz:g},{label}":
+            raise RuntimeError(f"Unexpected stream acknowledgement: {reply}")
+        # Publish the channel and its empty history together, only after the
+        # board confirms it. No old samples can acquire the new channel label.
+        with self.lock:
+            self.channel = channel
+            self.data.clear()
+            self.total = self.torn = 0
+            self.lag_s = 0.0
+
+    def _stop_stream(self, buf: bytearray) -> None:
+        self.rig._command("STREAM,STOP", "STREAM,END", timeout_s=2.0)
+        # The bulk reader may hold a partial old-channel line. Discard it
+        # only at the acknowledged boundary, before starting another input.
+        buf.clear()
+
+    def _flush_commands(self, buf: bytearray) -> None:
+        while not self._stop_event.is_set():
             try:
-                command = self._commands.get_nowait()
+                kind, value = self._commands.get_nowait()
             except queue.Empty:
                 return
-            try:
-                self.rig._send(command)
-            except Exception as exc:              # port died mid-session
-                self.command_error = f"{command} failed: {exc}"
-                return
+            if kind == "channel":
+                if value != self.channel:
+                    self._stop_stream(buf)
+                    self._start_stream(value)
+            else:
+                self.rig._send(value)
 
     def run(self) -> None:
-        start = "STREAM,START,REF" if self.channel == "ref" else "STREAM,START"
-        self.rig._command(start, "STREAM,BEGIN")
+        buf = bytearray()
+        try:
+            self._start_stream(self.channel)
+            self._read_stream(buf)
+        except Exception as exc:
+            self.command_error = str(exc)
+        finally:
+            # Also runs after a failed channel switch or startup handshake.
+            try:
+                self.rig._send("PWM,OFF")
+                self._stop_stream(buf)
+            except Exception:
+                pass
+
+    def _read_stream(self, buf: bytearray) -> None:
         ser = self.rig.ser
         # Read in BULK, not with readline(): pyserial's readline() costs one
         # syscall per byte, and with the GUI thread holding the GIL for
         # redraws this thread falls behind the 1000 line/s stream. The unread
         # backlog then piles up in the enlarged OS buffer and the plot lags
         # real time by tens of seconds (emitter toggles look delayed).
-        buf = bytearray()
-        while not self._stop.is_set():
-            self._flush_commands()
-            try:
-                chunk = ser.read(ser.in_waiting or 1)   # blocks <= 1 s timeout
-            except Exception as exc:                    # port died mid-session
-                self.command_error = f"serial read failed: {exc}"
+        while not self._stop_event.is_set():
+            self._flush_commands(buf)
+            if self._stop_event.is_set():
                 return
+            chunk = ser.read(ser.in_waiting or 1)   # blocks <= 1 s timeout
             if not chunk:
                 continue
             buf += chunk
             lines = buf.split(b"\n")
-            buf = bytearray(lines.pop())                # keep the partial tail
+            buf[:] = lines.pop()                        # keep the partial tail
             items = []
             for raw_line in lines:
                 line = raw_line.decode("ascii", errors="replace").strip()
+                if line.startswith("ERR"):
+                    self.command_error = line
                 if not line.startswith(self.line_prefix):
                     continue
                 try:
@@ -263,32 +337,13 @@ class StreamReader(threading.Thread):
             except Exception:
                 pending = len(buf)
             self.lag_s = pending / (self.bytes_per_line * self.rate_hz)
-        # Stop the stream from this thread and drain to the END marker.
-        try:
-            self._flush_commands()               # e.g. a final PWM,OFF
-            self.rig._send("STREAM,STOP")
-            deadline = time.time() + 2.0
-            while time.time() < deadline:
-                nl = buf.find(b"\n")
-                if nl >= 0:
-                    line = bytes(buf[:nl]).decode("ascii", errors="replace")
-                    del buf[:nl + 1]
-                    if line.startswith("STREAM,END"):
-                        break
-                    continue
-                chunk = ser.read(ser.in_waiting or 1)
-                if not chunk:
-                    break
-                buf += chunk
-        except Exception:
-            pass
 
     def stop(self) -> None:
-        self._stop.set()
+        self._stop_event.set()
 
-    def snapshot(self) -> tuple[list[tuple], int, int]:
+    def snapshot(self) -> tuple[str, list[tuple], int, int]:
         with self.lock:
-            return list(self.data), self.total, self.torn
+            return self.channel, list(self.data), self.total, self.torn
 
 
 def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
@@ -299,11 +354,6 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
     """
     reader = StreamReader(rig, args.channel, args.max_window)
     reader.start()
-
-    where = {"ref": "reference sensor (AIN1)",
-             }.get(args.channel, "DUT sensor (AIN0)")
-    if getattr(args, "fe", None):
-        where += f" [FE {args.fe}]"
 
     # The fold panel has its own x-axis (ms into the cycle), so only the
     # rolling trace and the sync strip share the "seconds ago" axis.
@@ -316,7 +366,7 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
     )
     ax, ax_sync = axes[0], axes[1]
     ax_fold = axes[2] if rows == 3 else None
-    fig.subplots_adjust(top=0.88, right=0.97, hspace=0.45)
+    fig.subplots_adjust(top=0.79, right=0.97, hspace=0.65 if rows == 3 else 0.45)
     fig.canvas.manager.set_window_title("Eltec rig - live waveform")
     trace, = ax.plot([], [], color=CH_COLOR_A, linewidth=0.8)
     sync_trace, = ax_sync.step([], [], color="#ca8a04", linewidth=1.0, where="post")
@@ -348,7 +398,7 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
 
     # How much time the plot shows. Changed live, so every x-axis decision
     # below reads view["window"] rather than the launch value in args.
-    view = {"window": float(args.window)}
+    view = {"window": float(args.window), "channel": reader.channel, "error": None}
     ladder = sorted({float(w) for w in WINDOW_PRESETS_S if w <= args.max_window}
                     | {float(args.window), float(args.max_window)})
 
@@ -356,8 +406,21 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
     window_button = Button(window_ax, "")
     button_ax = fig.add_axes([0.78, 0.92, 0.19, 0.06])
     button = Button(button_ax, "")
+    channel_buttons = []
+    for index, channel in enumerate(CHANNELS):
+        channel_ax = fig.add_axes([0.125 + index * 0.106, 0.855, 0.095, 0.045])
+        channel_button = Button(channel_ax, channel)
+        channel_buttons.append(channel_button)
 
     def refresh_labels() -> None:
+        where = {"AIN0": "DUT sensor (AIN0)",
+                 "AIN1": "reference sensor (AIN1)"}.get(
+                     view["channel"], f"{view['channel']} vs AINCOM")
+        if getattr(args, "fe", None):
+            where += f" [FE {args.fe}]"
+        for channel, channel_button in zip(CHANNELS, channel_buttons):
+            channel_button.color = "#bae6fd" if channel == view["channel"] else "0.85"
+            channel_button.ax.set_facecolor(channel_button.color)
         on = state["on"]
         button.label.set_text(f"Emitter: {'ON' if on else 'OFF'}  [space]")
         button_ax.set_facecolor("#bbf7d0" if on else "#e5e7eb")
@@ -404,6 +467,20 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
         rungs = [w for w in ladder if w > view["window"] + 1e-9]
         set_window(rungs[0] if rungs else ladder[0])
 
+    def select_channel(channel: str) -> None:
+        if not reader.is_alive():
+            stats.set_text(fill(
+                f"Stream stopped: {reader.command_error or 'close and reopen the viewer'}",
+                width=90))
+            fig.canvas.draw_idle()
+            return
+        try:
+            reader.select_channel(channel)
+        except ValueError as exc:
+            view["error"] = str(exc)
+        else:
+            view["error"] = None
+
     def on_key(event) -> None:
         if event.key in (" ", "e", "E"):
             toggle()
@@ -411,7 +488,11 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
             step_window(+1)
         elif event.key in ("[", "-", "_"):
             step_window(-1)
+        elif event.key in tuple(str(i) for i in range(8)):
+            select_channel(f"AIN{event.key}")
 
+    for channel, channel_button in zip(CHANNELS, channel_buttons):
+        channel_button.on_clicked(lambda _event, ch=channel: select_channel(ch))
     button.on_clicked(toggle)
     window_button.on_clicked(cycle_window)
     fig.canvas.mpl_connect("key_press_event", on_key)
@@ -426,9 +507,32 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
         return lo, hi
 
     def update(_frame):
-        data, _total, torn = reader.snapshot()
+        channel, data, _total, torn = reader.snapshot()
+        error = reader.command_error or view["error"]
         artists = (trace, sync_trace, stats)
+        if channel != view["channel"]:
+            view["channel"] = channel
+            trace.set_data([], [])
+            sync_trace.set_data([], [])
+            switch_marks.clear()
+            for line in mark_lines:
+                line.remove()
+            mark_lines.clear()
+            if ax_fold is not None:
+                fold_trace.set_data([], [])
+                for artist in fold_extras:
+                    artist.remove()
+                fold_extras.clear()
+                ax_fold.set_title("cycle average - waiting for new channel samples")
+            refresh_labels()
+        if not reader.is_alive() and reader.command_error:
+            state["on"] = False
+            refresh_labels()
+            stats.set_text(fill(f"Stream stopped: {reader.command_error}", width=90))
+            return artists
         if len(data) < 2:
+            stats.set_text(fill(error or f"{channel}: waiting for samples...",
+                                width=90))
             return artists
         t_us = np.array([d[0] for d in data], dtype=np.int64)
         volts = np.array([d[1] for d in data], dtype=float)
@@ -500,14 +604,14 @@ def run_viewer(rig: Esp32Rig, args, emitter_on: bool) -> bool:
         span_s = (t_us[-1] - t_us[0]) / 1e6
         rate = (t.size - 1) / span_s if span_s > 0 else 0.0
         gaps = int(np.count_nonzero(np.diff(t_us) > GAP_FACTOR * nominal_dt_us))
-        problem = f"   {reader.command_error}" if reader.command_error else ""
+        problem = "\n" + fill(error, width=90) if error else ""
         link = (f"rate {rate:.0f} S/s   gaps {gaps}   torn {torn}   "
                 f"lag {reader.lag_s:.1f}s{problem}")
         stats.set_text(
             f"emitter {'ON ' if state['on'] else 'OFF'}   "
             f"{rig.pwm_frequency_hz:g} Hz/{rig.pwm_duty_percent:g}%   "
             f"mean {np.mean(volts):.4f} V   "
-            f"pk-pk {np.ptp(volts) * 1000:.2f} mV   {link}"
+            f"pk-pk {np.ptp(volts) * 1000:.2f} mV\n{link}"
         )
         return artists
 
@@ -536,9 +640,11 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Live rolling plot of the rig waveform")
     ap.add_argument("--port",
                     help="serial port (COM3, /dev/ttyUSB0); auto-detect if omitted")
-    ap.add_argument("--channel", choices=["sensor", "ref"],
-                    default="sensor",
-                    help="sensor = DUT on AIN0 (default), ref = AIN1")
+    ap.add_argument("--channel", type=normalize_channel, choices=CHANNELS,
+                    default="AIN0",
+                    help="AIN0-AIN7 (case-insensitive); sensor = AIN0 (default), "
+                         "ref = AIN1. Change live with the input buttons or 0-7. "
+                         "All eight inputs require firmware v3.4+")
     ap.add_argument("-w", "--window", type=float, default=None,
                     help="STARTING rolling window in seconds (default 4, or "
                          "~6 PWM periods when --freq is below 2 Hz); change it "
@@ -594,6 +700,10 @@ def main() -> None:
     except Exception:
         pass
     try:
+        try:
+            stream_command(args.channel, rig.firmware_version)
+        except ValueError as exc:
+            sys.exit(str(exc))
         # Gate pin and frequency are set up front regardless of the starting
         # drive state, so the live toggle always switches the intended output
         # at the intended frequency.
@@ -621,6 +731,8 @@ def main() -> None:
               "emitter. It is always turned off on exit.")
         print(f"                    ] / [ (or + / -) change the time shown: "
               f"{args.window:g} s now, up to {args.max_window:g} s.")
+        print("                    AIN buttons or keys 0-7 select the input; "
+              "switching clears the trace and cycle average.")
         run_viewer(rig, args, emitter_on=args.pwm)
     finally:
         rig.close()          # sends PWM,OFF and closes the port

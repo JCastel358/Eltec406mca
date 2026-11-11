@@ -34,7 +34,8 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 # The firmware the shared bench board should run for this app. Every entry
 # below works on it; per-model needs are selected at runtime over serial.
 REQUIRED_FIRMWARE = (
-    "v3.2 (PWM,DUTY for the 449 M18's 20/80 drive; the 405 M22 and 406 MCA "
+    "v3.4 (AIN0-AIN7 live viewer; v3.2+ supplies PWM,DUTY for the 449 M18's "
+    "20/80 drive; the 405 M22 and 406 MCA "
     "modes also run on v2.1-v3.1, the app sends PIN,<n> itself)"
 )
 

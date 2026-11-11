@@ -1,0 +1,30 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-14T11:17:45",
+    "ignored_checks": [],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/dc830e5a-ff67-5edb-b7c7-2fd7fbddc256",
+            "violations": []
+        },
+        {
+            "path": "/Two unity-gain low-pass sections/",
+            "uuid_path": "/dc830e5a-ff67-5edb-b7c7-2fd7fbddc256/7bee9906-c785-5cc1-98e4-168250afa563",
+            "violations": []
+        },
+        {
+            "path": "/Power, manual/DAQ mode control/",
+            "uuid_path": "/dc830e5a-ff67-5edb-b7c7-2fd7fbddc256/8a488d57-eeca-58b1-a982-04af71a3b51b",
+            "violations": []
+        }
+    ],
+    "source": "switchable_gain.kicad_sch"
+}

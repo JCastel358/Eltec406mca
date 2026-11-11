@@ -6,7 +6,7 @@ model: 405 M22, 406 MCA, 449 M18; firmware in `Arduino/Eltec`) and `array_rig`
 (50-position PCB read by an ACCES USB-AIO16-64MA DAQ, same selector + model
 directory pattern; first model 40623 per TP120, offset + noise only,
 CALIBRATION PENDING). Read `README.md` first; the numbers live in
-`docs/CALIBRATION_RECORD.md`, the history in `CHANGELOG.md`.
+`array_rig/docs/CALIBRATION_RECORD.md`, the history in `CHANGELOG.md`.
 
 ## Hard rules
 
@@ -14,7 +14,7 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
    refactor them into a shared core, base class or package, and never share
    code between `single_detector_rig/` and `array_rig/`** (the only link is
    the frozen 405 noise oracle in `array_rig/m40623/tests/golden_noise_reference.py`).
-   Port a fix by hand per `docs/ENGINEER_HANDOVER.md` §4, model by model, each
+   Port a fix by hand per `array_rig/docs/ENGINEER_HANDOVER.md` §4, model by model, each
    with its own suite run.
 2. **Never edit anything under `Arduino/Eltec/versions/`.** Snapshots are
    frozen. `Eltec.ino` must stay byte-identical to the newest snapshot; a
@@ -24,16 +24,16 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
    flashing v2.0+ on one.
 4. **Every behavioural, threshold, firmware, wiring or doc-structure change
    gets a dated entry at the top of `CHANGELOG.md` in the same commit.** A
-   constant change also updates `docs/CALIBRATION_RECORD.md` and bumps the
+   constant change also updates `array_rig/docs/CALIBRATION_RECORD.md` and bumps the
    model's `SENSITIVITY_CALIBRATION_ID` when a factor moves.
 5. **Results and calibration data live outside the repo**
    (`Documents/Eltec_*_Test_Results`). Never write there from scripts you
    author, never commit `.npz`/result CSVs, never delete or rename files
    there — they are evidence.
 6. **Run `python run_all_tests.py` before claiming anything is done.**
-   Baseline (2026-09-08): glue 45, 405 201 (4 skipped), 406 215 (3 skipped; on Windows exactly one
+   Baseline (2026-09-11): glue 45, 405 204 (4 skipped), 406 219 (3 skipped; on Windows exactly one
    known environment-only case: `test_launcher_installation_uses_only_v6_1_identities`),
-   449 136, array glue 34, 40623 array 297 — 928 tests. Any other failure
+   449 140, array glue 34, 40623 array 363 — 1005 tests. Any other failure
    is yours.
 7. **Commit and push before restructuring; tag before deleting.** Retired
    code is at `archive/pre-cleanup-2026-08-28` — recover with
@@ -85,6 +85,13 @@ CALIBRATION PENDING). Read `README.md` first; the numbers live in
 - `Documents/Eltec_406MCA_Test_Results/v6_1_esp32` is the correct, live 406 results path even though "v6_1_esp32" is a retired build name.
 - TP120's 40623 noise limits (10.0–37.9 mV) are **DMM readings behind amplifier 9000232 + rectifier-hold 9000272** — never apply them at the pin. The array rig's pin-level noise limits are `None` until the paired lot derives the chain factor; with `None` every noise verdict is NO_LIMIT (measured, recorded, never a failure).
 - The 40623 offset limits (0.3–1.2 V) are **PROVISIONAL** until the array PCB's loading is confirmed against fixture 9000054 (+8 V, 100 kΩ source resistor).
+- The array rig's noise floor is the DAQ itself (2026-09-11: empty sockets, a grounded socket and the
+  onboard reference all read ≈ 2.9–3.1 µV rms in the 3 Hz band), which sits INSIDE TP120's window on the
+  nominal chain. Do not propose range, oversampling or software changes as a noise fix — the 500 kS/s
+  aggregate caps them at MARGINAL; the route is AC-coupled gain ahead of the DAQ, or proof that the real
+  chain gain is below ~1,400. Measure with `array_rig/m40623/daq_noise_floor_check.py`; numbers in
+  CALIBRATION_RECORD §4b.1. A grounded input on the unipolar range reads code 0 and clips — a flat
+  trace there is the converter, not a quiet channel.
 - Since 2026-09-08 the array operator flow infers empty only within one ADC code on two reads (2 s wake-up recheck on hardware). This is provisional: shorted parts can also read zero, and floating empty inputs may not. Manual LOADED wins; the operator confirms the detected map/count with vacuum readiness. Do not confuse this inference with the unchanged 0.05 V dead verdict.
 - The array's five-minute app countdown was removed by user decision 2026-09-08. TP120 really specifies five minutes after power-on; record this timing departure accurately. The app checks loaded-channel one-second maxima AND minima for 3–20 s before the unchanged 60 s capture; deadline starts get warnings and the full settling trace is logged.
 - Array position labels are TP120's `row-col` (`1-3` = row 1, part 3); DAQ channel = `(row-1)*10 + (col-1)`, CH0–CH49 single-ended.

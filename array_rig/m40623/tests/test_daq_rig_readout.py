@@ -108,6 +108,15 @@ class FailingStartDaq(daq.SimulatedDaq):
         raise daq.DaqStatusError("ADC_BulkContinuousCallbackStart", 5)
 
 
+class BufferSizedRampDaq(RampDaq):
+    """Deliver only full requested batches, like the USB callback interface."""
+
+    def start_stream(self, **kwargs):
+        self.start_kwargs = kwargs.copy()
+        self.chunk_scans = kwargs["buffer_bytes"] // self._require_config().scan_bytes
+        return super().start_stream(**kwargs)
+
+
 class FailingReadDaq(daq.SimulatedDaq):
     def read_stream(self, *, timeout_s: float = 1.0):
         raise daq.StreamIntegrityError("callback error: boom")
@@ -562,7 +571,10 @@ class CaptureTests(HomeGuardMixin, unittest.TestCase):
                                    timer_hz=1000.0, extra={"probe_command": "stream", "drop_first": 1})
             with np.load(Path(tmp) / "probe.npz") as probe_data:
                 probe_keys = set(probe_data.files)
-            self.assertEqual(set(readout.NPZ_KEYS), probe_keys - {"probe_command"})
+            # Readout extends the old probe layout with final integrity and
+            # separate nominal rate; historical readers ignore these keys.
+            self.assertEqual(set(readout.NPZ_KEYS) - {"integrity_json", "nominal_sample_rate_hz"},
+                             probe_keys - {"probe_command"})
         rig.close()
         self.assert_home_untouched()
 
@@ -592,6 +604,53 @@ class CaptureTests(HomeGuardMixin, unittest.TestCase):
 # LiveStream
 # ----------------------------------------------------------------------
 class LiveStreamTests(unittest.TestCase):
+    def test_single_channel_requests_short_usb_batches_and_preserves_samples(self):
+        sim = BufferSizedRampDaq(real_time=False)
+        rig = readout.ArrayRig(device=sim, quiet=True, range_code=3, start_channel=0, end_channel=0)
+        with rig:
+            live = rig.live_stream(buffer_s=1.0)
+            live.start()
+            try:
+                self.assertTrue(live.wait_ready(2.0))
+                self.assertTrue(wait_until(lambda: live.stats().chunks >= 3))
+            finally:
+                live.stop()
+            # Before this fix the request represented 8 seconds of data.
+            wire_bytes_per_second = 1000 * 4 * 2
+            self.assertLessEqual(sim.start_kwargs["buffer_bytes"] / wire_bytes_per_second, 0.160)
+            self.assertEqual(sim.start_kwargs["buffer_bytes"], 1024)
+            self.assertEqual(sim.start_kwargs["scan_hz"], 1000)
+            self.assertEqual(sim.start_kwargs["drop_first"], 1)
+            self.assertTrue(sim.start_kwargs["average"])
+            self.assertEqual(rig.buffer_bytes, 64_000)  # finite captures keep their buffer
+            _t, volts = live.snapshot()
+            self.assertEqual(volts.shape[0], 1)
+            self.assertGreaterEqual(volts.shape[1], 384)
+            np.testing.assert_allclose(np.diff(volts[0]), daq.lsb_volts(3), atol=1e-12)
+            self.assertEqual(live.diagnostics.scans_received, live.stats().total_scans)
+
+    def test_live_buffer_uses_raw_rate_and_respects_packet_and_configured_limits(self):
+        cases = [
+            # channels, oversample, drop, upper bound, expected USB bytes
+            (50, 3, 1, 64_000, 64_000),
+            (1, 3, 0, 64_000, 1024),
+            (1, 3, 3, 64_000, 1024),  # dropping more conversions does not change wire rate
+            (1, 0, 0, 64_000, 512),   # one USB packet is the minimum
+            (1, 3, 1, 512, 512),
+        ]
+        for channels, oversample, drop, maximum, expected in cases:
+            with self.subTest(channels=channels, oversample=oversample, drop=drop, maximum=maximum):
+                rig, _sim = make_rig(end_channel=channels - 1, oversample=oversample,
+                                     drop_first=drop, buffer_bytes=maximum)
+                live = readout.LiveStream(rig)
+                self.assertEqual(live.callback_buffer_bytes, expected)
+
+    def test_live_buffer_does_not_silently_accept_an_invalid_configured_size(self):
+        for size in (0, 513):
+            rig, _sim = make_rig(end_channel=0, buffer_bytes=size)
+            with self.subTest(size=size), self.assertRaisesRegex(ValueError, "multiple of 512"):
+                readout.LiveStream(rig)
+
     def test_fills_snapshots_and_stops(self):
         rig, sim = make_rig()
         rig.connect()

@@ -53,8 +53,12 @@
 
   Serial protocol (each command and reply is one \n-terminated line)
   ------------------------------------------------------------------
-    IDN?             -> ELTEC-ESP32-ADS1256,v3.2
-                        (v3.2 = runtime-selectable emitter duty cycle via
+    IDN?             -> ELTEC-ESP32-ADS1256,v3.4
+                        (v3.4 = selectable single-ended AIN0..AIN7 streams
+                         via STREAM,START,AIN<n>. Existing SENSOR/REF commands,
+                         gain/buffer settings, sample rate and PWM unchanged.
+                         v3.3 was the AIN0..AIN3 build in speedRoll.
+                         v3.2 = runtime-selectable emitter duty cycle via
                          PWM,DUTY,<percent> (1-99 %, boot default 50 %) plus
                          pwm_duty=<%> in STATUS?. Added for the 449 M18
                          frequency-tracking test (TP443), whose legacy
@@ -180,6 +184,11 @@
                           D,<t_us>,<raw_code>,<volts>,<sync 0|1>
     STREAM,START,REF -> STREAM,BEGIN,1000,REF   (same format, but streams the
                                           reference sensor on AIN1 instead)
+    STREAM,START,AIN<n> -> STREAM,BEGIN,1000,AIN<n> (v3.4: n = 0..7;
+                                          single-ended vs AINCOM, same active
+                                          front end; stop before switching.
+                                          AIN7 reports pin volts, not BAT?
+                                          divider-scaled battery voltage.)
     STREAM,STOP      -> STREAM,END,<samples_sent>,<adc_overruns>
                         (adc_overruns must be zero for a valid measurement)
     ERR,<message>    on any bad command or hardware fault
@@ -537,7 +546,7 @@ static void IRAM_ATTR onAdsDrdyFalling() {
 static void handleCommand(char *cmd) {
   gotFirstCommand = true;
   if (strcmp(cmd, "IDN?") == 0) {
-    Serial.println("ELTEC-ESP32-ADS1256,v3.2");
+    Serial.println("ELTEC-ESP32-ADS1256,v3.4");
 
   } else if (strcmp(cmd, "STATUS?") == 0) {
     Serial.printf("STATUS,pwm=%d,streaming=%d,vref=%.3f,rate=%d,pwm_hz=%.3f,pwm_duty=%.1f\n",
@@ -684,9 +693,26 @@ static void handleCommand(char *cmd) {
     else Serial.printf("REF,%.5f\n", v);
 
   } else if (strcmp(cmd, "STREAM,START") == 0 ||
-             strcmp(cmd, "STREAM,START,REF") == 0) {
-    bool refChannel = (strcmp(cmd, "STREAM,START,REF") == 0);
-    streamMux = refChannel ? MUX_REF : MUX_SENSOR;
+             strcmp(cmd, "STREAM,START,REF") == 0 ||
+             strncmp(cmd, "STREAM,START,AIN", 16) == 0) {
+    if (streaming) { Serial.println("ERR,stop stream first"); return; }
+    const char *streamChannel = "SENSOR";
+    uint8_t selectedMux = MUX_SENSOR;
+    if (strcmp(cmd, "STREAM,START,REF") == 0) {
+      streamChannel = "REF";
+      selectedMux = MUX_REF;
+    } else if (strncmp(cmd, "STREAM,START,AIN", 16) == 0) {
+      // Accept exactly AIN0..AIN7, always referenced to AINCOM (0x08).
+      // All inputs use the active sensor front end, including AIN7.
+      if (cmd[16] < '0' || cmd[16] > '7' || cmd[17] != '\0') {
+        Serial.println("ERR,stream channel must be AIN0 through AIN7");
+        return;
+      }
+      uint8_t input = (uint8_t)(cmd[16] - '0');
+      selectedMux = (uint8_t)((input << 4) | 0x08);
+      streamChannel = cmd + 13;
+    }
+    streamMux = selectedMux;
     streamPga = pgaSensor;                     // latch the active front end's gain
     if (!adsSelectChannel(streamMux, streamPga)) {
       Serial.println("ERR,ADS1256 channel select/calibration timeout");
@@ -699,7 +725,7 @@ static void handleCommand(char *cmd) {
     streaming = true;
     interrupts();
     Serial.printf("STREAM,BEGIN,%d,%s\n", (int)SAMPLE_RATE_HZ,
-                  refChannel ? "REF" : "SENSOR");
+                  streamChannel);
 
   } else if (strcmp(cmd, "STREAM,STOP") == 0) {
     noInterrupts();

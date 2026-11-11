@@ -1,8 +1,20 @@
 # Engineer handover — Eltec sensor test rigs
 
+## M25/HUB array update (2026-11-04)
+
+The array launcher defaults to the modular profile documented in
+[m40623/README.md](../m40623/README.md). Local `mod50_hardware.py`,
+`mod50_check.py` and `mod50_array_tester.py` implement the mapping, serialized
+owner, fixed settling and operator flow. No code is imported from the separate
+50AmpBoard checkout. Legacy and R4 are explicit profiles with separate maps.
+Use `python run_all_tests.py` from the repository root; the new fault-injection
+tests are in `array_rig/m40623/tests/test_mod50_check.py`.
+The current change does not modify/flash ESP32 firmware. The older array
+architecture and workflow descriptions below refer to the legacy profile.
+
 For the engineer who inherits this rig: what it is, how it is built, the rules
 that keep it trustworthy, and what is still open. Read this once end to end;
-afterwards the [root README](../README.md) is the index.
+afterwards the [root README](../../README.md) is the index.
 
 Written 2026-08-28; array rig added 2026-09-02.
 
@@ -39,12 +51,12 @@ selector + model-directory pattern, no firmware.
 
 1. This file.
 2. [`docs/CALIBRATION_RECORD.md`](CALIBRATION_RECORD.md) — every limit, factor and gate state, with provenance. **Read before touching any threshold.**
-3. [`single_detector_rig/README.md`](../single_detector_rig/README.md) — the selector app, launchers, v2.0 skip/attempt machinery.
-4. The README of the model you will work on: [405](../single_detector_rig/m405m22/README.md) (the most detailed — noise pipeline, serial-reliability post-mortems), [406](../single_detector_rig/m406mca/README.md), [449](../single_detector_rig/m449m18/README.md).
-5. [`Arduino/Eltec/README.md`](../Arduino/Eltec/README.md) — firmware, serial protocol, flashing; then [`versions/README.md`](../Arduino/Eltec/versions/README.md) — which firmware belongs on which rig.
+3. [`single_detector_rig/README.md`](../../single_detector_rig/README.md) — the selector app, launchers, v2.0 skip/attempt machinery.
+4. The README of the model you will work on: [405](../../single_detector_rig/m405m22/README.md) (the most detailed — noise pipeline, serial-reliability post-mortems), [406](../../single_detector_rig/m406mca/README.md), [449](../../single_detector_rig/m449m18/README.md).
+5. [`Arduino/Eltec/README.md`](../../Arduino/Eltec/README.md) — firmware, serial protocol, flashing; then [`versions/README.md`](../../Arduino/Eltec/versions/README.md) — which firmware belongs on which rig.
 6. [`docs/DATA_MAP.md`](DATA_MAP.md) — where results and evidence live, and the backup routine.
-6b. For the array rig: [`array_rig/README.md`](../array_rig/README.md) then [`m40623/README.md`](../array_rig/m40623/README.md) (DAQ chain, flow, colours, files) and CALIBRATION_RECORD §4b.
-7. [`CHANGELOG.md`](../CHANGELOG.md) — the dated history; skim the top ten entries.
+6b. For the array rig: [`array_rig/README.md`](../../array_rig/README.md) then [`m40623/README.md`](../../array_rig/m40623/README.md) (DAQ chain, flow, colours, files) and CALIBRATION_RECORD §4b.
+7. [`CHANGELOG.md`](../../CHANGELOG.md) — the dated history; skim the top ten entries.
 
 ## 3. Architecture
 
@@ -59,7 +71,7 @@ laptop (Windows 11 or Xubuntu) ──USB/CP210x, 500000 baud── ESP32 DevKit 
                                                            IR emitter                9 V battery → sensor buffer board
 ```
 
-Wiring reference: [`Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md`](../Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md).
+Wiring reference: [`Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md`](../../Arduino/Eltec/ESP32_ADS1256_Wiring_v2_0.md).
 Two hardware facts shape everything else:
 
 - **The original buffer board was a dual op-amp with no channel isolation**:
@@ -324,6 +336,7 @@ then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
 | `array_rig/m40623/daq_bench_probe.py info\|selfcal\|config\|scan\|slots\|floor\|stream\|capture\|crosstalk` (`--simulate`, `--oneshot`) | the array rig's DAQ on the bench: identity, self-cal, config read-back, own-scale scan (the -HG question is settled only by a known, metered voltage on CH0 — the "driver V" column checks the arithmetic, not the gain), unsettled slot, instrument floor (onboard full-scale reference), 60 s integrity, crosstalk |
 | `array_rig/m40623/daq_rig_readout.py info\|offset\|stream\|noise\|watch\|test` (`--simulate`, `-p 2-4`, `-o cap.csv`, `--npz cap.npz`) | the array rig's `esp32_rig_readout.py`: offsets of any or all positions, captures of all fifty channels to CSV / npz (replayable in the replot tool), text-mode live readout; no verdicts, files only at explicit paths |
 | `array_rig/m40623/daq_live_waveform.py --position 2-4 -w 8` (`--simulate`, `--exit-after`, `--save-dir`, `--grid-metric noise`) | the array rig's `live_waveform.py`: rolling scope of any position switched live (arrow keys / `n` / `p` / a click on the 5 × 10 grid), tiles by offset band or judged-band pk-pk (`g`), judged-band trace; SPACE = Hold/Run, `s` saves the buffer as `daq_live_<stamp>.npz`; `lag` readout must stay ~0 |
+| `array_rig/m40623/daq_noise_floor_check.py capture\|replay` (`--loaded --grounded --quiet-source --exclude --daq-reference --margin --npz --report`, `--simulate`) | can this DAQ resolve a 40623's noise at all? One capture (or a saved one), a role per socket, the 3 Hz/Q=3 band RMS per role, the empty-socket floor vs TP120's window brought to the pin on the nominal chain (scale only), the ideal quantization of every range, the break-even chain gain and the gain needed ahead of the DAQ; grounded / railed sockets are CLIPPED (never a floor), settling ramps are flagged; never a part verdict. First result 2026-09-11: floor-limited (CALIBRATION_RECORD §4b.1) |
 | `engineer_tools/array_parity/array_noise_parity.py` | derive the array rig's pin-level noise limits from a paired lot (CALIBRATION_RECORD §4b.2) |
 | `engineer_tools/reference_unit/reference_candidate_qualifier.py capture --label refA --runs 3` / `compare` | pick the 406MCA part to mount as the AIN1 reference unit: production-path measurement of each candidate (offset settle, stabilization, repeatability, hold drift, post-emitter recovery), ranked with printed weights; `--simulate` without hardware; bench procedure in `engineer_tools/reference_unit/README.md` |
 
@@ -354,5 +367,5 @@ then set the constants, bump `CALIBRATION_ID`, update §4b — one commit.
 - Keep `Eltec.ino` identical to the newest `versions/` snapshot; never edit a snapshot.
 - Recovering a retired file: `git show archive/pre-cleanup-2026-08-28:tech_app/deprecated/v6_1_esp32/README.md > recovered.md` (any path under that tag).
 - The two rigs each have a `sensor_versions.py` (and other same-named modules); they are never imported into one process — `run_all_tests.py` runs one interpreter per suite. Tests never write under `Documents`: the array tester takes an explicit results root, and `ELTEC_ARRAY_RESULTS_ROOT` redirects a GUI / simulator run.
-- **One process on the DAQ at a time** — the tester, `daq_bench_probe.py`, `daq_rig_readout.py` or `daq_live_waveform.py`, never two (the same rule as the serial port on the ESP32 rig, but with no error to warn you: on the bench a second program's stream silently took over — the first program's stream stopped delivering and failed its integrity check — and a self-calibration attempted while another program streamed failed with Win32 status 13). The three engineering tools issue no verdicts and write files only at explicit paths (`--save`, `-o`, `--npz`, `--save-dir`), never under `Documents`.
+- **One process on the DAQ at a time** — the tester, `daq_bench_probe.py`, `daq_rig_readout.py`, `daq_live_waveform.py` or `daq_noise_floor_check.py`, never two (the same rule as the serial port on the ESP32 rig, but with no error to warn you: on the bench a second program's stream silently took over — the first program's stream stopped delivering and failed its integrity check — and a self-calibration attempted while another program streamed failed with Win32 status 13). The four engineering tools issue no verdicts and write files only at explicit paths (`--save`, `-o`, `--npz`, `--save-dir`, `--report`), never under `Documents`.
 - Environments: Windows 11 bench laptop (board on **COM3**; Python 3 with tkinter, numpy, pyserial, matplotlib; `arduino-cli` lives inside the Arduino IDE 2.x install, `flash_firmware.py` finds it) and Xubuntu (`/dev/ttyUSB0`, user in `dialout`, `sudo apt install python3 python3-tk python3-numpy python3-serial python3-matplotlib`). Line endings are enforced by `.gitattributes`.

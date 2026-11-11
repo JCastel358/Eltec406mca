@@ -627,6 +627,69 @@ class StreamTests(unittest.TestCase):
         self.assertAlmostEqual(diagnostics.elapsed_s, 1.0, places=6)
         diagnostics.check()
 
+    def test_rate_excludes_blocking_driver_shutdown_after_clock_stops(self):
+        self.device.start_stream(scan_hz=1000.0)
+        data, _ = scan_bytes_for(1250, 50, 4)
+        self.lib.deliver(data)
+        self.device.read_stream(timeout_s=0.5)
+        self.clock.now += 1.0
+        stop_clock = self.lib.CTR_StartOutputFreq
+        end_bulk = self.lib.ADC_BulkContinuousEnd
+
+        def delayed_clock_stop(index, block, hz):
+            self.clock.now += 0.25  # samples can still arrive until the stop returns
+            return stop_clock(index, block, hz)
+
+        def delayed_cleanup(index, status):
+            self.clock.now += 2.0  # no sampling during this driver cleanup
+            return end_bulk(index, status)
+
+        self.lib.CTR_StartOutputFreq = delayed_clock_stop
+        self.lib.ADC_BulkContinuousEnd = delayed_cleanup
+        diagnostics = self.device.stop_stream()
+        self.assertAlmostEqual(diagnostics.elapsed_s, 1.25)
+        self.assertAlmostEqual(diagnostics.received_rate_hz, 1000.0)
+        self.assertAlmostEqual(self.clock.now - diagnostics.started_monotonic, 3.35)
+        diagnostics.check()
+
+    def test_failed_clock_stop_retains_cleanup_time_and_rate_failure(self):
+        self.device.start_stream(scan_hz=1000.0)
+        data, _ = scan_bytes_for(1000, 50, 4)
+        self.lib.deliver(data)
+        self.device.read_stream(timeout_s=0.5)
+        self.clock.now += 1.0
+        self.lib.status_overrides["CTR_StartOutputFreq"] = 31
+        end_bulk = self.lib.ADC_BulkContinuousEnd
+
+        def delayed_cleanup(index, status):
+            self.clock.now += 2.0
+            return end_bulk(index, status)
+
+        self.lib.ADC_BulkContinuousEnd = delayed_cleanup
+        diagnostics = self.device.stop_stream()
+        self.assertAlmostEqual(diagnostics.elapsed_s, 3.0)
+        self.assertTrue(any(c[0] == "ADC_BulkContinuousEnd" for c in self.lib.calls))
+        with self.assertRaises(backend.StreamIntegrityError):
+            diagnostics.check()
+
+    def test_shutdown_timing_fix_preserves_a_real_scan_rate_failure(self):
+        self.device.start_stream(scan_hz=1000.0)
+        data, _ = scan_bytes_for(950, 50, 4)
+        self.lib.deliver(data)
+        self.device.read_stream(timeout_s=0.5)
+        self.clock.now += 1.0
+        end_bulk = self.lib.ADC_BulkContinuousEnd
+
+        def delayed_cleanup(index, status):
+            self.clock.now += 2.0
+            return end_bulk(index, status)
+
+        self.lib.ADC_BulkContinuousEnd = delayed_cleanup
+        diagnostics = self.device.stop_stream()
+        self.assertAlmostEqual(diagnostics.received_rate_hz, 950.0)
+        with self.assertRaises(backend.StreamIntegrityError):
+            diagnostics.check()
+
     def test_second_start_and_reads_without_stream_are_refused(self):
         self.device.start_stream(scan_hz=1000.0)
         with self.assertRaises(backend.StreamStateError):

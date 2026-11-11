@@ -1,0 +1,1356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>C:\Users\JoseCastelblanco\Documents\Eltec_TestRig\hardware\array_switchable_gain_r1\project\switchable_gain.kicad_sch</source>
+    <date>2026-09-14T11:17:46</date>
+    <tool>Eeschema 10.0.6</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>1X / 100X switching amplifier</title>
+        <company>Eltec - engineering reference</company>
+        <rev>R1 PROTO</rev>
+        <date>2026-09-14</date>
+        <source>switchable_gain.kicad_sch</source>
+        <comment number="1" value="SCHEMATIC ONLY - NOT A FABRICATION RELEASE"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+    <sheet number="2" name="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/">
+      <title_block>
+        <title>100X noise filter / 160 Hz low-pass</title>
+        <company>Eltec - engineering reference</company>
+        <rev>R1 PROTO</rev>
+        <date>2026-09-14</date>
+        <source>noise_filter.kicad_sch</source>
+        <comment number="1" value="SCHEMATIC ONLY - NOT A FABRICATION RELEASE"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+    <sheet number="3" name="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/">
+      <title_block>
+        <title>Power and relay control / manual default</title>
+        <company>Eltec - engineering reference</company>
+        <rev>R1 PROTO</rev>
+        <date>2026-09-14</date>
+        <source>power_control.kicad_sch</source>
+        <comment number="1" value="SCHEMATIC ONLY - NOT A FABRICATION RELEASE"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="C1">
+      <value>10u PP film 5%</value>
+      <footprint>Capacitor_THT:C_Rect_L31.5mm_W17.0mm_P27.50mm_MKS4</footprint>
+      <datasheet>https://www.wima.de/en/our-product-range/metallized-capacitors/mkp-4/</datasheet>
+      <description>WIMA MKP4 polypropylene candidate, 10uF 100V 5%, L31.5 x W17 x H29 mm, pitch27.5mm. Stock MKS4 footprint name denotes matching case geometry only: buy polypropylene MKP4. Availability and fit require review; no electrolytic/X7R substitute.</description>
+      <fields>
+        <field name="MPN">MKP4D051006G00JSSD</field>
+        <field name="Footprint">Capacitor_THT:C_Rect_L31.5mm_W17.0mm_P27.50mm_MKS4</field>
+        <field name="Datasheet">https://www.wima.de/en/our-product-range/metallized-capacitors/mkp-4/</field>
+        <field name="Description">WIMA MKP4 polypropylene candidate, 10uF 100V 5%, L31.5 x W17 x H29 mm, pitch27.5mm. Stock MKS4 footprint name denotes matching case geometry only: buy polypropylene MKP4. Availability and fit require review; no electrolytic/X7R substitute.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value="MKP4D051006G00JSSD"/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>6081025d-ee54-5207-bc9a-e14dac783082</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J1">
+      <value>DETECTOR</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <description>Pin 1 detector output; pin 2 analog ground. Existing detector source resistor remains in the sensor box.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Pin 1 detector output; pin 2 analog ground. Existing detector source resistor remains in the sensor box.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="Conn2R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>8f2fd31c-cce7-50de-9d07-99296dd0b719</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J2">
+      <value>TO SAME DAQ CH</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <description>Pin 1 ADC single-ended input, 0-5V; pin 2 AGND. This replaces one original buffer output.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Pin 1 ADC single-ended input, 0-5V; pin 2 AGND. This replaces one original buffer output.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="Conn2L" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>382184d0-9494-5e95-8795-0bfaf8b69460</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="K1">
+      <value>G6K-2P-Y DC5</value>
+      <footprint>Relay_THT:Relay_DPDT_Omron_G6K-2P-Y</footprint>
+      <datasheet>https://components.omron.com/us-en/system/files/2026-05/datasheet_pdf/K106-E1.pdf</datasheet>
+      <fields>
+        <field name="MPN">G6K-2P-Y DC5</field>
+        <field name="Footprint">Relay_THT:Relay_DPDT_Omron_G6K-2P-Y</field>
+        <field name="Datasheet">https://components.omron.com/us-en/system/files/2026-05/datasheet_pdf/K106-E1.pdf</field>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="G6K_2P_Y" description="Omron G6K-2P-Y DC5 non-latching; OFF joins 3-2 and 6-7; ON joins 3-4 and 6-5; coil +1/-8"/>
+      <property name="MPN" value="G6K-2P-Y DC5"/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e4477cee-155e-5be5-b795-4eb1e4ec81de af3147db-5ac9-521e-949a-49b8652b5c2a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="2"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+        <unit name="B">
+          <pins>
+            <pin num="7"/>
+            <pin num="5"/>
+            <pin num="6"/>
+          </pins>
+        </unit>
+        <unit name="C">
+          <pins>
+            <pin num="1"/>
+            <pin num="8"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1">
+      <value>2M00 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Low-noise thin-film. Five series resistors total 10.000 Mohm.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Low-noise thin-film. Five series resistors total 10.000 Mohm.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>2f92fdcb-147a-5d38-84f1-488e7eceff53</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2">
+      <value>2M00 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Low-noise thin-film. Five series resistors total 10.000 Mohm.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Low-noise thin-film. Five series resistors total 10.000 Mohm.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>97f0f659-39aa-5056-80a5-cbf6abd0bf06</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R3">
+      <value>2M00 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Low-noise thin-film. Five series resistors total 10.000 Mohm.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Low-noise thin-film. Five series resistors total 10.000 Mohm.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f1430b29-1405-5170-b189-445d85f3d1b8</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4">
+      <value>2M00 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Low-noise thin-film. Five series resistors total 10.000 Mohm.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Low-noise thin-film. Five series resistors total 10.000 Mohm.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>a42ced51-8c6b-53f6-b1cb-1a5d1b15fc5e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R5">
+      <value>2M00 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Low-noise thin-film. Five series resistors total 10.000 Mohm.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Low-noise thin-film. Five series resistors total 10.000 Mohm.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>393b9d3b-b956-5ee1-ab59-40e732ab3592</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R6">
+      <value>101k 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>AC gain leg; noise gain = 1 + 10M/101k = 100.0099.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">AC gain leg; noise gain = 1 + 10M/101k = 100.0099.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0d70858b-1d24-5b40-b0fc-1bf63912b460</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R7">
+      <value>100R 1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Keep the existing output isolation resistor once, after selection.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Keep the existing output isolation resistor once, after selection.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0231af80-3a47-587c-90d7-ff30bd333f50</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U1">
+      <value>OPA4192IDR</value>
+      <footprint>Package_SO:SOIC-14_3.9x8.7mm_P1.27mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/opa4192.pdf</datasheet>
+      <fields>
+        <field name="MPN">OPA4192IDR</field>
+        <field name="Footprint">Package_SO:SOIC-14_3.9x8.7mm_P1.27mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/opa4192.pdf</field>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="OPA4192" description="OPA4192 SOIC-14, TI SBOS620E pp.4-5 pin map"/>
+      <property name="MPN" value="OPA4192IDR"/>
+      <property name="Sheetname" value="switchable_gain"/>
+      <property name="Sheetfile" value="switchable_gain.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>b98c98f1-c7a8-5295-87d8-5ef0188b394f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+        <unit name="B">
+          <pins>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="7"/>
+          </pins>
+        </unit>
+        <unit name="C">
+          <pins>
+            <pin num="10"/>
+            <pin num="9"/>
+            <pin num="8"/>
+          </pins>
+        </unit>
+        <unit name="D">
+          <pins>
+            <pin num="12"/>
+            <pin num="13"/>
+            <pin num="14"/>
+          </pins>
+        </unit>
+        <unit name="E">
+          <pins>
+            <pin num="4"/>
+            <pin num="11"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C2">
+      <value>100n 1%</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>e164a76e-dd31-596a-93b3-0534a3606129</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C3">
+      <value>18n 1%</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>cd141348-8d30-5abc-a2d1-6c96155e6621</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C4">
+      <value>100n 1%</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>3a07eb30-a176-53e0-a33d-291256611d07</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C5">
+      <value>150n 1%</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>e5cd3881-e801-5d03-95f8-eca7e266644e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C6">
+      <value>22n 1%</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>55feed2f-9257-5a40-824c-a347ad1acb58</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R10">
+      <value>9k15 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>02bfca52-201c-5eba-9577-1a59ed381030</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R11">
+      <value>9k15 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>c73ac855-fd68-5d7a-ab1a-9f32e9e5d5ae</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R12">
+      <value>17k4 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>550f4151-0411-544a-a7ba-3ecb9425a81a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R13">
+      <value>17k4 0.1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Two unity-gain low-pass sections"/>
+      <property name="Sheetfile" value="noise_filter.kicad_sch"/>
+      <sheetpath names="/Two unity-gain low-pass sections/" tstamps="/7bee9906-c785-5cc1-98e4-168250afa563/"/>
+      <tstamps>dd18c0f1-d078-56bb-ad8e-c0d63a1faa52</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C10">
+      <value>100n X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Supply decoupling only. Not in signal path.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Supply decoupling only. Not in signal path.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>99bfa55d-3861-502a-9af4-1215bdea3caf</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C11">
+      <value>10u X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Supply decoupling only. Not in signal path.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Supply decoupling only. Not in signal path.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>047b68b5-7f21-5595-b11c-d812884cb8f0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C12">
+      <value>100n X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Supply decoupling only. Not in signal path.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Supply decoupling only. Not in signal path.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>b26aee03-3bfd-5381-936f-3db7e577b5a1</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C13">
+      <value>10u X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <description>Supply decoupling only. Not in signal path.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Supply decoupling only. Not in signal path.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="C" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>79064678-9cdb-5db0-b8be-52245c60e3b9</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D1">
+      <value>1N4148W</value>
+      <footprint>Diode_SMD:D_SOD-123</footprint>
+      <description>Flyback clamp; cathode to +5V_COIL, anode to Q1 drain. Allow actual release time with diode.</description>
+      <fields>
+        <field name="MPN">1N4148W</field>
+        <field name="Footprint">Diode_SMD:D_SOD-123</field>
+        <field name="Datasheet"/>
+        <field name="Description">Flyback clamp; cathode to +5V_COIL, anode to Q1 drain. Allow actual release time with diode.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="D" description=""/>
+      <property name="MPN" value="1N4148W"/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>c180662a-9729-55b9-bfc2-7fe8f6bfe135</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J3">
+      <value>REGULATED POWER</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical</footprint>
+      <description>1 +5V analog, 2 AGND, 3 +5V relay, 4 PGND. 5V rails supplied externally.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">1 +5V analog, 2 AGND, 3 +5V relay, 4 PGND. 5V rails supplied externally.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="Conn4R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>a97eca07-42df-5415-8cb3-677ad4ce0e68</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J4">
+      <value>DAQ CONTROL (OPTION)</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</footprint>
+      <description>1 static 0/3.3V or 0/5V NOISE request, 2 control ground. No PWM.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">1 static 0/3.3V or 0/5V NOISE request, 2 control ground. No PWM.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="Conn2R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>d3f1f190-7eef-5684-9536-6298a2f0608c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="JP1">
+      <value>1-2 MANUAL / 2-3 AUTO</value>
+      <footprint>Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</footprint>
+      <description>Fit shunt 1-2 for manual bench use. Remove before placing shunt 2-3. Never bridge all three.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Fit shunt 1-2 for manual bench use. Remove before placing shunt 2-3. Never bridge all three.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="Conn3R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>ff7be031-e6aa-5e84-90d1-1f144dfc4ceb</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q1">
+      <value>AO3400A</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>https://www.aosmd.com/res/datasheets/AO3400A.pdf</datasheet>
+      <fields>
+        <field name="MPN">AO3400A</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">https://www.aosmd.com/res/datasheets/AO3400A.pdf</field>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="AO3400A" description="AOS AO3400A SOT-23: G1 S2 D3"/>
+      <property name="MPN" value="AO3400A"/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>ed28f29d-021f-5fc5-86f0-ee6aa74d81b1</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R20">
+      <value>100k 1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>7c77daef-652d-50a4-85e6-b23d5c3417d6</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R21">
+      <value>1k 1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>391dff62-b1dd-54ae-bc22-ce4422608bf1</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R22">
+      <value>100k 1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>34758fa3-5936-509e-b5c6-e1641c54299c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R30">
+      <value>0R STAR</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <description>Single analog/coil ground star. One star per assembled system; do not repeat ground ties around the array.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">Single analog/coil ground star. One star per assembled system; do not repeat ground ties around the array.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>b7335d04-a556-5d7a-8a83-136ebe5ddc6a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R31">
+      <value>30k 1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>b0b552b8-57b6-5e1a-a7fc-7e9f093a3b2b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R32">
+      <value>10k 1%</value>
+      <footprint>Resistor_SMD:R_0805_2012Metric</footprint>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint">Resistor_SMD:R_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Eltec_Gain" part="R" description=""/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>c11146a1-193a-5337-9f54-444108242fc0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="SW1">
+      <value>OPEN=1X / CLOSED=NOISE</value>
+      <description>Panel SPST manual mode switch. Start OPEN. Wire to the illustrated two terminals.</description>
+      <fields>
+        <field name="MPN"/>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Panel SPST manual mode switch. Start OPEN. Wire to the illustrated two terminals.</field>
+      </fields>
+      <libsource lib="Eltec_Gain" part="SW_SPST" description="Panel or bench SPST switch; OPEN=BUFFER, CLOSED=NOISE"/>
+      <property name="MPN" value=""/>
+      <property name="Sheetname" value="Power, manual/DAQ mode control"/>
+      <property name="Sheetfile" value="power_control.kicad_sch"/>
+      <sheetpath names="/Power, manual/DAQ mode control/" tstamps="/8a488d57-eeca-58b1-a982-04af71a3b51b/"/>
+      <tstamps>a7de9e98-0e5f-5c35-9236-d62ee8c4637c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Eltec_Gain" part="AO3400A">
+      <description>AOS AO3400A SOT-23: G1 S2 D3</description>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">AO3400A</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">AOS AO3400A SOT-23: G1 S2 D3</field>
+      </fields>
+      <pins>
+        <pin num="1" name="G" type="input"/>
+        <pin num="2" name="S" type="passive"/>
+        <pin num="3" name="D" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="C">
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">C</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="Conn2L">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn2L</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="Conn2R">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn2R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="Conn3R">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn3R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+        <pin num="3" name="3" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="Conn4R">
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Conn4R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+        <pin num="3" name="3" type="passive"/>
+        <pin num="4" name="4" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="D">
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value">D</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="K" type="passive"/>
+        <pin num="2" name="A" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="G6K_2P_Y">
+      <description>Omron G6K-2P-Y DC5 non-latching; OFF joins 3-2 and 6-7; ON joins 3-4 and 6-5; coil +1/-8</description>
+      <fields>
+        <field name="Reference">K</field>
+        <field name="Value">G6K_2P_Y</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Omron G6K-2P-Y DC5 non-latching; OFF joins 3-2 and 6-7; ON joins 3-4 and 6-5; coil +1/-8</field>
+      </fields>
+      <pins>
+        <pin num="1" name="+" type="passive"/>
+        <pin num="2" name="NC" type="passive"/>
+        <pin num="3" name="COM" type="passive"/>
+        <pin num="4" name="NO" type="passive"/>
+        <pin num="5" name="NO" type="passive"/>
+        <pin num="6" name="COM" type="passive"/>
+        <pin num="7" name="NC" type="passive"/>
+        <pin num="8" name="-" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="OPA4192">
+      <description>OPA4192 SOIC-14, TI SBOS620E pp.4-5 pin map</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">OPA4192</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">OPA4192 SOIC-14, TI SBOS620E pp.4-5 pin map</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="output"/>
+        <pin num="2" name="-" type="input"/>
+        <pin num="3" name="+" type="input"/>
+        <pin num="4" name="V+" type="power_in"/>
+        <pin num="5" name="+" type="input"/>
+        <pin num="6" name="-" type="input"/>
+        <pin num="7" name="" type="output"/>
+        <pin num="8" name="" type="output"/>
+        <pin num="9" name="-" type="input"/>
+        <pin num="10" name="+" type="input"/>
+        <pin num="11" name="V-" type="power_in"/>
+        <pin num="12" name="+" type="input"/>
+        <pin num="13" name="-" type="input"/>
+        <pin num="14" name="" type="output"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="R">
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value">R</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Eltec_Gain" part="SW_SPST">
+      <description>Panel or bench SPST switch; OPEN=BUFFER, CLOSED=NOISE</description>
+      <fields>
+        <field name="Reference">SW</field>
+        <field name="Value">SW_SPST</field>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Panel or bench SPST switch; OPEN=BUFFER, CLOSED=NOISE</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive"/>
+        <pin num="2" name="" type="passive"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Eltec_Gain">
+      <uri>${KIPRJMOD}/../libraries/gain.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="+5VA" class="Default">
+      <node ref="C10" pin="1" pintype="passive"/>
+      <node ref="C11" pin="1" pintype="passive"/>
+      <node ref="J3" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R31" pin="1" pintype="passive"/>
+      <node ref="U1" pin="4" pinfunction="V+_4" pintype="power_in"/>
+    </net>
+    <net code="2" name="+5V_COIL" class="Default">
+      <node ref="C12" pin="1" pintype="passive"/>
+      <node ref="C13" pin="1" pintype="passive"/>
+      <node ref="D1" pin="1" pinfunction="K_1" pintype="passive"/>
+      <node ref="J3" pin="3" pinfunction="3_3" pintype="passive"/>
+      <node ref="K1" pin="1" pinfunction="+_1" pintype="passive"/>
+      <node ref="SW1" pin="1" pintype="passive"/>
+    </net>
+    <net code="3" name="/DAQ_OUT" class="Default">
+      <node ref="J2" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R7" pin="2" pintype="passive"/>
+    </net>
+    <net code="4" name="/DETECTOR_IN" class="Default">
+      <node ref="J1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U1" pin="3" pinfunction="+_3" pintype="input"/>
+    </net>
+    <net code="5" name="/FB" class="Default">
+      <node ref="K1" pin="3" pinfunction="COM_3" pintype="passive"/>
+      <node ref="R1" pin="1" pintype="passive"/>
+      <node ref="R6" pin="1" pintype="passive"/>
+      <node ref="U1" pin="2" pinfunction="-_2" pintype="input"/>
+    </net>
+    <net code="6" name="/GAIN_CAP" class="Default">
+      <node ref="C1" pin="1" pintype="passive"/>
+      <node ref="R6" pin="2" pintype="passive"/>
+    </net>
+    <net code="7" name="/Power, manual/DAQ mode control/COIL_LOW" class="Default">
+      <node ref="D1" pin="2" pinfunction="A_2" pintype="passive"/>
+      <node ref="K1" pin="8" pinfunction="-_8" pintype="passive"/>
+      <node ref="Q1" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="8" name="/Power, manual/DAQ mode control/SPARE_OUT" class="Default">
+      <node ref="U1" pin="13" pinfunction="-_13" pintype="input"/>
+      <node ref="U1" pin="14" pintype="output"/>
+    </net>
+    <net code="9" name="AGND" class="Default">
+      <node ref="C1" pin="2" pintype="passive"/>
+      <node ref="C10" pin="2" pintype="passive"/>
+      <node ref="C11" pin="2" pintype="passive"/>
+      <node ref="C4" pin="2" pintype="passive"/>
+      <node ref="C6" pin="2" pintype="passive"/>
+      <node ref="J1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="J2" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="J3" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R30" pin="1" pintype="passive"/>
+      <node ref="R32" pin="2" pintype="passive"/>
+      <node ref="U1" pin="11" pinfunction="V-_11" pintype="power_in"/>
+    </net>
+    <net code="10" name="AUTO_NOISE_REQ" class="Default">
+      <node ref="J4" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="JP1" pin="3" pinfunction="3_3" pintype="passive"/>
+    </net>
+    <net code="11" name="FILTER_OUT" class="Default">
+      <node ref="C5" pin="2" pintype="passive"/>
+      <node ref="K1" pin="5" pinfunction="NO_5" pintype="passive"/>
+      <node ref="U1" pin="8" pintype="output"/>
+      <node ref="U1" pin="9" pinfunction="-_9" pintype="input"/>
+    </net>
+    <net code="12" name="GAIN_OUT" class="Default">
+      <node ref="K1" pin="2" pinfunction="NC_2" pintype="passive"/>
+      <node ref="K1" pin="7" pinfunction="NC_7" pintype="passive"/>
+      <node ref="R10" pin="1" pintype="passive"/>
+      <node ref="R5" pin="2" pintype="passive"/>
+      <node ref="U1" pin="1" pintype="output"/>
+    </net>
+    <net code="13" name="LP1_OUT" class="Default">
+      <node ref="C2" pin="2" pintype="passive"/>
+      <node ref="C3" pin="2" pintype="passive"/>
+      <node ref="R12" pin="1" pintype="passive"/>
+      <node ref="U1" pin="6" pinfunction="-_6" pintype="input"/>
+      <node ref="U1" pin="7" pintype="output"/>
+    </net>
+    <net code="14" name="MANUAL_REQ" class="Default">
+      <node ref="JP1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R20" pin="1" pintype="passive"/>
+      <node ref="SW1" pin="2" pintype="passive"/>
+    </net>
+    <net code="15" name="MODE_REQ" class="Default">
+      <node ref="JP1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R21" pin="1" pintype="passive"/>
+    </net>
+    <net code="16" name="Net-(C2-Pad1)" class="Default">
+      <node ref="C2" pin="1" pintype="passive"/>
+      <node ref="C3" pin="1" pintype="passive"/>
+      <node ref="R10" pin="2" pintype="passive"/>
+      <node ref="R11" pin="1" pintype="passive"/>
+    </net>
+    <net code="17" name="Net-(C5-Pad1)" class="Default">
+      <node ref="C5" pin="1" pintype="passive"/>
+      <node ref="R12" pin="2" pintype="passive"/>
+      <node ref="R13" pin="1" pintype="passive"/>
+    </net>
+    <net code="18" name="Net-(K1B-COM)" class="Default">
+      <node ref="K1" pin="6" pinfunction="COM_6" pintype="passive"/>
+      <node ref="R7" pin="1" pintype="passive"/>
+    </net>
+    <net code="19" name="Net-(Q1-G)" class="Default">
+      <node ref="Q1" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R21" pin="2" pintype="passive"/>
+      <node ref="R22" pin="1" pintype="passive"/>
+    </net>
+    <net code="20" name="Net-(R1-Pad2)" class="Default">
+      <node ref="R1" pin="2" pintype="passive"/>
+      <node ref="R2" pin="1" pintype="passive"/>
+    </net>
+    <net code="21" name="Net-(R2-Pad2)" class="Default">
+      <node ref="R2" pin="2" pintype="passive"/>
+      <node ref="R3" pin="1" pintype="passive"/>
+    </net>
+    <net code="22" name="Net-(R3-Pad2)" class="Default">
+      <node ref="R3" pin="2" pintype="passive"/>
+      <node ref="R4" pin="1" pintype="passive"/>
+    </net>
+    <net code="23" name="Net-(R4-Pad2)" class="Default">
+      <node ref="R4" pin="2" pintype="passive"/>
+      <node ref="R5" pin="1" pintype="passive"/>
+    </net>
+    <net code="24" name="Net-(U1B-+)" class="Default">
+      <node ref="C4" pin="1" pintype="passive"/>
+      <node ref="R11" pin="2" pintype="passive"/>
+      <node ref="U1" pin="5" pinfunction="+_5" pintype="input"/>
+    </net>
+    <net code="25" name="Net-(U1C-+)" class="Default">
+      <node ref="C6" pin="1" pintype="passive"/>
+      <node ref="R13" pin="2" pintype="passive"/>
+      <node ref="U1" pin="10" pinfunction="+_10" pintype="input"/>
+    </net>
+    <net code="26" name="PARK_1V25" class="Default">
+      <node ref="R31" pin="2" pintype="passive"/>
+      <node ref="R32" pin="1" pintype="passive"/>
+      <node ref="U1" pin="12" pinfunction="+_12" pintype="input"/>
+    </net>
+    <net code="27" name="PGND" class="Default">
+      <node ref="C12" pin="2" pintype="passive"/>
+      <node ref="C13" pin="2" pintype="passive"/>
+      <node ref="J3" pin="4" pinfunction="4_4" pintype="passive"/>
+      <node ref="J4" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="Q1" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="R20" pin="2" pintype="passive"/>
+      <node ref="R22" pin="2" pintype="passive"/>
+      <node ref="R30" pin="2" pintype="passive"/>
+    </net>
+    <net code="28" name="unconnected-(K1A-NO-Pad4)" class="Default">
+      <node ref="K1" pin="4" pinfunction="NO_4" pintype="passive+no_connect"/>
+    </net>
+  </nets>
+</export>

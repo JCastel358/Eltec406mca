@@ -77,10 +77,11 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import json
 import sys
 import threading
 import time
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -119,6 +120,9 @@ DEFAULT_CAPTURE_S = 8.0         # the ESP32 tool's default stream length
 DEFAULT_NOISE_S = 20.0          # the 405 M22 noise test's length (TP120's own hold is 60 s)
 DEFAULT_WATCH_INTERVAL_S = 1.0
 DEFAULT_LIVE_BUFFER_S = 60.0    # live history ceiling (the viewer's widest window)
+# Keep live USB batches at most about as long as the existing 50-channel
+# batch (160 ms). A fixed 64 kB takes 8 seconds to fill with CH0 alone.
+MAX_LIVE_CALLBACK_S = 0.160
 DEFAULT_CONNECT_TIMEOUT_S = 10.0
 # Capture progress is reported once per second of data with a carriage
 # return, like the ESP32 tool, so a long capture shows life without scrolling.
@@ -136,6 +140,7 @@ STREAM_START_TIMEOUT_S = 5.0
 NPZ_KEYS: tuple[str, ...] = (
     "waveform_v", "sample_rate_hz", "channels", "positions", "recorded_at", "daq_serial", "daq_model",
     "range_code", "range_span_v", "oversample", "actual_timer_hz", "simulated", "source", "drop_first",
+    "integrity_json", "nominal_sample_rate_hz",
 )
 NPZ_SOURCE = "daq_rig_readout"
 # Printed by every noise-centred command: the pin-level limits are None
@@ -327,7 +332,7 @@ class Capture:
         """Historical wideband diagnostic pk-pk; not the tester's 3 Hz acceptance metric."""
 
         return aa.band_limited_window_pp_mv(
-            self.volts, self.scan_hz, decimation_factor=decimation_factor, window_s=window_s
+            self.volts, self.rate_hz, decimation_factor=decimation_factor, window_s=window_s
         )
 
     # -- files -------------------------------------------------------------
@@ -356,7 +361,8 @@ class Capture:
         np.savez_compressed(
             path,
             waveform_v=self.volts.astype(np.float32),
-            sample_rate_hz=float(self.scan_hz),
+            sample_rate_hz=self.rate_hz,
+            nominal_sample_rate_hz=float(self.scan_hz),
             channels=np.asarray(self.channels, dtype=np.int64),
             positions=np.array(list(self.positions)),
             recorded_at=np.array(self.started_at),
@@ -369,6 +375,11 @@ class Capture:
             simulated=np.array(str(bool(self.simulated))),
             source=np.array(NPZ_SOURCE),
             drop_first=np.array(str(self.drop_first)),
+            integrity_json=np.array(json.dumps({
+                "final": self.diagnostics is not None and self.diagnostics.stopped_monotonic is not None,
+                "diagnostics": asdict(self.diagnostics) if self.diagnostics else None,
+                "problems": self.diagnostics.problems() if self.diagnostics else ["Final stream integrity unavailable"],
+            }, sort_keys=True)),
         )
         if not self.quiet:
             print(f"Saved {self.samples} samples x {len(self.channels)} channels to {path}")
@@ -738,6 +749,25 @@ class LiveStats:
     running: bool
 
 
+def _live_callback_buffer_bytes(rig: ArrayRig) -> int:
+    """Bound live delivery latency using raw conversions, before drop/average.
+
+    The configured buffer size is an upper bound for live viewing. The DLL
+    requires 512-byte packets; ScanDeinterleaver retains any partial scan
+    across callbacks. At very low rates one packet can exceed the target.
+    Finite captures retain the rig's configured buffer size.
+    """
+    granule = daq.STREAM_BLOCK_GRANULE_BYTES
+    maximum = rig.buffer_bytes
+    if maximum <= 0 or maximum % granule:
+        raise ValueError(f"buffer_bytes must be a positive multiple of {granule}.")
+    if not np.isfinite(rig.scan_hz) or rig.scan_hz <= 0:
+        raise ValueError("scan_hz must be finite and positive.")
+    target_bytes = rig.config.scan_bytes * rig.scan_hz * MAX_LIVE_CALLBACK_S
+    aligned = max(granule, int(target_bytes / granule) * granule)
+    return min(maximum, aligned)
+
+
 class LiveStream(threading.Thread):
     """Reads the bulk stream into a rolling ring buffer - the mirror of ``live_waveform.StreamReader``.
 
@@ -749,6 +779,9 @@ class LiveStream(threading.Thread):
     DAQ analogue of the ESP32 receive backlog); with a ``real_time=False``
     simulated device the wall clock means nothing, so a viewer should check
     ``rig.info.simulated`` before reading anything into it.
+
+    USB callback buffers scale with the raw data rate, independently of the
+    history ring size. This keeps short scan lists responsive.
     """
 
     def __init__(self, rig: ArrayRig, *, buffer_s: float = DEFAULT_LIVE_BUFFER_S, read_timeout_s: float = 0.2) -> None:
@@ -762,6 +795,7 @@ class LiveStream(threading.Thread):
         self.channel_count = int(rig.config.channels)
         self.buffer_s = float(buffer_s)
         self.read_timeout_s = float(read_timeout_s)
+        self.callback_buffer_bytes = _live_callback_buffer_bytes(rig)
         # Sized for the WIDEST window the viewer may be switched to (x1.25
         # slack), like the ESP32 viewer's deque, so widening mid-stream has
         # real history to show.
@@ -796,7 +830,7 @@ class LiveStream(threading.Thread):
         self.range_code = int(self.rig.range_code)
         try:
             self.header = device.start_stream(
-                scan_hz=self.scan_hz, buffer_bytes=self.rig.buffer_bytes, buffer_count=self.rig.buffer_count,
+                scan_hz=self.scan_hz, buffer_bytes=self.callback_buffer_bytes, buffer_count=self.rig.buffer_count,
                 drop_first=self.rig.drop_first, average=True,
             )
         except Exception as exc:  # recorded, never raised on the thread
@@ -830,8 +864,13 @@ class LiveStream(threading.Thread):
                     for chunk in drain():
                         self._push(chunk)
             except Exception as exc:
-                if self.error is None:
-                    self.error = f"stop_stream failed: {exc}"
+                shutdown_error = f"stop_stream failed: {exc}"
+                self.error = f"{self.error}; {shutdown_error}" if self.error else shutdown_error
+            if self.diagnostics is not None:
+                problems = self.diagnostics.problems()
+                if problems:
+                    final_error = "final stream integrity: " + "; ".join(problems)
+                    self.error = f"{self.error}; {final_error}" if self.error else final_error
             self._stopped_wall = time.monotonic()
             self.finished.set()
 

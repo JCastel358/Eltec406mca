@@ -1,5 +1,97 @@
 # Eltec Array Rig — fifty detectors at once on a USB DAQ
 
+## Current M25/HUB hardware — 2026-11-04
+
+The current app uses the original Eltec logo and a short sequence of
+screens: **Batch setup → Power-on checklist → 50-detector tray**. It opens
+in your browser but runs entirely on this computer; no internet service or
+Arduino update is involved. Keep the dashboard available during acquisition.
+The tray screen keeps all 50 positions, **Start**, **Stop**, and progress
+together. Select a detector to reveal its details and scroll to them;
+**Back to tray** returns to the overview. There is no separate attention
+table or Open report button.
+
+Click a position for its recorded DC trace, min/max, slope and cautious
+trend estimate, plus a noise waveform excerpt. The saved HTML report has
+the same interactive tray/details and works offline. Red indicates a valid
+offset failure or channel-specific signal problem; a green **offset pass** badge refers
+only to the provisional offset window. Noise remains amber Review because
+no acceptance limits have been commissioned.
+
+Interrupted acquisition is shown separately from detector failures. A brief
+DAQ delivery timeout can retry only the affected stage, up to three total
+attempts, while retaining valid offset results. Every attempt records a fresh
+continuous waveform; missing segments are never joined. If hardware routing,
+range and readiness remain verified, an automatic retry keeps the completed
+settling period. Stop, power/readback faults and unsafe shutdowns do not retry.
+
+If noise still cannot finish, **Retry noise** retains the valid offset record.
+After reopening the app, **Recover interrupted batch** offers the latest
+eligible saved run. Confirm that the detectors, wiring, alignment and fixture
+power have remained unchanged; otherwise start a new full test. A saved-run
+retry switches back to noise, waits 90 seconds and records a fresh 100 seconds
+(about 3 minutes 10 seconds plus saving). It writes a new folder and preserves
+the original evidence. Changing detectors or cycling fixture power requires
+a new full check.
+
+Automatic no-signal detection checks two separated DC windows near zero.
+Such slots are marked **No detector sensed — empty, dead or disconnected**
+and excluded from noise result analysis, while retaining their raw data and
+clickable details. This is an inference, not proof of an empty socket or a
+dead detector. Floating empty inputs can also appear to have a signal.
+
+The normal **Eltec Array Rig** launcher now opens the M25/HUB check for one
+HUB and two M25 cards. Upper M25 connects to DAQ J2; lower M25 to J1. The
+app uses the full modular channel map and both cards' status readbacks.
+
+1. Close the live viewer/quick-check window and other DAQ applications.
+   Load the detectors using the established power-off procedure. Restore
+   supplies, cooling and physical RUN; prepare the vacuum/illumination for
+   the measurement before starting. The app has no vacuum control.
+2. Run `run_eltec_array_tester.cmd`, or directly run
+   `m40623/run_eltec_40623_array_tester.cmd`. On the browser's setup screen,
+   choose the model (currently **40623**), enter your name and batch number,
+   and choose **Actual detectors**. Press **Enter** or the continue button.
+3. Follow the illustrated checklist: detector box powered, main switch
+   **ON**, then physical **START/RUN** pressed. Confirm the other fixture
+   preparation described above. Press **Enter** again to open the tray;
+   this navigation does not start acquisition.
+4. Press **Start** on the tray screen. All 50 positions are scanned;
+   suspected no-signal slots are identified after DC. The app waits 90 s, records 10 s DC,
+   switches all channels to noise, waits another 90 s, records 100 s noise,
+   saves and returns to DC. Allow about **4 minutes 50 seconds**, plus
+   connection and saving. Keep the fixture undisturbed through both stages.
+5. When the run has finished saving, select any detector to inspect its
+   waveforms. Use **Next batch** or **Enter** to enter the next batch number
+   while retaining the model and technician, then repeat the checklist.
+   Use **Main setup** or **Esc** to return to the initial screen while idle.
+   Every run repeats settling. **Stop** retains available data as incomplete
+   and attempts to restore DC; wait for acquisition and saving to finish
+   before changing batches or leaving the tray screen.
+
+DC is checked against the existing **provisional 0.3–1.2 V window**.
+Noise is DAQ-output RMS at 3 Hz/Q3 and 1–100 Hz, including front-end gain.
+**REVIEW is not PASS**: no detector-input transfer calibration or noise
+acceptance limits are applied. Sensitivity/polarity remain unimplemented.
+
+Every run gets a unique folder under
+`Documents/Eltec_40623_Test_Results/40623_array_daq/mod50_checks/`, containing
+`report.html`, `results.csv`, `summary.json`, and the available DC/noise raw
+NPZ files. All 57 physical rows and four conversions are saved, even with
+fewer installed detectors. `ELTEC_ARRAY_RESULTS_ROOT` redirects output.
+**Generated demo** uses synthetic signals, accelerated waits and separate
+simulation files; it never contacts the DAQ.
+
+The hardware's RUN, STOP, battery master and supply supervision stay manual.
+The app controls signal routing/gain through the DAQ, so **no Arduino/ESP32
+firmware update is required**. Read [the model guide](m40623/README.md) for
+the exact switching, timing and saved-data contract.
+
+## Earlier contiguous-channel hardware (`--frontend legacy` only)
+
+The following original workflow describes the previous board. It is retained
+for historical data and explicit legacy operation, not for M25/HUB hardware.
+
 The second test rig of this repository. A 50-position PCB (5 rows × 10
 columns, one unity-gain buffer per position) feeds the 64 single-ended inputs
 of an **ACCES I/O USB-AIO16-64MA DAQ-PACK**; one Python desktop application
@@ -75,12 +167,14 @@ contract and replay tool. Simulation demonstrates example passes and failures.
   `powershell -ExecutionPolicy Bypass -File array_rig\install_windows_launcher.ps1`.
 - Xubuntu: `./array_rig/run_eltec_array_tester.sh`; icon via
   `./array_rig/install_xubuntu_launcher.sh` (`--uninstall` removes it).
-- The selector remembers the last model (`%LOCALAPPDATA%\eltec-array-rig\state.json`
-  / `~/.local/state/eltec-array-rig/state.json`) and launches the model app
-  as a **subprocess** with the model directory as cwd. Launcher logs:
+- Normal startup launches the model app as a **subprocess** and opens its
+  browser setup screen directly. The earlier desktop chooser is available
+  with `python array_rig/eltec_array_tester.py --selector`; it remembers the
+  last model (`%LOCALAPPDATA%\eltec-array-rig\state.json` /
+  `~/.local/state/eltec-array-rig/state.json`). Launcher logs:
   `…\eltec-array-rig\launcher.log`. The model app can also be started
-  directly (`array_rig\m40623\run_eltec_40623_array_tester.cmd`). Check
-  **Simulation** in the selector, or use `--simulate` (or
+  directly (`array_rig\m40623\run_eltec_40623_array_tester.cmd`). Choose
+  **Generated demo** on the browser setup screen, or use `--simulate` (or
   `ELTEC_ARRAY_SIMULATE=1`), to run without hardware.
 - Hardware: the ACCES **"USB-AIO16-64MA Install"** driver package must be
   installed (it provides `AIOUSB.dll`; the DAQ loads its firmware from the
@@ -111,7 +205,7 @@ files go under `tempfile.gettempdir()/eltec-array-simulation`, or the
 
 ```
 array_rig/
-  eltec_array_tester.py      selector GUI: model dropdown → launches the model app as a SUBPROCESS
+  eltec_array_tester.py      launches browser model setup as a SUBPROCESS; --selector keeps the earlier chooser
   sensor_versions.py         registry (one SensorVersion per model) + REQUIRED_HARDWARE
   tray_history.py            shared: <lot>_attempts.csv writer (tray events) + numbering helpers
   run_eltec_array_tester.*   launchers; install_*_launcher.* = optional desktop icon

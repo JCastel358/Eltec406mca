@@ -1,5 +1,151 @@
 # Eltec 40623 Array Tester (TP120) — 50 positions on the DAQ array rig
 
+## Current M25/HUB check — default since 2026-11-04
+
+The November 4 UI revision uses the exact logo and visual style from
+`eltec-detector-test-demo` in a local browser dashboard (`mod50_web.py` and
+`mod50_ui/`). The normal Array Rig launcher opens this browser flow directly:
+model/name/batch setup, an illustrated power-on checklist, then a compact
+50-position tray with Start, Stop and progress. The model selector currently
+offers 40623. Clicking a tile reveals its recorded offset/noise evidence and
+scrolls to it; Back to tray returns to the overview. The redundant Open
+report button and attention table have been removed. Saved interactive
+HTML reports remain available in each run folder. The original Tk window
+remains an engineering API.
+
+Offset evidence contains an extrema-preserving trace of the recorded DC
+interval, its minimum/maximum, fitted slope and a clearly labelled linear
+time-to-window estimate when drifting toward the existing limits. This is
+not a prediction that the detector will pass, and does not alter the fixed
+settling or acceptance limits. Noise details show a short excerpt around
+clipping/headroom failure, or a representative excerpt for an ordinary
+record. Exact raw samples remain in NPZ files; downsampled chart data are
+also saved in summary JSON and the self-contained HTML report.
+
+No-signal inference requires a valid DC record, no clipping, and near-zero
+readings within one DC ADC code in two separated windows. It does not use
+the legacy 0.05 V dead threshold as an occupancy test. Suspect slots remain
+visible/clickable with an empty/dead/disconnected explanation. Their raw
+physical scans remain recorded; inferred exclusions are separate from the
+declared population. Never infer missing detectors from a failed acquisition.
+
+Offset passing is green, valid failed offset/channel checks are red, and
+uncalibrated noise is Review. There is no overall detector PASS while noise
+limits are absent. Acquisition interruption is separate from channel faults;
+retained valid DC results stay visible while noise is incomplete. Gray
+no-signal slots do not count as passed detectors.
+
+The dashboard server binds only to loopback with a random per-launch URL,
+validates Host/Origin and accepts only same-origin JSON control requests.
+Opening the page does not touch the DAQ. The acquisition thread owns all
+device access; Stop remains available throughout the run. Closing/navigating
+the dashboard sends a best-effort Stop request. Background tab throttling
+does not automatically abort acquisition; physical STOP remains available.
+
+Launch `run_eltec_40623_array_tester.cmd` or the parent Array Rig launcher.
+The window opens idle and contacts hardware only after **Start**.
+Choose model/name/batch and Actual detectors, press Enter, then follow the
+detector-box power, main-switch ON and physical START/RUN checklist. Cooling,
+supplies and vacuum preparation remain the operator's responsibility.
+Enter on the checklist opens the tray without starting a run. Press Start
+to check all 50 slots automatically. After the worker finishes saving,
+Next batch or Enter opens a new-batch form retaining the model and operator;
+Main setup or Esc returns to setup while idle. Navigation away from the
+tray is blocked during acquisition and saving. Each new run repeats the
+checklist and full settling sequence.
+The full operator procedure is in [the array README](../README.md).
+
+| Stage | Controls / acquisition | Wait or duration |
+| --- | --- | --- |
+| Connect | Reserve dedicated DIO0–15, DC/unity, signed ±5 V | 90 s |
+| DC | All 57 physical rows, four conversions/channel, drop first and average three | 10 s |
+| Enter noise | Stop/drain; gain off; select AC; wait; enable gain; ±1 V | 200 ms switching hold |
+| Settle noise | Verify both cards remain ready/present and match route/gain | 90 s |
+| Noise | Same physical scan and conversion policy | 100 s |
+| Finish / stop | Stop/drain; gain off; wait 50 ms; command DC; verify and close | No automatic restart |
+
+The working bench's 1000 scans/s and 64-buffer pool are retained. This is
+228,000 raw conversions/s. The actual granted rate drives spectral analysis.
+Mapping is UPPER: physical 0–15,32–40; LOWER: 16–31,48–56. Physical 41–47 are
+retained in raw data but are not detector results. Both M25 cards' eight
+status bits use active-low READY/presence, unlike the older R4 profile.
+No Arduino commands or flash are involved in offset/noise operation.
+
+`mod50_hardware.py` owns the map, controls, simulator and shared Windows DAQ
+lock; `mod50_check.py` owns the complete run and saving;
+`mod50_web.py` owns the dashboard server and `mod50_ui/` its screens;
+`mod50_array_tester.py` retains the engineering Tk view and routes the normal
+launch to the dashboard. These files use only local array-rig imports.
+The process lock excludes the 50AmpBoard live/quick tools; older applications
+without this lock must still be closed. DIO2–7 remain reserved low: no
+expansion controller may share this dedicated port.
+
+Real timing cannot be shortened from the operator UI. Simulation advances
+a separate virtual clock. A two-second delivery stall or recognized delivery
+interruption ends that capture attempt. Up to three total attempts per stage
+are allowed only after confirmed clean stream shutdown and unchanged mode,
+range, configuration and verified card readiness. A fresh full recording is
+required on each attempt; samples across gaps are never concatenated. Valid
+DC is retained during noise retries, and an unchanged settled frontend does
+not repeat its 90-second wait. Operator Stop, readiness/control faults,
+sample-clock/range errors, saving failures and unsafe shutdowns do not retry.
+Available raw data from every rejected attempt remain saved separately.
+Any trace within 328 converter counts of a range endpoint is flagged;
+noise values outside ±0.8 V raw headroom are withheld. These are acquisition
+quality guards, not detector pass/fail limits.
+
+For an already-ended delivery failure, **Retry noise** or the startup
+**Recover interrupted batch** action can reuse valid DC only after explicit
+confirmation of unchanged detectors, wiring, alignment and uninterrupted
+fixture power. `mod50_recovery.py` validates the saved profile, timing, map,
+stage diagnostics, raw hash, shape and metadata without opening the DAQ.
+The worker rechecks the DC hash and connected DAQ serial, copies DC evidence
+into a new run folder, switches to noise and performs the prescribed
+90-second settling plus a fresh 100-second recording. The original folder is
+immutable. Startup offers only the latest run for its data source, and never
+automatically starts it. Repeated failure remains incomplete and retains
+diagnostics; power cycles, detector changes or unsafe errors require a new
+full test or troubleshooting.
+
+Each uniquely named run folder contains raw four-conversion `dc_raw.npz`
+and `noise_raw.npz` when that stage was reached, `summary.json`,
+`results.csv` and `report.html`. NPZ metadata carries profile/schema,
+population, physical/logical map, DAQ serial, actual rate, ranges, control
+readbacks, timing and final transfer diagnostics. Raw arrays are
+`[scans,57,4]`; preserve them. Results identify each sensor by lot/tray/position.
+Simulation files are explicitly marked and use a separate folder by default.
+Retries add `dc_attempt02_raw.npz`, `noise_attempt02_raw.npz`, and analogous
+attempt files. The last record for each mode is authoritative; earlier
+records remain diagnostic evidence. Summary recovery fields identify the
+attempts and any source run used for retained DC.
+
+DC reports the unchanged provisional 0.3–1.2 V window. Noise is mean-removed
+finite-record FFT RMS over inclusive 1–100 Hz bins; the 3 Hz/Q3 result applies
+the nominal second-order band-pass power weighting to the same bins. Both
+are **DAQ-output** µV, not input-referred noise or the legacy rectifier/hold
+DMM reading. No nominal gain division, noise acceptance limit or sensitivity
+test is introduced. Full records are saved before numerical analysis.
+
+Supply monitoring is manual, as in the working bench viewer. This profile
+does not claim the separate recorder's commissioned battery monitoring or
+measured station/calibration evidence. The user reports working hardware;
+this software change is tested through simulation/fault injection until the
+next attended hardware run.
+
+Validation on 2026-11-04: all 24 focused M25/HUB tests passed. The complete
+repository runner exercised 1,089 tests with no new failures (seven skips
+and the existing Windows-only installer case). All 50 map entries and all
+256 possible status-byte decodings match the current hardware software.
+A full simulated tray was completed through the desktop UI and its HTML
+report inspected; the normal launcher was checked in idle hardware mode.
+No physical acquisition or firmware flash was performed for this update.
+
+Earlier modes are explicit: `--frontend legacy` selects the original app
+below; `--frontend r4` selects the original R4 window documented in
+[R4_SOFTWARE.md](R4_SOFTWARE.md). Never use their maps on the modular assembly.
+
+## Original app (`--frontend legacy`)
+
 The 40623 build of the array rig. It measures the two TP120 tests that need
 no emitter, fifty detectors at a time: the **offset check** and the **noise
 test**. Sensitivity / polarity (the 3 Hz chopper test) waits for the emitter
@@ -273,10 +419,10 @@ second program (bench check 2026-09-02): its configuration and stream calls
 go through and the first program's stream silently stops delivering (its
 integrity check then fails, or the tester's no-data timeout trips), and a
 self-calibration attempted while another program streams fails with Win32
-status 13. All three take
+status 13. All four take
 `--simulate` (no hardware) and default to the tester's acquisition constants
 (`--range --hz --oversample --drop --start --end --connect-timeout`; the
-readout and the viewer also `--no-selfcal`).
+readout, the viewer and the floor check also `--no-selfcal`).
 
 - `daq_bench_probe.py` — see above; `--simulate` runs every command on `SimulatedDaq`.
 - `daq_rig_readout.py` — the array rig's counterpart of
@@ -352,6 +498,48 @@ readout and the viewer also `--no-selfcal`).
   Both tools were verified on the real unit 2026-09-02 (every command,
   integrity OK at 999–1000 scans/s; the inputs read ~0 V because the array
   PCB was not connected).
+- `daq_noise_floor_check.py` — "can this DAQ, as configured, resolve the
+  noise of a part at all?" One 60 s capture of all fifty channels (or a
+  saved capture) with every socket given a role — `empty` as-is (the
+  default), `--grounded` (shorted with a wire), `--quiet-source` (a battery
+  divider at a detector-like level), `--loaded`, `--exclude`, and
+  `--daq-reference` for the onboard reference through the same multiplexer /
+  amplifier path (the probe's floor source) — then the same numbers for every
+  role side by side: mean, raw rms, raw span in codes, DC drift and what that
+  drift alone leaks through the 3 Hz filter (slope ÷ (Q·ω0): a 17 mV settle
+  over 60 s reads as 5 µV of "noise", flagged SETTLING), the 3 Hz/Q=3 band
+  RMS of `legacy_noise.py`, its nominal-meter scale and the viewer's
+  judged-band pk-pk. The assessment is of the SETUP, never of a part: the
+  floor (median of the usable empty sockets; a quiet source or the reference
+  stand in) against TP120's window brought to the pin with the nominal
+  ×1000 × ×10 chain (a scale, never a limit), a `--margin` rule (default 3:
+  floor ≤ low limit ÷ 3), the ideal quantization of every range the DAQ has
+  at the capture's averaging, the best case any oversampling / scan-rate /
+  range change could reach under the DAQ's 500 kS/s aggregate ceiling (the
+  floor falls as 1/√(conversions per channel per second) while the noise is
+  white) with the capture command that measures it, the break-even chain
+  gain below which the measured floor would already do, and the gain needed
+  ahead of the DAQ. A socket on a converter rail is
+  CLIPPED and never a floor: on the unipolar 0–5 V range a grounded input
+  sits on code 0, so its flat trace is the converter, not the noise going
+  away — the empty sockets as-is (buffers a few mV above zero, unclipped), a
+  quiet source mid-range and the onboard reference answer the "is it the
+  wiring or the DAQ?" question instead. Files only at explicit `--report
+  FILE.json` / `--npz FILE.npz` paths, never replaced, never inside an
+  `Eltec_*_Test_Results` folder; a tester `tray_<n>_raw.npz` supplies its own
+  LOADED / EMPTY map as the default roles and is never modified.
+
+  ```
+  python array_rig/m40623/daq_noise_floor_check.py capture --loaded 5-5 5-10 --grounded 2-1 --daq-reference --npz C:\bench\floor.npz --report C:\bench\floor.json
+  python array_rig/m40623/daq_noise_floor_check.py replay "...\noise_captures\lot_Test\tray_1_raw.npz" --report C:\bench\tray1_floor.json
+  python array_rig/m40623/daq_noise_floor_check.py capture --simulate -s 8 --quiet-wait 1      # no hardware; the simulator's parts are still settling, so expect SETTLING flags
+  ```
+
+  First results (the 2026-09-10 tray-1 capture replayed, and the 2026-09-11
+  bench run with a grounded socket and the onboard reference): the setup is
+  floor-limited and the floor is the DAQ's own front end, not the wiring or
+  the PCB buffer — CALIBRATION_RECORD §4b.1, "Instrument floor through the
+  PCB".
 - `engineer_tools/array_parity/array_noise_parity.py` — pairs legacy-fixture readings with
   array captures and proposes the pin-level limits.
 - `engineer_tools/noise_band/replot_noise_capture.py --position 2-4` — replays a saved
@@ -362,6 +550,19 @@ readout and the viewer also `--no-selfcal`).
 ```
 python -m unittest discover -s array_rig/m40623/tests
 ```
+
+Optional browser checks use a separately available Node.js/Playwright runtime:
+
+```
+node array_rig/m40623/tests/mod50_workflow_browser.cjs
+```
+
+Set `PLAYWRIGHT_MODULE` to a bundled `playwright-core` directory when it is
+not on Node's module path, and `PLAYWRIGHT_EXECUTABLE` to an installed
+Chromium or Edge executable if needed. These eight synthetic browser cases
+check compact viewport fit, keyboard navigation, new batches, delayed
+responses, Stop handling and offline reports. They contact no DAQ and write
+no measurement files; the Python test runner does not require Playwright.
 
 `test_daq_backend.py` (fake DLL + fake clock, including the immediate-read
 side effect and the block re-assert), `test_array_analysis.py` (golden

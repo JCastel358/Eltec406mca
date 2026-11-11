@@ -1,12 +1,58 @@
 # Calibration record — every production constant and where it came from
 
+## Current M25/HUB profile (2026-11-04)
+
+The demo-style UI revision preserves the numeric offset/noise limits.
+Automatic **NO_SIGNAL** is an occupancy suspicion, not a new detector
+acceptance threshold: every sample in two separated one-second valid DC
+windows must remain within one signed ±5 V ADC code of zero, without clipping.
+This retains the legacy one-code band, using a conservative all-samples
+criterion. It requires physical validation on the assembled holder; absence,
+dead and disconnected states cannot be distinguished by this signal alone.
+NO_SIGNAL slots are excluded from noise result analysis, never marked passed;
+all raw scans remain saved. Linear offset trend estimates are advisory only.
+
+The new default array profile is a settled, uncalibrated DC/noise check.
+The old direct-buffer calibration assumptions below do not establish the
+modular front-end's measured transfer function.
+
+| Quantity | Current value / provenance |
+| --- | --- |
+| DC comparison | Existing `OFFSET_MIN_V=0.3`, `OFFSET_MAX_V=1.2`; still PROVISIONAL, no threshold change |
+| Detector noise acceptance limit | None; REVIEW, never noise PASS |
+| Detector transfer gain | Not applied; results remain DAQ-output µV RMS |
+| Acquisition | Working MOD50 bench configuration: 1000 scans/s, 57 rows, four conversions, discard first/average three, 64 buffers |
+| DC / noise range | Working bench's signed ±5 V / ±1 V |
+| Connect / AC-switch settling | Existing R4/MOD50 control contract: 90 s each |
+| Noise entry / DC return hold | Existing contract: 200 ms / 50 ms with gain disabled |
+| DC / noise record duration | 10 s functional DC record; 100 s noise record per MOD50 software's routine-record recommendation |
+| Range endpoint guard | Working bench's 328-count (0.5% full-scale) guard; acquisition quality only |
+| Raw noise headroom | Existing R4 ±0.8 V quality guard; not sensor acceptance |
+| Noise method | Finite-record FFT, mean removed, 1–100 Hz inclusive; second result weighted by nominal 3 Hz/Q3 band-pass power response |
+| Delivery recovery (2026-11-04.3) | Up to 3 full attempts per stage after a recognized delivery interruption; 0.25 s cancellable pause between attempts. This is a recovery policy, not an acceptance threshold. The 2 s delivery timeout, ±1% clock/rate checks and prescribed record lengths remain unchanged. |
+
+Recovery never joins samples across an interruption or substitutes missing
+data. Valid DC can be retained for noise retry; each accepted noise result
+requires a fresh uninterrupted 100-second record. Automatic retry preserves
+settling only with unchanged verified hardware state and clean shutdown.
+Saved-run retry requires explicit unchanged-fixture confirmation, validated
+raw evidence and matching DAQ identity, followed by the normal 90-second
+noise settling. The software policy was checked with injected faults and
+simulation; no new hardware qualification or calibration is implied.
+
+These hardware settling gates replace the legacy adaptive wait for M25/HUB
+only. They are not a claim of exact TP120 timing/rectifier-hold equivalence.
+Physical RUN/STOP and supply checks remain manual; no commissioned battery
+telemetry or measured station identity is fabricated. The user reports
+working hardware; the integration itself was checked in software/simulation.
+
 This file is the **single authoritative home** for every number that decides a
 PASS or FAIL on the Eltec test rig: the value, the line of code that holds it,
 how it was derived, and the state of each gate per sensor model. The model
 READMEs explain the *mechanics*; this file records the *evidence*.
 
 **Rule for changing any constant here:** update the code, update this file,
-and add a dated entry to [`CHANGELOG.md`](../CHANGELOG.md) — in the **same
+and add a dated entry to [`CHANGELOG.md`](../../CHANGELOG.md) — in the **same
 commit**. For sensitivity factors also bump the model's
 `SENSITIVITY_CALIBRATION_ID` so every CSV row says which calibration produced
 it.
@@ -56,7 +102,7 @@ Code: `array_rig/m40623/array_analysis.py` (limits, verdict model),
 
 Tester: `single_detector_rig/m405m22/eltec_405m22_esp32_tester.py`.
 Test procedure document: **TP412** (offset, sensitivity/polarity at 1 Hz, noise).
-Detailed mechanics: [`m405m22/README.md`](../single_detector_rig/m405m22/README.md).
+Detailed mechanics: [`m405m22/README.md`](../../single_detector_rig/m405m22/README.md).
 
 ### 2.1 Constants
 
@@ -171,7 +217,7 @@ intrinsic to the part or its bias chain.
 ### 2.3 Sensitivity factor 4.30 — the lot-500 pairwise calibration (2026-08-17)
 
 50 sensors of lot 500 were measured on the legacy fixture and on this rig in
-the same order; raw data in [`analysis/405M22_Data/`](../analysis/405M22_Data/)
+the same order; raw data in [`analysis/405M22_Data/`](../../analysis/405M22_Data/)
 (`405M22_Data_old_fixture.xlsx`, `405M22_Data_new_fixture.csv.xlsx`).
 
 - 46 usable pairs; per-part legacy/raw ratio: **median 4.2973**,
@@ -281,7 +327,7 @@ part and its baseline here once both are done.
 
 Tester: `single_detector_rig/m406mca/eltec_406mca_esp32_tester.py` (the v6.1
 policy build). Detailed mechanics:
-[`m406mca/README.md`](../single_detector_rig/m406mca/README.md).
+[`m406mca/README.md`](../../single_detector_rig/m406mca/README.md).
 
 | Constant | Value | Where | Provenance |
 | --- | --- | --- | --- |
@@ -312,7 +358,7 @@ policy build). Detailed mechanics:
 
 Tester: `single_detector_rig/m449m18/eltec_449m18_esp32_tester.py` (added
 2026-08-26). Detailed mechanics and the derivation recipe:
-[`m449m18/README.md`](../single_detector_rig/m449m18/README.md).
+[`m449m18/README.md`](../../single_detector_rig/m449m18/README.md).
 
 | Constant | Value | Where | State |
 | --- | --- | --- | --- |
@@ -340,7 +386,7 @@ Tester: `array_rig/m40623/eltec_40623_array_tester.py`; limits and verdict
 model: `array_rig/m40623/array_analysis.py`. Test procedure document:
 **TP120 rev W** ([`TP120(40623).pdf`](TP120(40623).pdf)) — sensitivity &
 polarity (3 Hz chopper, not implemented: no emitter board), noise, offset
-check. Mechanics: [`m40623/README.md`](../array_rig/m40623/README.md).
+check. Mechanics: [`m40623/README.md`](../../array_rig/m40623/README.md).
 Added 2026-09-02.
 
 ### September 10, 2026 method update (supersedes older noise derivation below)
@@ -357,7 +403,7 @@ No hardware noise acceptance limits have been invented. Old peak-to-peak
 constants and the 405 window-allowance rule remain historical diagnostics;
 they no longer control hardware acceptance. NO_LIMIT now also prevents CSV
 PASS and `PositionResult.passed`. Full current method and qualification steps:
-[NOISE_METHOD.md](../array_rig/m40623/NOISE_METHOD.md).
+[NOISE_METHOD.md](../../array_rig/m40623/NOISE_METHOD.md).
 
 Offset acquisition now uses bulk scans matching the working waveform viewer,
 with startup discard, per-MUX drop, integrity checks and stable row-5 regression.
@@ -387,10 +433,15 @@ selection is available without increasing the empty-voltage threshold.
 | Adaptive quiet wait | 3–20 s; two consecutive one-second max AND min deltas ≤ 0.1 mV on every loaded channel | tester, `quiet_wait_settled` | 2026-09-08: use waveform extrema instead of block means, so constant-mean changing amplitude does not start early. Existing `NOISE_BASELINE_SETTLE_DELTA_MV = 0.1` (405 scheduling tolerance, rounded) unchanged; provisional scheduling only, not a calibrated noise gate. At the deadline capture starts with a warning; the full 60 s and noise verdict algorithm remain unchanged. Per-window maxima/minima, deltas, loaded channels, elapsed wait and stop reason are archived. |
 | `CALIBRATION_STATUS` / `CALIBRATION_ID` / `VERDICT_STATUS` | PENDING / `40623_array50_daq_PENDING` / PROVISIONAL | `array_analysis.py` | Stamped on every CSV row and every raw capture. Bump the id when the limits are derived. |
 | DAQ range / rate / oversample | 0–5 V (code 2, 76.3 µV/LSB) / 1000 scans/s / 3 (first conversion dropped) | tester | See §6. Recorded per row (`daq_range_code`, `daq_oversample`, `daq_drop_conversions`, `daq_scan_rate_hz`, `daq_actual_timer_hz`). |
+| **Instrument floor through the PCB** (evidence, not a constant) | **2.98 µV rms** in the 3 Hz/Q=3 band — median of the 43 empty sockets as-is (2.60–4.08 µV; buffers at 4–6 mV, unclipped) ≈ 20–31 mV on the nominal ×1000 × ×10 meter scale — against TP120's window brought to the pin the same way, **1.25–4.75 µV rms** (10.0 / 37.9 mV ÷ 10 000 ÷ 0.798 Gaussian mean-abs→rms; a scale, never a limit) | `array_rig/m40623/daq_noise_floor_check.py replay` on `Eltec_40623_Test_Results/40623_array_daq/noise_captures/lot_Test/tray_1_raw.npz` (60 s, 2026-09-10, production settings, 7 loaded / 43 empty, vacuum off) | **2026-09-11: the setup is floor-limited for 40623 noise.** The floor alone reads inside the window (2.4 × the low limit, 0.63 × the high), so an empty socket would "pass"; the six usable loaded parts read 3.46–4.73 µV (median 3.67), ~25 % above the empties and within their spread — not distinguishable (the seventh, 3-2, was still settling: a 16.5 mV ramp leaks 4.85 µV through the 3 Hz filter, slope ÷ (Q·ω0), and explains its 5.72 µV). Ideal quantization at the production averaging (3 of 4 conversions kept) is 0.71 µV rms (1.23 for a single conversion); the measured floor is 4 × that, so the front end, not the code step, sets it. What settings alone could still do is bounded by the DAQ's 500 kS/s aggregate: while the noise is white the floor falls as 1/√(conversions per channel per second), 3 000/s are averaged now and 50 channels allow at most 10 000/s (1.83 ×), and the tightest range that still holds a DC-coupled 1.2 V offset (0–2 V) adds at most 2.5 × if the front-end noise is fixed in codes — best case ≈ 0.64 µV, 1.5 × the required floor: **MARGINAL at best, never RESOLVABLE**. The command that measures that best case: `daq_noise_floor_check.py capture --range 4 --hz 500 --oversample 15 --daq-reference`. Break-even: this floor would do only if the real 9000232+9000272 chain gain were below ~1,400 (nominal 10,000) for the low limit, ~5,300 for the high — the paired lot decides that number. Otherwise AC-coupled gain ≥ ~7 × (nominal; ×100–×1000 for headroom) ahead of the DAQ, with the offset check kept on its own DC path. **Bench run 2026-09-11** (user, `C:\bench\floor_vacuum.npz` / `.json`, 60 s, production settings, five parts in row 1, socket 2-2 shorted to ground with a wire, onboard reference streamed through the same path): empty sockets as-is **2.91 µV rms** (44 channels, 2.59–3.70); the grounded socket **3.07 µV**, unclipped — its buffer output rests at 3.8 mV like every empty socket's 4–6 mV, so the socket's own pull-down already held the input at ground and the wire changed nothing (wiring share 0.00 µV in quadrature); the DAQ alone via the onboard reference **2.96 µV** (50 channels, 2.52–3.56, mean 0.9071 V). Three independent measurements agree: the floor is the DAQ's own front end, not the socket wiring and not the PCB buffer (consistent with the DAQ-alone bench spike, §6, 49 / 79 µV judged-band pk-pk). Loaded parts 3.73–4.15 µV (median 3.93, all four usable above the noisiest empty, quadrature excess 2.63 µV ≈ 21 mV on the nominal meter scale — plausible good parts, but floor-dominated: the part estimate moves 1.3–3.1 µV across the empties' own spread); 1-3 was SETTLING (29.7 mV ramp → 8.8 µV of its 10.1 µV). Side observations: the reference reads 0.9071 V against a 0.909 V nominal, as a standard (non-HG) unit with our range table should — the §4b.3 metered check still stands; the empty sockets of rows 1 and 4 read 10–30 % more wideband noise than rows 2/3/5 while the DAQ-alone reference is uniform (PCB-side, small, unexplained). Vacuum lowers convective element noise and cannot raise a floor. No constant, limit or verdict changed. |
 
 ### 4b.2 Qualification plan for noise limits
 
-Use the current procedure in [NOISE_METHOD.md](../array_rig/m40623/NOISE_METHOD.md):
+Step 0 (2026-09-11): run `daq_noise_floor_check.py` on the actual tray —
+its floor-vs-window result and break-even chain gain say whether the paired
+lot can qualify this setup at all or whether gain ahead of the DAQ comes
+first (4b.1, "Instrument floor through the PCB"). Then use the current
+procedure in [NOISE_METHOD.md](../../array_rig/m40623/NOISE_METHOD.md):
 measure background and usable resolution at the actual DC bias through the
 buffer PCB, collect paired legacy/DAQ readings including marginal/noisy units,
 validate a named 3 Hz software metric, and record a setup-matched calibration.

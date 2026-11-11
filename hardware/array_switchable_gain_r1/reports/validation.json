@@ -1,0 +1,369 @@
+{
+  "status": "PASSED: native ERC, topology and stated linear calculations",
+  "erc_violations": 0,
+  "erc_ignored_checks": [],
+  "erc_exclusions": 0,
+  "checks": [
+    {
+      "name": "OPA4192 physical pin map and power",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Detector remains on noninverting input",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relay coil polarity and flyback cathode",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relay pole A NC bypasses feedback resistors",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relay pole A NO is deliberately unused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Relay pole B routes direct or filtered output",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Feedback chain always exists",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "AC leg connects from feedback through R then film cap to ground",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Filter 1 is unity feedback",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Filter 1 R/C topology",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Filter 2 is unity feedback",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Filter 2 R/C topology",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Filter stages cascade",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Ground star explicit and singular",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Manual and auto command are separate until jumper fitted",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Gate has default pulldown",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Spare section parked in feedback",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 0.85 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 3 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 5 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 18 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 50 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 100 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 160 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 200 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 500 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported circuit agrees with transfer function at 1000 Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "1X sensitivity remains about 500mV p-p through 100Hz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "0.7V offset and 500mV p-p remain inside 0-5V",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Nominal useful-band gain is within 1% of 100X at anchors",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "At least 39dB relative rejection at 500Hz",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "response": [
+    {
+      "frequency_hz": 0.85,
+      "buffer_gain": 0.9999008671247068,
+      "noise_gain_ideal": 98.32475806620702,
+      "noise_gain_finite_A": 98.31539724713177,
+      "noise_relative_100_db": -0.14674227047527996
+    },
+    {
+      "frequency_hz": 3,
+      "buffer_gain": 0.9999008972949942,
+      "noise_gain_ideal": 99.86293077243126,
+      "noise_gain_finite_A": 99.85312697259383,
+      "noise_relative_100_db": -0.011913848811227232
+    },
+    {
+      "frequency_hz": 5,
+      "buffer_gain": 0.9999008990365695,
+      "noise_gain_ideal": 99.95219372039386,
+      "noise_gain_finite_A": 99.94236394675822,
+      "noise_relative_100_db": -0.004153393557243749
+    },
+    {
+      "frequency_hz": 18,
+      "buffer_gain": 0.9999008999430409,
+      "noise_gain_ideal": 100.02073553284339,
+      "noise_gain_finite_A": 100.01088860086966,
+      "noise_relative_100_db": 0.0018008787941861965
+    },
+    {
+      "frequency_hz": 50,
+      "buffer_gain": 0.9999009000090753,
+      "noise_gain_ideal": 100.1709236521874,
+      "noise_gain_finite_A": 100.16105038587042,
+      "noise_relative_100_db": 0.014833566365916342
+    },
+    {
+      "frequency_hz": 100,
+      "buffer_gain": 0.9999009000164497,
+      "noise_gain_ideal": 99.34105907396398,
+      "noise_gain_finite_A": 99.33123028124638,
+      "noise_relative_100_db": -0.057424286146146156
+    },
+    {
+      "frequency_hz": 160,
+      "buffer_gain": 0.9999009000179478,
+      "noise_gain_ideal": 70.61738463177095,
+      "noise_gain_finite_A": 70.61034266956635,
+      "noise_relative_100_db": -3.0217674179911755
+    },
+    {
+      "frequency_hz": 200,
+      "buffer_gain": 0.9999009000182939,
+      "noise_gain_ideal": 37.64863504383008,
+      "noise_gain_finite_A": 37.64485361822471,
+      "noise_relative_100_db": -8.485015291618016
+    },
+    {
+      "frequency_hz": 500,
+      "buffer_gain": 0.9999009000188103,
+      "noise_gain_ideal": 1.040253423511548,
+      "noise_gain_finite_A": 1.0401380191355662,
+      "noise_relative_100_db": -39.65721692507709
+    },
+    {
+      "frequency_hz": 1000,
+      "buffer_gain": 0.9999009000188838,
+      "noise_gain_ideal": 0.06501015374174428,
+      "noise_gain_finite_A": 0.065000504183485,
+      "noise_relative_100_db": -63.740376138028346
+    }
+  ],
+  "component_corner_count": 4096,
+  "component_corners": [
+    {
+      "frequency_hz": 3.0,
+      "min_gain": 99.64910299970909,
+      "max_gain": 100.07518936257699
+    },
+    {
+      "frequency_hz": 50.0,
+      "min_gain": 99.51922442775867,
+      "max_gain": 100.82496367741392
+    },
+    {
+      "frequency_hz": 100.0,
+      "min_gain": 97.87912347332777,
+      "max_gain": 100.82209763603791
+    },
+    {
+      "frequency_hz": 160.0,
+      "min_gain": 68.89377544827317,
+      "max_gain": 72.34066455035683
+    },
+    {
+      "frequency_hz": 200.0,
+      "min_gain": 36.17762123808266,
+      "max_gain": 39.17485859317202
+    },
+    {
+      "frequency_hz": 500.0,
+      "min_gain": 0.9937075905170359,
+      "max_gain": 1.0894190181115655
+    },
+    {
+      "frequency_hz": 1000.0,
+      "min_gain": 0.062101026722548004,
+      "max_gain": 0.06808306580239175
+    }
+  ],
+  "budget": {
+    "one_relay_nominal_ma": 21.09704641350211,
+    "fifty_relays_nominal_a": 1.0548523206751055,
+    "fifty_relays_5pct_high_and_10pct_low_R_a": 1.230661040787623,
+    "opa_38_quads_typical_ma": 152,
+    "opa_38_quads_max_25C_ma": 182.4,
+    "opa_38_quads_max_over_temperature_ma": 228.0,
+    "ac_gain_asymptote": 100.00990099009901,
+    "gain_leg_time_constant_s": 1.01,
+    "gain_leg_highpass_hz": 0.157579151576134,
+    "C1_room_temperature_spec_R_ohm": 3000000000.0000005,
+    "noise_mode_dc_with_C1_leakage_screening_v": 0.7022629582583145,
+    "buffer_dc_v": {
+      "0.3": 0.2999699730057021,
+      "0.45": 0.4499549595085532,
+      "0.7": 0.699929937013305,
+      "0.95": 0.9499049145180567,
+      "1.2": 1.1998798920228084
+    },
+    "sensitivity_500mVpp_buffer_output_vpp": 0.4999504486474971,
+    "ideal_cap_residue_after_20s_input_v": 1.643425699466897e-09
+  },
+  "model_limits": [
+    "Linear model: not manufacturer SPICE, no saturation/recovery model.",
+    "No claim of measured noise floor, dielectric absorption recovery, relay dry-contact noise or cable stability.",
+    "C1 has a candidate case/footprint, not a sourcing or mechanical qualification. SW1 is a wired panel switch. Passive supplier selections and signal-capacitor footprints require procurement review. No PCB/DRC/fabrication outputs.",
+    "DAQ loading modeled as datasheet 1 Mohm; ADC sampling kickback and cable parasitics require bench verification."
+  ],
+  "commands": [
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "erc",
+        "--format",
+        "json",
+        "--severity-all",
+        "--exit-code-violations",
+        "-o",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\reports\\erc.json",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\project\\switchable_gain.kicad_sch"
+      ],
+      "returncode": 0,
+      "stdout": "Found 0 violations\nSaved ERC Report to C:/Users/JoseCastelblanco/Documents/Eltec_TestRig/hardware/array_switchable_gain_r1/reports/erc.json\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "netlist",
+        "--format",
+        "kicadxml",
+        "-o",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\reports\\netlist.xml",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\project\\switchable_gain.kicad_sch"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\KiCad\\10.0\\bin\\kicad-cli.exe",
+        "sch",
+        "export",
+        "pdf",
+        "-o",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\exports\\switchable_gain_schematic.pdf",
+        "C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\project\\switchable_gain.kicad_sch"
+      ],
+      "returncode": 0,
+      "stdout": "Plotted to 'C:\\Users\\JoseCastelblanco\\Documents\\Eltec_TestRig\\hardware\\array_switchable_gain_r1\\exports\\switchable_gain_schematic.pdf'.\nDone.\n",
+      "stderr": ""
+    }
+  ],
+  "source_sha256": {
+    "libraries\\gain.kicad_sym": "6e420d2b55b17cbd314f3e66a4c98a5c13d06d8e2c536faa172243ca1c05d66b",
+    "libraries\\gain.pretty\\C_0805_2012Metric.kicad_mod": "e890bdf55fa18fc6df6878eb1b5251a991e1b93985509175eb269d3d002880b4",
+    "libraries\\gain.pretty\\C_Rect_L31.5mm_W17.0mm_P27.50mm_MKS4.kicad_mod": "4c4af3d8c526e0e7923d17d327f4585c862ff3f61463ded4aa2dbab6ddacae93",
+    "libraries\\gain.pretty\\D_SOD-123.kicad_mod": "1594c737edf4922415ffb3768701c033c5cd3288f99bb0e2a6d273f83d843a35",
+    "libraries\\gain.pretty\\PinHeader_1x02_P2.54mm_Vertical.kicad_mod": "e5c0d699660a4479fa2414cc5be1835c6f52a38630dd85a2d18aab4dcd3ff8e5",
+    "libraries\\gain.pretty\\PinHeader_1x03_P2.54mm_Vertical.kicad_mod": "6a7dba97d6e733fd9d5f12d2d57f2cde29e8393e15b08d8b3e41bf2b430d83ed",
+    "libraries\\gain.pretty\\PinHeader_1x04_P2.54mm_Vertical.kicad_mod": "8952158347d7b7cc13924c62dccb0c48911af892bb009a0de27cb4d3c25cc1bb",
+    "libraries\\gain.pretty\\R_0805_2012Metric.kicad_mod": "949bbbe025b509557866ddd9fcb0403244571f3ceb4f954c9766ee622d18421c",
+    "libraries\\gain.pretty\\Relay_DPDT_Omron_G6K-2P-Y.kicad_mod": "e4ee61a3474dc26c9def6d633b0b8af34ab65169e1f2283a65e873f681aec44f",
+    "libraries\\gain.pretty\\SOIC-14_3.9x8.7mm_P1.27mm.kicad_mod": "26e119bbf40b9b7043210d97c89de9294b820b8e6e155d8c52bedfd5078508e0",
+    "libraries\\gain.pretty\\SOT-23.kicad_mod": "7fb2859c6463f3a37966a1a20c31d8bfe7d4e8459d00bb165d5a7488270816c5",
+    "project\\fp-lib-table": "2f8ed54e9b323a95b76a66c8a955c8cf75b14b59a0b6eeef0a4e9134c6dc8db8",
+    "project\\noise_filter.kicad_sch": "aa7bbe3ee42172cc06513ce0938ac042153e6744be21c108eb4d617aabc2deb7",
+    "project\\power_control.kicad_sch": "84f4fe1156673101cdec92278ff748820ff429841a544bb46c29f66249e90cdb",
+    "project\\switchable_gain.kicad_pro": "6e2c20c1795f1f4b339a883847b7fe891d54ce0b487226d21c4629c4dd8f2f81",
+    "project\\switchable_gain.kicad_sch": "a95020a4b7d3920ca13463e258c8e47d83738c2365372d890eafa3a3a94ee9f2",
+    "project\\sym-lib-table": "d61590ce559d0d55358f3589e398abddeb9e442e454e8d8fe2692b36958dfc02"
+  }
+}

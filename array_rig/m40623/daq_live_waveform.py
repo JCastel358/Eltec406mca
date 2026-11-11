@@ -692,7 +692,7 @@ def capture_from_buffer(rig: ArrayRig, live: LiveStream, t_s: np.ndarray, volts:
         range_code=rig.range_code,
         oversample=rig.oversample,
         drop_first=rig.drop_first,
-        diagnostics=None,
+        diagnostics=live.diagnostics,
         started_at=started.isoformat(timespec="seconds"),
         daq_serial=info.serial_number if info else "unknown",
         daq_model=info.name if info else "unknown",

@@ -38,7 +38,8 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 REQUIRED_HARDWARE = (
     "ACCES USB-AIO16-64MA DAQ-PACK (VID 0x1605 PID 0x8145) with the ACCES "
     "'USB-AIO16-64MA Install' driver package (AIOUSB.dll, 64-bit) and the "
-    "50-position buffer PCB on CH0-CH49"
+    "M25/HUB assembly: two M25 cards, direct DB37 cables (UPPER to J2, LOWER to J1), "
+    "and the dedicated HUB control cable"
 )
 
 
@@ -67,20 +68,19 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
         display_name="Model 40623 array (50 positions, TP120)",
         summary=(
             "Model 40623 detectors, fifty at a time: TP120 offset check and noise "
-            "test on the DAQ array rig. CALIBRATION PENDING."
+            "test on the M25/HUB array rig. Automatic switching and settling. CALIBRATION PENDING."
         ),
         details=(
-            "Flow: tech name + batch -> physical power switch -> Measure offset "
-            "(empty sockets detected; replace red parts and repeat) -> confirm vacuum "
-            "and tray map -> Measure noise. Automatic 3-20 second settling check, "
-            "60-second capture and saving.",
+            "Flow: technician + batch + installed positions -> physical RUN -> Start check. "
+            "Automatic 90-second settling, 10-second DC recording, switch to noise, "
+            "90-second settling, 100-second noise recording, save, return to DC.",
             "Offset: TP120 0.3-1.2 V, PROVISIONAL until the PCB loading is confirmed "
             "against fixture 9000054 (+8 V, 100 kOhm).",
-            "Noise: detector-level 3 Hz band-pass RMS and rectified magnitude; "
+            "Noise: DAQ-output 3 Hz/Q3 and 1-100 Hz RMS, including front-end gain; "
             "no pin-level limit yet (TP120's 10.0-37.9 mV are DMM readings behind the "
-            "legacy amplifier + rectifier-hold) - sockets show amber 'REVIEW'.",
-            "The raw 1000 SPS capture of all 50 channels is saved with every tray so the "
-            "limits can be derived later without re-measuring.",
+            "legacy amplifier + rectifier-hold) - results remain REVIEW, not PASS.",
+            "The raw 1000 SPS capture retains all 57 physical DAQ rows and four converter "
+            "readings per channel, with the 50-position map, CSV and readable report.",
             "Sensitivity / polarity (3 Hz chopper) is not implemented yet: no emitter board.",
         ),
         app_dir="m40623",

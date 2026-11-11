@@ -134,12 +134,36 @@ class LaunchTests(unittest.TestCase):
             cwd=str(version.app_dir_path),
         )
 
-    def test_cli_simulation_selects_the_matching_start_mode(self):
+    def test_normal_launch_opens_browser_workflow_directly(self):
         for args, simulate in (([], False), (["--simulate"], True)):
-            with self.subTest(args=args), unittest.mock.patch.object(rig, "EltecArraySelector") as selector:
+            with self.subTest(args=args), unittest.mock.patch.object(rig, "EltecArraySelector") as selector, \
+                    unittest.mock.patch.object(rig, "launch_version") as launch:
+                launch.return_value.wait.return_value = 7
+                self.assertEqual(rig.main(args), 7)
+                launch.assert_called_once_with(sensor_versions.get_version("40623"), simulate=simulate)
+                launch.return_value.wait.assert_called_once_with()
+                selector.assert_not_called()
+
+    def test_explicit_selector_retains_the_matching_start_mode(self):
+        for args, simulate in ((["--selector"], False), (["--selector", "--simulate"], True)):
+            with self.subTest(args=args), unittest.mock.patch.object(rig, "EltecArraySelector") as selector, \
+                    unittest.mock.patch.object(rig, "launch_version") as launch:
                 self.assertEqual(rig.main(args), 0)
                 selector.assert_called_once_with(simulate=simulate)
                 selector.return_value.mainloop.assert_called_once_with()
+                launch.assert_not_called()
+
+    def test_additional_models_keep_the_chooser_until_browser_routing_exists(self):
+        extra = sensor_versions.SensorVersion(
+            key="future", display_name="Future", summary="s", details=("d",),
+            app_dir="future", app_script="future.py", results_note="r",
+        )
+        with unittest.mock.patch.object(rig, "SENSOR_VERSIONS", (*rig.SENSOR_VERSIONS, extra)), \
+                unittest.mock.patch.object(rig, "EltecArraySelector") as selector, \
+                unittest.mock.patch.object(rig, "launch_version") as launch:
+            self.assertEqual(rig.main([]), 0)
+            selector.assert_called_once_with(simulate=False)
+            launch.assert_not_called()
 
 
 class PersistenceTests(unittest.TestCase):

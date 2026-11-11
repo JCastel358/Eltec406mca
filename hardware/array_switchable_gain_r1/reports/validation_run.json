@@ -1,0 +1,136 @@
+{
+  "checks_passed": 31,
+  "erc": 0,
+  "ignored": 0,
+  "response": [
+    {
+      "frequency_hz": 0.85,
+      "buffer_gain": 0.9999008671247068,
+      "noise_gain_ideal": 98.32475806620702,
+      "noise_gain_finite_A": 98.31539724713177,
+      "noise_relative_100_db": -0.14674227047527996
+    },
+    {
+      "frequency_hz": 3,
+      "buffer_gain": 0.9999008972949942,
+      "noise_gain_ideal": 99.86293077243126,
+      "noise_gain_finite_A": 99.85312697259383,
+      "noise_relative_100_db": -0.011913848811227232
+    },
+    {
+      "frequency_hz": 5,
+      "buffer_gain": 0.9999008990365695,
+      "noise_gain_ideal": 99.95219372039386,
+      "noise_gain_finite_A": 99.94236394675822,
+      "noise_relative_100_db": -0.004153393557243749
+    },
+    {
+      "frequency_hz": 18,
+      "buffer_gain": 0.9999008999430409,
+      "noise_gain_ideal": 100.02073553284339,
+      "noise_gain_finite_A": 100.01088860086966,
+      "noise_relative_100_db": 0.0018008787941861965
+    },
+    {
+      "frequency_hz": 50,
+      "buffer_gain": 0.9999009000090753,
+      "noise_gain_ideal": 100.1709236521874,
+      "noise_gain_finite_A": 100.16105038587042,
+      "noise_relative_100_db": 0.014833566365916342
+    },
+    {
+      "frequency_hz": 100,
+      "buffer_gain": 0.9999009000164497,
+      "noise_gain_ideal": 99.34105907396398,
+      "noise_gain_finite_A": 99.33123028124638,
+      "noise_relative_100_db": -0.057424286146146156
+    },
+    {
+      "frequency_hz": 160,
+      "buffer_gain": 0.9999009000179478,
+      "noise_gain_ideal": 70.61738463177095,
+      "noise_gain_finite_A": 70.61034266956635,
+      "noise_relative_100_db": -3.0217674179911755
+    },
+    {
+      "frequency_hz": 200,
+      "buffer_gain": 0.9999009000182939,
+      "noise_gain_ideal": 37.64863504383008,
+      "noise_gain_finite_A": 37.64485361822471,
+      "noise_relative_100_db": -8.485015291618016
+    },
+    {
+      "frequency_hz": 500,
+      "buffer_gain": 0.9999009000188103,
+      "noise_gain_ideal": 1.040253423511548,
+      "noise_gain_finite_A": 1.0401380191355662,
+      "noise_relative_100_db": -39.65721692507709
+    },
+    {
+      "frequency_hz": 1000,
+      "buffer_gain": 0.9999009000188838,
+      "noise_gain_ideal": 0.06501015374174428,
+      "noise_gain_finite_A": 0.065000504183485,
+      "noise_relative_100_db": -63.740376138028346
+    }
+  ],
+  "component_corners": [
+    {
+      "frequency_hz": 3.0,
+      "min_gain": 99.64910299970909,
+      "max_gain": 100.07518936257699
+    },
+    {
+      "frequency_hz": 50.0,
+      "min_gain": 99.51922442775867,
+      "max_gain": 100.82496367741392
+    },
+    {
+      "frequency_hz": 100.0,
+      "min_gain": 97.87912347332777,
+      "max_gain": 100.82209763603791
+    },
+    {
+      "frequency_hz": 160.0,
+      "min_gain": 68.89377544827317,
+      "max_gain": 72.34066455035683
+    },
+    {
+      "frequency_hz": 200.0,
+      "min_gain": 36.17762123808266,
+      "max_gain": 39.17485859317202
+    },
+    {
+      "frequency_hz": 500.0,
+      "min_gain": 0.9937075905170359,
+      "max_gain": 1.0894190181115655
+    },
+    {
+      "frequency_hz": 1000.0,
+      "min_gain": 0.062101026722548004,
+      "max_gain": 0.06808306580239175
+    }
+  ],
+  "budget": {
+    "one_relay_nominal_ma": 21.09704641350211,
+    "fifty_relays_nominal_a": 1.0548523206751055,
+    "fifty_relays_5pct_high_and_10pct_low_R_a": 1.230661040787623,
+    "opa_38_quads_typical_ma": 152,
+    "opa_38_quads_max_25C_ma": 182.4,
+    "opa_38_quads_max_over_temperature_ma": 228.0,
+    "ac_gain_asymptote": 100.00990099009901,
+    "gain_leg_time_constant_s": 1.01,
+    "gain_leg_highpass_hz": 0.157579151576134,
+    "C1_room_temperature_spec_R_ohm": 3000000000.0000005,
+    "noise_mode_dc_with_C1_leakage_screening_v": 0.7022629582583145,
+    "buffer_dc_v": {
+      "0.3": 0.2999699730057021,
+      "0.45": 0.4499549595085532,
+      "0.7": 0.699929937013305,
+      "0.95": 0.9499049145180567,
+      "1.2": 1.1998798920228084
+    },
+    "sensitivity_500mVpp_buffer_output_vpp": 0.4999504486474971,
+    "ideal_cap_residue_after_20s_input_v": 1.643425699466897e-09
+  }
+}

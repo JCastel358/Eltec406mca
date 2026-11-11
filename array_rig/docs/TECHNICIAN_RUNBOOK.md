@@ -1,5 +1,45 @@
 # Technician runbook — Eltec sensor test rigs
 
+## Current M25/HUB array hardware (2026-11-04)
+
+For the assembled HUB plus two M25 cards, use the
+[current 50-piece instructions](../../README.md#current-m25hub-hardware--2026-11-04).
+The normal Array Rig launcher now performs an automatic settled DC/noise
+check, approximately 4 minutes 50 seconds. Physical RUN/STOP, cooling,
+vacuum preparation and supply checks remain manual. The single-sensor
+fan guidance below does not apply to the M25 stack: its cooling must run.
+The old array instructions in §3b describe `--frontend legacy` only.
+
+The current browser app has three screens:
+
+1. **Batch setup:** choose model 40623, enter your name and batch number,
+   select Actual detectors, then press **Enter** or continue.
+2. **Power-on checklist:** check the detector box is powered, the main
+   switch is **ON**, and the physical **START/RUN** button has been pressed.
+   Confirm cooling, supply and vacuum preparation. Press **Enter** to view
+   the tray; acquisition has not started yet.
+3. **Detector tray:** press **Start**. All 50 positions and progress remain
+   together. **Stop** interrupts the check and saves the available data as
+   incomplete; software Stop does not switch off hardware power. When saving
+   finishes, click a detector to scroll to its waveforms and details.
+
+After a run, **Next batch** or **Enter** lets you enter a new batch number
+while keeping your name and model. The checklist appears again before the
+next run. **Main setup** or **Esc** returns to the initial screen while idle.
+Wait for the run to finish stopping and saving before navigating away.
+Results and the interactive HTML report save automatically; all detector
+details are also available directly on the tray screen.
+
+If incoming DAQ data pause, the app can retry the affected recording up to
+three attempts while keeping valid completed offset data. Let the displayed
+recovery finish, or use Stop. It never fills missing samples or joins separate
+noise recordings. If noise remains incomplete, use **Retry noise**; after
+reopening the app, use **Recover interrupted batch** for the latest eligible
+saved run. Confirm the same detectors, wiring and alignment are still in
+place and fixture power has stayed on. A saved-run retry needs 90 seconds of
+noise settling and a fresh 100-second capture. If anything changed or power
+was cycled, run a new full check. The previous data remain saved separately.
+
 How to test a batch of sensors on the ESP32 bench rig (one part at a time,
 §1–§3) or a tray of fifty on the DAQ array rig (§3b). No programming
 knowledge needed. If something on this page does not match what you see on

@@ -7,13 +7,13 @@ Confirmed by the user on 2026-09-10: detector connector -> custom PCB with
 are not in this signal path. No paired readings from the old fixture are
 available yet.
 
-The supplied [9000232 rev B drawing](../../docs/40623_legacy_fixture/9000232_revB_filter.jpeg)
+The supplied [9000232 rev B drawing](../docs/40623_legacy_fixture/9000232_revB_filter.jpeg)
 specifies a 3 Hz multiple-feedback band-pass, Q=3, approximately 1 Hz
 bandwidth, and nominal overall gain 1000. The
-[9000272 drawing](../../docs/40623_legacy_fixture/9000272_revJ_rectifier_hold.jpeg)
+[9000272 drawing](../docs/40623_legacy_fixture/9000272_revJ_rectifier_hold.jpeg)
 specifies absolute-value rectification, gain 10, 10-second smoothing and a
 100-second peak-hold circuit. The
-[TP120 noise page](../../docs/40623_legacy_fixture/TP120_noise_page5.jpeg)
+[TP120 noise page](../docs/40623_legacy_fixture/TP120_noise_page5.jpeg)
 sets 10.0-37.9 mV at the final DC meter under vacuum after at least 60 seconds
 following reset. These are not raw detector RMS or peak-to-peak limits.
 
@@ -58,6 +58,7 @@ pending confirmation of detector bias/loading against TP120.
    representative detector DC level, through the same PCB, cables and DAQ
    settings. A grounded input at the bottom of a unipolar range is clipped
    and is not a usable noise-floor measurement. Check anti-alias behavior.
+   `daq_noise_floor_check.py` (below) does this comparison in one capture.
 2. Measure the same identified detectors on both rigs under matching vacuum
    and bias conditions. Include quiet, noisy and marginal units, not only
    passing ones. Keep raw captures, legacy meter readings and repeat runs.
@@ -75,6 +76,30 @@ but do not prove recovery of an undithered signal smaller than one code.
 The software records a white-quantization estimate as an estimate, not a
 measured instrument floor. Additional analog gain/filtering may be needed;
 the reference measurements must establish this.
+
+## Instrument floor check
+
+`daq_noise_floor_check.py` answers "can this acquisition setup resolve a
+part's noise at all?" from one capture (`capture`, or `replay` of a saved
+one) in which every socket has a role: empty as-is, grounded, quiet source,
+loaded, plus the DAQ's onboard reference with `--daq-reference`. It prints
+the 3 Hz/Q=3 band RMS per role, the ideal quantization of every DAQ range,
+and compares the empty-socket floor with TP120's window brought to the pin
+on the nominal x1000 x10 chain - a scale for the comparison, never a limit -
+together with the break-even chain gain (the real gain below which the
+measured floor would already be acceptable), the best case any oversampling
+or range change could reach under the DAQ's 500 kS/s aggregate ceiling
+(with the capture command that measures it) and the gain needed ahead of
+the DAQ. It never issues a part verdict and never writes a calibration file.
+
+Two traps it handles. A grounded input on the unipolar 0-5 V range sits on
+code 0 and reads flat because the converter clips, not because the noise is
+gone: such sockets are reported CLIPPED and excluded from every floor
+figure. A part still settling puts slope / (Q w0) of its DC ramp through the
+band-pass (17 mV over 60 s reads as 5 uV): such channels are flagged
+SETTLING. The empty sockets as-is are a legitimate same-path background -
+their buffers rest a few millivolts above zero, unclipped. First result:
+CALIBRATION_RECORD §4b.1, "Instrument floor through the PCB".
 
 ## Calibration file
 
@@ -129,6 +154,7 @@ From the `m40623` directory:
 ```powershell
 python replay_legacy_noise.py "C:\captures\tray.npz" --output "C:\captures\tray_3hz.json"
 python replay_legacy_noise.py "C:\captures\tray.npz" --output "C:\captures\tray_3hz.csv"
+python daq_noise_floor_check.py replay "C:\captures\tray.npz" --report "C:\captures\tray_floor.json"   # floor assessment, roles from the saved map
 ```
 
 The output path is required and must be a new `.json` or `.csv` file. The replay

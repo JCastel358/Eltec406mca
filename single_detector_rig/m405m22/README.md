@@ -7,7 +7,7 @@ high-gain thermally compensated pyroelectric IR detector, following document
 **TP412** (offset, sensitivity/polarity at 1 Hz, and noise). The sensitivity
 gate is **live** with the lot-500 pairwise calibration (factor 4.30, see
 below); the authoritative list of every limit and its provenance is
-[`docs/CALIBRATION_RECORD.md`](../../../docs/CALIBRATION_RECORD.md).
+[`docs/CALIBRATION_RECORD.md`](../../array_rig/docs/CALIBRATION_RECORD.md).
 
 The 406MCA v6/v6.1 standalone applications this build was derived from were
 retired on 2026-08-28 (git tag `archive/pre-cleanup-2026-08-28`); the live

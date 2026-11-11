@@ -1,0 +1,5 @@
+# Runtime versions verified on Windows with 64-bit Python 3.14.5.
+# tkinter comes with the Windows Python installer; the ACCES driver is separate.
+numpy==2.4.6
+pyserial==3.5
+matplotlib==3.10.9

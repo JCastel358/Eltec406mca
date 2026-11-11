@@ -1,5 +1,21 @@
 # Data map — where results, captures and calibration files live
 
+## M25/HUB tray checks (2026-11-04)
+
+Actual runs append a new uniquely named directory beneath
+`Documents/Eltec_40623_Test_Results/40623_array_daq/mod50_checks/`.
+Each contains `report.html`, `summary.json`, `results.csv` (all 50 positions),
+and available `dc_raw.npz`/`noise_raw.npz` files. Cancelled/faulted attempts
+are kept with incomplete status. Existing production evidence is untouched.
+Raw `converter_counts` shape is `[scans,57,4]`; the first conversion is
+discarded only during analysis. Identity, mapping, population, settling,
+status and final acquisition diagnostics accompany the raw data.
+
+Demo runs go to the system temporary `eltec-array-simulation/mod50_checks`
+directory. `ELTEC_ARRAY_RESULTS_ROOT` selects a separate base with
+`mod50_checks/simulation` for demos; explicit `--output-root` is also available.
+Software validation uses only temporary paths, never real result folders.
+
 **Nothing the apps record is stored inside this repository.** Every batch CSV,
 attempt log, waveform snapshot, raw noise capture and reference-calibration
 file is written to a per-model folder under the signed-in user's `Documents`.
@@ -93,9 +109,9 @@ Simulation uses a separate root: the system temp directory's
 overridden. Rows carry `simulated=YES` and demo noise-limit provenance.
 
 CSV columns are documented in each model README
-([405](../single_detector_rig/m405m22/README.md),
-[406](../single_detector_rig/m406mca/README.md),
-[449](../single_detector_rig/m449m18/README.md)). Older batch files keep their
+([405](../../single_detector_rig/m405m22/README.md),
+[406](../../single_detector_rig/m406mca/README.md),
+[449](../../single_detector_rig/m449m18/README.md)). Older batch files keep their
 original header when columns are added later — rows stay aligned, new columns
 are simply absent. A `NOT MEASURED` row (rig fault, nothing recorded) has empty
 measurement columns and `failure_mode_tag = NM`; it is excluded from yield.
@@ -155,6 +171,7 @@ The raw captures themselves (`.npz`) are **not** in git (they are ignored by
 | `array_rig/m40623/daq_bench_probe.py` | live DAQ → stdout, optional `.npz` (`--save`) | Bench checks of the array rig's acquisition path (identity, self-cal, config read-back, own-scale scan — the -HG question needs a known, metered voltage on an input — unsettled conversion slot, instrument floor, 60 s stream integrity, crosstalk). Engineering only. |
 | `array_rig/m40623/daq_rig_readout.py` | live DAQ → stdout; CSV (`-o`) and `.npz` (`--npz`) only where told | The array rig's bench readout (offsets of any or all positions, captures, text-mode watch). Writes nothing unless given an output path — never under `Documents`. Its `.npz` uses the bench probe's key layout (+ `drop_first`) and replays in `replot_noise_capture.py` given the file path. Engineering only, no verdicts. |
 | `array_rig/m40623/daq_live_waveform.py` | live DAQ → screen; `s` or `--save-on-exit` → `<save-dir>/daq_live_<YYYYmmdd_HHMMSS>.npz` | The array rig's live scope. `--save-dir` defaults to the current working directory (never `Documents`); a saved file holds the whole buffer of all channels (up to `--max-window`) in the readout's layout and replays in `replot_noise_capture.py` given the path. Engineering only, no verdicts. |
+| `array_rig/m40623/daq_noise_floor_check.py` | live DAQ → stdout; or any saved `.npz` (tester `tray_*_raw.npz`, readout / viewer / probe layout) → stdout; `--report FILE.json` / `--npz FILE.npz` only where told | Instrument-floor assessment of the array acquisition setup: a role per socket (empty as-is, grounded, quiet source, loaded, the onboard reference), the 3 Hz/Q=3 band RMS per role, the empty-socket floor vs TP120's window brought to the pin on the nominal chain (scale only), quantization of every range, break-even chain gain, gain needed ahead of the DAQ. Reads the tester's captures in place and never modifies them; refuses to write into an `Eltec_*_Test_Results` folder or over an existing file. Engineering only, never a part verdict. |
 | `engineer_tools/array_parity/array_noise_parity.py` | `noise_captures/lot_<lot>/tray_*.npz` (or the lot CSV) + a typed legacy data sheet | Pairs legacy-fixture DMM readings with array captures by sensor id (or tray + position), fits the chain factor (median ratio and regression through origin, worst-window and median-window metrics), replays other bands, proposes the pin-level noise limits and writes `calibration/parity_<date>.csv|.png` (CALIBRATION_RECORD §4b.2). |
 | `engineer_tools/reference_unit/reference_candidate_qualifier.py` | live rig → `~/Documents/Eltec_ReferenceCandidates/<label>/<label>_run<n>_<stamp>.json|.npz`, `comparison_<stamp>.csv|.png` | Reference-unit candidate selection: each run is the production 406 MCA path on one candidate (offset settle series, the adaptive 10 Hz capture, a drive hold, the post-emitter offset re-read) saved as JSON (numbers + series) and npz (raw waveforms, `waveform_v` + `sample_rate_hz` so the replot tool can read them); `compare` ranks the candidates. Its own folder, never an evidence folder (the tool refuses `Eltec_*_Test_Results`). Engineering only, no verdicts. |
 | `engineer_tools/noise_band/replot_noise_capture.py --model 40623 [--position 2-4]` | `noise_captures/lot_<lot>/tray_*_raw.npz` | Replays one or every loaded position of an array tray capture through the production pipeline and alternative bands; "no limit" until the array limits exist. |
@@ -177,7 +194,7 @@ Routine (owner: the rig engineer):
 2. Copy the zip to the company share / cloud drive (not the same laptop).
 3. Open the zip once and confirm `lot_500` CSVs and `noise_captures\lot_500\`
    are inside.
-4. Note the backup date in [`CHANGELOG.md`](../CHANGELOG.md) when a
+4. Note the backup date in [`CHANGELOG.md`](../../CHANGELOG.md) when a
    calibration lot was added.
 
 Keep the lot-500 files permanently. Test-lot files (`lot_test*`) can be pruned

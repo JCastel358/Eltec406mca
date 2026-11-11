@@ -1,0 +1,7 @@
+__pycache__/
+*.kicad_prl
+*.lck
+*-backups/
+reports/*_pinmap.png
+reports/wima_p*.png
+reports/schematic_page_*.png

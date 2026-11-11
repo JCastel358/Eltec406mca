@@ -10,21 +10,22 @@ sensor model; the host application selects what it needs at runtime.
 
 | File | What it is |
 | --- | --- |
-| `Eltec.ino` | The live, editable sketch — **v3.2**. Its header comment is the authoritative command reference and version history. Byte-identical to the newest snapshot in `versions/`. |
-| `versions/` + [`versions/README.md`](versions/README.md) | Frozen copy of every released build (v1.5 … v3.2), provenance, **which firmware belongs on which rig**, revert commands, the v1.9 reconstruction story. Read-only. |
+| `Eltec.ino` | The live, editable sketch — **v3.4** (AIN0–AIN7 streaming). Its header comment is the authoritative command reference and version history. Byte-identical to the newest snapshot in `versions/`. |
+| `versions/` + [`versions/README.md`](versions/README.md) | Frozen build snapshots through v3.4, provenance, **which firmware belongs on which rig**, revert commands, the v1.9 reconstruction story. Read-only. |
 | `flash_firmware.py` | One-command compile + upload + verify. Finds the Arduino IDE's bundled `arduino-cli`, auto-detects the CP210x port, confirms `IDN?` and `GATE?` afterwards. |
 | `run_flash_firmware.cmd` / `.sh` | Double-click wrappers for the flasher (Windows / Xubuntu). |
 | `esp32_rig_readout.py` | Host-side serial wrapper (`Esp32Rig`) + CLI for bench checks (`ports`, `offset`, `ref`, `pwm`, `gate`, `stream`, `test`, `noisecmp`). |
-| `live_waveform.py` | Rolling matplotlib scope of one ADC channel with the sync bit, link-health stats, an emitter toggle (SPACE), a live time window (`]` / `[`, 0.25–60 s, ceiling set by `--max-window`) and `--freq` / `--duty` drive selection (`--duty` needs v3.2). |
+| `live_waveform.py` | Rolling matplotlib scope with AIN0–AIN7 input buttons (or keys `0`–`7`), sync bit, link-health stats, emitter toggle (SPACE), live time window (`]` / `[`, 0.25–60 s, ceiling set by `--max-window`) and `--freq` / `--duty` drive selection (`--duty` needs v3.2). All eight inputs need v3.4. |
 | `ESP32_ADS1256_Wiring_v2_0.md` | **Current wiring** of the unified bench rig (two isolated batteries, GPIO33 gate). |
 | `ESP32_ADS1256_Wiring_legacy_v1_9.md` | Wiring of the retired standalone 406MCA rigs (single 6 V SLA on AIN7, GPIO25 gate, firmware v1.9). Keep only for such a rig. Firmware header comments up to v3.2 still call it by its old name `ESP32_ADS1256_Wiring_v1_7.md` (renamed 2026-08-28; snapshots are never edited). |
 
 ## Which firmware goes on the board
 
-- **Unified bench rig (`single_detector_rig`, all models): v3.2.** The bench
-  board currently runs **v3.1** — v3.2 (adds `PWM,DUTY`) is compiled but not
-  yet flashed or bench-verified; the 449 M18 mode refuses anything older than
-  v3.2, the 405 M22 and 406 MCA modes also run on v2.1–v3.1.
+- **Unified bench rig (`single_detector_rig`, all models): v3.4** adds the
+  full AIN0–AIN7 live viewer. Existing model requirements are unchanged:
+  449 M18 needs v3.2+ for `PWM,DUTY`; 405 M22 and 406 MCA also run on v2.1–v3.1.
+  The v3.4 change has not been flashed or bench-verified in this update.
+  Use `--check` below to read the connected board's actual version.
 - **Legacy standalone 406MCA rig (retired v6/v6.1 apps): v1.9 only.** Those
   apps were qualified on the gain-2 buffered front end and never send `FE`
   commands; v2.0+ halves the ADC resolution and changes the noise floor.
@@ -52,7 +53,7 @@ bridge (COM3 on the bench laptop, `/dev/ttyUSB0` on Xubuntu — user in
 ```bash
 arduino-cli compile --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
 arduino-cli upload -p COM3 --fqbn esp32:esp32:esp32doit-devkit-v1 Arduino/Eltec
-# then IDN? must answer ELTEC-ESP32-ADS1256,v3.2
+# then IDN? must answer ELTEC-ESP32-ADS1256,v3.4
 ```
 
 In the Arduino IDE the board is not auto-identified (plain CP210x): pick
@@ -66,7 +67,26 @@ update `REQUIRED_FIRMWARE` in `single_detector_rig/sensor_versions.py` →
 CHANGELOG entry → **commit the same day** (v1.9 had to be reconstructed because
 the sketch was edited twice without a commit).
 
-## Serial protocol (v3.2)
+## Live waveform input selection
+
+```bash
+python Arduino/Eltec/live_waveform.py --channel AIN7
+```
+
+Use the **AIN0–AIN7 buttons** or keys **0–7** to change inputs while watching.
+The highlighted input and plot title follow the board's acknowledgement.
+Each switch briefly stops/restarts acquisition and clears the trace and cycle
+average; the emitter frequency, duty and on/off state stay in place.
+`--channel` is case-insensitive; `sensor` and `ref` remain aliases for AIN0
+and AIN1. Older firmware still supports those two inputs; the speedRoll
+v3.3 build also supports AIN2/AIN3. The viewer reports when an input needs
+a firmware update instead of silently falling back to AIN0.
+
+All eight inputs are measured against **AINCOM**, using the selected `--fe`
+front end at 1000 SPS, one input at a time. AIN7 displays **volts at the ADC
+pin**, without the divider scaling used by `BAT?`.
+
+## Serial protocol (v3.4)
 
 Each command and reply is one `\n`-terminated ASCII line at 500000 baud. On
 boot the board repeats `READY,ELTEC-ESP32-ADS1256` every 2 s until the first
@@ -76,7 +96,7 @@ they need after every connect.
 
 | Command | Reply | Notes |
 | --- | --- | --- |
-| `IDN?` | `ELTEC-ESP32-ADS1256,v3.2` | Version check — every host refuses builds older than it needs. |
+| `IDN?` | `ELTEC-ESP32-ADS1256,v3.4` | Version check — every host refuses builds older than it needs. |
 | `STATUS?` | `STATUS,pwm=<0\|1>,streaming=<0\|1>,vref=<V>,rate=<SPS>,pwm_hz=<Hz>,pwm_duty=<%>` | |
 | `PWM,ON` / `PWM,OFF` | `OK,PWM,ON` / `OK,PWM,OFF` | Emitter drive at the current frequency/duty. |
 | `PWM,FREQ,<hz>` | `OK,PWM,FREQ,<hz>` | v1.9+. 0.1–20 Hz, immediate, not persisted (boots 10 Hz). |
@@ -89,6 +109,7 @@ they need after every connect.
 | `OFFSET?` / `REF?` | `OFFSET,<V>` / `REF,<V>` | Median of 24 reads ~3 ms apart on AIN0 / AIN1. |
 | `BAT?` | `BAT,<V>` | AIN7 divider × ratio. **Inaccurate and unused on the current fixture** (no battery on AIN7; unbuffered input loads the divider). |
 | `STREAM,START` / `STREAM,START,REF` | `STREAM,BEGIN,1000,SENSOR\|REF` then `D,<t_us>,<raw_code>,<volts>,<sync>` per sample | AIN0 / AIN1 at 1000 SPS. |
+| `STREAM,START,AIN<n>` | `STREAM,BEGIN,1000,AIN<n>` then the same `D,...` format | v3.4: n = 0–7, single-ended vs AINCOM. Stop the stream before selecting another input. |
 | `STREAM,STOP` | `STREAM,END,<count>,<adc_overruns>` | Overruns must be zero for a valid capture. |
 | anything invalid | `ERR,<message>` | |
 

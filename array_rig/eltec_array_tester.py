@@ -1,9 +1,11 @@
 """
-Eltec Array Rig — detector-model selector for the 50-position DAQ rig.
+Eltec Array Rig — entry point for the 50-position DAQ rig.
 
 The mirror of ``single_detector_rig/eltec_rig_tester.py`` for the second
 rig. One desktop entry point for every detector model the array PCB can
-hold. The technician picks the model from a dropdown and presses Start; the
+hold. The normal launcher opens the browser setup directly. The earlier
+desktop chooser remains available with ``--selector``. There, the
+technician picks the model from a dropdown and presses Start; the
 selected model's tester application then runs exactly as qualified (same
 flow, limits, CSV format and results folder). The selection is remembered
 between sessions.
@@ -45,10 +47,10 @@ from sensor_versions import (
 )
 
 APP_TITLE = "Eltec Array Rig"
-# 0.2 (2026-09-08): a compact branded start screen and a visible simulation
-# option. Simulation belongs to each launched model; the selector never
-# connects to hardware or changes measurement limits.
-APP_VERSION = "0.2"
+# 0.3 (2026-11-04): the browser owns model/name/batch setup for the current
+# M25/HUB workflow. Keep the old selector as an explicit option; the launcher
+# still delegates to an isolated model process and never contacts hardware.
+APP_VERSION = "0.3"
 STATE_DIR_NAME = "eltec-array-rig"
 STATE_FILE_NAME = "state.json"
 
@@ -380,7 +382,13 @@ class EltecArraySelector(tk.Tk):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Start an Eltec array detector test.")
     parser.add_argument("--simulate", action="store_true", help="Start in no-hardware simulation mode.")
+    parser.add_argument("--selector", action="store_true", help="Open the earlier desktop model chooser.")
     args = parser.parse_args(argv)
+    # The only current model has its own browser setup screen. Do not make
+    # operators choose it twice. If another model is registered later, fall
+    # back to the established chooser until its browser routing is defined.
+    if not args.selector and len(SENSOR_VERSIONS) == 1 and SENSOR_VERSIONS[0].key == "40623":
+        return launch_version(SENSOR_VERSIONS[0], simulate=args.simulate).wait()
     app = EltecArraySelector(simulate=args.simulate)
     app.mainloop()
     return 0

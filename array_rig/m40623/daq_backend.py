@@ -508,6 +508,10 @@ class StreamDiagnostics:
     ended_early: bool = False
     callback_error: str | None = None
     consumer_cpu_s: float | None = None
+    clock_stop_status: int | None = None
+    bulk_end_status: int | None = None
+    bulk_worker_status: int | None = None
+    cleanup_error: str | None = None
 
     @property
     def elapsed_s(self) -> float | None:
@@ -531,6 +535,12 @@ class StreamDiagnostics:
 
     def problems(self, *, max_rate_error: float = 0.01) -> list[str]:
         problems: list[str] = []
+        for name in ("clock_stop_status", "bulk_end_status", "bulk_worker_status"):
+            status = getattr(self, name)
+            if status not in (None, 0):
+                problems.append(f"{name}: Win32 status {status}")
+        if self.cleanup_error:
+            problems.append(f"cleanup error: {self.cleanup_error}")
         if self.callback_error:
             problems.append(f"callback error: {self.callback_error}")
         if self.pool_too_small_events:
@@ -625,6 +635,9 @@ CALLBACK_FLAG_END_OF_STREAM = 0x02
 CALLBACK_FLAG_POOL_TOO_SMALL = 0x04
 STREAM_BLOCK_GRANULE_BYTES = 512  # BufSize must be a multiple of 512 (software reference)
 CONNECT_RETRY_S = 0.5
+# A failed DLL shutdown may still call its callback. Retain references for
+# process lifetime, and refuse reuse of that backend rather than free one.
+_FAILED_SHUTDOWN_CALLBACKS: list[Any] = []
 
 # Prototypes of every DLL entry point this backend calls (from the shipped
 # AIOUSB.cs and the USB Software Reference Manual; all cdecl).
@@ -647,6 +660,9 @@ _SIGNATURES: dict[str, tuple[list[Any], Any]] = {
     "ADC_BulkContinuousEnd": ([_UL, ctypes.POINTER(_UL)], _UL),
     "ADC_BulkAcquire": ([_UL, _UL, ctypes.c_void_p], _UL),
     "ADC_BulkPoll": ([_UL, ctypes.POINTER(_UL)], _UL),
+    "DIO_Configure": ([_UL, ctypes.c_ubyte, ctypes.c_void_p, ctypes.c_void_p], _UL),
+    "DIO_WriteAll": ([_UL, ctypes.c_void_p], _UL),
+    "DIO_ReadAll": ([_UL, ctypes.c_void_p], _UL),
 }
 
 
@@ -754,6 +770,8 @@ class AiousbDaq:
         self._callback_error: str | None = None
         self._stop_requested = False
         self._lock = threading.RLock()
+        self._r4_dio_owned = False
+        self._shutdown_failed = False
 
     # -- lifecycle ---------------------------------------------------------
     @property
@@ -836,6 +854,54 @@ class AiousbDaq:
             self._write_config_block(config)
             self.config = config
             return config
+
+    def configure_r4_dio(self, *, dedicated_ports: bool = False) -> None:
+        """Explicitly reserve DIO0..7 as outputs, DIO8..15 as inputs.
+
+        ACCES DIO_Configure uses one direction bit per byte group. All
+        unused output bits are low. Never called by legacy profiles.
+        """
+        with self._lock:
+            if not dedicated_ports:
+                raise ValueError("R4 requires exclusive use of both DIO byte ports.")
+            if self.is_streaming:
+                raise StreamStateError("Stop acquisition before reserving R4 DIO.")
+            if self.info is None or self.info.product_id != 0x8145:
+                raise DaqError("R4 DIO is verified only for USB-AIO16-64MA (PID 8145).")
+            mask = (ctypes.c_ubyte * 1)(1)
+            data = (ctypes.c_ubyte * 2)(0, 0)
+            check_status("DIO_Configure", self._lib.DIO_Configure(self.device_index, 0, mask, data))
+            self._r4_dio_owned = True
+
+    def write_r4_controls(self, route_noise: bool, noise_gain: bool) -> None:
+        with self._lock:
+            if not self._r4_dio_owned or self.is_streaming:
+                raise StreamStateError("R4 controls require reserved ports and stopped acquisition.")
+            if noise_gain and not route_noise:
+                raise ValueError("High gain on the DC route is prohibited.")
+            data = (ctypes.c_ubyte * 2)(int(route_noise) | (int(noise_gain) << 1), 0)
+            check_status("DIO_WriteAll", self._lib.DIO_WriteAll(self.device_index, data))
+
+    def read_mod50_status(self) -> int:
+        """Read all eight modular HUB status bits; readiness is active-low.
+
+        Keep the original R4 decoder separate: its three-bit contract is not
+        the two-card M25/HUB contract.
+        """
+        with self._lock:
+            if not self._r4_dio_owned:
+                raise StreamStateError("MOD50 requires reserved DIO0..15 ports.")
+            data = (ctypes.c_ubyte * 2)()
+            check_status("DIO_ReadAll", self._lib.DIO_ReadAll(self.device_index, data))
+            return int(data[1])
+
+    def read_r4_controls(self) -> tuple[bool, bool, bool]:
+        with self._lock:
+            if not self._r4_dio_owned:
+                raise StreamStateError("R4 DIO ports have not been reserved.")
+            data = (ctypes.c_ubyte * 2)()
+            check_status("DIO_ReadAll", self._lib.DIO_ReadAll(self.device_index, data))
+            return bool(data[1] & 1), bool(data[1] & 2), bool(data[1] & 4)
 
     def _write_config_block(self, config: AdcConfig) -> None:
         """``ADC_SetConfig`` + byte-exact read-back of ``config``."""
@@ -945,6 +1011,8 @@ class AiousbDaq:
         average: bool = True,
     ) -> StreamHeader:
         config = self._require_config()
+        if self._shutdown_failed:
+            raise StreamStateError("Prior DLL shutdown was not confirmed; restart the application before reuse.")
         if scan_hz <= 0:
             raise ValueError("scan_hz must be positive.")
         if buffer_bytes <= 0 or buffer_bytes % STREAM_BLOCK_GRANULE_BYTES:
@@ -994,8 +1062,7 @@ class AiousbDaq:
                     self._lib.CTR_StartOutputFreq(self.device_index, 0, ctypes.byref(timer_hz)),
                 )
             except DaqStatusError:
-                self._end_bulk()
-                self._streaming = False
+                self.stop_stream()
                 raise
             self._diagnostics.started_monotonic = self._monotonic()
             self._diagnostics.actual_timer_hz = float(timer_hz.value)
@@ -1069,9 +1136,18 @@ class AiousbDaq:
 
     def _end_bulk(self) -> None:
         stop_hz = ctypes.c_double(0.0)  # 0 Hz stops the pacing clock
-        self._lib.CTR_StartOutputFreq(self.device_index, 0, ctypes.byref(stop_hz))
+        stop_status = self._lib.CTR_StartOutputFreq(self.device_index, 0, ctypes.byref(stop_hz))
+        if self._diagnostics is not None:
+            self._diagnostics.clock_stop_status = int(stop_status)
+        if stop_status == 0 and self._diagnostics is not None:
+            # Sampling has stopped; the driver's thread/USB cleanup below
+            # can block and must not lower the measured acquisition rate.
+            self._diagnostics.stopped_monotonic = self._monotonic()
         status = _UL(0)
-        check_status("ADC_BulkContinuousEnd", self._lib.ADC_BulkContinuousEnd(self.device_index, ctypes.byref(status)))
+        end_status = self._lib.ADC_BulkContinuousEnd(self.device_index, ctypes.byref(status))
+        if self._diagnostics is not None:
+            self._diagnostics.bulk_end_status = int(end_status)
+            self._diagnostics.bulk_worker_status = int(status.value)
 
     def stop_stream(self, *, timeout_s: float = 2.0) -> StreamDiagnostics:
         with self._lock:
@@ -1081,8 +1157,13 @@ class AiousbDaq:
             self._stop_requested = True
             try:
                 self._end_bulk()
+            except Exception as exc:
+                diagnostics.cleanup_error = repr(exc)
             finally:
-                diagnostics.stopped_monotonic = self._monotonic()
+                if diagnostics.stopped_monotonic is None:
+                    # A failed clock stop gives no earlier confirmed stop
+                    # time. Retain the conservative cleanup-time fallback.
+                    diagnostics.stopped_monotonic = self._monotonic()
                 self._streaming = False
             # ADC_BulkContinuousEnd joins the DLL's own threads before it
             # returns, so the last (zero-size, END-flagged) buffer has already
@@ -1092,11 +1173,19 @@ class AiousbDaq:
             self._stop_event.set()
         if self._consumer is not None:
             self._consumer.join(timeout=timeout_s)
+            if self._consumer.is_alive():
+                diagnostics.cleanup_error = "DAQ consumer did not finish before shutdown timeout"
         if self._deinterleaver is not None:
             diagnostics.leftover_bytes = self._deinterleaver.pending_bytes
         if self._callback_error and not diagnostics.callback_error:
             diagnostics.callback_error = self._callback_error
-        self._callback = None  # safe only after ADC_BulkContinuousEnd returned
+        # Keep the callback alive if the DLL did not confirm shutdown.
+        if diagnostics.bulk_end_status == 0:
+            self._callback = None
+        else:
+            self._shutdown_failed = True
+            if self._callback is not None:
+                _FAILED_SHUTDOWN_CALLBACKS.append(self._callback)
         return diagnostics
 
     def drain_stream(self) -> list[np.ndarray]:

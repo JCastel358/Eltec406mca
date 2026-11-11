@@ -1,0 +1,24 @@
+test_band_edges_and_3hz_q3 (test_r4_frontend.R4Analysis.test_band_edges_and_3hz_q3) ... ok
+test_clipping_stationarity_and_integrity_cannot_pass (test_r4_frontend.R4Analysis.test_clipping_stationarity_and_integrity_cannot_pass) ... ok
+test_measured_gain_rms_psd_mean_abs_and_hold (test_r4_frontend.R4Analysis.test_measured_gain_rms_psd_mean_abs_and_hold) ... ok
+test_nonfinite_and_range_mismatch_remain_serializable_invalid (test_r4_frontend.R4Analysis.test_nonfinite_and_range_mismatch_remain_serializable_invalid) ... ok
+test_reject_legacy_and_invalid_calibration (test_r4_frontend.R4Analysis.test_reject_legacy_and_invalid_calibration) ... ok
+test_replay_equivalence_and_raw_samples (test_r4_frontend.R4Analysis.test_replay_equivalence_and_raw_samples) ... ok
+test_short_hold_and_repeated_analysis_reset (test_r4_frontend.R4Analysis.test_short_hold_and_repeated_analysis_reset) ... ok
+test_missing_power_is_rejected_in_dc (test_r4_frontend.R4Modes.test_missing_power_is_rejected_in_dc) ... ok
+test_mode_change_drains_ends_old_stream (test_r4_frontend.R4Modes.test_mode_change_drains_ends_old_stream) ... ok
+test_nominal_gain_never_used_as_calibration (test_r4_frontend.R4Modes.test_nominal_gain_never_used_as_calibration) ... ok
+test_only_two_modes_and_safe_sequences (test_r4_frontend.R4Modes.test_only_two_modes_and_safe_sequences) ... ok
+test_power_loss_during_capture_retains_signed_partial_data (test_r4_frontend.R4Modes.test_power_loss_during_capture_retains_signed_partial_data) ... ok
+test_settling_and_connection_gate (test_r4_frontend.R4Modes.test_settling_and_connection_gate) ... ok
+test_unsettled_override_remains_invalid (test_r4_frontend.R4Modes.test_unsettled_override_remains_invalid) ... ok
+test_clock_stop_and_worker_status_preserved (test_r4_frontend.ShutdownIntegrity.test_clock_stop_and_worker_status_preserved) ... ok
+test_dio_byte_directions_and_conditioned_readback (test_r4_frontend.ShutdownIntegrity.test_dio_byte_directions_and_conditioned_readback) ... ok
+test_end_failure_still_cleans_consumer_and_keeps_callback (test_r4_frontend.ShutdownIntegrity.test_end_failure_still_cleans_consumer_and_keeps_callback) ... ok
+test_existing_launcher_routes_explicit_r4_profile_only (test_r4_frontend.ShutdownIntegrity.test_existing_launcher_routes_explicit_r4_profile_only) ... ok
+test_live_final_failure_is_error_and_is_saved (test_r4_frontend.ShutdownIntegrity.test_live_final_failure_is_error_and_is_saved) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 1.142s
+
+OK

@@ -13,6 +13,243 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## GitHub handoff and another-computer setup (2026-11-11)
+
+- Include the pending MOD50 dashboard/recovery, DAQ, live-viewer/firmware,
+  engineering tools, hardware package and documentation updates in Git.
+- Add `requirements.txt` with the runtime versions installed for validation,
+  plus Windows installation, driver, launcher and simulation instructions
+  in the root README. Saved measurements and calibration files remain a
+  separate transfer outside the repository.
+- Repair README/manual links after the existing move into `array_rig/docs/`.
+  Ignore new local `tmp/` validation output and checkpoints without removing
+  historical tracked files or local evidence.
+- Enable Git long-path support in the Windows clone instructions: deeply
+  nested copies otherwise fail while extracting archived hardware exports.
+- Validation: `python run_all_tests.py` completed 1,150 tests with seven
+  skips and the existing Windows-only installer error; no unexpected
+  failures. No physical acquisition or firmware flash was performed.
+
+## Retain valid offset data and recover interrupted noise acquisition (2026-11-04)
+
+- Revision 2026-11-04.3 adds bounded automatic stage retries after recognized
+  DAQ delivery interruptions, with clean shutdown and unchanged verified
+  frontend state required. Each attempt is a fresh complete record; missing
+  samples are never joined and sample-rate/clock acceptance is unchanged.
+- Valid DC survives a noise retry. Rejected raw attempts and diagnostics are
+  retained with unique filenames; only the latest accepted stage enters the
+  measurement result. Unsafe hardware/state errors and operator Stop do not
+  retry automatically.
+- Added explicit noise-only recovery from an eligible saved incomplete run,
+  with unchanged-fixture confirmation, profile/map/hash/raw validation and
+  connected-device identity checking. Recovery copies DC into a new folder,
+  repeats noise switching/90-second settling and records a fresh 100 seconds;
+  the source folder is never modified.
+- Separated acquisition incompleteness from valid detector-specific faults
+  in the tray and detail display, retaining provisional offset findings.
+- Validation: 1,150 regression tests with no new failures (seven skips and
+  the documented Windows installer exception), 13 browser workflow/layout
+  cases, and an injected three-attempt noise failure followed by a complete
+  simulated noise-only recovery. Source summary and copied DC bytes remained
+  identical. A malformed-request socket-close case passed 20 repetitions
+  after bounded draining was added. No physical recovery was started.
+
+## Guided array setup, power-on checklist and compact tray screen (2026-11-04)
+
+- Split the M25/HUB browser workflow into model/name/batch setup, an
+  illustrated three-step power-on reminder, and a compact 50-position test
+  screen with Start, Stop and progress. Normal Array Rig startup opens this
+  flow directly; 40623 remains the only supported array model.
+- Enter advances setup and the checklist without initiating acquisition.
+  Start remains explicit. After saving, Next batch or Enter opens a batch
+  form that retains technician/model; Main setup or Esc returns to setup
+  while idle. Each new run repeats the checklist and settling sequence.
+- Removed the redundant Open report action and Needs attention table.
+  Detector selection reveals the existing waveform details and scrolls to
+  them; Back to tray returns to the overview. Automatic result files and
+  self-contained interactive HTML reports are retained.
+- Acquisition, physical power controls, timing, provisional offset limits,
+  uncalibrated noise status and firmware are unchanged.
+- Validation: 1,120 repository tests with no new failures (the existing
+  Windows-only installer exception remains), eight synthetic browser
+  regression cases, and a complete simulated run through the updated app.
+  The completed tray and controls fit 1366×650 and 1280×600 viewports.
+  No physical hardware acquisition was performed.
+
+## Demo-style 50-position operator dashboard and waveform evidence (2026-11-04)
+
+- Adapted the user's eltec-detector-test-demo visual design and exact logo
+  for the M25/HUB array. The normal launcher opens a local browser dashboard
+  with Start, Stop, Open report, 50 clickable tiles and offset/noise details.
+- Save DC trend/min/max/slope and cautious time-to-window estimates, plus
+  noise excerpts preserving extrema and original time. The HTML report is
+  interactive and self-contained; full raw conversion records remain saved.
+- Suspected no-signal slots are identified from separated valid near-zero DC
+  windows, excluded from noise result analysis and retained as clickable
+  empty/dead/disconnected suspects. No confirmed-dead diagnosis is invented.
+- Offset pass badges are green, offset/data-quality failures red, no-signal
+  slots gray, and noise Review amber until qualified acceptance limits exist.
+  No sensitivity controls or fabricated overall detector PASS were added.
+- Acquisition timing, physical RUN/STOP, existing limits and firmware remain
+  unchanged. Browser controls use a local-only server and the existing single
+  acquisition owner. Demo and actual data remain visibly separate.
+
+## M25/HUB array tester and settled 50-piece check (2026-11-04)
+
+- The normal array selector/model launcher now opens the current M25/HUB
+  workflow. The original contiguous-channel app remains available with
+  `--frontend legacy`; the earlier R4 engineering profile remains explicit.
+- Ported the working bench's DIRECT_DB37_R2 map, full eight-bit status
+  decoding, signed DC/noise ranges, 1000 scans/s, four conversions per
+  channel, 64 buffers, endpoint guard and shared DAQ ownership lock into
+  `array_rig`. No runtime dependency on the 50AmpBoard folder was added.
+- Start performs 90 s connect settling, 10 s DC recording, gain-off/AC-route/
+  200 ms/high-gain switching, 90 s noise settling and 100 s noise recording.
+  Stop/fault paths preserve available raw data, stop acquisition, disable
+  gain, wait 50 ms and attempt to return to DC. Readiness/presence and
+  both cards' effective controls are checked throughout the run.
+- Every attempt saves its explicit population, map, raw four-conversion
+  scans for physical channels 0–56, timing/readback/transfer diagnostics,
+  per-position CSV and HTML report under a new `mod50_checks` subfolder.
+  Synthetic runs are labelled and use separate output directories.
+- DC uses the unchanged provisional 0.3–1.2 V window. Noise is DAQ-output
+  3 Hz/Q3 and 1–100 Hz RMS, without nominal-gain division or invented
+  acceptance limits. Sensitivity/polarity remain unimplemented. Physical
+  RUN/STOP and supply monitoring remain manual. No ESP32 flash is needed.
+- User reports the hardware is working. This change was validated with
+  simulated acquisition and injected faults; it does not claim a new
+  physical 50-piece measurement or detector qualification.
+
+## Confirmed 4:1 AIN7 divider in power-noise comparison (2026-10-23)
+
+- User confirmed the installed AIN7 divider is 300 kΩ / 100 kΩ. Correct the
+  standalone comparison's supply voltage as `BAT? / 2.001004016 × 4`, removing
+  the old firmware factor before applying the physical divider. This explains
+  the roughly half-voltage readings; no factor is fitted to expected voltages.
+- Show nominal supply estimates in the window/report/CSV; preserve original
+  BAT? responses, inferred pin voltages and both factors in JSON (format v4).
+  The saved 3.3013 V indication converts to 6.5993 V, not a forced 6.69 V.
+  405M22's unbuffered readout is marked indicative because divider loading can
+  make it read low. RMS and peak-to-peak scaling remain unchanged.
+- Reject detected out-of-range AIN7 readings before/after acquisition. The
+  failed regulator's 15.2 V implies 3.8 V at the 4:1 divider tap, above the
+  buffered measurement range; the prior 2:1 exposure assumption is superseded.
+  A software check is not overvoltage protection or a substitute for a meter.
+- Preserve old results and production firmware/model code. Add regression
+  coverage for known divider inputs and before/after range rejection.
+
+## AIN7 indications unverified after regulator fault (2026-10-23)
+
+- The user reported 3.3 V battery / 7.4 V supply indications, then measured
+  approximately 15.2 V at the failed regulator output / detector power input.
+  The saved 20261023_083949 comparison does not establish a healthy 5.05 V
+  supply comparison. Its original evidence is preserved.
+- Label AIN7 readings unverified in the window, reports, JSON and clearly named
+  summary CSV columns. Retain the actual BAT? values for diagnosis; do not fit
+  a multiplier or substitute expected voltages. The battery indication and
+  hardware exposure still need independent checks.
+- Add a meter-check reminder to the setup checkbox. This is not hardware
+  overvoltage protection. RMS / peak-to-peak calculations and firmware remain
+  unchanged; a damaged measurement chain would invalidate physical conclusions.
+
+## Detector power noise calculation review and AIN7 readings (2026-10-23)
+
+- Reviewed dark-noise RMS (`sqrt(mean((V-mean(V))**2))`), full-record peak-to-peak,
+  mV conversion and battery-relative percentage change. Added independent
+  hand-calculated and raw-CSV reproduction checks.
+- Corrected avoidable precision loss: compute noise from full ADC counts using
+  the firmware-reported ADC reference and verified gain, instead of the stream's
+  six-decimal voltage text. Retain both full-count `volts` and rounded
+  `firmware_volts` in CSV. Reject inconsistent ADC scale/profile readings.
+- Save AIN7 before/after supply-voltage snapshots using the same `BAT?` backend
+  path as the existing app, per user instruction. Apply no extra divider factor
+  and never use detector supply voltage to normalize noise. Read AIN7 outside
+  the AIN0 stream; failed queries show unavailable without discarding good noise.
+- Show AIN7 readings in the simple window, HTML and summary CSV. Retain existing
+  app voltage-accuracy assumptions and all production firmware/calibrations.
+  Software verification does not establish bench voltage/noise accuracy.
+
+## Simple detector power noise comparison (2026-10-22)
+
+- Added `engineer_tools/power_noise/run_power_noise_compare.cmd` and its
+  standalone two-step desktop script: choose 405M22 or 406MCA, record battery,
+  manually change detector power, record regulated supply. Defaults: 30 s
+  settling and 60 s recording per source. No emitter ON command is sent.
+- Imports each model's existing serial backend, preserves its ADC profile,
+  records AIN0, and rejects broken streams, near-rail ADC codes, flat signals,
+  or active emitter sync. Stopped/rejected attempts remain on disk.
+- Reports DC-removed RMS, full-record peak-to-peak and percentage differences
+  in mV without production gain multipliers. Saves raw CSV, diagnostics and
+  HTML outside production evidence folders. Explicitly labels 6.3 V battery
+  versus 12 V supply regulated to 5.05 V as different operating conditions;
+  one pair establishes measured differences, not repeatability/significance.
+- Added hardware-free calculation, profile, capture, failure and report tests
+  to the existing single-detector glue suite. No firmware or production
+  model code was changed. Hardware validation remains pending.
+
+## Live waveform: select AIN0 through AIN7 (2026-10-15)
+
+- `Arduino/Eltec/live_waveform.py` accepts AIN0–AIN7 through `--channel`,
+  input buttons, or keys 0–7. Existing `sensor` / `ref` aliases still work.
+  A live switch waits for STOP/BEGIN acknowledgements and discards old
+  samples, partial serial lines, and the cycle average before plotting the
+  confirmed input. Unsupported firmware produces an explicit update message.
+- Firmware v3.4 adds all eight single-ended inputs vs AINCOM, preserving
+  the active gain/buffer, sample rate, PWM, and legacy SENSOR/REF commands.
+  AIN7 streams ADC-pin volts without the `BAT?` divider multiplier. The
+  frozen v3.4 snapshot matches the live sketch; prior snapshots are intact.
+- Fixed reader shutdown/join and visible stream-start errors. Added a
+  hardware-free viewer/serial regression suite to `run_all_tests.py`.
+  This update does not flash or physically qualify the board.
+
+## Array 40623: DAQ noise-floor check tool; the setup is floor-limited for 40623 noise (2026-09-11)
+
+- New bench tool `array_rig/m40623/daq_noise_floor_check.py` (`capture` on
+  the DAQ, `replay` of any saved capture, `--simulate`): every socket gets a
+  role (empty as-is, grounded, quiet source, loaded, excluded; plus the
+  onboard reference with `--daq-reference`), the same 3 Hz/Q=3 band RMS, raw
+  span, drift / settling-leak and judged-band numbers are printed per role,
+  and an assessment of the acquisition setup — never a part verdict —
+  compares the empty-socket floor with TP120's window brought to the pin on
+  the nominal chain (a scale, never a limit), prints the `--margin` rule
+  (default 3), the ideal quantization of every DAQ range at the capture's
+  averaging, the best case any oversampling / range change could reach under
+  the DAQ's 500 kS/s aggregate ceiling (with the capture command that
+  measures it), the break-even chain gain and the gain needed ahead of the
+  DAQ. A socket on a converter
+  rail is CLIPPED and excluded: on the unipolar 0–5 V range a grounded input
+  sits on code 0, so a flat trace there is the converter, not the noise going
+  away — the "ground the empty sockets and see if the noise goes away" check
+  is answered with the empty sockets as-is (their buffers rest a few mV above
+  zero, unclipped), a quiet source mid-range and the onboard reference
+  instead. A DC settling ramp leaks slope ÷ (Q·ω0) through the 3 Hz
+  band-pass; channels where that is most of the reading are flagged
+  SETTLING. Files only at explicit new `--report` / `--npz` paths, never in
+  an `Eltec_*_Test_Results` folder. 24 tests, `test_daq_noise_floor_check.py`.
+- Finding, from the user's 2026-09-10 tray-1 capture replayed through the
+  tool (vacuum off): the empty-socket floor is 2.98 µV rms in the 3 Hz band
+  (≈ 20–31 mV on the nominal meter scale) — inside TP120's 10.0–37.9 mV
+  window; the loaded parts read only ~25 % above it and within the empties'
+  spread; the one outlier (3-2) was a 16.5 mV settling ramp, not noise. Ideal
+  quantization at the production averaging is 0.71 µV rms, so the front end
+  sets the floor, and the DAQ's 500 kS/s aggregate caps every oversampling /
+  range trade at a best case of ~0.64 µV (MARGINAL, never RESOLVABLE). The
+  setup cannot resolve 40623 noise without AC-coupled gain ahead of the DAQ
+  unless the real chain gain is below ~1,400 (nominal 10,000). Recorded in
+  CALIBRATION_RECORD §4b.1 ("Instrument floor through the PCB") and as
+  step 0 of §4b.2; no constant, limit or verdict changed (noise stays
+  PENDING / NO_LIMIT).
+- Bench run the same day (user, five parts in row 1, socket 2-2 shorted to
+  ground with a wire, onboard reference through the same path): empty
+  sockets 2.91 µV rms, the grounded socket 3.07 µV — unclipped, because the
+  buffer output rests at ~4 mV whether the input is open or shorted, so the
+  wire changed nothing — and the DAQ alone 2.96 µV. Three independent
+  measurements agree the floor is the DAQ's own front end, not the wiring
+  and not the PCB buffer. Loaded parts 3.73–4.15 µV; one part flagged
+  SETTLING (29.7 mV ramp). Evidence appended to the §4b.1 row.
+- Docs: m40623 README (tool entry), NOISE_METHOD.md ("Instrument floor
+  check"), ENGINEER_HANDOVER §9 / §11, DATA_MAP §4.
+
 ## Array 40623: stable offset acquisition and 3 Hz noise evidence (2026-09-10)
 
 - Operator offset reads use the same continuous bulk path as the working

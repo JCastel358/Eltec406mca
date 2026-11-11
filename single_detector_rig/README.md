@@ -56,10 +56,11 @@ screen.
 
 ## Firmware
 
-The bench board runs the unified **`Arduino/Eltec/Eltec.ino` v3.2** baseline
-(single-channel streaming, `PWM,FREQ`, `PWM,DUTY` (v3.2), runtime `FE,...`
+The current unified source is **`Arduino/Eltec/Eltec.ino` v3.4** (not flashed
+or bench-verified in this update). It adds AIN0–AIN7 live-viewer selection to
+single-channel streaming, `PWM,FREQ`, `PWM,DUTY` (v3.2), runtime `FE,...`
 front-end switch; the IR telescope's dual-channel code is *not* in it — that
-lives in the separate `Eltec_IR_Telescope` workspace on firmware v2.2). The
+lives in the separate `Eltec_IR_Telescope` workspace on firmware v2.2. The
 405 M22 and 406 MCA modes also run on v2.1–v3.1; the 449 M18 mode refuses
 anything older than v3.2 because it needs the duty-cycle command. Model
 differences are selected at runtime over serial:

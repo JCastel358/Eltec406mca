@@ -18,7 +18,7 @@ htmlcov/
 *.bak
 
 # Rig outputs never belong in the repository - the apps write them to
-# Documents/Eltec_<model>_Test_Results (see docs/DATA_MAP.md). These rules
+# Documents/Eltec_<model>_Test_Results (see array_rig/docs/DATA_MAP.md). These rules
 # stop a copied results folder or a saved capture from being committed.
 Eltec_*_Test_Results/
 noise_captures/
@@ -30,3 +30,7 @@ autosave/
 ~$*
 Thumbs.db
 desktop.ini
+
+# Local validation runs, screenshots and source checkpoints.
+# Existing tracked historical artifacts remain tracked.
+/tmp/

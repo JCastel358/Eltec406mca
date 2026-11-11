@@ -11,6 +11,7 @@ array results root, by design; see `docs/DATA_MAP.md`).
 
 | Folder | Tool | What it is for | Rig |
 | --- | --- | --- | --- |
+| `power_noise/` | `power_noise_compare.py` / `run_power_noise_compare.cmd` | Simple emitter-off battery (~6.3 V) versus regulated supply (~5.05 V) recordings; RMS, peak-to-peak, raw CSVs and a comparison report. | 405 M22, 406 MCA (single rig) |
 | `noise_band/` | `replot_noise_capture.py` | Replay saved raw noise captures (405 `*_noise_raw.npz`, array `tray_*_raw.npz`) through the production pipeline and any other band / boxcar; verdict comparison table + PNG per capture. | 405 M22, 40623 array |
 | `noise_band/` | `filter_response_analysis.py` | Measure the noise pipeline's real passband and aliasing; test legacy-amplifier passband hypotheses against a capture's spectrum. | 405 M22 |
 | `array_parity/` | `array_noise_parity.py` | Derive the array rig's pin-level noise limits from a lot measured on both the legacy fixture and the array rig (CALIBRATION_RECORD §4b.2). | 40623 array |

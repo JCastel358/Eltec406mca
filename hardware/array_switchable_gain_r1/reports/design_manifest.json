@@ -1,0 +1,1051 @@
+{
+  "J1": {
+    "ref": "J1",
+    "symbol": "Conn2R",
+    "value": "DETECTOR",
+    "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Pin 1 detector output; pin 2 analog ground. Existing detector source resistor remains in the sensor box.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            35.56,
+            71.12
+          ],
+          "2": [
+            35.56,
+            73.66
+          ]
+        }
+      }
+    ]
+  },
+  "U1": {
+    "ref": "U1",
+    "symbol": "OPA4192",
+    "value": "OPA4192IDR",
+    "footprint": "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
+    "mpn": "OPA4192IDR",
+    "datasheet": "https://www.ti.com/lit/ds/symlink/opa4192.pdf",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "3": [
+            104.14,
+            71.12
+          ],
+          "2": [
+            104.14,
+            76.2
+          ],
+          "1": [
+            119.38,
+            73.66
+          ]
+        }
+      },
+      {
+        "unit": 2,
+        "sheet": "noise_filter",
+        "pins": {
+          "5": [
+            116.84,
+            81.28
+          ],
+          "6": [
+            116.84,
+            86.36
+          ],
+          "7": [
+            132.08,
+            83.82
+          ]
+        }
+      },
+      {
+        "unit": 3,
+        "sheet": "noise_filter",
+        "pins": {
+          "10": [
+            269.24,
+            81.28
+          ],
+          "9": [
+            269.24,
+            86.36
+          ],
+          "8": [
+            284.48,
+            83.82
+          ]
+        }
+      },
+      {
+        "unit": 5,
+        "sheet": "power_control",
+        "pins": {
+          "4": [
+            114.3,
+            48.26
+          ],
+          "11": [
+            114.3,
+            63.5
+          ]
+        }
+      },
+      {
+        "unit": 4,
+        "sheet": "power_control",
+        "pins": {
+          "12": [
+            314.96,
+            187.96
+          ],
+          "13": [
+            314.96,
+            193.04
+          ],
+          "14": [
+            330.2,
+            190.5
+          ]
+        }
+      }
+    ]
+  },
+  "R1": {
+    "ref": "R1",
+    "symbol": "R",
+    "value": "2M00 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Low-noise thin-film. Five series resistors total 10.000 Mohm.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            99.06,
+            109.22
+          ],
+          "2": [
+            109.22,
+            109.22
+          ]
+        }
+      }
+    ]
+  },
+  "R2": {
+    "ref": "R2",
+    "symbol": "R",
+    "value": "2M00 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Low-noise thin-film. Five series resistors total 10.000 Mohm.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            114.3,
+            109.22
+          ],
+          "2": [
+            124.46,
+            109.22
+          ]
+        }
+      }
+    ]
+  },
+  "R3": {
+    "ref": "R3",
+    "symbol": "R",
+    "value": "2M00 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Low-noise thin-film. Five series resistors total 10.000 Mohm.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            129.54,
+            109.22
+          ],
+          "2": [
+            139.7,
+            109.22
+          ]
+        }
+      }
+    ]
+  },
+  "R4": {
+    "ref": "R4",
+    "symbol": "R",
+    "value": "2M00 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Low-noise thin-film. Five series resistors total 10.000 Mohm.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            144.78,
+            109.22
+          ],
+          "2": [
+            154.94,
+            109.22
+          ]
+        }
+      }
+    ]
+  },
+  "R5": {
+    "ref": "R5",
+    "symbol": "R",
+    "value": "2M00 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Low-noise thin-film. Five series resistors total 10.000 Mohm.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            160.02,
+            109.22
+          ],
+          "2": [
+            170.18,
+            109.22
+          ]
+        }
+      }
+    ]
+  },
+  "K1": {
+    "ref": "K1",
+    "symbol": "G6K_2P_Y",
+    "value": "G6K-2P-Y DC5",
+    "footprint": "Relay_THT:Relay_DPDT_Omron_G6K-2P-Y",
+    "mpn": "G6K-2P-Y DC5",
+    "datasheet": "https://components.omron.com/us-en/system/files/2026-05/datasheet_pdf/K106-E1.pdf",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "3": [
+            139.7,
+            144.78
+          ],
+          "2": [
+            154.94,
+            142.24
+          ],
+          "4": [
+            154.94,
+            147.32
+          ]
+        }
+      },
+      {
+        "unit": 2,
+        "sheet": "switchable_gain",
+        "pins": {
+          "6": [
+            299.72,
+            88.9
+          ],
+          "7": [
+            284.48,
+            86.36
+          ],
+          "5": [
+            284.48,
+            91.44
+          ]
+        }
+      },
+      {
+        "unit": 3,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            307.34,
+            53.34
+          ],
+          "8": [
+            307.34,
+            68.58
+          ]
+        }
+      }
+    ]
+  },
+  "R6": {
+    "ref": "R6",
+    "symbol": "R",
+    "value": "101k 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "AC gain leg; noise gain = 1 + 10M/101k = 100.0099.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            88.9,
+            154.94
+          ],
+          "2": [
+            88.9,
+            165.1
+          ]
+        }
+      }
+    ]
+  },
+  "C1": {
+    "ref": "C1",
+    "symbol": "C",
+    "value": "10u PP film 5%",
+    "footprint": "Capacitor_THT:C_Rect_L31.5mm_W17.0mm_P27.50mm_MKS4",
+    "mpn": "MKP4D051006G00JSSD",
+    "datasheet": "https://www.wima.de/en/our-product-range/metallized-capacitors/mkp-4/",
+    "description": "WIMA MKP4 polypropylene candidate, 10uF 100V 5%, L31.5 x W17 x H29 mm, pitch27.5mm. Stock MKS4 footprint name denotes matching case geometry only: buy polypropylene MKP4. Availability and fit require review; no electrolytic/X7R substitute.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            88.9,
+            180.34
+          ],
+          "2": [
+            88.9,
+            190.5
+          ]
+        }
+      }
+    ]
+  },
+  "R7": {
+    "ref": "R7",
+    "symbol": "R",
+    "value": "100R 1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Keep the existing output isolation resistor once, after selection.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            317.5,
+            88.9
+          ],
+          "2": [
+            327.66,
+            88.9
+          ]
+        }
+      }
+    ]
+  },
+  "J2": {
+    "ref": "J2",
+    "symbol": "Conn2L",
+    "value": "TO SAME DAQ CH",
+    "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Pin 1 ADC single-ended input, 0-5V; pin 2 AGND. This replaces one original buffer output.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "switchable_gain",
+        "pins": {
+          "1": [
+            370.84,
+            88.9
+          ],
+          "2": [
+            370.84,
+            91.44
+          ]
+        }
+      }
+    ]
+  },
+  "R10": {
+    "ref": "R10",
+    "symbol": "R",
+    "value": "9k15 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            45.72,
+            81.28
+          ],
+          "2": [
+            55.88,
+            81.28
+          ]
+        }
+      }
+    ]
+  },
+  "R11": {
+    "ref": "R11",
+    "symbol": "R",
+    "value": "9k15 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            83.82,
+            81.28
+          ],
+          "2": [
+            93.98,
+            81.28
+          ]
+        }
+      }
+    ]
+  },
+  "C4": {
+    "ref": "C4",
+    "symbol": "C",
+    "value": "100n 1%",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            104.14,
+            106.68
+          ],
+          "2": [
+            104.14,
+            116.84
+          ]
+        }
+      }
+    ]
+  },
+  "C2": {
+    "ref": "C2",
+    "symbol": "C",
+    "value": "100n 1%",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            83.82,
+            48.26
+          ],
+          "2": [
+            93.98,
+            48.26
+          ]
+        }
+      }
+    ]
+  },
+  "C3": {
+    "ref": "C3",
+    "symbol": "C",
+    "value": "18n 1%",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            83.82,
+            63.5
+          ],
+          "2": [
+            93.98,
+            63.5
+          ]
+        }
+      }
+    ]
+  },
+  "R12": {
+    "ref": "R12",
+    "symbol": "R",
+    "value": "17k4 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            198.12,
+            81.28
+          ],
+          "2": [
+            208.28,
+            81.28
+          ]
+        }
+      }
+    ]
+  },
+  "R13": {
+    "ref": "R13",
+    "symbol": "R",
+    "value": "17k4 0.1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            236.22,
+            81.28
+          ],
+          "2": [
+            246.38,
+            81.28
+          ]
+        }
+      }
+    ]
+  },
+  "C6": {
+    "ref": "C6",
+    "symbol": "C",
+    "value": "22n 1%",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            256.54,
+            106.68
+          ],
+          "2": [
+            256.54,
+            116.84
+          ]
+        }
+      }
+    ]
+  },
+  "C5": {
+    "ref": "C5",
+    "symbol": "C",
+    "value": "150n 1%",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "noise_filter",
+        "pins": {
+          "1": [
+            236.22,
+            48.26
+          ],
+          "2": [
+            246.38,
+            48.26
+          ]
+        }
+      }
+    ]
+  },
+  "J3": {
+    "ref": "J3",
+    "symbol": "Conn4R",
+    "value": "REGULATED POWER",
+    "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+    "mpn": "",
+    "datasheet": "",
+    "description": "1 +5V analog, 2 AGND, 3 +5V relay, 4 PGND. 5V rails supplied externally.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            35.56,
+            48.26
+          ],
+          "2": [
+            35.56,
+            50.8
+          ],
+          "3": [
+            35.56,
+            53.34
+          ],
+          "4": [
+            35.56,
+            55.88
+          ]
+        }
+      }
+    ]
+  },
+  "C10": {
+    "ref": "C10",
+    "symbol": "C",
+    "value": "100n X7R",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Supply decoupling only. Not in signal path.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            147.32,
+            50.8
+          ],
+          "2": [
+            147.32,
+            60.96
+          ]
+        }
+      }
+    ]
+  },
+  "C11": {
+    "ref": "C11",
+    "symbol": "C",
+    "value": "10u X7R",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Supply decoupling only. Not in signal path.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            185.42,
+            50.8
+          ],
+          "2": [
+            185.42,
+            60.96
+          ]
+        }
+      }
+    ]
+  },
+  "C12": {
+    "ref": "C12",
+    "symbol": "C",
+    "value": "100n X7R",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Supply decoupling only. Not in signal path.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            147.32,
+            96.52
+          ],
+          "2": [
+            147.32,
+            106.68
+          ]
+        }
+      }
+    ]
+  },
+  "C13": {
+    "ref": "C13",
+    "symbol": "C",
+    "value": "10u X7R",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Supply decoupling only. Not in signal path.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            185.42,
+            96.52
+          ],
+          "2": [
+            185.42,
+            106.68
+          ]
+        }
+      }
+    ]
+  },
+  "R30": {
+    "ref": "R30",
+    "symbol": "R",
+    "value": "0R STAR",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Single analog/coil ground star. One star per assembled system; do not repeat ground ties around the array.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            40.64,
+            101.6
+          ],
+          "2": [
+            50.8,
+            101.6
+          ]
+        }
+      }
+    ]
+  },
+  "Q1": {
+    "ref": "Q1",
+    "symbol": "AO3400A",
+    "value": "AO3400A",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "mpn": "AO3400A",
+    "datasheet": "https://www.aosmd.com/res/datasheets/AO3400A.pdf",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            297.18,
+            99.06
+          ],
+          "2": [
+            307.34,
+            106.68
+          ],
+          "3": [
+            307.34,
+            91.44
+          ]
+        }
+      }
+    ]
+  },
+  "D1": {
+    "ref": "D1",
+    "symbol": "D",
+    "value": "1N4148W",
+    "footprint": "Diode_SMD:D_SOD-123",
+    "mpn": "1N4148W",
+    "datasheet": "",
+    "description": "Flyback clamp; cathode to +5V_COIL, anode to Q1 drain. Allow actual release time with diode.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            345.44,
+            55.88
+          ],
+          "2": [
+            345.44,
+            66.04
+          ]
+        }
+      }
+    ]
+  },
+  "R21": {
+    "ref": "R21",
+    "symbol": "R",
+    "value": "1k 1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            269.24,
+            99.06
+          ],
+          "2": [
+            279.4,
+            99.06
+          ]
+        }
+      }
+    ]
+  },
+  "R22": {
+    "ref": "R22",
+    "symbol": "R",
+    "value": "100k 1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            284.48,
+            124.46
+          ],
+          "2": [
+            284.48,
+            134.62
+          ]
+        }
+      }
+    ]
+  },
+  "SW1": {
+    "ref": "SW1",
+    "symbol": "SW_SPST",
+    "value": "OPEN=1X / CLOSED=NOISE",
+    "footprint": "",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Panel SPST manual mode switch. Start OPEN. Wire to the illustrated two terminals.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            45.72,
+            160.02
+          ],
+          "2": [
+            55.88,
+            160.02
+          ]
+        }
+      }
+    ]
+  },
+  "R20": {
+    "ref": "R20",
+    "symbol": "R",
+    "value": "100k 1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            50.8,
+            180.34
+          ],
+          "2": [
+            50.8,
+            190.5
+          ]
+        }
+      }
+    ]
+  },
+  "JP1": {
+    "ref": "JP1",
+    "symbol": "Conn3R",
+    "value": "1-2 MANUAL / 2-3 AUTO",
+    "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+    "mpn": "",
+    "datasheet": "",
+    "description": "Fit shunt 1-2 for manual bench use. Remove before placing shunt 2-3. Never bridge all three.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            127.0,
+            160.02
+          ],
+          "2": [
+            127.0,
+            162.56
+          ],
+          "3": [
+            127.0,
+            165.1
+          ]
+        }
+      }
+    ]
+  },
+  "J4": {
+    "ref": "J4",
+    "symbol": "Conn2R",
+    "value": "DAQ CONTROL (OPTION)",
+    "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    "mpn": "",
+    "datasheet": "",
+    "description": "1 static 0/3.3V or 0/5V NOISE request, 2 control ground. No PWM.",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            127.0,
+            195.58
+          ],
+          "2": [
+            127.0,
+            198.12
+          ]
+        }
+      }
+    ]
+  },
+  "R31": {
+    "ref": "R31",
+    "symbol": "R",
+    "value": "30k 1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            251.46,
+            172.72
+          ],
+          "2": [
+            251.46,
+            182.88
+          ]
+        }
+      }
+    ]
+  },
+  "R32": {
+    "ref": "R32",
+    "symbol": "R",
+    "value": "10k 1%",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "mpn": "",
+    "datasheet": "",
+    "description": "",
+    "units": [
+      {
+        "unit": 1,
+        "sheet": "power_control",
+        "pins": {
+          "1": [
+            251.46,
+            198.12
+          ],
+          "2": [
+            251.46,
+            208.28
+          ]
+        }
+      }
+    ]
+  }
+}

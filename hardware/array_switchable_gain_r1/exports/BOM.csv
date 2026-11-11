@@ -1,0 +1,38 @@
+﻿ref,value,symbol,mpn,footprint,datasheet,description
+J1,DETECTOR,Conn2R,,Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical,,Pin 1 detector output; pin 2 analog ground. Existing detector source resistor remains in the sensor box.
+U1,OPA4192IDR,OPA4192,OPA4192IDR,Package_SO:SOIC-14_3.9x8.7mm_P1.27mm,https://www.ti.com/lit/ds/symlink/opa4192.pdf,
+R1,2M00 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,Low-noise thin-film. Five series resistors total 10.000 Mohm.
+R2,2M00 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,Low-noise thin-film. Five series resistors total 10.000 Mohm.
+R3,2M00 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,Low-noise thin-film. Five series resistors total 10.000 Mohm.
+R4,2M00 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,Low-noise thin-film. Five series resistors total 10.000 Mohm.
+R5,2M00 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,Low-noise thin-film. Five series resistors total 10.000 Mohm.
+K1,G6K-2P-Y DC5,G6K_2P_Y,G6K-2P-Y DC5,Relay_THT:Relay_DPDT_Omron_G6K-2P-Y,https://components.omron.com/us-en/system/files/2026-05/datasheet_pdf/K106-E1.pdf,
+R6,101k 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,AC gain leg; noise gain = 1 + 10M/101k = 100.0099.
+C1,10u PP film 5%,C,MKP4D051006G00JSSD,Capacitor_THT:C_Rect_L31.5mm_W17.0mm_P27.50mm_MKS4,https://www.wima.de/en/our-product-range/metallized-capacitors/mkp-4/,"WIMA MKP4 polypropylene candidate, 10uF 100V 5%, L31.5 x W17 x H29 mm, pitch27.5mm. Stock MKS4 footprint name denotes matching case geometry only: buy polypropylene MKP4. Availability and fit require review; no electrolytic/X7R substitute."
+R7,100R 1%,R,,Resistor_SMD:R_0805_2012Metric,,"Keep the existing output isolation resistor once, after selection."
+J2,TO SAME DAQ CH,Conn2L,,Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical,,"Pin 1 ADC single-ended input, 0-5V; pin 2 AGND. This replaces one original buffer output."
+R10,9k15 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,
+R11,9k15 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,
+C4,100n 1%,C,,Capacitor_SMD:C_0805_2012Metric,,"C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping."
+C2,100n 1%,C,,Capacitor_SMD:C_0805_2012Metric,,"C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT."
+C3,18n 1%,C,,Capacitor_SMD:C_0805_2012Metric,,"C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT."
+R12,17k4 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,
+R13,17k4 0.1%,R,,Resistor_SMD:R_0805_2012Metric,,
+C6,22n 1%,C,,Capacitor_SMD:C_0805_2012Metric,,"C0G/NP0 or selected polypropylene, 1%. Ground leg controls damping."
+C5,150n 1%,C,,Capacitor_SMD:C_0805_2012Metric,,"C0G/NP0 or selected polypropylene, 1%. Feedback capacitor goes from first RC node to op-amp OUTPUT."
+J3,REGULATED POWER,Conn4R,,Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical,,"1 +5V analog, 2 AGND, 3 +5V relay, 4 PGND. 5V rails supplied externally."
+C10,100n X7R,C,,Capacitor_SMD:C_0805_2012Metric,,Supply decoupling only. Not in signal path.
+C11,10u X7R,C,,Capacitor_SMD:C_0805_2012Metric,,Supply decoupling only. Not in signal path.
+C12,100n X7R,C,,Capacitor_SMD:C_0805_2012Metric,,Supply decoupling only. Not in signal path.
+C13,10u X7R,C,,Capacitor_SMD:C_0805_2012Metric,,Supply decoupling only. Not in signal path.
+R30,0R STAR,R,,Resistor_SMD:R_0805_2012Metric,,Single analog/coil ground star. One star per assembled system; do not repeat ground ties around the array.
+Q1,AO3400A,AO3400A,AO3400A,Package_TO_SOT_SMD:SOT-23,https://www.aosmd.com/res/datasheets/AO3400A.pdf,
+D1,1N4148W,D,1N4148W,Diode_SMD:D_SOD-123,,"Flyback clamp; cathode to +5V_COIL, anode to Q1 drain. Allow actual release time with diode."
+R21,1k 1%,R,,Resistor_SMD:R_0805_2012Metric,,
+R22,100k 1%,R,,Resistor_SMD:R_0805_2012Metric,,
+SW1,OPEN=1X / CLOSED=NOISE,SW_SPST,,,,Panel SPST manual mode switch. Start OPEN. Wire to the illustrated two terminals.
+R20,100k 1%,R,,Resistor_SMD:R_0805_2012Metric,,
+JP1,1-2 MANUAL / 2-3 AUTO,Conn3R,,Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical,,Fit shunt 1-2 for manual bench use. Remove before placing shunt 2-3. Never bridge all three.
+J4,DAQ CONTROL (OPTION),Conn2R,,Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical,,"1 static 0/3.3V or 0/5V NOISE request, 2 control ground. No PWM."
+R31,30k 1%,R,,Resistor_SMD:R_0805_2012Metric,,
+R32,10k 1%,R,,Resistor_SMD:R_0805_2012Metric,,

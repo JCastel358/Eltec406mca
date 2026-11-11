@@ -2472,9 +2472,22 @@ def build_gui_classes():
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    # Current hardware defaults to the modular M25/HUB owner. Earlier boards
+    # retain explicit profiles, with their own maps, calibration and reports.
+    profile_parser = argparse.ArgumentParser(add_help=False)
+    profile_parser.add_argument("--frontend", choices=("mod50", "legacy", "r4"), default="mod50")
+    profile, remaining = profile_parser.parse_known_args(argv)
+    if profile.frontend == "mod50":
+        import mod50_array_tester
+        return mod50_array_tester.main(remaining)
+    if profile.frontend == "r4":
+        import daq_r4
+        if os.environ.get("ELTEC_ARRAY_SIMULATE", "") == "1" and "--simulate" not in remaining:
+            remaining = ["--simulate", *remaining]
+        return daq_r4.main(["--gui", *remaining])
     parser = argparse.ArgumentParser(description=APP_TITLE)
     parser.add_argument("--simulate", action="store_true", help="run against SimulatedDaq (no hardware)")
-    args = parser.parse_args(argv)
+    args = parser.parse_args(remaining)
     simulate = args.simulate or os.environ.get("ELTEC_ARRAY_SIMULATE", "") == "1"
     enable_windows_dpi_awareness()
     _grid, app_class = build_gui_classes()

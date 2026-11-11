@@ -21,10 +21,12 @@ Arduino IDE and `arduino-cli` can open/compile it directly with no renaming.
 | `Eltec_v3_0` | `...,v3.0` | working tree, 2026-08-18 | same as v2.1 | **The unified test-rig baseline** — the firmware for `single_detector_rig` (one app, sensor version chosen in a dropdown). Functionally identical to v2.1: single-channel streaming, `PWM,FREQ`, runtime `FE,...` front-end switch; the telescope's dual-channel code is NOT in it. 405 M22 testing uses the boot-default v2.0 front end; 406MCA testing sends `FE,V19` after connect to restore the qualified gain-2 buffered front end. |
 | `Eltec_v3_1` | `...,v3.1` | working tree, 2026-08-25 | same as v2.1 | v3.0 with the emitter gate moved from **D25 to D33** (`pinGate = 33`); the perf-board wire moved with it. Nothing else changed — `PIN,<n>` still retargets at runtime, so a board still wired to D25 runs this build if the host sends `PIN,25`. The unified app sends `PIN,33`. |
 | `Eltec_v3_2` | `...,v3.2` | working tree, 2026-08-26 | same as v2.1 | **Current rig baseline.** v3.1 plus a runtime **duty cycle**: `PWM,DUTY,<pct>` (1–99 %, boot default 50 %) and `pwm_duty=<%>` in `STATUS?`. Added for the **449 M18 frequency-tracking test (TP443)**, whose legacy fixture chops with a 20/80 blade — the unified app's 449 M18 mode drives 5 Hz and 18 Hz at 20 % duty. Purely additive: nothing is sent for the other models, and a port open resets the board to 50 %, so 405 M22 / 406MCA behaviour is byte-identical to v3.1. Compiled 2026-08-26 (290 KB); **not yet flashed/verified on the bench**. |
+| `Eltec_v3_4` | `...,v3.4` | working tree, 2026-10-15 | same as v2.1 | Adds `STREAM,START,AIN0` through `AIN7`, one input vs AINCOM at 1000 SPS with the active front end. Legacy SENSOR/REF commands remain supported. v3.3 is the AIN0–AIN3 build in the separate speedRoll workspace. Not flashed or bench-verified in this update. |
 
 ## Which firmware belongs on which rig
 
-- **The unified test rig running `single_detector_rig`: v3.2** (required by the
+- **The unified test rig running `single_detector_rig`: v3.4** for all eight
+  live-viewer inputs (v3.2+ is required by the
   449 M18 mode for `PWM,DUTY`; the 405 M22 and 406MCA modes also run on v3.1 —
   the emitter gate
   is on **D33** from 2026-08-25 — v3.0/v2.1/v2.2 also work because the app

@@ -1,0 +1,1 @@
+(sym_lib_table (version 7) (lib (name "Eltec_Gain") (type "KiCad") (uri "${KIPRJMOD}/../libraries/gain.kicad_sym") (options "") (descr "Project-owned symbols; manufacturer pin maps")))

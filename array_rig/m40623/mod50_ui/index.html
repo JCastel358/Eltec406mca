@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eltec | 50-detector tray check</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-screen="setup">
+  <header class="topbar">
+    <div class="brand-lockup">
+      <img class="brand-logo" src="assets/eltec-logo-transparent.webp" alt="Eltec Instruments">
+      <div><p class="eyebrow">Pyroelectric detector verification</p><h1>50-detector tray check</h1><p class="subtitle" id="modelSubtitle">Model 40623 · Offset &amp; noise</p></div>
+    </div>
+    <div class="run-state" id="runState" data-state="ready"><span class="state-dot"></span><strong>READY</strong></div>
+  </header>
+  <main id="mainContent">
+    <section class="workflow-screen" id="setupSection" aria-labelledby="setupTitle">
+      <div class="workflow-card setup-card">
+        <div class="welcome-panel">
+          <p class="step-label">01 / SET UP</p>
+          <h2 id="setupTitle" tabindex="-1">A fresh batch.<br>A clear picture.</h2>
+          <p>Pick your model, enter your name and batch number. We’ll take it one step at a time.</p>
+          <svg class="welcome-illustration" viewBox="0 0 300 150" aria-hidden="true"><rect x="27" y="18" width="246" height="113" rx="17" fill="#fff" stroke="#c6d5ef" stroke-width="2"/><g fill="#e8f1ff" stroke="#7394c9" stroke-width="2"><circle cx="60" cy="50" r="15"/><circle cx="105" cy="50" r="15"/><circle cx="150" cy="50" r="15"/><circle cx="195" cy="50" r="15"/><circle cx="240" cy="50" r="15"/><circle cx="60" cy="98" r="15"/><circle cx="105" cy="98" r="15"/><circle cx="150" cy="98" r="15"/><circle cx="195" cy="98" r="15"/><circle cx="240" cy="98" r="15"/></g><circle cx="195" cy="50" r="15" fill="#dff6ec" stroke="#13805a" stroke-width="2"/><path d="m188 50 5 5 9-11" fill="none" stroke="#13805a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="m253 10 4-6m8 15 8-1m-14 123 4 6" stroke="#ec1c3d" stroke-width="3" stroke-linecap="round"/></svg>
+          <p class="welcome-caption">Fifty little detectors. One well-organized day.</p>
+          <div class="saved-recovery" id="savedRecoveryCard" hidden><strong>A noise check can be recovered</strong><p id="savedRecoverySummary"></p><button class="secondary" id="recoverSavedButton" type="button">Recover saved noise check →</button></div>
+        </div>
+        <form id="controls" class="controls setup-form">
+          <label class="field full-field"><span>Detector model</span><select id="modelInput" required><option value="40623">40623 · Offset &amp; noise</option></select></label>
+          <label class="field full-field"><span>Your name</span><input id="operatorInput" autocomplete="name" required maxlength="120" placeholder="Technician name"></label>
+          <label class="field full-field"><span>Batch number</span><input id="lotInput" autocomplete="off" required maxlength="120" placeholder="e.g. 40623-1042"></label>
+          <label class="field tray-field"><span>Tray</span><input id="trayInput" type="number" min="1" step="1" value="1" required></label>
+          <label class="field source-field"><span>Data source</span><select id="sourceInput"><option value="real">Actual detectors</option><option value="demo">Generated demo</option></select></label>
+          <button class="primary full-field continue-button" id="setupContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button>
+          <p class="form-note full-field">Results and waveforms are saved automatically for every run.</p>
+        </form>
+      </div>
+      <nav class="workflow-steps" aria-label="Workflow"><span class="current">1 · Set up</span><i></i><span>2 · Power check</span><i></i><span>3 · Test tray</span></nav>
+    </section>
+    <section class="workflow-screen" id="prepSection" aria-labelledby="prepTitle" hidden>
+      <div class="prep-card">
+        <div class="prep-heading"><p class="step-label">02 / POWER CHECK</p><h2 id="prepTitle" tabindex="-1">A quick check before the curtain rises.</h2><p>Complete these three steps at the fixture, then continue to your tray.</p></div>
+        <ol class="procedure-list">
+          <li><div class="procedure-art"><span class="procedure-number">01</span><svg viewBox="0 0 180 115" aria-hidden="true"><rect x="29" y="26" width="110" height="64" rx="9" fill="#fff" stroke="currentColor" stroke-width="3"/><path d="M40 39h33M40 49h33M40 59h33M40 69h33" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="119" cy="46" r="6" fill="#13805a"/><path d="M139 63h12q13 0 13 12v7M157 87h14m-11 0v9m8-9v9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="m95 34-9 20h12l-7 20 20-28H98l7-12" fill="#ec1c3d"/></svg></div><div class="procedure-copy"><h3>Power the detector box</h3><p>Check that the detector box has power.</p><small>Even excellent detectors need electricity.</small></div></li>
+          <li><div class="procedure-art"><span class="procedure-number">02</span><svg viewBox="0 0 180 115" aria-hidden="true"><rect x="58" y="13" width="64" height="91" rx="13" fill="#fff" stroke="currentColor" stroke-width="3"/><rect x="68" y="23" width="44" height="71" rx="7" fill="#dff6ec" stroke="#13805a" stroke-width="2"/><path d="M90 33v16" stroke="#13805a" stroke-width="4" stroke-linecap="round"/><path d="M69 63h42" stroke="#13805a" stroke-width="2"/><circle cx="90" cy="78" r="7" fill="none" stroke="#8aa69a" stroke-width="2"/><path d="m136 29 9-5m-5 20h12m-16 14 9 5" stroke="#13805a" stroke-width="3" stroke-linecap="round"/></svg></div><div class="procedure-copy"><h3>Main switch → ON</h3><p>Put the main switch in the <strong>ON</strong> position.</p><small>Give the whole team the green light.</small></div></li>
+          <li><div class="procedure-art"><span class="procedure-number">03</span><svg viewBox="0 0 180 115" aria-hidden="true"><ellipse cx="87" cy="71" rx="43" ry="25" fill="#e1e8f4" stroke="currentColor" stroke-width="3"/><path d="M48 53v16c0 29 78 29 78 0V53" fill="#244a9f" stroke="currentColor" stroke-width="3"/><ellipse cx="87" cy="53" rx="39" ry="22" fill="#e8f1ff" stroke="currentColor" stroke-width="3"/><path d="M87 4v21m-8-8 8 8 8-8" fill="none" stroke="#ec1c3d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="m79 45 18 8-18 8z" fill="#244a9f"/></svg></div><div class="procedure-copy"><h3>Press physical START</h3><p>Press the fixture’s <strong>START / RUN</strong> button.</p><small>The real button gets the first cameo.</small></div></li>
+        </ol>
+        <p class="setup-note" id="setupNote">Check cooling and supplies, prepare the vacuum, and close other DAQ apps. Software Stop leaves hardware power on.</p>
+        <div class="workflow-actions"><button class="secondary" id="prepBack" type="button">← Setup <kbd>Esc</kbd></button><button class="primary continue-button" id="prepContinue" type="button">Ready — show the tray <span aria-hidden="true">→</span><kbd>Enter</kbd></button></div>
+      </div>
+      <nav class="workflow-steps" aria-label="Workflow"><span>1 · Set up</span><i></i><span class="current">2 · Power check</span><i></i><span>3 · Test tray</span></nav>
+    </section>
+    <section class="test-screen" id="testSection" aria-labelledby="trayTitle" hidden>
+      <div class="test-control-row">
+        <div><p class="eyebrow">03 / TEST TRAY</p><h2 id="trayTitle" tabindex="-1">Your detector tray</h2><p id="batchContext" class="batch-context">Model 40623</p></div>
+        <div class="button-row test-actions"><button class="quiet-button" id="returnSetupButton" type="button">Setup <kbd>Esc</kbd></button><button class="primary" id="startButton" type="button">Start</button><button class="stop-button" id="stopButton" type="button" disabled>Stop</button></div>
+      </div>
+      <div class="progress-band" aria-label="Test progress">
+        <div class="progress-copy"><strong id="phaseText">Ready for your tray</strong><span id="timeNote">About 4 min 50 s</span></div>
+        <progress id="runProgress" max="1" value="0" aria-label="Check progress"></progress>
+        <div class="progress-bottom"><p id="statusText" role="status">Press Start when the fixture is ready.</p><div class="sequence" aria-label="Measurement sequence"><span>Settle</span><i>→</i><span>Offset</span><i>→</i><span>Settle</span><i>→</i><span>Noise</span><i>→</i><span>Save</span></div></div>
+      </div>
+      <div class="summary-strip" aria-label="Tray result counts">
+        <div><span>Positions</span><strong id="totalCount">50</strong></div><div class="good"><span>Offset pass</span><strong id="passCount">0</strong></div><div class="bad"><span>Fail / check</span><strong id="failCount">0</strong></div><div class="muted"><span>No signal</span><strong id="emptyCount">0</strong></div><div class="warn"><span>Noise review</span><strong id="reviewCount">0</strong></div>
+      </div>
+      <div class="tray-wrap"><div class="tray-toolbar"><span>5 rows × 10 positions</span><span id="traySummary">50 positions · select any detector for details</span></div><div class="sensor-grid" id="sensorGrid" aria-label="Detector positions"></div></div>
+      <div class="legend"><span><i class="legend-dot pass"></i>Green badge: offset pass</span><span><i class="legend-dot fail"></i>Red: signal fail / check</span><span><i class="legend-dot review"></i>Amber: review / incomplete</span><span><i class="legend-dot empty"></i>Gray: no signal</span></div>
+      <p class="limit-note">Offset: provisional 0.3–1.2 V. Noise limits await calibration. An offset pass is not a complete detector pass.</p>
+      <div class="completion-actions" id="completionActions" hidden><span id="completionPrompt">All set with this tray?</span><div class="button-row"><button class="secondary" id="homeButton" type="button">Main setup <kbd>Esc</kbd></button><button class="secondary" id="retryNoiseButton" type="button" hidden>Retry noise →</button><button class="primary" id="nextBatchButton" type="button">Next batch <kbd>Enter</kbd></button></div></div>
+    </section>
+    <section class="workflow-screen" id="batchSection" aria-labelledby="batchTitle" hidden>
+      <div class="workflow-card batch-card"><p class="step-label">NEXT BATCH</p><h2 id="batchTitle" tabindex="-1">Another batch? Coming right up.</h2><p>Your name and model stay the same. Enter the next batch number, then we’ll revisit the power check.</p><form id="batchForm"><label class="field"><span>New batch number</span><input id="newBatchInput" autocomplete="off" required maxlength="120" placeholder="Enter batch number"></label><p class="form-note">Use the established power-off procedure before changing detectors.</p><div class="workflow-actions"><button class="secondary" id="batchCancel" type="button">Back to results</button><button class="primary continue-button" id="batchContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button></div></form></div>
+    </section>
+    <section class="workflow-screen" id="recoverySection" aria-labelledby="recoveryTitle" hidden>
+      <div class="workflow-card recovery-card">
+        <p class="step-label">RECOVER THE NOISE CHECK</p><h2 id="recoveryTitle" tabindex="-1">Keep the offset. Give noise another go.</h2>
+        <p>The valid DC recording stays saved. This starts a fresh, continuous 100-second noise recording; the interrupted recording remains as diagnostic evidence.</p>
+        <dl class="recovery-identity"><div><dt>Batch / tray</dt><dd id="recoveryBatch"></dd></div><div><dt>Technician</dt><dd id="recoveryOperator"></dd></div><div><dt>Original run</dt><dd id="recoveryDate"></dd></div><div><dt>Data source</dt><dd id="recoverySource"></dd></div></dl>
+        <p class="recovery-timing" id="recoveryTiming"></p>
+        <form id="recoveryForm"><label class="recovery-confirm"><input type="checkbox" id="recoveryConfirm" required><span>I confirm these are the <strong>same detectors, wiring, and alignment</strong>, and fixture power has <strong>not been interrupted</strong> since this original run.</span></label><p class="form-note">If anything changed, use Main setup and run a fresh check.</p><p id="recoveryError" class="recovery-error" role="status" hidden></p><div class="workflow-actions"><button class="secondary" id="recoveryCancel" type="button">Main setup <kbd>Esc</kbd></button><button class="primary" id="recoveryStart" type="submit" disabled>Retry noise</button></div></form>
+      </div>
+    </section>
+    <section class="detail-band" id="detailSection" aria-labelledby="detailTitle" hidden>
+      <div class="detail-navigation"><button class="secondary" id="backToTrayButton" type="button">↑ Back to the tray</button><span>Results stay saved while you explore.</span></div>
+      <div class="section-heading"><div><p class="eyebrow">Detector detail</p><h2 id="detailTitle" tabindex="-1">Select a detector</h2></div><div id="detailBadges" class="badge-row"></div></div>
+      <p class="detail-reason" id="detailReason">Click any position above to see its offset trend and noise waveform.</p>
+      <div class="detail-placeholder" id="detailPlaceholder">Every position stays clickable, including empty or failed slots.</div>
+      <div id="detailContent" hidden>
+        <div class="chart-grid">
+          <article class="chart-card"><div class="chart-heading"><h3>Offset over time</h3><span class="chart-unit">DC · volts</span></div><div id="offsetChart" class="chart" aria-label="Offset waveform"></div><div id="offsetMetrics" class="metric-grid"></div><p class="chart-note" id="offsetNote"></p></article>
+          <article class="chart-card"><div class="chart-heading"><h3>Noise waveform</h3><span class="chart-unit">DAQ output · millivolts</span></div><div id="noiseChart" class="chart" aria-label="Noise waveform"></div><div id="noiseMetrics" class="metric-grid"></div><p class="chart-note" id="noiseNote"></p></article>
+        </div><p id="detailIdentity" class="identity-note"></p>
+      </div>
+    </section>
+  </main>
+  <footer><span>Eltec Instruments · M25/HUB</span><span id="footerSource">Actual detectors · data saved automatically</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
