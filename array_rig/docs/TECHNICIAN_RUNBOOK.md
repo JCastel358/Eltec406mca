@@ -306,7 +306,7 @@ folders** — the engineer backs them up.
 | Array rig: **No detectors detected**, but parts are installed | PCB not powered, a cable is off, or zero-output parts were inferred empty | Check the physical power switch and DB37 cables, then press **Measure offset** again. Click installed positions to force loaded if needed; zero-output loaded parts remain failures. |
 | Array rig: **Measure noise** unavailable | Missing good offset reads, a red loaded socket, or tray/vacuum not confirmed | Recheck or replace red parts, correct the detected map, measure offset after loading a socket, and confirm the loaded count and gauge. |
 | Array rig: a whole row red or 0 V | Cable / row supply | Engineer — do not fail the parts. |
-| Array rig app does not start | Missing Python or the ACCES driver | Engineer. The launcher log is `%LOCALAPPDATA%\eltec-array-rig\launcher.log` (selector) / `%LOCALAPPDATA%\eltec-40623-array\launcher.log` (tester). |
+| Array rig app does not start | Missing Python or the ACCES driver | Engineer. Use the newest `launcher-*.log` in `%LOCALAPPDATA%\eltec-array-rig` (selector) / `%LOCALAPPDATA%\eltec-40623-array` (tester). Each Windows launch has its own log. |
 
 ## 6. Do not
 

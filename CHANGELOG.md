@@ -13,6 +13,24 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Reopen the array dashboard after closing its browser window (2026-11-11)
+
+- Fix both Windows array launchers holding the shared `launcher.log` open
+  for the app's lifetime, which blocked subsequent launches at redirection.
+  Each launch now has its own log, and the app's exit status is captured
+  before restoring the working directory.
+- Closing the dashboard page now requests a graceful app exit, including
+  Stop and completion of any active worker's saving/shutdown. A short grace
+  period lets a page refresh keep the server alive. Background throttling
+  still cannot stop an active acquisition.
+- Add Windows subprocess regressions for overlapping launches and failure
+  reporting, plus dashboard close, refresh and worker-lifetime checks.
+- Validation: 1,159 tests completed with seven skips and the documented
+  Windows-only installer exception; no unexpected failures. All 27 dashboard
+  tests also passed after the final queued-Start close guard. Verified the
+  existing desktop shortcut in Edge, refresh, top-right X, background server
+  exit and reopening to Ready. No physical acquisition was started.
+
 ## GitHub handoff and another-computer setup (2026-11-11)
 
 - Include the pending MOD50 dashboard/recovery, DAQ, live-viewer/firmware,

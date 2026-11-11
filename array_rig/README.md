@@ -11,6 +11,11 @@ together. Select a detector to reveal its details and scroll to them;
 **Back to tray** returns to the overview. There is no separate attention
 table or Open report button.
 
+Close the browser window with **X** to exit, then use the same shortcut to
+open the app again. Closing requests Stop if a check is running; the app
+finishes saving available data before exiting. An idle app exits a few
+seconds after the page closes. Refreshing the page keeps the dashboard open.
+
 Click a position for its recorded DC trace, min/max, slope and cautious
 trend estimate, plus a noise waveform excerpt. The saved HTML report has
 the same interactive tray/details and works offline. Red indicates a valid
@@ -172,8 +177,9 @@ contract and replay tool. Simulation demonstrates example passes and failures.
   with `python array_rig/eltec_array_tester.py --selector`; it remembers the
   last model (`%LOCALAPPDATA%\eltec-array-rig\state.json` /
   `~/.local/state/eltec-array-rig/state.json`). Launcher logs:
-  `…\eltec-array-rig\launcher.log`. The model app can also be started
-  directly (`array_rig\m40623\run_eltec_40623_array_tester.cmd`). Choose
+  `…\eltec-array-rig\launcher-*.log` (a separate file for each Windows launch;
+  use the newest file). Xubuntu still uses `launcher.log`. The model app can
+  also be started directly (`array_rig\m40623\run_eltec_40623_array_tester.cmd`). Choose
   **Generated demo** on the browser setup screen, or use `--simulate` (or
   `ELTEC_ARRAY_SIMULATE=1`), to run without hardware.
 - Hardware: the ACCES **"USB-AIO16-64MA Install"** driver package must be

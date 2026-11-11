@@ -621,8 +621,8 @@
     else if (screen === 'test' && state.result) nextBatch();
   });
   window.addEventListener('pagehide', () => {
-    if (!reportMode && (state.busy || requestPending || (!connected && screen === 'test'))) {
-      navigator.sendBeacon('api/stop', new Blob(['{}'], {type: 'application/json'}));
+    if (!reportMode) {
+      navigator.sendBeacon('api/close', new Blob(['{}'], {type: 'application/json'}));
     }
   });
   buildTray();

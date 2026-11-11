@@ -183,6 +183,52 @@ class DashboardHttp(unittest.TestCase):
         self.assertEqual(self.request("api/stop", method="POST")[0], 200)
         self.assertEqual(self.created, [])
 
+    def test_close_on_setup_exits_after_grace_without_starting_hardware(self):
+        with patch.object(web.time, "monotonic", return_value=100):
+            self.assertEqual(self.request("api/close", method="POST")[0], 200)
+            self.assertFalse(self.dashboard.should_shutdown())
+            self.assertEqual(self.start()[0], 400, "A queued Start must not outlive a closed page")
+        with patch.object(web.time, "monotonic", return_value=103):
+            self.assertTrue(self.dashboard.should_shutdown())
+            self.assertEqual(self.start()[0], 400)
+        self.assertEqual(self.created, [])
+
+    def test_close_waits_for_worker_to_stop_and_save(self):
+        self.start()
+        worker = self.created[0]
+        with patch.object(web.time, "monotonic", return_value=100):
+            self.assertEqual(self.request("api/close", method="POST")[0], 200)
+        self.assertEqual(worker.stops, 1)
+        with patch.object(web.time, "monotonic", return_value=103):
+            self.assertFalse(self.dashboard.should_shutdown())
+            worker.complete()
+            self.assertTrue(self.dashboard.should_shutdown())
+
+    def test_refresh_or_another_open_tab_cancels_pending_exit(self):
+        with patch.object(web.time, "monotonic", return_value=100):
+            self.request("api/close", method="POST")
+        with patch.object(web.time, "monotonic", return_value=101):
+            self.assertEqual(self.request()[0], 200)
+        with patch.object(web.time, "monotonic", return_value=104):
+            self.assertFalse(self.dashboard.should_shutdown())
+            self.assertEqual(self.start()[0], 200)
+
+    def test_missing_heartbeat_never_stops_an_active_acquisition(self):
+        self.start()
+        self.dashboard.last_seen = 0
+        with patch.object(web.time, "monotonic", return_value=2000):
+            self.assertFalse(self.dashboard.should_shutdown())
+            self.assertEqual(self.created[0].stops, 0)
+            self.created[0].complete()
+            self.assertTrue(self.dashboard.should_shutdown())
+
+    def test_close_requires_same_origin_json_post_and_launch_token(self):
+        self.assertEqual(self.request("api/close")[0], 404)
+        self.assertEqual(self.request("api/close", method="POST", headers={"Origin": "null"})[0], 403)
+        self.assertEqual(self.request("api/close", method="POST", headers={"Content-Type": "text/plain"})[0], 403)
+        self.assertEqual(self.request("api/close", method="POST", raw_path="/api/close")[0], 404)
+        self.assertIsNone(self.dashboard.closed_at)
+
     def test_requires_per_launch_path_and_expected_host(self):
         for path in ("/api/state", "/not-the-token/api/state", self.prefix.rstrip("/")):
             with self.subTest(path=path):

@@ -33,6 +33,8 @@ class Dashboard:
         self.worker = None
         self.lock = threading.RLock()
         self.last_seen = time.monotonic()
+        self.closed_at = None
+        self.closing = False
         self.restart_required = False
         self.run_metadata = None
         self.run_id = None
@@ -69,6 +71,9 @@ class Dashboard:
     def snapshot(self):
         with self.lock:
             self.last_seen = time.monotonic()
+            # A refresh also emits pagehide. Let a returning page cancel the
+            # pending exit during the short close grace period.
+            self.closed_at = None
             worker = self.worker
             if worker is None:
                 return {"busy": False, "phase": "Ready", "message": "Load the tray, then press Start.",
@@ -97,6 +102,8 @@ class Dashboard:
 
     def _begin(self, payload, *, resume_dc=None):
         with self.lock:
+            if self.closing or self.closed_at is not None:
+                raise ValueError("The app is closing. Open Eltec Array Rig again.")
             if self.worker is not None and self.worker.is_alive():
                 raise ValueError("A check is already running.")
             if self.worker and self.worker.result:
@@ -151,6 +158,23 @@ class Dashboard:
         with self.lock:
             if self.worker is not None:
                 self.worker.stop()
+
+    def close(self):
+        with self.lock:
+            self.closed_at = time.monotonic()
+            self.stop()
+
+    def should_shutdown(self):
+        with self.lock:
+            # Closing the page requests Stop, but the worker must finish
+            # shutdown and saving before the server releases the launcher.
+            if self.worker is not None and self.worker.is_alive():
+                return False
+            now = time.monotonic()
+            if ((self.closed_at is not None and now - self.closed_at >= 2)
+                    or now - self.last_seen > 1800):
+                self.closing = True
+            return self.closing
 
 
 def make_server(dashboard, *, port=0):
@@ -255,6 +279,8 @@ def make_server(dashboard, *, port=0):
                     dashboard.retry_noise(payload)
                 elif route == "api/stop":
                     dashboard.stop()
+                elif route == "api/close":
+                    dashboard.close()
                 else:
                     self.respond(404, {"error": "Not found"})
                     return
@@ -278,18 +304,16 @@ def main(argv=None):
     done = threading.Event()
     def watch_browser():
         while not done.wait(1):
-            age = time.monotonic() - dashboard.last_seen
-            worker = dashboard.worker
             # Browsers throttle background tabs. A missing poll is not an
-            # operator Stop; pagehide sends an explicit stop request instead.
-            if age > 1800 and (worker is None or not worker.is_alive()):
+            # operator Stop; pagehide explicitly requests a graceful close.
+            if dashboard.should_shutdown():
                 server.shutdown()
                 return
     watcher = threading.Thread(target=watch_browser, daemon=True)
     watcher.start()
-    print("Eltec array dashboard: " + server.dashboard_url, flush=True)
-    webbrowser.open(server.dashboard_url)
     try:
+        print("Eltec array dashboard: " + server.dashboard_url, flush=True)
+        webbrowser.open(server.dashboard_url)
         server.serve_forever(poll_interval=.2)
     except KeyboardInterrupt:
         pass

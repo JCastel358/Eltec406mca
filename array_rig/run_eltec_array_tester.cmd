@@ -17,13 +17,12 @@ if not exist "%LOG_DIR%" (
     echo Eltec Array Rig: could not create a log directory. 1>&2
     exit /b 1
 )
-set "LOG_FILE=%LOG_DIR%\launcher.log"
-
-rem Rotate past 5 MB so a long-running rig PC does not grow an unbounded log.
-if exist "%LOG_FILE%" (
-    for %%F in ("%LOG_FILE%") do set "LOG_SIZE=%%~zF"
-    if !LOG_SIZE! GTR 5242880 move /y "%LOG_FILE%" "%LOG_FILE%.previous" >nul 2>&1
-)
+rem Windows holds redirected files exclusively until the app exits. A shared
+rem launcher.log prevents a second launch while the previous browser server
+rem is still shutting down. Give every launch its own diagnostic log.
+:choose_log
+set "LOG_FILE=%LOG_DIR%\launcher-%RANDOM%-%RANDOM%.log"
+if exist "%LOG_FILE%" goto choose_log
 
 if not exist "%APP_PATH%" (
     call :fail "Application file not found: %APP_PATH%"
@@ -62,9 +61,9 @@ set "PYTHONUNBUFFERED=1"
     echo Python: %PYTHON_BIN%
     pushd "%SCRIPT_DIR%"
     "%PYTHON_BIN%" "%APP_PATH%" %*
+    set "STATUS=!ERRORLEVEL!"
     popd
 )
-set "STATUS=%ERRORLEVEL%"
 
 if not "%STATUS%"=="0" (
     call :fail "The application exited with status %STATUS%."

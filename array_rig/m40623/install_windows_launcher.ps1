@@ -89,5 +89,5 @@ try {
 
 ""
 "Launcher : $Launcher"
-"Log file : $env:LOCALAPPDATA\eltec-40623-array\launcher.log"
+"Logs     : $env:LOCALAPPDATA\eltec-40623-array\launcher-*.log (newest file per launch)"
 "Results  : $([Environment]::GetFolderPath('MyDocuments'))\Eltec_40623_Test_Results\40623_array_daq"
