@@ -344,7 +344,13 @@ class DaqStatusError(DaqError):
     """A DLL call returned a non-zero Win32 status."""
 
     def __init__(self, function: str, status: int) -> None:
-        super().__init__(f"{function} failed with Win32 status {status}.")
+        message = f"{function} failed with Win32 status {status}."
+        if function == "QueryDeviceInfo" and status in (6, 1167):
+            message += (
+                " The DAQ USB connection is no longer valid. Check its USB connection,"
+                " wait five seconds, then close and reopen Eltec Array Rig."
+            )
+        super().__init__(message)
         self.function = function
         self.status = status
 
@@ -785,29 +791,57 @@ class AiousbDaq:
         return self._index
 
     def connect(self, *, timeout_s: float = 10.0) -> DaqInfo:
-        if self._lib is None:
-            self._lib = load_library(self._dll_name)
-        deadline = self._monotonic() + timeout_s
-        attempts = 0
-        while True:
-            attempts += 1
-            mask = int(self._lib.GetDevices())
-            indices = device_indices_from_mask(mask)
-            if self._requested_index is not None:
-                indices = tuple(index for index in indices if index == self._requested_index)
-            if indices:
-                self._index = indices[0]
-                break
-            if self._monotonic() >= deadline:
-                raise DaqNotFoundError(
-                    f"No ACCES device found after {attempts} attempt(s) over {timeout_s:.0f} s "
-                    "(the device loads its firmware from the host and re-enumerates after plug-in; "
-                    "check the USB cable and Device Manager for 'ACCES USB-AIO16-64MA')."
+        with self._lock:
+            # ReloadDeviceLinks closes every handle in this DLL. Never use it
+            # to repair a connection while callbacks may still be running.
+            if (self._streaming or self._shutdown_failed or _FAILED_SHUTDOWN_CALLBACKS
+                    or (self._consumer is not None and self._consumer.is_alive())):
+                raise StreamStateError(
+                    "Stop acquisition before reconnecting; restart the application if shutdown failed."
                 )
-            # The DLL caches the device links it saw at load; re-scan while the
-            # freshly plugged unit finishes its firmware download.
-            self._lib.AIOUSB_ReloadDeviceLinks()
-            self._sleep(CONNECT_RETRY_S)
+            if self._lib is None:
+                self._lib = load_library(self._dll_name)
+            self._index = None
+            self.info = None
+            deadline = self._monotonic() + timeout_s
+            attempts = 0
+            last_error = None
+            while True:
+                attempts += 1
+                mask = int(self._lib.GetDevices())
+                indices = device_indices_from_mask(mask)
+                if self._requested_index is not None:
+                    indices = tuple(index for index in indices if index == self._requested_index)
+                if indices:
+                    try:
+                        info = self._query_identity(indices[0])
+                    except DaqStatusError as exc:
+                        # GetDevices can still advertise the old index after
+                        # USB removal. Treat identity lookup as part of the
+                        # bounded connection attempt, not as proof of a live
+                        # handle. Other errors retain their original meaning.
+                        if exc.status not in (6, 1167):
+                            raise
+                        last_error = exc
+                    else:
+                        self._index = indices[0]
+                        self.info = info
+                        return info
+                if self._monotonic() >= deadline:
+                    if last_error is not None:
+                        raise last_error
+                    raise DaqNotFoundError(
+                        f"No ACCES device found after {attempts} attempt(s) over {timeout_s:.0f} s "
+                        "(the device loads its firmware from the host and re-enumerates after plug-in; "
+                        "check the USB cable and Device Manager for 'ACCES USB-AIO16-64MA')."
+                    )
+                # The vendor documents this as closing cached handles and
+                # redetecting/reopening devices. The MOD50 acquisition lease
+                # remains held throughout connection and these retries.
+                check_status("AIOUSB_ReloadDeviceLinks", self._lib.AIOUSB_ReloadDeviceLinks())
+                self._sleep(CONNECT_RETRY_S)
+
+    def _query_identity(self, index: int) -> DaqInfo:
         pid = _UL(0)
         name_size = _UL(63)
         name_buffer = ctypes.create_string_buffer(64)
@@ -816,26 +850,25 @@ class AiousbDaq:
         check_status(
             "QueryDeviceInfo",
             self._lib.QueryDeviceInfo(
-                self._index, ctypes.byref(pid), ctypes.byref(name_size), name_buffer,
+                index, ctypes.byref(pid), ctypes.byref(name_size), name_buffer,
                 ctypes.byref(dio_bytes), ctypes.byref(counters),
             ),
         )
         name = name_buffer.raw[: name_size.value].decode("ascii", "replace").strip("\x00 ")
         serial = ctypes.c_uint64(0)
         serial_text = "unknown"
-        if int(self._lib.GetDeviceSerialNumber(self._index, ctypes.byref(serial))) == 0:
+        if int(self._lib.GetDeviceSerialNumber(index, ctypes.byref(serial))) == 0:
             serial_text = f"{serial.value:016X}"
-        calibration_supported = int(self._lib.ADC_QueryCal(self._index)) == 0
-        self.info = DaqInfo(
+        calibration_supported = int(self._lib.ADC_QueryCal(index)) == 0
+        return DaqInfo(
             name=name or KNOWN_PIDS.get(pid.value, "ACCES USB device"),
             serial_number=serial_text,
-            device_index=self._index,
+            device_index=index,
             product_id=pid.value,
             dll_version=dll_version_text(self._dll_name),
             simulated=False,
             calibration_supported=calibration_supported,
         )
-        return self.info
 
     def close(self) -> None:
         if self._streaming:

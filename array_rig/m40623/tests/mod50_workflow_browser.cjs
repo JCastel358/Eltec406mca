@@ -30,8 +30,8 @@ async function bounded(promise, message) {
   } finally {clearTimeout(timer);}
 }
 
-function snapshot({id = null, lot = 'BATCH-A', busy = false, complete = false} = {}) {
-  const metadata = {model: '40623', lot, operator: 'Test Technician', tray: 1};
+function snapshot({id = null, lot = 'BATCH-A', busy = false, complete = false, boxSide = 'top'} = {}) {
+  const metadata = {model: '40623', lot, operator: 'Test Technician', tray: 1, box_side: boxSide};
   const rows = complete ? [{position: '1-1', dc_v: .2, result: 'CHECK',
     dc_check: 'OUTSIDE_WINDOW_PROVISIONAL', presence: 'SIGNAL', flags: [],
     dc_detail: {time_s: [0, 1, 2], volts: [.19, .2, .21], min_v: .19, max_v: .21}}] : [];
@@ -72,7 +72,7 @@ async function fixture(browser, {initial = snapshot(), report = null, holdInitia
         gate.arrived.resolve();
         await gate.release.promise;
       }
-      current = snapshot({id: `run-${requests.length}`, lot: payload.lot, busy: true});
+      current = snapshot({id: `run-${requests.length}`, lot: payload.lot, busy: true, boxSide: payload.box_side});
       current.run_metadata.operator = payload.operator;
       current.run_metadata.tray = payload.tray;
       return route.fulfill({json: {ok: true}});
@@ -80,7 +80,7 @@ async function fixture(browser, {initial = snapshot(), report = null, holdInitia
     if (resource === 'api/preflight') return route.fulfill({json: {slot_warnings: slotWarnings}});
     if (resource === 'api/retest') {
       const payload = request.postDataJSON(); requests.push({action: 'retest', payload});
-      current = snapshot({id: 'retest-run', busy: true});
+      current = snapshot({id: 'retest-run', busy: true, boxSide: current.result.box_side});
       return route.fulfill({json: {ok: true}});
     }
     if (resource === 'api/stop') {
@@ -99,7 +99,7 @@ async function fixture(browser, {initial = snapshot(), report = null, holdInitia
       }
       if (retryFailure) return route.fulfill({status: 400, json: {error: retryFailure}});
       const candidate = current.noise_recovery;
-      current = snapshot({id: `retry-${requests.length}`, lot: candidate.lot, busy: true});
+      current = snapshot({id: `retry-${requests.length}`, lot: candidate.lot, busy: true, boxSide: candidate.box_side});
       current.simulate = candidate.simulate;
       current.run_metadata.operator = candidate.operator;
       current.run_metadata.tray = candidate.tray;
@@ -191,6 +191,151 @@ async function expectCompactViewport(page, {tray = false} = {}) {
 }
 
 const cases = [
+  ['DC settling warnings stay amber while noise is pending and after completion', async browser => {
+    const current = snapshot({id: 'dc-drift', busy: true, boxSide: 'bottom'});
+    current.phase = 'Recording NOISE';
+    current.run_metadata.selected_tests = ['dc', 'noise'];
+    current.rows = Array.from({length: 50}, (_, i) => ({
+      position: `${Math.floor(i / 10) + 1}-${i % 10 + 1}`, installed: true,
+      presence: 'SIGNAL', dc_v: i === 14 ? .031 : .710,
+      dc_check: i === 14 ? 'OUTSIDE_WINDOW_PROVISIONAL' : 'IN_WINDOW_PROVISIONAL',
+      result: 'INCOMPLETE', acquisition_validity: {dc: true, noise: false},
+      flags: i === 14 ? ['DC: outside provisional 0.3-1.2 V window'] :
+        [40, 41, 42, 43, 44, 47].includes(i) ? ['DC: Signal never settled during this test; check/retest part or slot'] : [],
+      dc_detail: {time_s: [0, 5, 10], volts: [.7093, .710, .7106], valid_acquisition: true}
+    }));
+    const test = await fixture(browser, {initial: current});
+    try {
+      const {page} = test;
+      await expectScreen(page, 'test');
+      assert.equal(await page.locator('.sensor-cell[data-status=fail]').count(), 1);
+      assert.equal(await page.locator('.sensor-cell[data-status=settling]').count(), 6);
+      assert.equal(await page.locator('.sensor-cell[data-status=testing]').count(), 43);
+      assert.equal(await page.locator('#passCount').textContent(), '49');
+      assert.equal(await page.locator('#failCount').textContent(), '7', 'Keep every flagged part in the count');
+      assert.match(await page.locator('#failCount').locator('..').textContent(), /Flagged/);
+      const tile = page.locator('.sensor-cell').nth(40);
+      assert.match(await tile.textContent(), /10-1\s*DC not settled/);
+      assert.equal(await tile.locator('.offset-dot').isVisible(), true);
+      await tile.click();
+      assert.match(await page.locator('#detailBadges').textContent(), /Offset PASS/);
+      assert.match(await page.locator('#detailBadges').textContent(), /DC settling · review/);
+      assert.match(await page.locator('#detailReason').textContent(), /separate from the offset range and noise result/);
+      assert.equal(await page.locator('#noiseChart').textContent(), 'Noise recording in progress');
+      assert(!/incomplete/i.test(await page.locator('#detailBadges').textContent()));
+      current.busy = false;
+      current.phase = 'Check complete';
+      for (const row of current.rows) {
+        row.acquisition_validity.noise = true;
+        row.result = row.flags.length ? 'CHECK' : 'REVIEW_NO_NOISE_LIMIT';
+        row.daq_3hz_q3_rms_uv = 100;
+        row.legacy_equivalent_mv = 13.36;
+        row.legacy_equivalent_detail = {time_s: [0, 100], held_mv: [0, 13.36]};
+      }
+      current.result = {...current.run_metadata, data_complete: true, simulated: true, rows: current.rows,
+        current_parts: current.rows.map(row => ({...row, part_id: `original:${row.position}`}))};
+      test.setState(current);
+      await page.waitForFunction(() => document.querySelector('#runState strong').textContent === 'COMPLETE');
+      assert.equal(await page.locator('.sensor-cell[data-status=fail]').count(), 1);
+      assert.equal(await page.locator('.sensor-cell[data-status=settling]').count(), 6);
+      assert.equal(await page.locator('#failCount').textContent(), '7');
+      assert.equal(await page.locator('#reviewCount').textContent(), '43');
+      assert.match(await page.locator('#detailBadges').textContent(), /Noise · review/);
+      assert.equal(await page.locator('#noiseChart [data-trace=held]').count(), 1);
+      assert.deepEqual(test.requests, [], 'Previewing status must never operate the fixture');
+    } finally {await test.close();}
+  }],
+  ['DC settling warnings in reports never hide offset failures or signal faults', async browser => {
+    const report = snapshot({id: 'settling-report', complete: true}).result;
+    const warning = 'DC: Signal never settled during this test; check/retest part or slot';
+    const row = {position: '1-1', installed: true, presence: 'SIGNAL', dc_v: .710,
+      dc_check: 'IN_WINDOW_PROVISIONAL', result: 'CHECK', flags: [warning],
+      acquisition_validity: {dc: true, noise: true}, daq_3hz_q3_rms_uv: 100};
+    report.rows = [row,
+      {...row, position: '1-2', dc_check: 'OUTSIDE_WINDOW_PROVISIONAL'},
+      {...row, position: '1-3', flags: [warning, 'NOISE: Outside +/-0.8 V noise headroom']},
+      {...row, position: '1-4', flags: [warning, 'DC: Flat trace; check detector/connection']},
+      {...row, position: '1-5', flags: []}];
+    const test = await fixture(browser, {report});
+    try {
+      const {page} = test;
+      assert.equal(await page.locator('.sensor-cell').first().getAttribute('data-status'), 'settling');
+      assert.equal(await page.locator('.sensor-cell[data-status=fail]').count(), 4);
+      assert.equal(await page.locator('#failCount').textContent(), '5');
+      await page.locator('.sensor-cell').first().click();
+      assert.match(await page.locator('#detailBadges').textContent(), /DC settling · review/);
+      assert.match(await page.locator('#detailReason').textContent(), /separate from the offset range and noise result/);
+      assert.equal(test.stateRequests, 0);
+      assert.deepEqual(test.requests, []);
+    } finally {await test.close();}
+  }],
+  ['box side replaces tray count and labels every slot without changing channel selection', async browser => {
+    const test = await fixture(browser);
+    try {
+      const {page} = test;
+      assert.equal(await page.locator('#trayInput').count(), 0);
+      const labels = firstRow => Array.from({length: 50}, (_, i) => `${Math.floor(i / 10) + firstRow}-${i % 10 + 1}`);
+      assert.deepEqual(await page.locator('.slot-number').allTextContents(), labels(1));
+      await page.locator('#boxSideInput').selectOption('bottom');
+      assert.deepEqual(await page.locator('.slot-number').allTextContents(), labels(6));
+      assert.deepEqual(await page.locator('#populationChoices span').allTextContents(), labels(6));
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'box-side-setup.png')});
+      await setupToTray(test);
+      assert((await page.locator('#boxRange').textContent()).includes('Bottom · 6-1 through 10-10'));
+      await page.locator('.sensor-cell').last().click();
+      assert.equal(await page.locator('#detailTitle').textContent(), 'Detector 10-10');
+      await page.locator('#backToTrayButton').click();
+      await page.locator('#populationSummary').click();
+      await page.locator('#loadNone').click();
+      await page.locator('#populationChoices').getByLabel('10-10', {exact: true}).check();
+      await page.locator('#populationSummary').click();
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'bottom-box-tray.png')});
+      await page.locator('#startButton').click();
+      await page.waitForFunction(() => document.querySelector('#phaseText').textContent.includes('Recording'));
+      const payload = test.requests.find(r => r.action === 'start').payload;
+      assert.equal(payload.box_side, 'bottom');
+      assert.equal(payload.tray, 1);
+      assert.deepEqual(payload.installed_positions, ['5-10']);
+      await waitForPolls(test);
+      assert.deepEqual(await page.locator('.slot-number').allTextContents(), labels(6));
+    } finally {await test.close();}
+  }],
+  ['next batch can switch sides and keeps one tray even when the batch number repeats', async browser => {
+    const test = await fixture(browser, {initial: snapshot({id: 'bottom-saved', complete: true, boxSide: 'bottom'})});
+    try {
+      const {page} = test;
+      await expectScreen(page, 'test');
+      assert.equal(await page.locator('#boxSideInput').inputValue(), 'bottom');
+      assert.equal(await page.locator('.slot-number').first().textContent(), '6-1');
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'bottom-box-results.png')});
+      await page.locator('#nextBatchButton').click();
+      assert.equal(await page.locator('#newBoxSideInput').inputValue(), 'bottom');
+      await page.locator('#newBatchInput').fill('BATCH-A');
+      await page.locator('#newBoxSideInput').selectOption('top');
+      await page.locator('#batchContinue').click();
+      await expectScreen(page, 'prep');
+      await page.locator('#prepContinue').click();
+      await waitForPolls(test);
+      assert.equal(await page.locator('.slot-number').first().textContent(), '1-1');
+      await page.locator('#startButton').click();
+      await page.waitForFunction(() => document.querySelector('#phaseText').textContent.includes('Recording'));
+      const payload = test.requests.find(r => r.action === 'start').payload;
+      assert.equal(payload.tray, 1);
+      assert.equal(payload.box_side, 'top');
+    } finally {await test.close();}
+  }],
+  ['bottom offline report identifies the failed detector at its physical box label', async browser => {
+    const test = await fixture(browser, {report: snapshot({id: 'bottom-report', complete: true, boxSide: 'bottom'}).result});
+    try {
+      const {page} = test;
+      assert.equal(await page.locator('.sensor-cell').first().getAttribute('data-status'), 'fail');
+      assert.equal(await page.locator('#detailTitle').textContent(), 'Detector 6-1');
+      assert((await page.locator('#detailIdentity').textContent()).includes('Position 6-1 · Bottom'));
+      await page.locator('.sensor-cell').last().click();
+      assert.equal(await page.locator('#detailTitle').textContent(), 'Detector 10-10');
+      assert.equal(test.stateRequests, 0);
+    } finally {await test.close();}
+  }],
   ['noise is the default and selected tests and loaded slots reach Start', async browser => {
     const test = await fixture(browser);
     try {
@@ -243,7 +388,7 @@ const cases = [
     } finally {await test.close();}
   }],
   ['retest maps the original part to another slot and retains original part counts', async browser => {
-    const initial = snapshot({id: 'original', complete: true});
+    const initial = snapshot({id: 'original', complete: true, boxSide: 'bottom'});
     initial.result.run_id = 'original'; initial.result.selected_tests = ['noise']; initial.result.simulated = true;
     initial.result.current_parts = [
       {part_id: 'original:1-1', origin_position: '1-1', position: '1-1', result: 'CHECK'},
@@ -252,8 +397,11 @@ const cases = [
     try {
       const {page} = test;
       await page.locator('#retestButton').click();
+      await page.locator('#retestSelected').check();
+      assert.equal(await page.locator('#retestChoice').isEnabled(), true);
+      assert((await page.locator('.retest-row').first().textContent()).includes('Original 6-1 · last 6-1'));
       await page.locator('.retest-row input').first().check();
-      await page.locator('.retest-row select').first().selectOption('3-4');
+      await page.locator('.retest-row select').first().selectOption({label: 'Slot 8-4'});
       assert.equal(await page.locator('#totalCount').textContent(), '2');
       await page.locator('#retestStart').click();
       assert.equal(test.requests.length, 0, 'Retest requires move/readiness confirmation');
@@ -264,18 +412,89 @@ const cases = [
       const payload = test.requests.find(r => r.action === 'retest').payload;
       assert.deepEqual(payload.moves, [{part_id: 'original:1-1', position: '3-4'}]);
       assert.equal(payload.source_run_id, 'original');
+      assert.equal(payload.box_side, 'bottom');
+      assert.equal(payload.retest_mode, 'selected');
       assert.deepEqual(payload.selected_tests, ['noise']);
+    } finally {await test.close();}
+  }],
+  ['retest all repeats a failed full batch without selecting detectors', async browser => {
+    const initial = snapshot({id: 'failed-batch', complete: true, boxSide: 'bottom'});
+    const positions = Array.from({length: 50}, (_, i) => `${Math.floor(i / 10) + 1}-${i % 10 + 1}`);
+    Object.assign(initial.result, {run_id: 'failed-batch', data_complete: false, selected_tests: ['dc', 'noise'],
+      errors: ['DAQ is not turned on'], installed_positions: positions,
+      current_parts: positions.map(position => ({part_id: `failed-batch:${position}`, origin_position: position,
+        position, result: 'INCOMPLETE'}))});
+    const test = await fixture(browser, {initial});
+    try {
+      const {page} = test;
+      await page.locator('#retestButton').click();
+      assert.equal(await page.locator('#retestAll').isChecked(), true);
+      assert.equal(await page.locator('#retestList').isVisible(), false);
+      assert.equal(await page.locator('#retestChoice').inputValue(), 'both');
+      assert.equal(await page.locator('#retestChoice').isDisabled(), true);
+      assert((await page.locator('#retestAllSummary').textContent()).includes('50 detectors from the previous run'));
+      assert.equal(await page.locator('#totalCount').textContent(), '50');
+      await page.locator('#retestStart').click();
+      assert.equal(test.requests.length, 0, 'Full batch retest requires readiness confirmation');
+      await page.locator('#retestConfirm').check();
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'retest-all.png')});
+      await page.locator('#retestStart').click();
+      await page.waitForFunction(() => !document.querySelector('#retestDialog').open);
+      assert.deepEqual(test.requests.filter(r => r.action === 'retest').map(r => r.payload), [{
+        source_run_id: 'failed-batch', simulate: true, box_side: 'bottom', selected_tests: ['dc', 'noise'],
+        retest_mode: 'all', confirm_moved: true}]);
+    } finally {await test.close();}
+  }],
+  ['retest mode changes restore the last run and discard individual choices from repeat all', async browser => {
+    const initial = snapshot({id: 'partial-retest', complete: true});
+    Object.assign(initial.result, {run_id: 'partial-retest', selected_tests: ['dc'], installed_positions: ['2-5'],
+      current_parts: [
+        {part_id: 'original:1-1', origin_position: '1-1', position: '2-5', result: 'CHECK'},
+        {part_id: 'original:1-2', origin_position: '1-2', position: '1-2', result: 'PASS_OFFSET_ONLY'}]});
+    const test = await fixture(browser, {initial});
+    try {
+      const {page} = test;
+      await page.locator('#retestButton').click();
+      assert((await page.locator('#retestAllSummary').textContent()).includes('1 detector from the previous run'));
+      await page.locator('#retestSelected').check();
+      await page.locator('#retestConfirm').check();
+      await page.locator('#retestStart').click();
+      assert.equal(test.requests.length, 0, 'Individual mode still requires selected parts');
+      await page.locator('.retest-row input').first().check();
+      await page.locator('.retest-row select').first().selectOption('3-4');
+      await page.locator('#retestChoice').selectOption('noise');
+      await page.locator('#retestAll').check();
+      assert.equal(await page.locator('#retestConfirm').isChecked(), false);
+      assert.equal(await page.locator('#retestChoice').inputValue(), 'dc');
+      assert.equal(await page.locator('#retestList').isVisible(), false);
+      // Polling must not unlock the tests in exact-repeat mode.
+      await page.waitForResponse(response => response.url().endsWith('/api/state'));
+      assert.equal(await page.locator('#retestChoice').isDisabled(), true);
+      await page.locator('#retestSelected').check();
+      assert.equal(await page.locator('.retest-row input').first().isChecked(), true);
+      assert.equal(await page.locator('.retest-row select').first().inputValue(), '3-4');
+      await page.locator('#retestAll').check();
+      await page.locator('#retestConfirm').check();
+      await page.locator('#retestStart').click();
+      await page.waitForFunction(() => !document.querySelector('#retestDialog').open);
+      const payload = test.requests.find(r => r.action === 'retest').payload;
+      assert.equal(payload.retest_mode, 'all');
+      assert.deepEqual(payload.selected_tests, ['dc']);
+      assert.equal('moves' in payload, false);
     } finally {await test.close();}
   }],
   ['suspect-slot popup waits for review and sends only explicitly repaired slots', async browser => {
     const test = await fixture(browser, {slotWarnings: [{position: '1-1'}, {position: '2-2'}]});
     try {
       const {page} = test;
+      await page.locator('#boxSideInput').selectOption('bottom');
       await setupToTray(test);
       await page.locator('#startButton').click();
       await page.locator('#slotDialog').waitFor({state: 'visible'});
       assert.equal(test.requests.length, 0);
       assert.equal(await page.locator('#slotWarnings input:checked').count(), 0);
+      assert((await page.locator('#slotWarnings').textContent()).includes('Slot 6-1'));
+      assert((await page.locator('#slotWarnings').textContent()).includes('Slot 7-2'));
       await page.locator('#slotWarnings input[value="2-2"]').check();
       if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'slot-warning.png')});
       await page.locator('#slotContinue').click();
@@ -286,7 +505,7 @@ const cases = [
     } finally {await test.close();}
   }],
   ['saved recovery requires confirmation and preserves identity and pending Stop', async browser => {
-    const candidate = {id: 'saved-recovery-1', lot: 'ORIGINAL-BATCH', operator: 'Original Technician', tray: 7,
+    const candidate = {id: 'saved-recovery-1', lot: 'ORIGINAL-BATCH', operator: 'Original Technician', tray: 7, box_side: 'bottom',
       simulate: true, created_at: '2026-11-04T12:10:00-05:00', dc_recorded_seconds: 10,
       recorded_noise_seconds: 4.07, requires_settling: true};
     const initial = {...snapshot(), noise_recovery: candidate};
@@ -306,7 +525,7 @@ const cases = [
       await page.setViewportSize({width: 1280, height: 600});
       await expectCompactViewport(page);
       await page.setViewportSize({width: 1366, height: 650});
-      assert((await page.locator('#recoveryBatch').textContent()).includes('ORIGINAL-BATCH / 7'));
+      assert((await page.locator('#recoveryBatch').textContent()).includes('ORIGINAL-BATCH / Bottom'));
       assert.equal(await page.locator('#recoveryOperator').textContent(), 'Original Technician');
       assert((await page.locator('#recoverySource').textContent()).includes('SIMULATION'));
       assert((await page.locator('#recoveryTiming').textContent()).includes('90 s noise warm-up + 100 s recording'));
@@ -327,7 +546,8 @@ const cases = [
       assert.deepEqual(test.requests, [{action: 'retry-noise', payload: {recovery_id: candidate.id, confirm_unchanged: true}}]);
       assert.equal(await page.locator('#lotInput').inputValue(), 'ORIGINAL-BATCH');
       assert.equal(await page.locator('#operatorInput').inputValue(), 'Original Technician');
-      assert.equal(await page.locator('#trayInput').inputValue(), '7');
+      assert.equal(await page.locator('#boxSideInput').inputValue(), 'bottom');
+      assert.equal(await page.locator('.slot-number').first().textContent(), '6-1');
       pending.release.resolve();
       await page.waitForResponse(response => response.url().endsWith('/api/stop'));
       assert.deepEqual(test.requests.map(item => item.action), ['retry-noise', 'stop']);
@@ -432,7 +652,7 @@ const cases = [
   }],
   ['setup, checklist and completed 50-detector tray fit compact desktop viewports', async browser => {
     for (const viewport of [{width: 1366, height: 650}, {width: 1280, height: 600}]) {
-      const initial = snapshot({id: 'layout-run', complete: true});
+      const initial = snapshot({id: 'layout-run', complete: true, boxSide: 'bottom'});
       initial.result.batch_summary = {tracked_parts: 50, failed: 1, review: 49, offset_pass: 0, incomplete: 0, no_signal: 0, screening_yield_percent: 98};
       initial.result.current_parts = [{part_id: 'original:1-1', origin_position: '1-1', position: '1-1', result: 'CHECK'}];
       const test = await fixture(browser, {initial});
@@ -721,8 +941,10 @@ const cases = [
   if (process.env.PLAYWRIGHT_EXECUTABLE) options.executablePath = process.env.PLAYWRIGHT_EXECUTABLE;
   const browser = await chromium.launch(options);
   let failures = 0;
+  const selectedCases = cases.filter(([name]) => !process.env.MOD50_BROWSER_FILTER || name.includes(process.env.MOD50_BROWSER_FILTER));
+  assert(selectedCases.length, 'No browser cases matched MOD50_BROWSER_FILTER');
   try {
-    for (const [name, run] of cases) {
+    for (const [name, run] of selectedCases) {
       try {await run(browser); console.log(`PASS ${name}`);}
       catch (error) {failures++; console.error(`FAIL ${name}\n${error.stack}`);}
     }
@@ -741,6 +963,6 @@ const cases = [
       } finally {await test.close();}
     }
   } finally {await browser.close();}
-  console.log(`${cases.length - failures}/${cases.length} browser workflow cases passed`);
+  console.log(`${selectedCases.length - failures}/${selectedCases.length} browser workflow cases passed`);
   process.exitCode = failures ? 1 : 0;
 })().catch(error => {console.error(error.stack); process.exitCode = 1;});

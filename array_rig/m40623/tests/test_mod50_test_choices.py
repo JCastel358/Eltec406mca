@@ -1,6 +1,7 @@
 """Selected stages, simultaneous 80% settling, and linked retest accounting."""
 import copy
 import csv
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -179,6 +180,70 @@ class SelectedStageRuns(unittest.TestCase):
         self.assertEqual(restored["run_id"], retest.result["run_id"])
         self.assertEqual(restored["tray_summary"]["tracked_parts"], 2)
 
+    def test_retest_all_after_daq_connection_failure_preserves_setup_and_part_counts(self):
+        def unavailable(**kwargs):
+            raise OSError("DAQ is not turned on")
+
+        for positions, tests in ((hw.POSITIONS, ["dc", "noise"]), (("1-1", "3-4", "5-10"), ["noise"])):
+            with self.subTest(count=len(positions), tests=tests):
+                worker = self.worker(selected_tests=tests, installed_positions=positions,
+                                     box_side="bottom", rig_factory=unavailable)
+                worker.run()
+                source = worker.result
+                original = (worker.directory / "summary.json").read_bytes()
+                self.assertFalse(source["data_complete"])
+                self.assertEqual(source["records"], [])
+                self.assertEqual(source["tray_summary"]["incomplete"], len(positions))
+                reopened = web.Dashboard(simulate=True, output_root=self.tmp.name)
+                self.assertEqual(reopened.saved_result["run_id"], source["run_id"])
+                with patch.object(check.TrayCheck, "start", check.TrayCheck.run), \
+                     patch.object(check, "DC_SECONDS", 1), patch.object(check, "NOISE_SECONDS", 1):
+                    reopened.retest({"source_run_id": source["run_id"], "confirm_moved": True,
+                                     "retest_mode": "all", "selected_tests": ["dc"],
+                                     "lot": "DIFFERENT", "operator": "Other", "box_side": "top", "simulate": False,
+                                     "moves": [{"part_id": "unknown", "position": "2-5"}]})
+                repeated = reopened.worker.result
+                self.assertTrue(repeated["data_complete"], repeated["errors"])
+                self.assertEqual(repeated["installed_positions"], list(positions))
+                self.assertEqual(repeated["selected_tests"], tests)
+                self.assertEqual([r["mode"] for r in repeated["records"]], tests)
+                self.assertEqual(repeated["part_mapping"], {p: source["run_id"] + ":" + p for p in positions})
+                for key in ("lot", "operator", "tray", "box_side", "simulated", "family_id"):
+                    self.assertEqual(repeated[key], source[key], key)
+                self.assertEqual(repeated["tray_summary"]["tracked_parts"], len(positions))
+                self.assertEqual(repeated["tray_summary"]["attempts"], 2 * len(positions))
+                self.assertEqual((worker.directory / "summary.json").read_bytes(), original)
+                self.assertNotEqual(reopened.worker.directory, worker.directory)
+
+    def test_bottom_labels_survive_exports_reopening_and_retest_without_remapping_channels(self):
+        worker = self.worker(selected_tests=["dc"], box_side="bottom")
+        with patch.object(check, "DC_SECONDS", 1):
+            worker.run()
+        result = worker.result
+        self.assertTrue(result["data_complete"], result["errors"])
+        self.assertEqual(result["channel_map"], hw.CHANNEL_MAP)
+        self.assertEqual([r["position"] for r in result["rows"]], list(hw.POSITIONS))
+        labels = [f"{i // 10 + 6}-{i % 10 + 1}" for i in range(50)]
+        self.assertEqual([r["detector_position"] for r in result["rows"]], labels)
+        with (worker.directory / "results.csv").open(encoding="utf-8-sig", newline="") as stream:
+            exported = list(csv.DictReader(stream))
+        self.assertEqual([r["detector_position"] for r in exported], labels)
+        self.assertTrue(all(r["box_side"] == "bottom" for r in exported))
+        saved = json.loads((worker.directory / "summary.json").read_text(encoding="utf-8"))
+        self.assertEqual(saved["box_side"], "bottom")
+        with np.load(worker.directory / "dc_raw.npz") as raw:
+            metadata = json.loads(raw["metadata_json"].item())
+            self.assertEqual(metadata["box_side"], "bottom")
+            self.assertEqual(metadata["logical_to_physical"], list(hw.MAPPING))
+        reopened = web.Dashboard(simulate=True, output_root=self.tmp.name, worker_factory=FakeWorker)
+        self.assertEqual(reopened.snapshot()["run_metadata"]["box_side"], "bottom")
+        part = result["current_parts"][0]
+        self.assertEqual(part["origin_detector_position"], "6-1")
+        reopened.retest({"source_run_id": result["run_id"], "confirm_moved": True,
+                         "box_side": "top", "moves": [{"part_id": part["part_id"], "position": "5-10"}]})
+        self.assertEqual(reopened.worker.options["box_side"], "bottom", "A retest must keep the saved side")
+        self.assertEqual(reopened.worker.options["part_mapping"], {"5-10": part["part_id"]})
+
     def test_never_stable_falls_back_and_still_records_every_channel(self):
         class RampDaq(hw.DemoDaq):
             def _synth(self, scans, scan_hz):
@@ -236,6 +301,23 @@ class RetestHistory(unittest.TestCase):
         self.assertEqual(self.history.summary("LOT")["failed"], 1)
         self.assertEqual(self.history.summary("LOT")["tracked_parts"], 1)
 
+    def test_top_and_bottom_slot_warnings_and_repairs_stay_separate(self):
+        for i in range(3):
+            self.save(saved_run(f"TOP-{i}"))  # Older records without a side retain their 1-1 labels.
+        for i in range(2):
+            self.save({**saved_run(f"BOTTOM-{i}"), "box_side": "bottom"})
+        self.assertEqual(self.history.warnings("bottom"), [])
+        self.save({**saved_run("BOTTOM-2"), "box_side": "bottom"})
+        warning = self.history.warnings("bottom")[0]
+        self.assertEqual((warning["position"], warning["detector_position"]), ("1-1", "6-1"))
+        self.history.verify_repairs(["1-1"], "Tech", "bottom")
+        self.assertEqual(self.history.warnings("bottom"), [])
+        self.assertEqual(len(self.history.warnings("top")), 1)
+        dashboard = web.Dashboard(simulate=True, output_root=self.tmp.name, worker_factory=FakeWorker)
+        self.assertEqual(dashboard.preflight({"simulate": True, "box_side": "bottom"})["slot_warnings"], [])
+        dashboard.start({"lot": "NEW", "operator": "Tech", "simulate": True, "box_side": "bottom"})
+        self.assertEqual(dashboard.worker.options["installed_positions"], hw.POSITIONS)
+
     def test_invalid_retry_preserves_previous_assessment_and_stage_not_retested(self):
         self.save(saved_run("A"))
         self.save(saved_run("B", failure=False, valid=False, mapping={"1-1": "A:1-1"}, family="A"))
@@ -269,6 +351,40 @@ class RetestHistory(unittest.TestCase):
         self.save(saved_run("B", noise=True, failure=False, position="3-1", mapping={"3-1": "A:1-1"}, family="A"))
         summary = self.history.summary("LOT")
         self.assertEqual((summary["tracked_parts"], summary["failed"], summary["review"], summary["offset_pass"]), (1, 0, 1, 0))
+
+    def test_retest_all_after_individual_move_repeats_last_run_including_no_signal(self):
+        original = saved_run("A", failure=False)
+        original["rows"].append({**original["rows"][0], "position": "1-2"})
+        self.save(original)
+        moved = saved_run("B", failure=False, no_signal=True, position="2-5",
+                          mapping={"2-5": "A:1-1"}, family="A")
+        moved["installed_positions"] = ["2-5"]
+        self.save(moved)
+        dashboard = web.Dashboard(simulate=True, output_root=self.tmp.name, worker_factory=FakeWorker)
+        dashboard.saved_result = moved
+        dashboard.retest({"source_run_id": "B", "confirm_moved": True, "retest_mode": "all"})
+        self.assertEqual(dashboard.worker.options["part_mapping"], {"2-5": "A:1-1"})
+        self.assertEqual(dashboard.worker.options["installed_positions"], ("2-5",))
+        self.assertEqual(dashboard.worker.options["family_id"], "A")
+        self.assertEqual(len(self.history.current_parts("LOT", "A")), 2)
+
+    def test_retest_all_preserves_confirmation_staleness_and_slot_checks(self):
+        for run_id in ("A", "B", "C"):
+            self.save(saved_run(run_id))
+        dashboard = web.Dashboard(simulate=True, output_root=self.tmp.name, worker_factory=FakeWorker)
+        dashboard.saved_result = saved_run("C")
+        payload = {"source_run_id": "C", "confirm_moved": True, "retest_mode": "all"}
+        for changes, error in (({"confirm_moved": False}, "Confirm"),
+                               ({"source_run_id": "A"}, "no longer current"),
+                               ({"retest_mode": "unknown"}, "Choose"),
+                               ({}, "warning"),
+                               ({"slot_warning_acknowledged": True}, "different retest slot")):
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, error):
+                dashboard.retest({**payload, **changes})
+            self.assertIsNone(dashboard.worker)
+            self.assertEqual(dashboard.saved_result["run_id"], "C")
+        dashboard.retest({**payload, "slot_warning_acknowledged": True, "repair_positions": ["1-1"]})
+        self.assertEqual(dashboard.worker.options["part_mapping"], {"1-1": "C:1-1"})
 
     def test_preflight_excludes_suspect_slots_and_retest_checks_mapping(self):
         for run_id in ("A", "B", "C"):

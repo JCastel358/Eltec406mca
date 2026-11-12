@@ -20,7 +20,7 @@
         <div class="welcome-panel">
           <p class="step-label">01 / SET UP</p>
           <h2 id="setupTitle" tabindex="-1">Set up a tray</h2>
-          <p>Enter your name and batch number.</p>
+          <p>Enter your name and batch number, then choose the side of the detector box.</p>
           <svg class="welcome-illustration" viewBox="0 0 300 150" aria-hidden="true"><rect x="27" y="18" width="246" height="113" rx="17" fill="#fff" stroke="#c6d5ef" stroke-width="2"/><g fill="#e8f1ff" stroke="#7394c9" stroke-width="2"><circle cx="60" cy="50" r="15"/><circle cx="105" cy="50" r="15"/><circle cx="150" cy="50" r="15"/><circle cx="195" cy="50" r="15"/><circle cx="240" cy="50" r="15"/><circle cx="60" cy="98" r="15"/><circle cx="105" cy="98" r="15"/><circle cx="150" cy="98" r="15"/><circle cx="195" cy="98" r="15"/><circle cx="240" cy="98" r="15"/></g><circle cx="195" cy="50" r="15" fill="#dff6ec" stroke="#13805a" stroke-width="2"/><path d="m188 50 5 5 9-11" fill="none" stroke="#13805a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="m253 10 4-6m8 15 8-1m-14 123 4 6" stroke="#ec1c3d" stroke-width="3" stroke-linecap="round"/></svg>
           <div class="saved-recovery" id="savedRecoveryCard" hidden><strong>A noise check can be recovered</strong><p id="savedRecoverySummary"></p><button class="secondary" id="recoverSavedButton" type="button">Recover saved noise check →</button></div>
         </div>
@@ -28,7 +28,7 @@
           <label class="field full-field"><span>Detector model</span><select id="modelInput" required><option value="40623">40623 · Offset &amp; noise</option></select></label>
           <label class="field full-field"><span>Your name</span><input id="operatorInput" autocomplete="name" required maxlength="120" placeholder="Technician name"></label>
           <label class="field full-field"><span>Batch number</span><input id="lotInput" autocomplete="off" required maxlength="120" placeholder="e.g. 40623-1042"></label>
-          <label class="field tray-field"><span>Tray</span><input id="trayInput" type="number" min="1" step="1" value="1" required></label>
+          <label class="field box-side-field"><span>Detector box side</span><select id="boxSideInput" required><option value="top">Top · 1-1 to 5-10</option><option value="bottom">Bottom · 6-1 to 10-10</option></select></label>
           <label class="field source-field"><span>Data source</span><select id="sourceInput"><option value="real">Actual detectors</option><option value="demo">Generated demo</option></select></label>
           <button class="primary full-field continue-button" id="setupContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button>
           <p class="form-note full-field">Results save automatically.</p>
@@ -65,22 +65,22 @@
         <div class="progress-bottom"><p id="statusText" role="status">Press Start when the fixture is ready.</p><div class="sequence" aria-label="Measurement sequence"><span>Settle</span><i>→</i><span>Offset</span><i>→</i><span>Settle</span><i>→</i><span>Noise</span><i>→</i><span>Save</span></div></div>
       </div>
       <div class="summary-strip" aria-label="Tray result counts">
-        <div><span>Positions</span><strong id="totalCount">50</strong></div><div class="good"><span>Offset pass</span><strong id="passCount">0</strong></div><div class="bad"><span>Fail / check</span><strong id="failCount">0</strong></div><div class="muted"><span>No signal</span><strong id="emptyCount">0</strong></div><div class="warn"><span>Noise review</span><strong id="reviewCount">0</strong></div>
+        <div><span>Positions</span><strong id="totalCount">50</strong></div><div class="good"><span>Offset pass</span><strong id="passCount">0</strong></div><div class="warn"><span>Flagged</span><strong id="failCount">0</strong></div><div class="muted"><span>No signal</span><strong id="emptyCount">0</strong></div><div class="warn"><span>Noise review</span><strong id="reviewCount">0</strong></div>
       </div>
-      <div class="tray-wrap"><div class="tray-toolbar"><span>5 rows × 10 positions</span><span id="traySummary">50 positions · select any detector for details</span></div><div class="sensor-grid" id="sensorGrid" aria-label="Detector positions"></div></div>
-      <div class="legend"><span><i class="legend-dot pass"></i>Green badge: offset pass</span><span><i class="legend-dot fail"></i>Red: signal fail / check</span><span><i class="legend-dot review"></i>Amber: review / incomplete</span><span><i class="legend-dot empty"></i>Gray: no signal</span></div>
+      <div class="tray-wrap"><div class="tray-toolbar"><span id="boxRange">Top · 1-1 through 5-10</span><span id="traySummary">50 positions · select any detector for details</span></div><div class="sensor-grid" id="sensorGrid" aria-label="Detector positions"></div></div>
+      <div class="legend"><span><i class="legend-dot pass"></i>Green badge: offset pass</span><span><i class="legend-dot fail"></i>Red: offset / signal fault</span><span><i class="legend-dot review"></i>Amber: settling / review / incomplete</span><span><i class="legend-dot empty"></i>Gray: no signal</span></div>
       <p class="limit-note" id="limitNote">Offset: provisional 0.3–1.2 V. Noise limits await calibration. An offset pass is not a complete detector pass.</p>
       <p class="batch-yield" id="batchYield" hidden></p>
       <div class="completion-actions" id="completionActions" hidden><span id="completionPrompt">All set with this tray?</span><div class="button-row"><button class="secondary" id="homeButton" type="button">Main setup <kbd>Esc</kbd></button><button class="secondary" id="retestButton" type="button">Retest parts</button><button class="secondary" id="retryNoiseButton" type="button" hidden>Retry noise →</button><button class="primary" id="nextBatchButton" type="button">Next batch <kbd>Enter</kbd></button></div></div>
     </section>
     <section class="workflow-screen" id="batchSection" aria-labelledby="batchTitle" hidden>
-      <div class="workflow-card batch-card"><p class="step-label">NEXT BATCH</p><h2 id="batchTitle" tabindex="-1">Next batch</h2><p>Enter the next batch number.</p><form id="batchForm"><label class="field"><span>New batch number</span><input id="newBatchInput" autocomplete="off" required maxlength="120" placeholder="Enter batch number"></label><p class="form-note">Use the established power-off procedure before changing detectors.</p><div class="workflow-actions"><button class="secondary" id="batchCancel" type="button">Back to results</button><button class="primary continue-button" id="batchContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button></div></form></div>
+      <div class="workflow-card batch-card"><p class="step-label">NEXT BATCH</p><h2 id="batchTitle" tabindex="-1">Next batch</h2><p>Enter the next batch number and choose the detector box side.</p><form id="batchForm"><label class="field"><span>New batch number</span><input id="newBatchInput" autocomplete="off" required maxlength="120" placeholder="Enter batch number"></label><label class="field"><span>Detector box side</span><select id="newBoxSideInput" required><option value="top">Top · 1-1 through 5-10</option><option value="bottom">Bottom · 6-1 through 10-10</option></select></label><p class="form-note">Use the established power-off procedure before changing detectors.</p><div class="workflow-actions"><button class="secondary" id="batchCancel" type="button">Back to results</button><button class="primary continue-button" id="batchContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button></div></form></div>
     </section>
     <section class="workflow-screen" id="recoverySection" aria-labelledby="recoveryTitle" hidden>
       <div class="workflow-card recovery-card">
         <p class="step-label">RECOVER THE NOISE CHECK</p><h2 id="recoveryTitle" tabindex="-1">Retry noise</h2>
         <p>Keep the saved offset and take a new noise recording.</p>
-        <dl class="recovery-identity"><div><dt>Batch / tray</dt><dd id="recoveryBatch"></dd></div><div><dt>Technician</dt><dd id="recoveryOperator"></dd></div><div><dt>Original run</dt><dd id="recoveryDate"></dd></div><div><dt>Data source</dt><dd id="recoverySource"></dd></div></dl>
+        <dl class="recovery-identity"><div><dt>Batch / box side</dt><dd id="recoveryBatch"></dd></div><div><dt>Technician</dt><dd id="recoveryOperator"></dd></div><div><dt>Original run</dt><dd id="recoveryDate"></dd></div><div><dt>Data source</dt><dd id="recoverySource"></dd></div></dl>
         <p class="recovery-timing" id="recoveryTiming"></p>
         <form id="recoveryForm"><label class="recovery-confirm"><input type="checkbox" id="recoveryConfirm" required><span>I confirm these are the <strong>same detectors, wiring, and alignment</strong>, and fixture power has <strong>not been interrupted</strong> since this original run.</span></label><p class="form-note">If anything changed, use Main setup and run a fresh check.</p><p id="recoveryError" class="recovery-error" role="status" hidden></p><div class="workflow-actions"><button class="secondary" id="recoveryCancel" type="button">Main setup <kbd>Esc</kbd></button><button class="primary" id="recoveryStart" type="submit" disabled>Retry noise</button></div></form>
       </div>
@@ -100,11 +100,16 @@
   </main>
   <dialog id="retestDialog" class="operator-dialog" aria-labelledby="retestTitle">
     <h2 id="retestTitle">Retest the same parts</h2>
-    <p>Select the parts to retest and their new slots. Previous results stay saved.</p>
-    <label class="field"><span>Retest</span><select id="retestChoice"><option value="noise">Noise only</option><option value="dc">Offset only</option><option value="both">Offset and noise</option></select></label>
-    <p>Keep track of each part by its original position. Move parts only using the established power-off procedure; restore the fixture before starting.</p>
-    <div class="retest-list" id="retestList"></div>
-    <label class="recovery-confirm"><input id="retestConfirm" type="checkbox"><span>These are the same parts, placed in the selected slots. Power, RUN, cooling and vacuum are ready.</span></label>
+    <p>Repeat the previous run, or choose individual detectors. Previous results stay saved.</p>
+    <fieldset class="retest-modes"><legend>Detectors to retest</legend>
+      <label><input id="retestAll" type="radio" name="retestMode" value="all" checked><span>All detectors in the same slots</span></label>
+      <label><input id="retestSelected" type="radio" name="retestMode" value="selected"><span>Select individual detectors</span></label>
+    </fieldset>
+    <p id="retestAllSummary"></p>
+    <label class="field"><span>Tests</span><select id="retestChoice"><option value="noise">Noise only</option><option value="dc">Offset only</option><option value="both">Offset and noise</option></select></label>
+    <p id="retestMoveNote" hidden>Keep track of each part by its original position. Move parts only using the established power-off procedure; restore the fixture before starting.</p>
+    <div class="retest-list" id="retestList" hidden></div>
+    <label class="recovery-confirm"><input id="retestConfirm" type="checkbox"><span id="retestConfirmText">These are the same parts in the same slots. DAQ, power, RUN, cooling and vacuum are ready.</span></label>
     <p id="retestError" class="recovery-error" role="status"></p>
     <div class="workflow-actions"><button class="secondary" id="retestCancel" type="button">Cancel</button><button class="primary" id="retestStart" type="button">Start retest</button></div>
   </dialog>

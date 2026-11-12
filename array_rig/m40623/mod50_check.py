@@ -20,6 +20,7 @@ import uuid
 import numpy as np
 
 import mod50_hardware as hw
+from mod50_positions import detector_position, normalize_box_side
 import mod50_legacy_noise as legacy_meter
 from mod50_history import History
 from mod50_settling import SettlingMonitor, NoiseWarmup, NOISE_WARMUP_SECONDS, MAX_SECONDS as SETTLING_MAX_SECONDS
@@ -301,7 +302,7 @@ def write_report(directory, result):
     """Persist every position plus the replayable trend/excerpt evidence."""
     directory = Path(directory)
     payload = json.dumps(result, indent=2, allow_nan=False)
-    fields = ("channel", "position", "card", "card_channel", "physical_daq_channel", "daq_jack",
+    fields = ("channel", "detector_position", "position", "card", "card_channel", "physical_daq_channel", "daq_jack",
               "installed", "presence", "noise_analysis_excluded", "dc_v", "dc_check",
               "daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv", *legacy_meter.VALUE_FIELDS,
               "legacy_equivalent_method_id", "legacy_equivalent_status", "result", "flags", "acquisition_errors",
@@ -312,10 +313,11 @@ def write_report(directory, result):
                      "legacy_estimate_note", "legacy_noise_method")
     csv_partial = directory / "results.csv.partial"
     with csv_partial.open("w", newline="", encoding="utf-8-sig") as stream:
-        writer = csv.DictWriter(stream, fieldnames=("lot", "tray", "operator", "simulated", "run_id", "family_id", "selected_tests", *fields, *detail_fields))
+        writer = csv.DictWriter(stream, fieldnames=("lot", "box_side", "tray", "operator", "simulated", "run_id", "family_id", "selected_tests", *fields, *detail_fields))
         writer.writeheader()
         for row in result["rows"]:
             values = {field: row.get(field) for field in fields}
+            values["detector_position"] = detector_position(row["position"], result.get("box_side", "top"))
             dc, noise = row.get("dc_detail") or {}, row.get("noise_detail") or {}
             values.update({"dc_" + key: dc.get(key) for key in
                            ("min_v", "max_v", "slope_v_per_s", "start_v", "end_v", "estimated_seconds_to_window")})
@@ -327,6 +329,7 @@ def write_report(directory, result):
                           legacy_estimate_note=legacy.get("reason", "Unvalidated estimate; noise pass/fail disabled."),
                           legacy_noise_method=json.dumps(result.get("legacy_noise_method"), sort_keys=True))
             writer.writerow({"lot": result["lot"], "tray": result["tray"], "operator": result["operator"],
+                             "box_side": result.get("box_side", "top"),
                              "run_id": result.get("run_id"), "family_id": result.get("family_id"),
                              "selected_tests": ";".join(result.get("selected_tests", ["dc", "noise"])),
                              "simulated": result["simulated"], **values, "flags": "; ".join(row["flags"]),
@@ -344,7 +347,7 @@ def write_report(directory, result):
 
 
 class TrayCheck(threading.Thread):
-    def __init__(self, *, lot, operator, tray=1, installed_positions=hw.POSITIONS,
+    def __init__(self, *, lot, operator, tray=1, box_side="top", installed_positions=hw.POSITIONS,
                  simulate=False, output_root=None, rig_factory=hw.Mod50Rig, lease_factory=None, resume_dc=None,
                  selected_tests=("dc", "noise"), part_mapping=None, family_id=None, excluded_suspect_slots=()):
         super().__init__(name="eltec-mod50-owner", daemon=False)
@@ -356,6 +359,7 @@ class TrayCheck(threading.Thread):
         if not self.positions:
             raise ValueError("Select at least one installed detector.")
         self.lot, self.operator, self.tray = str(lot).strip(), str(operator).strip(), tray
+        self.box_side = normalize_box_side(box_side)
         self.simulate = bool(simulate)
         self.selected_tests = normalize_tests(selected_tests)
         self.run_id = uuid.uuid4().hex
@@ -573,12 +577,14 @@ class TrayCheck(threading.Thread):
             with (self.directory / settling_file).open("xb") as stream:
                 np.savez_compressed(stream, converter_counts=np.concatenate(settling_chunks),
                     metadata_json=np.array(json.dumps({"mode": mode, "range_code": record["range_code"],
-                        "actual_rate_hz": rate, "settling": record["settling"], "map_sha256": hw.MAP_SHA256}, allow_nan=False)))
+                        "actual_rate_hz": rate, "settling": record["settling"], "map_sha256": hw.MAP_SHA256,
+                        "box_side": self.box_side}, allow_nan=False)))
             record["settling"]["raw_file"] = settling_file
         metadata = {key: value for key, value in record.items() if key != "rows"}
         metadata.update(schema=SCHEMA, profile=hw.PROFILE, application_revision=hw.APP_REVISION,
                         recovery_policy=RECOVERY_POLICY,
                         timing_policy=TIMING_POLICY, lot=self.lot, tray=self.tray, operator=self.operator,
+                        box_side=self.box_side,
                         simulated=self.simulate, daq_serial=rig.info.serial_number, calibration=None,
                         physical_channels=list(range(57)), logical_to_physical=list(hw.MAPPING),
                         channel_map=hw.CHANNEL_MAP, map_sha256=hw.MAP_SHA256, installed_positions=list(self.positions),
@@ -620,6 +626,8 @@ class TrayCheck(threading.Thread):
         """
         resume = self.resume_dc
         record, source = copy.deepcopy(resume["record"]), resume["source"]
+        if source.get("box_side", "top") != self.box_side:
+            raise ValueError("Saved DC detector-box side does not match this run")
         if record.get("mode") != "dc" or not record.get("valid_data") or record.get("errors") or not record.get("settling", {}).get("complete"):
             raise ValueError("Saved DC acquisition is not valid for noise recovery")
         for key, expected in (("profile", hw.PROFILE), ("map_sha256", hw.MAP_SHA256),
@@ -713,6 +721,7 @@ class TrayCheck(threading.Thread):
             self.result = {"schema": SCHEMA, "profile": hw.PROFILE, "application_revision": hw.APP_REVISION,
                 "created_at": dt.datetime.now().astimezone().isoformat(), "lot": self.lot,
                 "tray": self.tray, "operator": self.operator, "simulated": self.simulate,
+                "box_side": self.box_side,
                 "data_complete": bool(complete), "timing_policy": TIMING_POLICY,
                 "installed_positions": list(self.positions), "channel_map": hw.CHANNEL_MAP,
                 "daq": asdict(info) if info else None, "records": self.records, "errors": errors,
@@ -725,6 +734,8 @@ class TrayCheck(threading.Thread):
                 "part_mapping": self.part_mapping, "excluded_suspect_slots": self.excluded_suspect_slots,
                 "rows": combine_rows(self.records, self.positions, complete, self.selected_tests)}
             for row in self.result["rows"]:
+                row["box_side"] = self.box_side
+                row["detector_position"] = detector_position(row["position"], self.box_side)
                 row["part_id"] = (self.part_mapping.get(row["position"], self.run_id + ":" + row["position"])
                                   if row["installed"] else None)
             self.result["recovery"] = {"policy": RECOVERY_POLICY, "max_attempts_per_stage": MAX_STAGE_ATTEMPTS,
@@ -747,7 +758,7 @@ class TrayCheck(threading.Thread):
                     self.result["batch_summary"] = history.summary(self.lot)
                     self.result["tray_summary"] = history.summary(self.lot, self.family_id)
                     self.result["current_parts"] = history.current_parts(self.lot, self.family_id)
-                    self.result["slot_warnings"] = history.warnings()
+                    self.result["slot_warnings"] = history.warnings(self.box_side)
                     write_report(self.directory, self.result)
             except Exception as exc:
                 errors.append("Saving report: " + str(exc))

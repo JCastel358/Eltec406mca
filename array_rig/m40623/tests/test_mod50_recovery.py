@@ -92,6 +92,29 @@ class SavedNoiseRecovery(unittest.TestCase):
         self.save_raw()
         self.assertEqual(self.load()["record"]["samples"], 10000)
 
+    def test_bottom_recovery_requires_matching_side_in_raw_evidence(self):
+        self.summary["box_side"] = self.metadata["box_side"] = "bottom"
+        self.save_raw()
+        self.assertEqual(self.load()["source"]["box_side"], "bottom")
+        self.summary["box_side"] = "top"
+        with self.assertRaisesRegex(ValueError, "detector-box side"):
+            self.load()
+
+    def test_previous_revision_without_side_keeps_original_top_labels(self):
+        self.summary["application_revision"] = self.metadata["application_revision"] = "2026-11-12.2"
+        self.save_raw()
+        self.assertEqual(self.load()["source"]["box_side"], "top")
+
+    def test_reconnect_fix_preserves_recovery_of_previous_and_current_revision(self):
+        for revision in ("2026-11-12.3", "2026-11-12.4", hw.APP_REVISION):
+            with self.subTest(revision=revision):
+                self.summary["application_revision"] = self.metadata["application_revision"] = revision
+                self.summary["box_side"] = self.metadata["box_side"] = "bottom"
+                self.save_raw()
+                result = self.load()
+                self.assertEqual(result["source"]["box_side"], "bottom")
+                self.assertEqual(result["record"]["samples"], 10000)
+
     def test_pre_legacy_meter_revision_still_recovers_unchanged_dc(self):
         self.summary["application_revision"] = "2026-11-11.1"
         self.metadata["application_revision"] = "2026-11-11.1"

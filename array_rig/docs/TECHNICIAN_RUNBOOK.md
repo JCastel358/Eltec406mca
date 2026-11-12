@@ -1,12 +1,18 @@
 # Technician runbook — Eltec sensor test rigs
 
-## Current M25/HUB array hardware (updated 2026-11-11)
+## Current M25/HUB array hardware (updated 2026-11-12)
 
 For the assembled HUB plus two M25 cards, use the
 [current 50-piece instructions](../README.md).
-Choose Noise only (default), Offset only, or both before Start. Each selected
-stage starts recording together when 80% of loaded parts settle, or after
-the 90-second fallback. Offset records 10 seconds; noise records 100 seconds.
+Choose Noise only (default), Offset only, or both before Start. Offset starts
+recording together when 80% of loaded parts settle, or after the 90-second
+fallback, and records 10 seconds. Noise warms up for a fixed 90 seconds,
+then records 100 seconds.
+From revision 2026-11-12.5 the DC settling tolerance is at least 1 mV across
+five one-second averages. Small changes can settle; larger persistent drift
+still gets an amber review warning. The offset range remains 0.3-1.2 V.
+Finish any current run, close and reopen the app to load an update, then use
+**Retest parts** for a fresh assessment; saved reports keep their original rule.
 Skipped tests are saved as Not taken. Physical RUN/STOP, cooling,
 vacuum preparation and supply checks remain manual. The single-sensor
 fan guidance below does not apply to the M25 stack: its cooling must run.
@@ -15,7 +21,9 @@ The old array instructions in §3b describe `--frontend legacy` only.
 The current browser app has three screens:
 
 1. **Batch setup:** choose model 40623, enter your name and batch number,
-   select Actual detectors, then press **Enter** or continue.
+   choose **Top (1-1 through 5-10)** or **Bottom (6-1 through 10-10)** of
+   the detector box, select Actual detectors, then press **Enter** or continue.
+   There is one tray per batch; the selected side sets the position labels.
 2. **Power-on checklist:** check the detector box is powered, the main
    switch is **ON**, and the physical **START/RUN** button has been pressed.
    Confirm cooling, supply and vacuum preparation. Press **Enter** to view
@@ -26,16 +34,22 @@ The current browser app has three screens:
    incomplete; software Stop does not switch off hardware power. When saving
    finishes, click a detector to scroll to its waveforms and details.
 
-After a run, **Next batch** or **Enter** lets you enter a new batch number
+After a run, **Next batch** or **Enter** lets you enter a new batch number and box side
 while keeping your name and model. The checklist appears again before the
 next run. **Main setup** or **Esc** returns to the initial screen while idle.
 Wait for the run to finish stopping and saving before navigating away.
 Results and the interactive HTML report save automatically; all detector
 details are also available directly on the tray screen.
 
-For the same parts, use **Retest parts**, select each original part and its
-destination slot, then confirm fixture readiness. Follow the power-off
-procedure before moving parts. Retests update those parts' assessments
+For the same parts, use **Retest parts**. Leave **All detectors in the same
+slots** selected to repeat the previous run's loaded detectors and tests,
+for example after turning on a DAQ that was off. Confirm the parts remain in
+the same slots and DAQ/fixture readiness, then press **Start retest**. This
+takes fresh measurements after settling/warm-up and retains the saved box side.
+If the previous run was a partial retest, only that run's detectors repeat.
+For only a few parts or different tests/slots, choose **Select individual
+detectors**, select the original parts and destinations, and confirm readiness.
+Follow the power-off procedure before moving parts. Retests update those parts' assessments
 without increasing the part count, including when a part moves to another
 slot. Previous recordings and unselected test results remain saved. An
 incomplete retest does not replace an earlier valid result. Screening yield
@@ -56,6 +70,23 @@ place and fixture power has stayed on. A saved-run retry checks adaptive
 noise settling and records a fresh 100-second capture. If parts moved or
 power was cycled, use Retest parts for linked new measurements instead.
 The previous data remain saved separately.
+
+**DAQ connection versus delivery errors:** `QueryDeviceInfo` / `Win32 status 6`
+means the driver's USB connection is no longer valid, for example after
+unplugging/reconnecting the DAQ while the app stays open. From revision
+2026-11-12.4 the app redetects the DAQ and retries identity lookup for up to
+10 seconds before a new acquisition. It never reconnects inside a recording.
+If the error remains, finish stopping/saving, close Eltec Array Rig, check the
+DAQ USB connection, wait five seconds, and reopen the app. Use **Retest parts**
+for the same parts after reconnecting or cycling power.
+
+`No fresh DAQ samples` followed by a rate below `1000/s` means delivery stopped
+and the pause lowered the average delivered sample rate. This alone does not
+prove the hardware clock is slow or that a detector failed. Keep the 1,000 Hz
+setting and the incomplete-record protection. Repeated failures need a
+known-good USB cable / another computer USB port check, then engineer-led
+DAQ/driver investigation; a restart may restore communication without
+eliminating the underlying stall. Preserve the saved failed attempts.
 
 How to test a batch of sensors on the ESP32 bench rig (one part at a time,
 §1–§3) or a tray of fifty on the DAQ array rig (§3b). No programming

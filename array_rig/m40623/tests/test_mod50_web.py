@@ -130,7 +130,7 @@ class DashboardHttp(unittest.TestCase):
     def test_run_identity_and_metadata_survive_polling_completion_and_rejected_start(self):
         self.assertEqual(self.start(lot=" LOT-42 ", operator=" Technician ", tray=3, model="40623")[0], 200)
         state = self.request()[2]
-        self.assertEqual(state["run_metadata"], {"model": "40623", "lot": "LOT-42", "operator": "Technician", "tray": 3, "selected_tests": ["noise"]})
+        self.assertEqual(state["run_metadata"], {"model": "40623", "lot": "LOT-42", "operator": "Technician", "tray": 3, "box_side": "top", "selected_tests": ["noise"]})
         first_id = state["run_id"]
         self.assertIsInstance(first_id, str)
         self.assertTrue(first_id)
@@ -143,6 +143,14 @@ class DashboardHttp(unittest.TestCase):
         self.assertEqual(self.start(lot="LOT-43")[0], 200)
         self.assertNotEqual(self.request()[2]["run_id"], first_id)
         self.assertEqual(self.request()[2]["run_metadata"]["lot"], "LOT-43")
+
+    def test_box_side_is_validated_before_starting_and_survives_polling(self):
+        for side in ("left", "Bottom", None, 6, [], {}):
+            self.assertEqual(self.start(box_side=side)[0], 400)
+        self.assertEqual(self.created, [])
+        self.assertEqual(self.start(box_side="bottom")[0], 200)
+        self.assertEqual(self.created[-1].options["box_side"], "bottom")
+        self.assertEqual(self.request()[2]["run_metadata"]["box_side"], "bottom")
 
     def test_unsupported_model_cannot_create_a_worker(self):
         for model in ("406MCA", "40623 ", 40623, None, [], {}):

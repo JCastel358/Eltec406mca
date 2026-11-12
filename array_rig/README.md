@@ -2,6 +2,14 @@
 
 ## Current M25/HUB hardware — updated 2026-11-12
 
+Each batch uses one tray. In setup, choose **Detector box side**:
+**Top** labels the array **1-1 through 5-10**; **Bottom** labels it
+**6-1 through 10-10**, in the same five-row, ten-column order.
+The grid, loaded-slot choices, detector details, retests and slot warnings
+use these box labels. **Next batch** also lets you choose the side.
+The saved run retains its side when reopened or recovered; retests keep
+the original run's side. Reports and CSV exports include the box labels.
+
 Before **Start**, choose **Noise only** (default), **Offset only**, or
 **Offset and noise**. Use **Loaded slots** to select the installed parts;
 noise alone cannot reliably identify an empty slot. Unselected tests are
@@ -11,16 +19,23 @@ the exact measurements and raw recordings remain saved.
 
 Offset recording starts when **80% of loaded, nonexcluded parts** show five
 stable one-second windows, or after **90 seconds** with a fallback warning.
+The DC check allows **1 mV of change across the five window means** (or the
+larger ADC/measurement allowance), so tiny changes do not prevent settling.
 Persistent offset drift is flagged for checking/retesting. Noise uses a
 **fixed 90-second warm-up**, then a **100-second recording** with a fresh
 software meter reset. It does not require noise amplitude to stabilize or
 issue noise-only “not settled” faults. This timing is provisional; calibrated
 noise acceptance remains disabled.
 
-After a run, **Retest parts** lets the technician link each part's original
-position to a destination slot, including a different slot. Move parts using
-the established power-off procedure, restore readiness, confirm the mapping,
-then start. Each valid retested stage replaces that part's current assessment;
+After a run, **Retest parts** defaults to **All detectors in the same slots**.
+It repeats the previous run's loaded detectors, box side and tests, including
+after a DAQ connection/power failure, with fresh settling/warm-up and recordings.
+Confirm that the same parts remain in place and the fixture is ready, then
+press **Start retest**. After a partial retest, this repeats that partial run.
+Choose **Select individual detectors** to retest only a few parts, change
+the selected tests, or link original parts to different destination slots.
+Move parts using the established power-off procedure and confirm the mapping
+and readiness before starting. Each valid retested stage replaces that part's current assessment;
 stages not selected and earlier recordings remain saved. An interrupted retest
 does not erase the earlier valid result. Batch screening yield counts each
 linked part once, regardless of attempts. It means **no flagged issue among
@@ -92,7 +107,8 @@ app uses the full modular channel map and both cards' status readbacks.
 2. Run `run_eltec_array_tester.cmd`, or directly run
    `m40623/run_eltec_40623_array_tester.cmd`. On the browser's setup screen,
    choose the model (currently **40623**), enter your name and batch number,
-   and choose **Actual detectors**. Press **Enter** or the continue button.
+   choose **Top** or **Bottom**, and choose **Actual detectors**.
+   Press **Enter** or the continue button.
 3. Follow the illustrated checklist: detector box powered, main switch
    **ON**, then physical **START/RUN** pressed. Confirm the other fixture
    preparation described above. Press **Enter** again to open the tray;
@@ -104,7 +120,7 @@ app uses the full modular channel map and both cards' status readbacks.
    The app saves and returns to DC. Keep the fixture undisturbed during testing.
 5. When the run has finished saving, select any detector to inspect its
    waveforms. Use **Next batch** or **Enter** to enter the next batch number
-   while retaining the model and technician, then repeat the checklist.
+   and box side while retaining the model and technician, then repeat the checklist.
    Use **Main setup** or **Esc** to return to the initial screen while idle.
    Use **Retest parts** for the same parts, so yield does not count them again.
    Every new run checks settling. **Stop** retains available data as incomplete

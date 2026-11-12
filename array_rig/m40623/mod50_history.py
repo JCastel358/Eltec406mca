@@ -11,6 +11,7 @@ from pathlib import Path
 import sqlite3
 
 import mod50_hardware as hw
+from mod50_positions import detector_position, normalize_box_side
 
 
 def stage_failure(row, mode):
@@ -58,6 +59,7 @@ class History:
             connection.close()
 
     def record(self, result, directory):
+        box_side = normalize_box_side(result.get("box_side", "top"))
         with self.connection() as db:
             run_id = result["run_id"]
             family = result.get("family_id", run_id)
@@ -78,7 +80,8 @@ class History:
                 if not part:
                     db.execute("INSERT INTO parts VALUES (?,?,?,?)", (part_id, family, result["lot"], position))
                 db.execute("INSERT INTO attempts VALUES (?,?,?,?,?)", (run_id, part_id, position,
-                           json.dumps(tests), json.dumps(row, allow_nan=False)))
+                           json.dumps(tests), json.dumps({**row, "box_side": box_side,
+                               "detector_position": detector_position(position, box_side)}, allow_nan=False)))
                 # Delivery failures, no-signal inference and unused sockets
                 # are not evidence of a defective slot. Reused DC in noise
                 # recovery must not count as a second slot test.
@@ -88,7 +91,7 @@ class History:
                     failed = any(stage_failure(row, m) for m in valid)
                     if failed or len(valid) == len(observed):
                         db.execute("INSERT INTO slot_events(run_id,position,failed) VALUES (?,?,?)",
-                                   (run_id, position, int(failed)))
+                                   (run_id, detector_position(position, box_side), int(failed)))
 
     def current_parts(self, lot, family=None):
         if not self.path.exists():
@@ -104,6 +107,11 @@ class History:
                 stages, requested, latest, count = {}, set(), None, 0
                 for attempt in db.execute("SELECT * FROM attempts WHERE part_id=? ORDER BY rowid", (part["id"],)):
                     row = json.loads(attempt["data"])
+                    if count == 0:
+                        item["origin_box_side"] = row.get("box_side", "top")
+                        item["origin_detector_position"] = detector_position(part["origin_position"], item["origin_box_side"])
+                    item["box_side"] = row.get("box_side", "top")
+                    item["detector_position"] = detector_position(attempt["position"], item["box_side"])
                     count += 1
                     latest = attempt
                     tests = json.loads(attempt["tests"])
@@ -135,14 +143,16 @@ class History:
                 "attempts": sum(p["attempts"] for p in parts),
                 "note": "Screening yield means no flagged issue among assessed parts. Noise Review is not an acceptance pass. Parts are linked by original tray position, not serial number."}
 
-    def warnings(self):
+    def warnings(self, box_side="top"):
+        box_side = normalize_box_side(box_side)
         if not self.path.exists():
             return []
         with self.connection() as db:
             warnings = []
             for position in hw.POSITIONS:
-                cleared = db.execute("SELECT COALESCE(MAX(after_event),0) FROM repairs WHERE position=?", (position,)).fetchone()[0]
-                events = db.execute("SELECT * FROM slot_events WHERE position=? AND id>? ORDER BY id", (position, cleared)).fetchall()
+                label = detector_position(position, box_side)
+                cleared = db.execute("SELECT COALESCE(MAX(after_event),0) FROM repairs WHERE position=?", (label,)).fetchone()[0]
+                events = db.execute("SELECT * FROM slot_events WHERE position=? AND id>? ORDER BY id", (label, cleared)).fetchall()
                 streak, triggered, trigger_id = 0, False, None
                 for event in events:
                     streak = streak + 1 if event["failed"] else 0
@@ -151,15 +161,18 @@ class History:
                 # Once warned, only an explicit repair verification clears it.
                 if triggered:
                     warnings.append({"position": position, "trigger_event": trigger_id,
+                                     "box_side": box_side, "detector_position": label,
                                      "message": "Three consecutive valid checks flagged this slot. It may be faulty; avoid it until checked and repaired."})
             return warnings
 
-    def verify_repairs(self, positions, operator):
+    def verify_repairs(self, positions, operator, box_side="top"):
+        box_side = normalize_box_side(box_side)
         positions = hw.normalize_positions(positions)
         if not positions:
             return
         with self.connection() as db:
             for position in positions:
-                last = db.execute("SELECT COALESCE(MAX(id),0) FROM slot_events WHERE position=?", (position,)).fetchone()[0]
+                label = detector_position(position, box_side)
+                last = db.execute("SELECT COALESCE(MAX(id),0) FROM slot_events WHERE position=?", (label,)).fetchone()[0]
                 db.execute("INSERT INTO repairs(position,after_event,operator,created_at) VALUES (?,?,?,?)",
-                           (position, last, operator, dt.datetime.now().astimezone().isoformat()))
+                           (label, last, operator, dt.datetime.now().astimezone().isoformat()))

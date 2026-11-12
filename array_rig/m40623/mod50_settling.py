@@ -1,16 +1,21 @@
-"""Sample-clock settling evidence; scheduling only, never acceptance limits."""
+"""Sample-clock settling evidence for scheduling/review, never acceptance limits."""
 from collections import deque
 
 import numpy as np
 
-POLICY = "mod50_80percent_five_1s_windows_mean_and_rms_v2"
+POLICY = "mod50_dc_80percent_five_1s_windows_1mv_v3"
+LEGACY_POLICY = "mod50_80percent_five_1s_windows_mean_and_rms_v2"
 WINDOW_SECONDS = 1.0
 WINDOWS = 5
 MAX_SECONDS = 90.0
-# Carry forward the array's 0.1 mV scheduling tolerance, floored at two
-# converter codes. Noise means include their finite-window uncertainty;
-# the RMS envelope must also stabilize. These are provisional scheduling
-# settings, not detector limits or a claim of TP120 timing qualification.
+# DC permits a 1 mV spread across five one-second means (2026-11-12 user
+# request). The previous two-code floor was 0.305 mV on +/-5 V and flagged
+# a measured 0.835 mV start-to-end change over a 10 s record. Keep the
+# two-code floor and finite-window uncertainty allowance. This is a
+# provisional scheduling/review tolerance, not an offset acceptance limit.
+DC_TOLERANCE_V = .001
+# Retain the superseded noise estimator for historical diagnostics only.
+# Actual noise acquisition uses NoiseWarmup, with no stability criterion.
 BASE_TOLERANCE_V = .0001
 RMS_RELATIVE_TOLERANCE = .10
 READY_FRACTION = .80
@@ -42,12 +47,12 @@ class NoiseWarmup:
 
 
 class SettlingMonitor:
-    """V2 estimator retained for DC and historical diagnostics; noise uses NoiseWarmup."""
+    """DC drift monitor; the legacy noise estimator is for diagnostics only."""
     def __init__(self, rate, lsb, positions, mode):
         self.rate, self.mode = rate, mode
         self.positions = list(positions)
         self.window_size = max(1, round(rate * WINDOW_SECONDS))
-        self.tolerance = max(BASE_TOLERANCE_V, 2 * lsb)
+        self.tolerance = max(DC_TOLERANCE_V if mode == "dc" else BASE_TOLERANCE_V, 2 * lsb)
         self.pending = np.empty((len(positions), 0))
         self.windows = deque(maxlen=WINDOWS)
         self.trace = []
@@ -90,7 +95,8 @@ class SettlingMonitor:
 
     def evidence(self):
         stable = set(self.trace[-1]["stable_positions"]) if self.trace else set()
-        return {"policy": POLICY, "complete": self.complete, "waited_s": self.samples / self.rate,
+        return {"policy": POLICY if self.mode == "dc" else LEGACY_POLICY,
+                "complete": self.complete, "waited_s": self.samples / self.rate,
                 "max_seconds": MAX_SECONDS, "window_seconds": WINDOW_SECONDS,
                 "windows_required": WINDOWS, "base_tolerance_v": self.tolerance,
                 "rms_relative_tolerance": RMS_RELATIVE_TOLERANCE,

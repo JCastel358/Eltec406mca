@@ -21,6 +21,7 @@ import zlib
 import numpy as np
 
 import mod50_hardware as hw
+from mod50_positions import normalize_box_side
 
 
 _RAW_NAME = re.compile(r"dc(?:_attempt[0-9]{2,})?_raw\.npz\Z")
@@ -152,7 +153,8 @@ def load_noise_recovery(directory, *, simulate: bool):
         _require(summary_path.stat().st_size <= 64 * 1024 * 1024, "the summary is too large.")
         summary_bytes = summary_path.read_bytes()
         summary = _json(summary_bytes)
-        revisions = {"2026-11-04.2", "2026-11-04.3", "2026-11-11.1", "2026-11-12.1", hw.APP_REVISION}
+        revisions = {"2026-11-04.2", "2026-11-04.3", "2026-11-11.1", "2026-11-12.1",
+                     "2026-11-12.2", "2026-11-12.3", "2026-11-12.4", hw.APP_REVISION}
         expected = {"schema": SCHEMA, "profile": hw.PROFILE,
                     "channel_map": hw.CHANNEL_MAP}
         _require(summary.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "the timing policy is unsupported.")
@@ -167,6 +169,7 @@ def load_noise_recovery(directory, *, simulate: bool):
             _require(isinstance(summary.get(key), str) and bool(summary[key].strip()) and len(summary[key]) <= 120,
                      "the saved " + key + " is invalid.")
         _require(type(summary.get("tray")) is int and summary["tray"] >= 1, "the tray identity is invalid.")
+        box_side = normalize_box_side(summary.get("box_side", "top"))
         created = dt.datetime.fromisoformat(summary["created_at"])
         _require(created.tzinfo is not None, "the saved run time has no timezone.")
         population = summary.get("installed_positions")
@@ -280,6 +283,8 @@ def load_noise_recovery(directory, *, simulate: bool):
             metadata_array = archive["metadata_json"]
             _require(metadata_array.ndim == 0 and metadata_array.dtype.kind in ("U", "S"), "DC metadata is invalid.")
             metadata = _json(metadata_array.item())
+        _require(normalize_box_side(metadata.get("box_side", "top")) == box_side,
+                 "DC raw metadata disagrees on detector-box side.")
         for key, value in {**expected, "lot": summary["lot"], "operator": summary["operator"], "tray": summary["tray"],
                            "map_sha256": hw.MAP_SHA256, "daq_serial": serial, "installed_positions": population,
                            "physical_channels": list(range(57)), "logical_to_physical": list(hw.MAPPING),
@@ -322,6 +327,7 @@ def load_noise_recovery(directory, *, simulate: bool):
         source = {"directory": str(folder), "original_folder": str(folder),
                   "summary_sha256": hashlib.sha256(summary_bytes).hexdigest(), "raw_sha256": raw_hash,
                   "lot": summary["lot"], "operator": summary["operator"], "tray": summary["tray"],
+                  "box_side": box_side,
                   "daq_serial": serial, "created_at": summary["created_at"], "original_created_at": summary["created_at"],
                   "application_revision": summary["application_revision"], "schema": SCHEMA,
                   "profile": hw.PROFILE, "timing_policy": metadata["timing_policy"], "map_sha256": hw.MAP_SHA256,

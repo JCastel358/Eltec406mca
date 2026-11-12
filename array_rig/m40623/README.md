@@ -2,6 +2,16 @@
 
 ## Current M25/HUB check — updated 2026-11-12
 
+Setup uses one tray per batch and a **Detector box side** selector:
+**Top: 1-1 through 5-10** or **Bottom: 6-1 through 10-10**.
+The choice is also available for the next batch. It changes all operator
+position labels and is retained in saved reports, reopening, retests and
+noise recovery. Acquisition retains the same 50-channel wiring map.
+`box_side` and `detector_position` identify the physical box location;
+`position` remains the canonical wiring slot. Slot warnings and repair
+verifications are tracked separately for the top and bottom box locations.
+Older records without a side keep their original 1-1 through 5-10 labels.
+
 The technician view shows **Mean offset** and **Noise at 3 Hz**, with the
 offset trace and the rising held-noise trace. The noise chart shades the
 old 10.0–37.9 mV range as **reference only**, never an acceptance verdict.
@@ -16,12 +26,21 @@ stays disabled until comparison with the old fixture. See
 Choose Noise only (default), Offset only, or both before Start. Skipped tests
 are `NOT_TAKEN` in exported row statuses; numeric values remain null/blank.
 Noise-only runs do not infer occupancy from the AC signal: select loaded
-slots explicitly. Retest parts maps original part positions to new slots and
-replaces only valid selected stage assessments. Original recordings remain
-immutable. Batch counts represent unique operator-linked parts, not attempts.
+slots explicitly. **Retest parts → All detectors in the same slots** repeats
+the previous run's loaded detectors and tests on the saved box side, including
+an incomplete run after a DAQ/power issue. It takes fresh measurements after
+settling/warm-up; after a partial retest it repeats only that partial run.
+**Select individual detectors** keeps per-part selection, test choice and
+destination-slot mapping. Retests replace only valid selected stage assessments.
+Original recordings remain immutable. Batch counts represent unique
+operator-linked parts, not attempts.
 
 Offset retains its 80% settling gate over five one-second windows, with a
-90-second fallback and individual persistent-drift CHECKs. Per user direction
+90-second fallback and individual persistent-drift CHECKs. From revision
+2026-11-12.5, its mean-spread tolerance is at least **1 mV across those five
+windows**, so small DC changes do not trigger unnecessary warnings. The
+two-ADC-code floor, finite-window allowance and within-window drift check
+remain; the 0.3-1.2 V offset comparison is unchanged. Per user direction
 on 2026-11-12, noise instead has a **fixed 90-second warm-up** after switching
 to noise mode. It does not wait for a steady mean or RMS, and does not issue
 noise-only “never settled” faults. The software noise meter resets when the
@@ -65,8 +84,14 @@ physical scans remain recorded; inferred exclusions are separate from the
 declared population. Never infer missing detectors from a failed acquisition.
 
 Offset passing is green, valid failed offset/channel checks are red, and
-uncalibrated noise is Review. There is no overall detector PASS while noise
-limits are absent. Acquisition interruption is separate from channel faults;
+uncalibrated noise is Review. A DC settling-only warning is amber and labelled
+**DC not settled**; it can coexist with an offset pass because the mean voltage
+is in range while the recorded DC still drifts. The **Flagged** count includes
+these warnings as well as offset/channel faults; it can overlap **Offset pass**.
+The warning remains in saved evidence, retest accounting and slot history.
+It is separate from the noise result. Noise in progress is labelled as recording;
+an ended invalid recording is labelled incomplete. There is no overall detector
+PASS while noise limits are absent. Acquisition interruption is separate from channel faults;
 retained valid DC results stay visible while noise is incomplete. Gray
 no-signal slots do not count as passed detectors.
 

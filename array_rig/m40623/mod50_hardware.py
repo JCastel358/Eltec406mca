@@ -20,7 +20,7 @@ import r4_frontend as r4
 from daq_rig_readout import _live_callback_buffer_bytes
 
 PROFILE = "M25_HUB_DIRECT_DB37_R2_ARRAY_CHECK"
-APP_REVISION = "2026-11-12.2"
+APP_REVISION = "2026-11-12.5"
 SAMPLE_HZ = 1000.0
 BUFFER_COUNT = 64
 POSITIONS = tuple(f"{i // 10 + 1}-{i % 10 + 1}" for i in range(50))

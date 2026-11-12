@@ -22,6 +22,7 @@ import mod50_hardware as hw
 from mod50_check import TrayCheck, results_root, normalize_tests, SCHEMA
 from mod50_history import History
 from mod50_recovery import load_noise_recovery
+from mod50_positions import normalize_box_side
 
 UI_DIR = Path(__file__).with_name("mod50_ui")
 
@@ -61,6 +62,7 @@ class Dashboard:
                     self.restart_required = bool(saved.get("restart_required"))
                     self.run_id = saved["run_id"]
                     self.run_metadata = {key: saved[key] for key in ("lot", "operator", "tray", "selected_tests")}
+                    self.run_metadata["box_side"] = normalize_box_side(saved.get("box_side", "top"))
             except (OSError, ValueError, KeyError):
                 pass
 
@@ -71,7 +73,8 @@ class Dashboard:
     def preflight(self, payload):
         if not isinstance(payload, dict) or type(payload.get("simulate")) is not bool:
             raise ValueError("Select the data source")
-        return {"slot_warnings": self.history(payload["simulate"]).warnings()}
+        side = normalize_box_side(payload.get("box_side", "top"))
+        return {"slot_warnings": self.history(payload["simulate"]).warnings(side)}
 
     def _offer_recovery(self, directory, *, simulate):
         self.noise_recovery = self._recovery_data = None
@@ -85,6 +88,7 @@ class Dashboard:
         self._recovery_data = data
         self.noise_recovery = {"id": secrets.token_urlsafe(18), "lot": source["lot"],
             "operator": source["operator"], "tray": source["tray"], "simulate": simulate,
+            "box_side": source.get("box_side", "top"),
             "created_at": source["created_at"], "requires_settling": True,
             "recorded_noise_seconds": source.get("recorded_noise_seconds", 0.),
             "dc_recorded_seconds": data["record"].get("recorded_seconds", 0.)}
@@ -148,8 +152,9 @@ class Dashboard:
             if not isinstance(lot, str) or not isinstance(operator, str) or max(len(lot), len(operator)) > 120:
                 raise ValueError("Enter a lot and technician name of at most 120 characters")
             selected_tests = normalize_tests(payload.get("selected_tests", ["noise"]))
+            box_side = normalize_box_side(payload.get("box_side", "top"))
             history = self.history(simulate)
-            warnings = history.warnings()
+            warnings = history.warnings(box_side)
             suspect = {w["position"] for w in warnings}
             repaired = set(hw.normalize_positions(payload.get("repair_positions", [])))
             if not repaired.issubset(suspect):
@@ -165,6 +170,7 @@ class Dashboard:
             else:
                 positions = tuple(p for p in positions if p not in blocked)
             kwargs = dict(lot=lot, operator=operator, tray=payload.get("tray", 1),
+                          box_side=box_side,
                           simulate=simulate, output_root=self.output_root, selected_tests=selected_tests,
                           installed_positions=positions, part_mapping=part_mapping, family_id=family_id,
                           excluded_suspect_slots=sorted(blocked))
@@ -177,7 +183,7 @@ class Dashboard:
                               family_id=source.get("family_id"))
             worker = self.worker_factory(**kwargs)
             if repaired:
-                history.verify_repairs(repaired, operator.strip())
+                history.verify_repairs(repaired, operator.strip(), box_side)
             worker.start()
             self.worker = worker
             self.last_seen = time.monotonic()
@@ -185,6 +191,7 @@ class Dashboard:
             # tabs can distinguish a fresh run from an already reviewed one.
             # A rejected request must preserve the previous run's identity.
             self.run_metadata = {"model": "40623", "lot": lot.strip(), "operator": operator.strip(),
+                                 "box_side": box_side,
                                  "tray": payload.get("tray", 1), "selected_tests": list(kwargs["selected_tests"])}
             self.run_id = secrets.token_urlsafe(18)
             self.noise_recovery = self._recovery_data = None
@@ -193,19 +200,34 @@ class Dashboard:
     def retest(self, payload):
         with self.lock:
             if not isinstance(payload, dict) or payload.get("confirm_moved") is not True:
-                raise ValueError("Confirm the same parts were moved using the fixture's power-off procedure and the fixture is ready.")
+                raise ValueError("Confirm these are the same parts in the selected slots and the fixture is ready. Use the power-off procedure if moving parts.")
             result = self.worker.result if self.worker and not self.worker.is_alive() else self.saved_result
             if not result or not result.get("run_id") or payload.get("source_run_id") != result["run_id"]:
                 raise ValueError("These retest results are no longer current. Refresh the tray.")
+            mode = payload.get("retest_mode", "selected")
+            if mode not in ("all", "selected"):
+                raise ValueError("Choose all detectors in the same slots or select individual detectors.")
             parts = {p["part_id"]: p for p in self.history(result["simulated"]).current_parts(result["lot"], result["family_id"])}
-            moves = payload.get("moves")
+            if mode == "all":
+                # Repeat the saved run's population, including incomplete and
+                # no-signal positions. The family may include parts moved out
+                # of this run during an earlier individual retest.
+                positions = hw.normalize_positions(result.get("installed_positions",
+                    [row["position"] for row in result["rows"] if row.get("installed")]))
+                mapping = result.get("part_mapping") or {}
+                moves = [{"position": position, "part_id": mapping.get(position, result["run_id"] + ":" + position)}
+                         for position in positions]
+                payload = {**payload, "selected_tests": result["selected_tests"]}
+            else:
+                moves = payload.get("moves")
             if not isinstance(moves, list) or not moves or any(not isinstance(m, dict) for m in moves):
-                raise ValueError("Select at least one part and its new slot.")
+                raise ValueError("Select at least one part and its slot.")
             destinations, identifiers = [m.get("position") for m in moves], [m.get("part_id") for m in moves]
             hw.normalize_positions(destinations)
             if any(not isinstance(p, str) or p not in parts for p in identifiers) or len(set(identifiers)) != len(identifiers):
                 raise ValueError("Each original part can appear only once in a retest.")
             self._begin({**payload, "lot": result["lot"], "operator": result["operator"], "tray": result["tray"],
+                         "box_side": result.get("box_side", "top"),
                          "simulate": result["simulated"], "model": "40623"},
                         part_mapping=dict(zip(destinations, identifiers)), family_id=result["family_id"])
 
@@ -225,6 +247,7 @@ class Dashboard:
                 raise ValueError("The saved run changed. Reopen the app before retrying.")
             source = fresh["source"]
             self._begin({"model": "40623", "lot": source["lot"], "operator": source["operator"],
+                         "box_side": source.get("box_side", "top"),
                          "tray": source["tray"], "simulate": offer["simulate"],
                          "slot_warning_acknowledged": payload.get("slot_warning_acknowledged"),
                          "repair_positions": payload.get("repair_positions", [])}, resume_dc=fresh)

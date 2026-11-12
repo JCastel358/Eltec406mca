@@ -2,6 +2,17 @@
 
 ## M25/HUB tray checks (2026-11-04)
 
+Updated 2026-11-12: setup assumes one tray per batch (`tray=1` for new
+browser runs) and saves `box_side` (`top` or `bottom`) in the summary and
+raw metadata. Summary rows and CSV exports include `detector_position`:
+Top uses 1-1 through 5-10; Bottom uses 6-1 through 10-10. The existing
+`position`, `installed_positions` and channel map remain canonical wiring
+slots 1-1 through 5-10. No DAQ channel, acquisition order or raw sample
+layout changes. Retests/recovery retain the source side, and current parts
+include original and latest box labels. Slot events/repairs use physical
+box labels, keeping top and bottom warnings independent. Missing side in
+older evidence means its original top numbering; old files are not rewritten.
+
 Updated 2026-11-11: each run records `selected_tests`, per-stage
 `test_status` (`NOT_TAKEN` for skipped tests), `run_id`, `family_id`, and
 operator-linked `part_id` values. Retests create new immutable run folders;
@@ -18,6 +29,10 @@ History starts with the new version; older reports are not retroactively
 treated as newly tested parts. Per-attempt `*_settling_raw.npz` files preserve
 settling data separately from the full measurement recording. JSON includes
 the one-second stability evidence, 80% threshold and any 90-second fallback.
+From revision 2026-11-12.5, DC `settling` and `stability_observation` identify
+`mod50_dc_80percent_five_1s_windows_1mv_v3` and save the effective
+`base_tolerance_v` (at least 0.001 V). Older evidence retains its own policy
+and tolerance, including when valid DC is reused for a noise-only recovery.
 
 Actual runs append a new uniquely named directory beneath
 `Documents/Eltec_40623_Test_Results/40623_array_daq/mod50_checks/`.

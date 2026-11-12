@@ -13,6 +13,95 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## M25/HUB practical DC settling tolerance (2026-11-12)
+
+- Raise the DC mean-spread floor to 1 mV across five one-second windows for
+  both startup and the recorded drift check. Bottom detector 9-6 changed by
+  only 0.835 mV from its first to last one-second average in a 10 s record,
+  but the previous effective 0.305 mV rule flagged its 0.356-0.383 mV
+  five-window spreads. Larger drift and within-window ramps still flag.
+- Keep the 80% simultaneous start, 90 s fallback, offset acceptance window,
+  fixed noise warm-up, raw evidence and history. Version the DC rule and
+  bump the app to 2026-11-12.5; retain recovery of revision 2026-11-12.4.
+- Read-only replay of five valid measured DC recordings clears 9-6 and six
+  small-drift test3 warnings while retaining the larger-drift test1 warning.
+  This tolerance remains provisional; no physical acquisition was performed.
+- Validation: all 524 tests in the 40623 array suite passed, including five
+  new drift/chunking/capture cases and previous-revision recovery. Replaying
+  the reported run's startup samples reaches the new gate at 5 s instead
+  of 67 s; all five selected parts also settle in the following 10 s interval.
+  Source summaries and raw files were verified unchanged after replay.
+
+## DAQ reconnect after USB removal (2026-11-12)
+
+- Include `QueryDeviceInfo` in the bounded connection retry: a cached device
+  index can survive unplug/replug while its USB handle becomes invalid.
+  Refresh the vendor's device links on invalid-handle/disconnected status,
+  re-enumerate the index, and commit identity only after a successful query.
+  Report link-refresh failures and retain actionable connection errors.
+- Refuse connection refresh during active acquisition or unconfirmed callback
+  shutdown. Keep sample rate, transfer timeouts, retries, acceptance checks and
+  original measurements unchanged. Revision 2026-11-12.4 retains saved-run
+  recovery compatibility with 2026-11-12.3.
+- Investigation: ten saved noise attempts on November 12 stopped delivering
+  callbacks for about two seconds with no queued backlog or pool exhaustion;
+  all reported a 1,000 Hz pacing clock. Six noise attempts completed. Windows
+  recorded a USB arrival at 14:10:24, before three status-6 connection failures;
+  the operator confirmed reconnecting. A fresh, identity-only process read the
+  same DAQ successfully while the existing app still reported status 6.
+  The cause of the earlier bulk-transfer stalls remains unconfirmed.
+- Validation: the 518-test 40623 suite passed; all 21 saved-run recovery tests
+  passed after explicitly retaining revision 2026-11-12.3 compatibility.
+  Added invalid-handle/re-enumeration, bounded timeout, refresh-error and
+  active-stream/failed-shutdown regression cases. Live checking read device
+  identity only; no detector acquisition or physical unplug/replug test ran.
+
+## M25/HUB repeat-all retest option (2026-11-12)
+
+- Default **Retest parts** to **All detectors in the same slots**, repeating
+  the previous run's loaded positions, test selection and box side after a
+  DAQ/power issue or a completed run. Keep **Select individual detectors**
+  for per-part selection, changed tests and destination slots.
+- Derive whole-run repeats from saved settings and original part identities,
+  including incomplete/no-signal positions. After a partial retest, repeat
+  that partial run without adding other parts from the batch history.
+  Preserve prior recordings, unique-part counts and slot/readiness checks;
+  every repeat takes fresh measurements after settling/warm-up.
+- Validation: 125 M25/HUB tests and 27 browser workflows passed, including
+  full and partially loaded simulated batches after a DAQ connection failure,
+  reopening, original-file preservation, linked counts, individual mapping
+  and mode switching. Visually checked both retest choices. No physical run.
+
+## M25/HUB DC settling warning display (2026-11-12)
+
+- Show DC settling-only warnings in amber as **DC not settled**, with a separate
+  detail badge and explanation. Keep offset/channel faults red and rename
+  **Fail / check** to **Flagged** so settling warnings do not imply detector failure.
+- Show pending/active noise as pending/recording instead of incomplete. Retain
+  the incomplete state when a run ends without a valid noise recording.
+- Preserve measurement limits, settling policy, saved recordings, CHECK evidence,
+  retest accounting and slot warnings. The correction affects the live dashboard
+  and newly generated reports; existing self-contained reports remain unchanged.
+- Validation: replayed the measured test3 DC counts and both browser states;
+  reproduced 49 offset passes, one offset-range failure and six DC settling
+  warnings in a full simulated run (10 s DC, 90 s noise warm-up, 100 s noise).
+  All 122 M25/HUB tests and 25 browser workflows passed. No live acquisition.
+
+## M25/HUB top/bottom detector-box numbering (2026-11-12)
+
+- Replace the browser tray-number entry with Top (1-1 through 5-10) or
+  Bottom (6-1 through 10-10). New batches always use one tray and can
+  choose their box side before the power checklist.
+- Use the box labels in the grid, detector details, loaded-slot choices,
+  retest destinations and warnings. Preserve the side in saved runs,
+  raw metadata, reports, CSV, reopening and noise recovery. Keep the
+  acquisition channel map unchanged; legacy evidence retains its numbering.
+- Track slot warnings and repair verification by physical box location.
+  Retests keep original part identities and the saved box side.
+- Validation: 511 array tests and 23 browser workflows passed, including
+  bottom-side exports/reopening, retest destinations, recovery metadata,
+  separate slot histories and compact desktop layouts. No physical run.
+
 ## M25/HUB legacy noise estimate, technician view and fixed noise warm-up (2026-11-12)
 
 - Add the nominal 3 Hz/Q3 filter, absolute-value rectifier, 10-second smoother

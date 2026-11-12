@@ -66,9 +66,25 @@ Historical run evidence and flags are not rewritten.
 The **offset-only** 80% simultaneous start threshold from 2026-11-11 remains.
 All channels share one continuous stream. Five consecutive one-second windows are examined per loaded,
 nonexcluded slot. The range of window means must be within the maximum of
-0.1 mV (carried from the legacy scheduling tolerance), two ADC codes, or
+1.0 mV (user-requested relaxation on 2026-11-12), two ADC codes, or
 three times the largest window RMS divided by sqrt(samples/window).
 Each window's half-window mean change must be within twice that tolerance.
+The previous 0.1 mV base was effectively 0.305176 mV at the signed +/-5 V
+two-code floor. It flagged bottom detector 9-6 in
+`MEASURED_1_tray1_20261112_142519_46c0ba4f`: mean 0.702447 V,
+first-to-last one-second mean change 0.835419 mV over the 10 s record,
+and five-window mean spreads of 0.355835-0.383403 mV. The new 1 mV floor
+applies to both startup scheduling and the recorded DC drift check, with
+policy `mod50_dc_80percent_five_1s_windows_1mv_v3` from app revision
+2026-11-12.5. It does not change the provisional 0.3-1.2 V offset window,
+the noise warm-up, or the absence of noise acceptance limits.
+Read-only replay of the five valid measured DC records available on November 12
+with stability evidence cleared 9-6 and the six small-drift flags in test3;
+the larger-drift flag at canonical slot 2-5 in test1 remained. Synthetic
+regression cases still flag 0.5 mV/s drift, 3 mV jumps and large within-window
+ramps. Original reports/history remain unchanged; this is a provisional
+operator tolerance supported by replay, not a new hardware qualification.
+
 The superseded noise rule also required window RMS range within max(0.1 mV,
 two codes, 10% of mean window RMS). It flagged all ten detectors in the first
 paired comparison despite complete acquisitions; it is no longer used to
@@ -105,7 +121,7 @@ modular front-end's measured transfer function.
 | Detector transfer gain | Not applied; results remain DAQ-output µV RMS |
 | Acquisition | Working MOD50 bench configuration: 1000 scans/s, 57 rows, four conversions, discard first/average three, 64 buffers |
 | DC / noise range | Working bench's signed ±5 V / ±1 V |
-| Offset settling | 80% stable over 5 one-second windows; 90 s fallback, user direction 2026-11-11 |
+| Offset settling | 80% stable over 5 one-second windows; mean-spread tolerance max(1 mV, two ADC codes, finite-window allowance); 90 s fallback. User directions 2026-11-11/12 |
 | Noise warm-up | Fixed 90 s of DAQ sample time after switching; no mean/RMS stability criterion, user direction 2026-11-12 |
 | Noise entry / DC return hold | Existing contract: 200 ms / 50 ms with gain disabled |
 | DC / noise record duration | 10 s functional DC record; 100 s noise record per MOD50 software's routine-record recommendation |

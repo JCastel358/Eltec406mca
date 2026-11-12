@@ -12,6 +12,7 @@ import ctypes
 import re
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 import numpy as np
@@ -71,7 +72,7 @@ class FakeLib:
 
     def AIOUSB_ReloadDeviceLinks(self):
         self.calls.append(("AIOUSB_ReloadDeviceLinks",))
-        return 0
+        return self._status("AIOUSB_ReloadDeviceLinks")
 
     def QueryDeviceInfo(self, index, pid, name_size, name_buf, dio, counters):
         self.calls.append(("QueryDeviceInfo", index))
@@ -428,6 +429,61 @@ class ConnectTests(unittest.TestCase):
         self.assertIn("re-enumerates", str(ctx.exception))
         self.assertGreaterEqual(len(clock.sleeps), 4)
 
+    def test_stale_advertised_device_is_reopened_after_usb_reconnect(self):
+        class ReconnectedLib(FakeLib):
+            def AIOUSB_ReloadDeviceLinks(self):
+                status = super().AIOUSB_ReloadDeviceLinks()
+                self.status_overrides.pop("QueryDeviceInfo")
+                self.device_masks = [4]  # Re-enumeration changed the index.
+                return status
+
+        for status in (6, 1167):
+            with self.subTest(status=status):
+                lib = ReconnectedLib()
+                lib.status_overrides["QueryDeviceInfo"] = status
+                device, _, clock = make_device(lib)
+                info = device.connect(timeout_s=2)
+                self.assertEqual(info.device_index, 2)
+                self.assertEqual(device.device_index, 2)
+                self.assertEqual(info.serial_number, "40E68DEE0D501728")
+                self.assertEqual(clock.sleeps, [backend.CONNECT_RETRY_S])
+                self.assertEqual([c for c in lib.calls if c[0] == "QueryDeviceInfo"],
+                                 [("QueryDeviceInfo", 0), ("QueryDeviceInfo", 2)])
+
+    def test_invalid_handle_retries_are_bounded_and_leave_no_connected_identity(self):
+        device, lib, clock = make_device()
+        device.connect()
+        lib.status_overrides["QueryDeviceInfo"] = 6
+        with self.assertRaises(backend.DaqStatusError) as ctx:
+            device.connect(timeout_s=1)
+        self.assertEqual(ctx.exception.status, 6)
+        self.assertIn("close and reopen", str(ctx.exception))
+        self.assertEqual(clock.sleeps, [backend.CONNECT_RETRY_S] * 2)
+        self.assertIsNone(device.info)
+        with self.assertRaises(backend.DaqNotFoundError):
+            _ = device.device_index
+
+    def test_reload_error_is_reported_instead_of_ignored(self):
+        device, lib, clock = make_device(FakeLib(device_masks=[0]))
+        lib.status_overrides["AIOUSB_ReloadDeviceLinks"] = 5
+        with self.assertRaises(backend.DaqStatusError) as ctx:
+            device.connect()
+        self.assertEqual(ctx.exception.function, "AIOUSB_ReloadDeviceLinks")
+        self.assertEqual(ctx.exception.status, 5)
+        self.assertFalse(clock.sleeps)
+
+    def test_reconnect_never_reloads_handles_during_stream_or_failed_shutdown(self):
+        for active, failed, retained in ((True, False, []), (False, True, []),
+                                         (False, False, [object()])):
+            with self.subTest(active=active, failed=failed, retained=bool(retained)):
+                device, lib, _ = make_device()
+                device._streaming = active
+                device._shutdown_failed = failed
+                with patch.object(backend, "_FAILED_SHUTDOWN_CALLBACKS", retained):
+                    with self.assertRaises(backend.StreamStateError):
+                        device.connect()
+                self.assertEqual(lib.calls, [])
+
     def test_requested_index_is_honoured(self):
         lib = FakeLib(device_masks=[0b110])
         clock = FakeClock()
@@ -445,6 +501,8 @@ class ConnectTests(unittest.TestCase):
             device.connect()
         self.assertEqual(ctx.exception.function, "QueryDeviceInfo")
         self.assertEqual(ctx.exception.status, 87)
+        self.assertNotIn(("AIOUSB_ReloadDeviceLinks",), lib.calls)
+        self.assertIsNone(device.info)
 
     def test_reads_before_configure_are_refused(self):
         device, _, _ = make_device()
