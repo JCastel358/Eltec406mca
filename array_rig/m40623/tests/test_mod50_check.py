@@ -131,7 +131,7 @@ class TraySequence(unittest.TestCase):
         self.assertTrue(result["data_complete"], result["errors"])
         self.assertEqual(len(result["rows"]), 50)
         self.assertEqual([r["samples"] for r in result["records"]], [10000, 100000])
-        self.assertTrue(all(r["settling"]["complete"] and r["settling"]["waited_s"] >= 89.9 for r in result["records"]))
+        self.assertTrue(all(r["settling"]["complete"] and 5 <= r["settling"]["waited_s"] < 90 for r in result["records"]))
         self.assertEqual(self.rig.device.controls, (False, False))
         self.assertTrue(all(r["result"] != "PASS" for r in result["rows"]))
         self.assertTrue(all(.59 < r["dc_v"] < .86 for r in result["rows"]))
@@ -199,7 +199,8 @@ class TraySequence(unittest.TestCase):
         result = self.run_short(worker)
         self.assertFalse(result["data_complete"])
         self.assertEqual(len(result["records"]), 1)
-        self.assertGreater(result["records"][0]["samples"], 0)
+        self.assertGreater(result["records"][0]["settling"]["observed_samples"], 0)
+        self.assertTrue((worker.directory / result["records"][0]["settling"]["raw_file"]).is_file())
         self.assertEqual(self.rig.device.controls, (False, False))
 
     def test_shutdown_failure_prevents_complete(self):
@@ -253,7 +254,7 @@ class TraySequence(unittest.TestCase):
             path = worker.directory / record["raw_file"]
             self.assertTrue(path.exists())
             self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), record["raw_sha256"])
-        self.assertGreater(result["records"][0]["samples"], 0)
+        self.assertGreater(result["records"][0]["settling"]["observed_samples"], 0)
         self.assertEqual(result["records"][1]["samples"], 0)
         self.assertEqual(result["records"][1]["settling"]["waited_s"], 0)
         self.assertTrue(all(row["flags"] == [] for row in result["rows"]))
@@ -267,7 +268,7 @@ class TraySequence(unittest.TestCase):
             delivered = 0
             def fail_once(**options):
                 nonlocal delivered
-                if rig.mode == "noise" and rig.device.stream_attempts == 2:
+                if rig.mode == "noise" and rig.device.stream_attempts == 2 and worker.records[-1]["settling"]["complete"]:
                     delivered += 1
                     if delivered == 2:
                         raise hw.daq.StreamTimeoutError("Injected NOISE delivery timeout")
@@ -283,7 +284,7 @@ class TraySequence(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual([r["mode"] for r in result["records"]], ["dc", "noise", "noise"])
         self.assertEqual([r["valid_data"] for r in result["records"]], [True, False, True])
-        self.assertGreaterEqual(result["records"][1]["settling"]["waited_s"], 89.9)
+        self.assertGreaterEqual(result["records"][1]["settling"]["waited_s"], 5)
         self.assertEqual(result["records"][2]["settling"]["waited_s"], 0)
         self.assertEqual(self.rig.device.control_history.count((True, True)), 1)
         self.assertEqual(result["recovery"]["recovered_modes"], ["noise"])
@@ -408,7 +409,7 @@ class TraySequence(unittest.TestCase):
         self.assertEqual([r["mode"] for r in result["records"]], ["dc", "noise"])
         self.assertEqual(result["resumed_from"], resume["source"])
         self.assertIn("reused_from", result["records"][0])
-        self.assertGreaterEqual(result["records"][1]["settling"]["waited_s"], 89.9)
+        self.assertGreaterEqual(result["records"][1]["settling"]["waited_s"], 5)
         self.assertEqual((worker.directory / "dc_raw.npz").read_bytes(), before["dc_raw.npz"])
         self.assertEqual({p.name: p.read_bytes() for p in original.directory.iterdir()}, before)
 
@@ -484,17 +485,17 @@ class TraySequence(unittest.TestCase):
         self.assertFalse(result["data_complete"])
         self.assertEqual(result["records"], [])
 
-    def test_real_wait_uses_interruptible_wall_time(self):
+    def test_real_settling_reads_are_interruptible_before_next_driver_read(self):
         worker = self.worker()
         worker.simulate = False
         clock = FakeClock()
         rig = hw.Mod50Rig(simulate=True, monotonic=clock.monotonic, sleep=clock.sleep)
         rig.connect()
-        record = {"mode": "dc"}
-        with patch.object(worker.stop_event, "wait", side_effect=lambda seconds: worker.stop()) as wait:
+        record = {"mode": "dc", "range_code": hw.DC_RANGE, "status_samples": []}
+        with patch.object(worker, "update", side_effect=lambda **values: worker.stop()), patch.object(rig.device, "read_stream") as read:
             with self.assertRaises(hw.daq.StreamIntegrityError):
-                worker.wait_settled(rig, record, 0, .3)
-        wait.assert_called_once_with(.25)
+                worker.wait_settled(rig, record, 0, .3, 1000, [])
+        read.assert_not_called()
         self.assertFalse(record["settling"]["complete"])
         rig.close()
 

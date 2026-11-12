@@ -1,6 +1,28 @@
 # Eltec 40623 Array Tester (TP120) — 50 positions on the DAQ array rig
 
-## Current M25/HUB check — default since 2026-11-04
+## Current M25/HUB check — updated 2026-11-11
+
+Choose Noise only (default), Offset only, or both before Start. Skipped tests
+are `NOT_TAKEN` in exported row statuses; numeric values remain null/blank.
+Noise-only runs do not infer occupancy from the AC signal: select loaded
+slots explicitly. Retest parts maps original part positions to new slots and
+replaces only valid selected stage assessments. Original recordings remain
+immutable. Batch counts represent unique operator-linked parts, not attempts.
+
+The settling gate is now 80% of selected, nonexcluded parts over five
+one-second windows, with a 90-second fixed-wait fallback. All 57 physical
+rows continue to be acquired together. Nonsettling parts receive an individual
+CHECK after a valid recording; no calibrated noise amplitude pass/fail limit
+has been introduced. See [the calibration record](../docs/CALIBRATION_RECORD.md)
+for the provisional stability statistics and validation limits.
+
+`mod50_history.py` stores immutable part attempts and slot events in SQLite.
+Three consecutive valid flagged checks latch a suspect-slot warning until
+explicit technician repair verification. Incomplete/no-signal checks do not
+count as slot failures. Simulation and actual histories are isolated. Retests
+preserve unselected stages and do not overwrite valid evidence with an
+interrupted attempt. The current batch and tray assessments are embedded in
+each new report, with original part position and latest destination.
 
 The November 4 UI revision uses the exact logo and visual style from
 `eltec-detector-test-demo` in a local browser dashboard (`mod50_web.py` and
@@ -16,7 +38,7 @@ remains an engineering API.
 Offset evidence contains an extrema-preserving trace of the recorded DC
 interval, its minimum/maximum, fitted slope and a clearly labelled linear
 time-to-window estimate when drifting toward the existing limits. This is
-not a prediction that the detector will pass, and does not alter the fixed
+not a prediction that the detector will pass, and does not alter the
 settling or acceptance limits. Noise details show a short excerpt around
 clipping/headroom failure, or a representative excerpt for an ordinary
 record. Exact raw samples remain in NPZ files; downsampled chart data are
@@ -57,10 +79,10 @@ The full operator procedure is in [the array README](../README.md).
 
 | Stage | Controls / acquisition | Wait or duration |
 | --- | --- | --- |
-| Connect | Reserve dedicated DIO0–15, DC/unity, signed ±5 V | 90 s |
+| Connect / offset settling | Reserve dedicated DIO0–15, DC/unity, signed ±5 V; monitor selected slots | 80% stable over 5 one-second windows, or 90 s fallback |
 | DC | All 57 physical rows, four conversions/channel, drop first and average three | 10 s |
 | Enter noise | Stop/drain; gain off; select AC; wait; enable gain; ±1 V | 200 ms switching hold |
-| Settle noise | Verify both cards remain ready/present and match route/gain | 90 s |
+| Settle noise | Verify both cards remain ready/present and match route/gain; monitor selected slots | Same 80% rule / 90 s fallback |
 | Noise | Same physical scan and conversion policy | 100 s |
 | Finish / stop | Stop/drain; gain off; wait 50 ms; command DC; verify and close | No automatic restart |
 
@@ -80,14 +102,15 @@ The process lock excludes the 50AmpBoard live/quick tools; older applications
 without this lock must still be closed. DIO2–7 remain reserved low: no
 expansion controller may share this dedicated port.
 
-Real timing cannot be shortened from the operator UI. Simulation advances
-a separate virtual clock. A two-second delivery stall or recognized delivery
+The sample clock supplies settling time; simulation processes synthetic
+samples without wall-clock waiting. A two-second delivery stall or recognized delivery
 interruption ends that capture attempt. Up to three total attempts per stage
 are allowed only after confirmed clean stream shutdown and unchanged mode,
 range, configuration and verified card readiness. A fresh full recording is
 required on each attempt; samples across gaps are never concatenated. Valid
 DC is retained during noise retries, and an unchanged settled frontend does
-not repeat its 90-second wait. Operator Stop, readiness/control faults,
+not repeat its completed settling check. A delivery fault during settling
+restarts settling from fresh samples. Operator Stop, readiness/control faults,
 sample-clock/range errors, saving failures and unsafe shutdowns do not retry.
 Available raw data from every rejected attempt remain saved separately.
 Any trace within 328 converter counts of a range endpoint is flagged;
@@ -100,8 +123,8 @@ confirmation of unchanged detectors, wiring, alignment and uninterrupted
 fixture power. `mod50_recovery.py` validates the saved profile, timing, map,
 stage diagnostics, raw hash, shape and metadata without opening the DAQ.
 The worker rechecks the DC hash and connected DAQ serial, copies DC evidence
-into a new run folder, switches to noise and performs the prescribed
-90-second settling plus a fresh 100-second recording. The original folder is
+into a new run folder, switches to noise and checks adaptive settling before
+a fresh 100-second recording. The original folder is
 immutable. Startup offers only the latest run for its data source, and never
 automatically starts it. Repeated failure remains incomplete and retains
 diagnostics; power cycles, detector changes or unsafe errors require a new
@@ -118,6 +141,13 @@ Retries add `dc_attempt02_raw.npz`, `noise_attempt02_raw.npz`, and analogous
 attempt files. The last record for each mode is authoritative; earlier
 records remain diagnostic evidence. Summary recovery fields identify the
 attempts and any source run used for retained DC.
+
+`*_attemptNN_settling_raw.npz` preserves the observations before measurement;
+raw measurement files keep the full prescribed recording only. JSON records
+per-window mean/RMS/drift, the 80% gate, fallback use and never-settled slots.
+`fixture_history.sqlite3` at the results root stores actual part/slot history;
+`simulation_history.sqlite3` is separate even with an explicit output root.
+Back up the history database along with all original run directories.
 
 DC reports the unchanged provisional 0.3–1.2 V window. Noise is mean-removed
 finite-record FFT RMS over inclusive 1–100 Hz bins; the 3 Hz/Q3 result applies

@@ -55,8 +55,13 @@
         <div><p class="eyebrow">03 / TEST TRAY</p><h2 id="trayTitle" tabindex="-1">Your detector tray</h2><p id="batchContext" class="batch-context">Model 40623</p></div>
         <div class="button-row test-actions"><button class="quiet-button" id="returnSetupButton" type="button">Setup <kbd>Esc</kbd></button><button class="primary" id="startButton" type="button">Start</button><button class="stop-button" id="stopButton" type="button" disabled>Stop</button></div>
       </div>
+      <div class="test-options" id="testOptions">
+        <label class="field"><span>Tests to run</span><select id="testChoice"><option value="noise">Noise only</option><option value="dc">Offset only</option><option value="both">Offset and noise</option></select></label>
+        <details id="populationControl"><summary id="populationSummary">Loaded slots: 50 of 50</summary><p>Select only slots containing a part. Noise alone cannot identify empty slots.</p><div class="button-row"><button type="button" class="secondary" id="loadAll">All 50</button><button type="button" class="secondary" id="loadNone">Clear</button></div><div id="populationChoices" class="population-choices"></div></details>
+        <p id="testSelectionNote">Offset will be saved as Not taken. All channels are acquired together.</p>
+      </div>
       <div class="progress-band" aria-label="Test progress">
-        <div class="progress-copy"><strong id="phaseText">Ready for your tray</strong><span id="timeNote">About 4 min 50 s</span></div>
+        <div class="progress-copy"><strong id="phaseText">Ready for your tray</strong><span id="timeNote">Selected tests + adaptive settling</span></div>
         <progress id="runProgress" max="1" value="0" aria-label="Check progress"></progress>
         <div class="progress-bottom"><p id="statusText" role="status">Press Start when the fixture is ready.</p><div class="sequence" aria-label="Measurement sequence"><span>Settle</span><i>→</i><span>Offset</span><i>→</i><span>Settle</span><i>→</i><span>Noise</span><i>→</i><span>Save</span></div></div>
       </div>
@@ -66,7 +71,8 @@
       <div class="tray-wrap"><div class="tray-toolbar"><span>5 rows × 10 positions</span><span id="traySummary">50 positions · select any detector for details</span></div><div class="sensor-grid" id="sensorGrid" aria-label="Detector positions"></div></div>
       <div class="legend"><span><i class="legend-dot pass"></i>Green badge: offset pass</span><span><i class="legend-dot fail"></i>Red: signal fail / check</span><span><i class="legend-dot review"></i>Amber: review / incomplete</span><span><i class="legend-dot empty"></i>Gray: no signal</span></div>
       <p class="limit-note">Offset: provisional 0.3–1.2 V. Noise limits await calibration. An offset pass is not a complete detector pass.</p>
-      <div class="completion-actions" id="completionActions" hidden><span id="completionPrompt">All set with this tray?</span><div class="button-row"><button class="secondary" id="homeButton" type="button">Main setup <kbd>Esc</kbd></button><button class="secondary" id="retryNoiseButton" type="button" hidden>Retry noise →</button><button class="primary" id="nextBatchButton" type="button">Next batch <kbd>Enter</kbd></button></div></div>
+      <p class="batch-yield" id="batchYield" hidden></p>
+      <div class="completion-actions" id="completionActions" hidden><span id="completionPrompt">All set with this tray?</span><div class="button-row"><button class="secondary" id="homeButton" type="button">Main setup <kbd>Esc</kbd></button><button class="secondary" id="retestButton" type="button">Retest parts</button><button class="secondary" id="retryNoiseButton" type="button" hidden>Retry noise →</button><button class="primary" id="nextBatchButton" type="button">Next batch <kbd>Enter</kbd></button></div></div>
     </section>
     <section class="workflow-screen" id="batchSection" aria-labelledby="batchTitle" hidden>
       <div class="workflow-card batch-card"><p class="step-label">NEXT BATCH</p><h2 id="batchTitle" tabindex="-1">Another batch? Coming right up.</h2><p>Your name and model stay the same. Enter the next batch number, then we’ll revisit the power check.</p><form id="batchForm"><label class="field"><span>New batch number</span><input id="newBatchInput" autocomplete="off" required maxlength="120" placeholder="Enter batch number"></label><p class="form-note">Use the established power-off procedure before changing detectors.</p><div class="workflow-actions"><button class="secondary" id="batchCancel" type="button">Back to results</button><button class="primary continue-button" id="batchContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button></div></form></div>
@@ -93,6 +99,24 @@
       </div>
     </section>
   </main>
+  <dialog id="retestDialog" class="operator-dialog" aria-labelledby="retestTitle">
+    <h2 id="retestTitle">Retest the same parts</h2>
+    <p>Select each original part and the slot you will use now. A retest updates that part’s result without adding another part to the yield count. Every attempt stays saved.</p>
+    <label class="field"><span>Retest</span><select id="retestChoice"><option value="noise">Noise only</option><option value="dc">Offset only</option><option value="both">Offset and noise</option></select></label>
+    <p>Keep track of each part by its original position. Move parts only using the established power-off procedure; restore the fixture before starting.</p>
+    <div class="retest-list" id="retestList"></div>
+    <label class="recovery-confirm"><input id="retestConfirm" type="checkbox"><span>These are the same parts, placed in the selected slots. Power, RUN, cooling and vacuum are ready.</span></label>
+    <p id="retestError" class="recovery-error" role="status"></p>
+    <div class="workflow-actions"><button class="secondary" id="retestCancel" type="button">Cancel</button><button class="primary" id="retestStart" type="button">Start retest</button></div>
+  </dialog>
+  <dialog id="slotDialog" class="operator-dialog" aria-labelledby="slotTitle">
+    <h2 id="slotTitle">Check these fixture slots</h2>
+    <p>These slots have produced three consecutive flagged checks. The slot may be faulty. Leave it empty and avoid using it until verified.</p>
+    <div id="slotWarnings"></div>
+    <p>Unchecked slots will be excluded from this run’s results. All physical channels are still recorded together.</p>
+    <p id="slotError" class="recovery-error" role="status"></p>
+    <div class="workflow-actions"><button class="secondary" id="slotCancel" type="button">Back</button><button class="primary" id="slotContinue" type="button">Continue with these choices</button></div>
+  </dialog>
   <footer><span>Eltec Instruments · M25/HUB</span><span id="footerSource">Actual detectors · data saved automatically</span></footer>
   <script src="app.js"></script>
 </body>

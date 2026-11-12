@@ -1,6 +1,28 @@
 # Calibration record — every production constant and where it came from
 
-## Current M25/HUB profile (2026-11-04)
+## Current M25/HUB profile (updated 2026-11-11)
+
+The user authorized sample-observed settling with an **80% simultaneous
+start threshold** on 2026-11-11. All channels still share one continuous
+stream. Five consecutive one-second windows are examined per loaded,
+nonexcluded slot. The range of window means must be within the maximum of
+0.1 mV (carried from the legacy scheduling tolerance), two ADC codes, or
+three times the largest window RMS divided by sqrt(samples/window).
+Each window's half-window mean change must be within twice that tolerance.
+For noise, window RMS range must also be within max(0.1 mV, two codes,
+10% of mean window RMS). Noise is assessed about its observed DC level,
+without requiring a particular mean voltage. These statistical settings
+are provisional software scheduling choices and still require bench review.
+
+At ceil(0.80 × monitored parts) stable slots, capture starts for the whole
+tray. At 90 s the fixed-wait fallback starts capture regardless, with a
+recorded warning. Raw settling samples and full measurement samples are
+saved separately. Stability continues to be observed during capture;
+parts with no stable five-window sequence during the measurement receive
+an individual CHECK, not a fabricated calibrated noise verdict. A recognized
+DAQ delivery fault remains an acquisition problem, never a detector failure.
+The settling optimization and slot warnings are software-verified only;
+they do not constitute hardware or TP120 qualification.
 
 The demo-style UI revision preserves the numeric offset/noise limits.
 Automatic **NO_SIGNAL** is an occupancy suspicion, not a new detector
@@ -23,7 +45,7 @@ modular front-end's measured transfer function.
 | Detector transfer gain | Not applied; results remain DAQ-output µV RMS |
 | Acquisition | Working MOD50 bench configuration: 1000 scans/s, 57 rows, four conversions, discard first/average three, 64 buffers |
 | DC / noise range | Working bench's signed ±5 V / ±1 V |
-| Connect / AC-switch settling | Existing R4/MOD50 control contract: 90 s each |
+| Connect / AC-switch settling | 80% stable over 5 one-second windows; 90 s fixed-wait fallback, user direction 2026-11-11 |
 | Noise entry / DC return hold | Existing contract: 200 ms / 50 ms with gain disabled |
 | DC / noise record duration | 10 s functional DC record; 100 s noise record per MOD50 software's routine-record recommendation |
 | Range endpoint guard | Working bench's 328-count (0.5% full-scale) guard; acquisition quality only |
@@ -36,12 +58,12 @@ data. Valid DC can be retained for noise retry; each accepted noise result
 requires a fresh uninterrupted 100-second record. Automatic retry preserves
 settling only with unchanged verified hardware state and clean shutdown.
 Saved-run retry requires explicit unchanged-fixture confirmation, validated
-raw evidence and matching DAQ identity, followed by the normal 90-second
-noise settling. The software policy was checked with injected faults and
+raw evidence and matching DAQ identity, followed by a fresh adaptive
+noise settling check. The software policy was checked with injected faults and
 simulation; no new hardware qualification or calibration is implied.
 
-These hardware settling gates replace the legacy adaptive wait for M25/HUB
-only. They are not a claim of exact TP120 timing/rectifier-hold equivalence.
+The M25/HUB scheduling policy is separate from the legacy adaptive wait.
+It is not a claim of exact TP120 timing/rectifier-hold equivalence.
 Physical RUN/STOP and supply checks remain manual; no commissioned battery
 telemetry or measured station identity is fabricated. The user reports
 working hardware; the integration itself was checked in software/simulation.

@@ -130,7 +130,7 @@ class DashboardHttp(unittest.TestCase):
     def test_run_identity_and_metadata_survive_polling_completion_and_rejected_start(self):
         self.assertEqual(self.start(lot=" LOT-42 ", operator=" Technician ", tray=3, model="40623")[0], 200)
         state = self.request()[2]
-        self.assertEqual(state["run_metadata"], {"model": "40623", "lot": "LOT-42", "operator": "Technician", "tray": 3})
+        self.assertEqual(state["run_metadata"], {"model": "40623", "lot": "LOT-42", "operator": "Technician", "tray": 3, "selected_tests": ["noise"]})
         first_id = state["run_id"]
         self.assertIsInstance(first_id, str)
         self.assertTrue(first_id)

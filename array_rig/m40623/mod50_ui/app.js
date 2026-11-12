@@ -21,14 +21,20 @@
   let noiseRecovery = null;
   let selectedRecovery = null;
   let recoveryError = '';
+  let pendingRun = null;
   const tiles = new Map();
   const finite = x => typeof x === 'number' && Number.isFinite(x);
   const fmt = (x, digits = 3, suffix = '') => finite(x) ? x.toFixed(digits) + suffix : '—';
+  const chosenTests = id => $(id).value === 'both' ? ['dc', 'noise'] : [$(id).value];
+  const includesTest = (row, mode) => row.test_status?.[mode] !== 'NOT_TAKEN' &&
+    (state.result?.selected_tests || state.run_metadata?.selected_tests || ['dc', 'noise']).includes(mode);
+  const loadedPositions = () => [...$('populationChoices').querySelectorAll('input:checked')].map(el => el.value);
 
   function rows() {
     const source = state.rows?.length ? state.rows : state.result?.rows || [];
     return positionNames.map((position, index) => source.find(row => row.position === position) ||
-      {position, channel: index + 1, result: 'NOT_MEASURED', dc_check: 'NOT_MEASURED', presence: 'UNKNOWN', flags: []});
+      {position, channel: index + 1, installed: state.result ? undefined : loadedPositions().includes(position),
+        result: 'NOT_MEASURED', dc_check: 'NOT_MEASURED', presence: 'UNKNOWN', flags: []});
   }
 
   function acquisitionFlags(row) {
@@ -56,11 +62,12 @@
     if (row.result === 'NOT_INSTALLED' || row.installed === false) return ['empty', 'Excluded'];
     if (row.dc_check === 'OUTSIDE_WINDOW_PROVISIONAL' || row.dc_check === 'RANGE_LIMIT') return ['fail', 'Offset fail'];
     if (signalFlags(row).length || (row.result === 'CHECK' && !acquisitionFlags(row).length && !(row.acquisition_errors || []).length)) return ['fail', 'Check'];
-    if (state.busy && stageValidity(row, 'dc') === true && stageValidity(row, 'noise') !== true) return ['testing', 'Noise pending'];
+    if (state.busy && includesTest(row, 'noise') && stageValidity(row, 'dc') === true && stageValidity(row, 'noise') !== true) return ['testing', 'Noise pending'];
     if ((row.acquisition_errors || []).length || acquisitionFlags(row).length ||
-        (state.result && stageValidity(row, 'noise') !== true)) {
+        (state.result && ['dc', 'noise'].some(m => includesTest(row, m) && stageValidity(row, m) !== true))) {
       return ['incomplete', stageValidity(row, 'dc') === true ? 'Noise incomplete' : 'Incomplete'];
     }
+    if (stageValidity(row, 'noise') === true) return ['review', 'Noise review'];
     if (row.dc_check === 'IN_WINDOW_PROVISIONAL') {
       return finite(row.daq_3hz_q3_rms_uv) && stageValidity(row, 'noise') !== false ? ['review', 'Review'] : ['pass', 'Offset pass'];
     }
@@ -106,17 +113,25 @@
       button.querySelector('.offset-dot').hidden = row.dc_check !== 'IN_WINDOW_PROVISIONAL';
       if (row.dc_check === 'IN_WINDOW_PROVISIONAL') good++;
       if (type === 'fail') failures++;
-      if (type === 'empty') empty++;
+      if (row.presence === 'NO_SIGNAL' || row.result === 'NO_SIGNAL') empty++;
       if (type === 'review') review++;
     }
+    const parts = state.result?.current_parts;
+    if (parts?.length) {
+      good = parts.filter(p => p.dc_check === 'IN_WINDOW_PROVISIONAL').length;
+      failures = parts.filter(p => p.result === 'CHECK').length;
+      empty = parts.filter(p => p.result === 'NO_SIGNAL').length;
+      review = parts.filter(p => p.result === 'REVIEW_NO_NOISE_LIMIT').length;
+    }
+    $('totalCount').textContent = parts?.length || (state.result ? data.filter(r => r.installed !== false).length : loadedPositions().length);
     $('passCount').textContent = good;
     $('failCount').textContent = failures;
     $('emptyCount').textContent = empty;
     $('reviewCount').textContent = review;
     if (state.result) {
       const result = state.result;
-      $('traySummary').textContent = `Lot ${result.lot || '—'} · Tray ${result.tray || '—'} · ${result.operator || '—'}`;
-    } else $('traySummary').textContent = state.busy ? 'Checking all 50 positions · click any detector' : '50 positions · select any detector for details';
+      $('traySummary').textContent = `${Object.keys(result.part_mapping || {}).length ? 'Retest slots shown · totals track original parts · ' : ''}Lot ${result.lot || '—'} · Tray ${result.tray || '—'}`;
+    } else $('traySummary').textContent = state.busy ? 'All 50 channels acquired together · click any detector' : `${loadedPositions().length} loaded slots · select any detector for details`;
   }
 
   function badge(text, type) {
@@ -167,11 +182,18 @@
     const x0 = domainStart, x1 = domainEnd;
     let low = Infinity, high = -Infinity;
     for (const p of points) {low = Math.min(low, p[1]); high = Math.max(high, p[1]);}
-    const range = Math.max(high - low, mode === 'dc' ? .0002 : .001);
-    low -= range * .14; high += range * .14;
+    if (mode === 'dc') {
+      // A common volts scale makes tiny DC variation look appropriately flat.
+      // Expand only to include real excursions; never hide a spike or limit.
+      low = Math.min(0, Math.floor((low - .05) * 4) / 4);
+      high = Math.max(1.5, Math.ceil((high + .05) * 4) / 4);
+    } else {
+      const range = Math.max(high - low, .001);
+      low -= range * .14; high += range * .14;
+    }
     const x = v => left + (v - x0) / Math.max(x1 - x0, 1e-9) * (w - left - right);
     const y = v => top + (high - v) / (high - low) * (h - top - bottom);
-    const tickDigits = mode === 'dc' ? Math.min(6, Math.max(2, 2 - Math.floor(Math.log10(high - low)))) : Math.min(4, Math.max(1, 1 - Math.floor(Math.log10(high - low))));
+    const tickDigits = mode === 'dc' ? 2 : Math.min(4, Math.max(1, 1 - Math.floor(Math.log10(high - low))));
     let svg = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${mode === 'dc' ? 'Offset over time in volts' : 'Noise excerpt in millivolts'}"><rect width="${w}" height="${h}" fill="white"/>`;
     if (mode === 'dc') {
       const bandLow = Math.max(low, finite(detail.limit_min_v) ? detail.limit_min_v : .3);
@@ -194,7 +216,7 @@
       const labelWidth = 126, labelX = Math.max(left + 3, Math.min(eventX + 7, w - right - labelWidth - 3));
       svg += `<g aria-label="Flagged event at ${detail.event_time_s.toFixed(3)} seconds"><line x1="${eventX}" y1="${top}" x2="${eventX}" y2="${h-bottom}" stroke="#b42318" stroke-width="1.8" stroke-dasharray="5 4"/><rect x="${labelX}" y="${top+5}" width="${labelWidth}" height="23" rx="4" fill="#fde7e5" stroke="#efa9a2"/><text x="${labelX+7}" y="${top+20}" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#b42318">Flag at ${detail.event_time_s.toFixed(3)} s</text></g>`;
     }
-    svg += `<text x="${left}" y="13" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c6979">${mode === 'dc' ? 'Zoomed to measured range · green area is inside offset limits' : 'Recorded excerpt · time is relative to the noise recording'}</text></svg>`;
+    svg += `<text x="${left}" y="13" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c6979">${mode === 'dc' ? 'Common voltage scale · green area is inside offset limits' : 'Recorded excerpt · time is relative to the noise recording'}</text></svg>`;
     target.innerHTML = svg;
   }
 
@@ -211,8 +233,9 @@
     if (noSignal) badges.append(badge('No detector sensed', 'empty'));
     else if (row.dc_check === 'IN_WINDOW_PROVISIONAL') badges.append(badge('Offset PASS · provisional', 'pass'));
     else if (['OUTSIDE_WINDOW_PROVISIONAL', 'RANGE_LIMIT'].includes(row.dc_check)) badges.append(badge('Offset FAIL · provisional', 'fail'));
-    else badges.append(badge('Offset not measured', 'empty'));
+    else badges.append(badge(includesTest(row, 'dc') ? 'Offset not measured' : 'Offset not taken', 'empty'));
     if (noSignal) badges.append(badge('Noise analysis excluded', 'empty'));
+    else if (!includesTest(row, 'noise')) badges.append(badge('Noise not taken', 'empty'));
     else if (signalFlags(row).some(f => /^NOISE:/i.test(f))) badges.append(badge('Noise · signal check', 'fail'));
     else if (state.busy && stageValidity(row, 'noise') !== true) badges.append(badge('Noise recording pending', 'empty'));
     else if (stageValidity(row, 'noise') === false || (state.result && !finite(row.daq_3hz_q3_rms_uv))) badges.append(badge('Noise recording incomplete', 'incomplete'));
@@ -221,17 +244,20 @@
     $('detailReason').textContent = noSignal
       ? 'No detector sensed — this may be an empty socket, a dead detector, or a disconnected detector. Noise analysis is excluded automatically; the slot and recorded evidence stay available for inspection.'
       : [...signalFlags(row), ...(row.acquisition_errors || []), ...acquisitionFlags(row),
-          stageValidity(row, 'dc') === true && stageValidity(row, 'noise') !== true
+          stageValidity(row, 'dc') === true && includesTest(row, 'noise') && stageValidity(row, 'noise') !== true
             ? 'The valid offset result is retained. Noise has not completed a valid recording; this is an acquisition issue, not a detector failure.'
             : finite(row.daq_3hz_q3_rms_uv) ? 'Noise is saved for review; no calibrated noise pass/fail limit is applied yet.'
+            : !includesTest(row, 'noise') && stageValidity(row, 'dc') === true ? 'Offset test saved. Noise was not taken.'
             : 'This position has not completed its measurements yet.'].join(' · ');
     const dc = row.dc_detail, noise = row.noise_detail;
     chart($('offsetChart'), dc, 'dc');
     chart($('noiseChart'), noise, 'noise');
+    if (!dc && !includesTest(row, 'dc')) $('offsetChart').textContent = 'Offset not taken — not selected for this run.';
+    if (!noise && !includesTest(row, 'noise')) $('noiseChart').textContent = 'Noise not taken — not selected for this run.';
     metrics($('offsetMetrics'), [
-      ['Mean', fmt(row.dc_v, 5, ' V')], ['Minimum', fmt(dc?.min_v, 5, ' V')], ['Maximum', fmt(dc?.max_v, 5, ' V')],
+      ['Mean', fmt(row.dc_v, 3, ' V')], ['Minimum', fmt(dc?.min_v, 3, ' V')], ['Maximum', fmt(dc?.max_v, 3, ' V')],
       ['Slope', finite(dc?.slope_v_per_s) ? `${dc.slope_v_per_s >= 0 ? '+' : ''}${(dc.slope_v_per_s * 1000).toFixed(3)} mV/s` : '—'],
-      ['Start → end', finite(dc?.start_v) && finite(dc?.end_v) ? `${dc.start_v.toFixed(4)} → ${dc.end_v.toFixed(4)} V` : '—'],
+      ['Recorded span', finite(dc?.max_v) && finite(dc?.min_v) ? fmt((dc.max_v - dc.min_v) * 1000, 3, ' mV') : '—'],
       ['Allowed window', '0.3–1.2 V']
     ]);
     let trend = dc?.trend || '';
@@ -348,7 +374,7 @@
     $('recoveryOperator').textContent = saved.operator;
     $('recoveryDate').textContent = recoveryDate(saved.created_at);
     $('recoverySource').textContent = saved.simulate ? 'SIMULATION · generated data' : 'ACTUAL DETECTORS · physical DAQ';
-    $('recoveryTiming').textContent = `${fmt(saved.dc_recorded_seconds, 1, ' s')} DC retained · ${fmt(saved.recorded_noise_seconds, 2, ' / 100 s')} noise retained for diagnostics. The fixture returned to DC: allow 90 seconds to settle in noise mode, then 100 seconds to record. About 3 min 10 s plus connecting and saving.`;
+    $('recoveryTiming').textContent = `${fmt(saved.dc_recorded_seconds, 1, ' s')} DC retained · ${fmt(saved.recorded_noise_seconds, 2, ' / 100 s')} noise retained for diagnostics. Noise records together once 80% of loaded parts settle, or after the 90-second fallback, followed by a fresh 100-second recording.`;
     const stale = !noiseRecovery || noiseRecovery.id !== saved.id;
     const issue = recoveryError || (stale ? 'This recovery is no longer available. Return to Main setup to refresh the available check.' : '') ||
       (state.restart_required ? 'Restart the app after resolving the DAQ shutdown error before retrying.' : '') ||
@@ -371,12 +397,23 @@
       : stopError || actionError || (stopQueued || stopPending ? 'Stopping acquisition and saving available data…' : '') || state.message ||
         (result ? result.data_complete ? 'All measurements saved. Select a detector to inspect its traces.' :
           (result.errors || []).join(' · ') || 'The check is incomplete.' : 'Ready when you are. Press Start to begin.');
-    $('timeNote').textContent = reportMode ? 'Saved report' : simulation ? 'Demo · accelerated waiting' : busy ? 'Settling and recording automatically' : 'About 4 min 50 s';
+    const tests = result?.selected_tests || state.run_metadata?.selected_tests || chosenTests('testChoice');
+    $('timeNote').textContent = reportMode ? 'Saved report' : simulation ? 'Demo · accelerated waiting' : busy ? '80% stable or 90 s fallback · all channels together' : `${tests.includes('dc') ? '10 s offset' : ''}${tests.length === 2 ? ' + ' : ''}${tests.includes('noise') ? '100 s noise' : ''} + adaptive settling`;
     $('runProgress').value = finite(state.progress) ? Math.max(0, Math.min(1, state.progress)) : 0;
     const runState = $('runState');
     runState.dataset.state = !connected ? 'fail' : busy ? 'testing' : result ? result.data_complete ? 'review' : 'fail' : 'ready';
     runState.querySelector('strong').textContent = !connected ? 'OFFLINE' : busy ? 'TESTING' : result ? result.data_complete ? 'COMPLETE' : 'INCOMPLETE' : 'READY';
     for (const el of document.querySelectorAll('.field input,.field select')) el.disabled = busy;
+    $('testOptions').hidden = reportMode || Boolean(result);
+    for (const el of $('populationControl').querySelectorAll('input,button')) el.disabled = busy;
+    $('populationSummary').textContent = `Loaded slots: ${loadedPositions().length} of 50`;
+    $('testSelectionNote').textContent = tests.includes('dc') ? (tests.includes('noise') ? 'Both selected tests will be saved.' : 'Noise will be saved as Not taken.') : 'Offset will be saved as Not taken. Select only loaded slots.';
+    $('retestButton').hidden = reportMode || !result?.current_parts?.length;
+    $('retestButton').disabled = locked() || !connected || Boolean(state.restart_required);
+    for (const id of ['retestStart', 'retestCancel', 'slotContinue', 'slotCancel']) $(id).disabled = busy;
+    const yieldData = result?.batch_summary;
+    $('batchYield').hidden = !yieldData;
+    if (yieldData) $('batchYield').textContent = `Batch: ${yieldData.tracked_parts} parts · ${yieldData.failed} flagged · ${yieldData.review} noise review · ${yieldData.incomplete} incomplete · Screening yield ${fmt(yieldData.screening_yield_percent, 1, '%')}. Retests counted once; noise review is not an acceptance pass.`;
     $('startButton').disabled = Boolean(reportMode || busy || result || screen !== 'test' || state.restart_required || !connected);
     $('stopButton').disabled = reportMode || (!busy && connected);
     $('completionActions').hidden = reportMode || busy || !result;
@@ -389,8 +426,14 @@
       lot: $('lotInput').value, operator: $('operatorInput').value, tray: $('trayInput').value};
     $('batchContext').textContent = `Model ${identity.model || '40623'} · ${identity.operator || 'Technician'} · Batch ${identity.lot || '—'} · Tray ${identity.tray || '1'}`;
     const phase = (state.phase || '').toLowerCase();
-    const step = phase.includes('noise') ? phase.includes('settl') || phase.includes('switch') ? 2 : 3 : phase.includes('dc') ? phase.includes('settl') ? 0 : 1 : phase.includes('sav') || phase.includes('return') ? 4 : -1;
-    [...document.querySelectorAll('.sequence span')].forEach((el, i) => el.classList.toggle('active', state.busy && i === step));
+    const sequence = [];
+    for (const mode of ['dc', 'noise']) if (tests.includes(mode)) {
+      sequence.push(['Settle', phase.includes(mode) && (phase.includes('settl') || phase.includes('switch'))]);
+      sequence.push([mode === 'dc' ? 'Offset' : 'Noise', phase.includes(mode) && phase.includes('record')]);
+    }
+    sequence.push(['Save', phase.includes('sav') || phase.includes('return')]);
+    document.querySelector('.sequence').innerHTML = sequence.map(([label, active]) =>
+      `<span${state.busy && active ? ' class="active"' : ''}>${label}</span>`).join('<i>→</i>');
     paintTray();
     paintDetail();
     paintRecovery();
@@ -423,6 +466,7 @@
     $('operatorInput').value = identity.operator || '';
     $('trayInput').value = identity.tray || 1;
     $('sourceInput').value = next.simulate ? 'demo' : 'real';
+    if (identity.selected_tests) $('testChoice').value = identity.selected_tests.length === 2 ? 'both' : identity.selected_tests[0];
     paintSetupNote();
   }
 
@@ -490,6 +534,48 @@
   async function startRun() {
     if (reportMode || locked() || state.result || state.restart_required || !connected || screen !== 'test') return;
     if (!validSetup()) {showScreen('setup', 'setupTitle'); return;}
+    if (!loadedPositions().length) {actionError = 'Select at least one loaded slot.'; paint(); return;}
+    await prepareRun('api/start', {model: $('modelInput').value, lot: $('lotInput').value.trim(),
+      operator: $('operatorInput').value.trim(), tray: Number($('trayInput').value),
+      simulate: $('sourceInput').value === 'demo', selected_tests: chosenTests('testChoice'),
+      installed_positions: loadedPositions()});
+  }
+
+  async function prepareRun(path, payload) {
+    if (locked() || !connected) return;
+    requestPending = true;
+    stateVersion++;
+    actionError = '';
+    paint();
+    try {
+      const preflight = await action('api/preflight', {simulate: payload.simulate});
+      pendingRun = {path, payload};
+      if (preflight.slot_warnings?.length) {
+        $('slotWarnings').replaceChildren();
+        for (const warning of preflight.slot_warnings) {
+          const label = document.createElement('label');
+          label.className = 'slot-warning recovery-confirm';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox'; checkbox.value = warning.position;
+          const text = document.createElement('span');
+          text.textContent = `Slot ${warning.position} — I have checked this slot and verified it is repaired.`;
+          label.append(checkbox, text); $('slotWarnings').append(label);
+        }
+        $('slotError').textContent = '';
+        $('slotDialog').showModal();
+      } else {
+        requestPending = false;
+        await performRun(path, payload);
+        pendingRun = null;
+      }
+    } catch (error) {
+      actionError = error.message;
+      $('retestError').textContent = error.message;
+    } finally {requestPending = false; stateVersion++; paint();}
+  }
+
+  async function performRun(path, payload) {
+    const previous = state;
     requestPending = true;
     stateVersion++;
     actionError = '';
@@ -497,24 +583,66 @@
     stopQueued = false;
     selected = null;
     $('detailSection').hidden = true;
-    state = {...blankState(), busy: true, phase: 'Starting', simulate: $('sourceInput').value === 'demo', message: 'Starting the tray check…'};
-    paint();
+    state = {...blankState(), busy: true, phase: 'Starting', simulate: payload.simulate,
+      run_metadata: {lot: previous.result?.lot || payload.lot, operator: previous.result?.operator || payload.operator,
+        tray: previous.result?.tray || payload.tray, selected_tests: payload.selected_tests}, message: 'Starting the selected tests…'};
+    showScreen('test', 'trayTitle');
     try {
-      await action('api/start', {model: $('modelInput').value, lot: $('lotInput').value.trim(),
-        operator: $('operatorInput').value.trim(), tray: Number($('trayInput').value),
-        simulate: $('sourceInput').value === 'demo'});
+      await action(path, payload);
+      $('retestDialog').close(); $('slotDialog').close();
     } catch (error) {
-      // A lost response does not prove the worker failed to start. Poll before
-      // allowing another Start or leaving the test view.
-      connected = false;
       actionError = error.message;
-      state.busy = false;
+      $('retestError').textContent = error.message;
+      $('slotError').textContent = error.message;
+      if (error.httpStatus >= 400 && error.httpStatus < 500) {
+        state = previous;
+        stopQueued = false;
+      } else {
+        connected = false;
+        state.busy = false;
+        $('retestDialog').close(); $('slotDialog').close();
+      }
     } finally {
       requestPending = false;
       stateVersion++;
       paint();
       if (stopQueued) await stopRun();
     }
+  }
+
+  function openRetest() {
+    if (locked() || !connected || !state.result?.current_parts?.length) return;
+    $('retestList').replaceChildren(); $('retestError').textContent = '';
+    $('retestConfirm').checked = false;
+    $('retestChoice').value = state.result.selected_tests?.length === 2 ? 'both' : state.result.selected_tests?.[0] || 'noise';
+    for (const part of state.result.current_parts) {
+      const row = document.createElement('div'); row.className = 'retest-row';
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = part.part_id;
+      const text = document.createElement('span');
+      text.textContent = `Original ${part.origin_position} · last ${part.position} · ${part.result.replaceAll('_', ' ').toLowerCase()}`;
+      label.append(checkbox, text);
+      const destination = document.createElement('select'); destination.setAttribute('aria-label', `Retest slot for original ${part.origin_position}`);
+      for (const position of positionNames) {
+        const option = document.createElement('option'); option.value = position; option.textContent = `Slot ${position}`; destination.append(option);
+      }
+      destination.value = part.position;
+      row.append(label, destination); $('retestList').append(row);
+    }
+    $('retestDialog').showModal();
+  }
+
+  async function startRetest() {
+    if (locked() || !state.result || !$('retestConfirm').checked) {
+      $('retestError').textContent = 'Confirm the same parts are in the selected slots and the fixture is ready.'; return;
+    }
+    const moves = [...$('retestList').children].filter(row => row.querySelector('input').checked).map(row =>
+      ({part_id: row.querySelector('input').value, position: row.querySelector('select').value}));
+    if (!moves.length || new Set(moves.map(m => m.position)).size !== moves.length) {
+      $('retestError').textContent = 'Select at least one part and give each selected part a different destination slot.'; return;
+    }
+    await prepareRun('api/retest', {source_run_id: state.result.run_id, simulate: state.result.simulated,
+      selected_tests: chosenTests('retestChoice'), moves, confirm_moved: true});
   }
 
   async function retryNoise() {
@@ -581,6 +709,21 @@
   $('returnSetupButton').addEventListener('click', mainSetup);
   $('recoverSavedButton').addEventListener('click', openRecovery);
   $('retryNoiseButton').addEventListener('click', openRecovery);
+  $('retestButton').addEventListener('click', openRetest);
+  $('retestCancel').addEventListener('click', () => {if (!locked()) $('retestDialog').close();});
+  $('retestStart').addEventListener('click', startRetest);
+  $('slotCancel').addEventListener('click', () => {if (!locked()) {$('slotDialog').close(); pendingRun = null;}});
+  $('slotContinue').addEventListener('click', async () => {
+    if (locked() || !pendingRun) return;
+    const {path, payload} = pendingRun;
+    await performRun(path, {...payload, slot_warning_acknowledged: true,
+      repair_positions: [...$('slotWarnings').querySelectorAll('input:checked')].map(el => el.value)});
+  });
+  $('testChoice').addEventListener('change', paint);
+  $('retestConfirm').addEventListener('change', () => {$('retestError').textContent = '';});
+  for (const id of ['retestDialog', 'slotDialog']) $(id).addEventListener('cancel', event => {if (locked()) event.preventDefault();});
+  $('loadAll').addEventListener('click', () => {for (const el of $('populationChoices').querySelectorAll('input')) el.checked = true; paint();});
+  $('loadNone').addEventListener('click', () => {for (const el of $('populationChoices').querySelectorAll('input')) el.checked = false; paint();});
   $('recoveryCancel').addEventListener('click', mainSetup);
   $('recoveryConfirm').addEventListener('change', paintRecovery);
   $('recoveryForm').addEventListener('submit', event => {event.preventDefault(); retryNoise();});
@@ -605,6 +748,7 @@
   $('sourceInput').addEventListener('change', () => {initialSourceSet = true; paintSetupNote(); paint();});
   document.addEventListener('keydown', event => {
     if (reportMode || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
+    if (document.querySelector('dialog[open]')) return;
     if (event.repeat && ['Enter', 'Escape'].includes(event.key)) {event.preventDefault(); return;}
     if (event.key === 'Escape') {
       if (screen !== 'setup') {event.preventDefault(); mainSetup();}
@@ -626,6 +770,12 @@
     }
   });
   buildTray();
+  for (const position of positionNames) {
+    const label = document.createElement('label'), checkbox = document.createElement('input');
+    checkbox.type = 'checkbox'; checkbox.value = position; checkbox.checked = true;
+    checkbox.addEventListener('change', paint);
+    label.append(checkbox, document.createTextNode(position)); $('populationChoices').append(label);
+  }
   if (reportMode) {
     const result = window.ELTEC_REPORT;
     document.body.dataset.report = 'true';

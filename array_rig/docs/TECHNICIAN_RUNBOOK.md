@@ -1,11 +1,13 @@
 # Technician runbook — Eltec sensor test rigs
 
-## Current M25/HUB array hardware (2026-11-04)
+## Current M25/HUB array hardware (updated 2026-11-11)
 
 For the assembled HUB plus two M25 cards, use the
-[current 50-piece instructions](../../README.md#current-m25hub-hardware--2026-11-04).
-The normal Array Rig launcher now performs an automatic settled DC/noise
-check, approximately 4 minutes 50 seconds. Physical RUN/STOP, cooling,
+[current 50-piece instructions](../README.md).
+Choose Noise only (default), Offset only, or both before Start. Each selected
+stage starts recording together when 80% of loaded parts settle, or after
+the 90-second fallback. Offset records 10 seconds; noise records 100 seconds.
+Skipped tests are saved as Not taken. Physical RUN/STOP, cooling,
 vacuum preparation and supply checks remain manual. The single-sensor
 fan guidance below does not apply to the M25 stack: its cooling must run.
 The old array instructions in §3b describe `--frontend legacy` only.
@@ -18,7 +20,8 @@ The current browser app has three screens:
    switch is **ON**, and the physical **START/RUN** button has been pressed.
    Confirm cooling, supply and vacuum preparation. Press **Enter** to view
    the tray; acquisition has not started yet.
-3. **Detector tray:** press **Start**. All 50 positions and progress remain
+3. **Detector tray:** choose tests and **Loaded slots**, then press **Start**.
+   Noise alone cannot identify empty slots. All 50 positions and progress remain
    together. **Stop** interrupts the check and saves the available data as
    incomplete; software Stop does not switch off hardware power. When saving
    finishes, click a detector to scroll to its waveforms and details.
@@ -30,15 +33,29 @@ Wait for the run to finish stopping and saving before navigating away.
 Results and the interactive HTML report save automatically; all detector
 details are also available directly on the tray screen.
 
+For the same parts, use **Retest parts**, select each original part and its
+destination slot, then confirm fixture readiness. Follow the power-off
+procedure before moving parts. Retests update those parts' assessments
+without increasing the part count, including when a part moves to another
+slot. Previous recordings and unselected test results remain saved. An
+incomplete retest does not replace an earlier valid result. Screening yield
+is the fraction with no flagged issue; noise Review is not an acceptance pass.
+
+A warning appears after a slot produces three consecutive valid flagged
+checks. Leave it empty until it has been checked and repaired; unverified
+slots are excluded. Tick **verified repaired** only after that verification.
+The warning and repair record persist across batches and app restarts.
+
 If incoming DAQ data pause, the app can retry the affected recording up to
 three attempts while keeping valid completed offset data. Let the displayed
 recovery finish, or use Stop. It never fills missing samples or joins separate
 noise recordings. If noise remains incomplete, use **Retry noise**; after
 reopening the app, use **Recover interrupted batch** for the latest eligible
 saved run. Confirm the same detectors, wiring and alignment are still in
-place and fixture power has stayed on. A saved-run retry needs 90 seconds of
-noise settling and a fresh 100-second capture. If anything changed or power
-was cycled, run a new full check. The previous data remain saved separately.
+place and fixture power has stayed on. A saved-run retry checks adaptive
+noise settling and records a fresh 100-second capture. If parts moved or
+power was cycled, use Retest parts for linked new measurements instead.
+The previous data remain saved separately.
 
 How to test a batch of sensors on the ESP32 bench rig (one part at a time,
 §1–§3) or a tray of fifty on the DAQ array rig (§3b). No programming

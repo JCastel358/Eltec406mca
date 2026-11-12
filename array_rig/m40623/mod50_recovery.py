@@ -141,7 +141,7 @@ def load_noise_recovery(directory, *, simulate: bool):
     No driver is opened and no file is written by this function.
     """
     # Local import keeps this helper usable by the acquisition module itself.
-    from mod50_check import DC_SECONDS, NOISE_SECONDS, SCHEMA, TIMING_POLICY, channel_statistics
+    from mod50_check import DC_SECONDS, NOISE_SECONDS, SCHEMA, SUPPORTED_TIMING_POLICIES, channel_statistics
     from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
     try:
@@ -152,9 +152,10 @@ def load_noise_recovery(directory, *, simulate: bool):
         _require(summary_path.stat().st_size <= 64 * 1024 * 1024, "the summary is too large.")
         summary_bytes = summary_path.read_bytes()
         summary = _json(summary_bytes)
-        revisions = {"2026-11-04.2", hw.APP_REVISION}
-        expected = {"schema": SCHEMA, "profile": hw.PROFILE, "timing_policy": TIMING_POLICY,
+        revisions = {"2026-11-04.2", "2026-11-04.3", hw.APP_REVISION}
+        expected = {"schema": SCHEMA, "profile": hw.PROFILE,
                     "channel_map": hw.CHANNEL_MAP}
+        _require(summary.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "the timing policy is unsupported.")
         for key, value in expected.items():
             _require(summary.get(key) == value, key + " does not match the current tester.")
         _require(summary.get("application_revision") in revisions, "the application revision is unsupported.")
@@ -287,6 +288,7 @@ def load_noise_recovery(directory, *, simulate: bool):
             _require(metadata.get(key) == value, "DC raw metadata disagrees on " + key + ".")
         _require(metadata.get("simulated") is simulate and metadata.get("application_revision") in revisions,
                  "DC raw source or software revision is unsupported.")
+        _require(metadata.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "DC timing policy is unsupported.")
         _require(metadata.get("valid_data") is True, "DC raw metadata does not confirm a valid acquisition.")
         if "attempt" in metadata or "attempt" in dc:
             _require(metadata.get("attempt") == dc.get("attempt"), "DC attempt identity disagrees with raw metadata.")
@@ -294,6 +296,7 @@ def load_noise_recovery(directory, *, simulate: bool):
                     "status_before", "status_after", "status_samples", "diagnostics", "samples", "target_samples",
                     "actual_rate_hz", "recorded_seconds", "raw_file"):
             _require(metadata.get(key) == dc.get(key), "DC record disagrees with raw metadata on " + key + ".")
+        _require(metadata.get("stability_observation") == dc.get("stability_observation"), "DC stability evidence disagrees with raw metadata.")
         rows = dc.get("rows")
         _require(isinstance(rows, list) and len(rows) == 50
                  and all(isinstance(row, dict) and all(row.get(k) == v for k, v in identity.items())
@@ -321,7 +324,9 @@ def load_noise_recovery(directory, *, simulate: bool):
                   "lot": summary["lot"], "operator": summary["operator"], "tray": summary["tray"],
                   "daq_serial": serial, "created_at": summary["created_at"], "original_created_at": summary["created_at"],
                   "application_revision": summary["application_revision"], "schema": SCHEMA,
-                  "profile": hw.PROFILE, "timing_policy": TIMING_POLICY, "map_sha256": hw.MAP_SHA256,
+                  "profile": hw.PROFILE, "timing_policy": metadata["timing_policy"], "map_sha256": hw.MAP_SHA256,
+                  "run_id": summary.get("run_id"), "family_id": summary.get("family_id"),
+                  "part_mapping": {r["position"]: r["part_id"] for r in summary.get("rows", []) if r.get("installed") and r.get("part_id")},
                   "installed_positions": list(population), "simulated": simulate,
                   "dc_recorded_seconds": dc["recorded_seconds"], "recorded_noise_seconds": noise["recorded_seconds"]}
         return {"record": recovered_record, "raw_path": raw_path, "source": source}

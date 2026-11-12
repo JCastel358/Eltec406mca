@@ -15,8 +15,9 @@ live in this repository, one top-level folder each:
 Windows 11 and Xubuntu are both supported.
 
 The current **M25/HUB array** workflow is available from the normal Array Rig
-launcher: automatic DC/noise switching, two 90-second settling periods and a
-saved 50-position report. See [the current array instructions](array_rig/README.md).
+launcher: selectable offset/noise tests, simultaneous recording at 80% settled
+(90-second fallback), linked retests, persistent slot warnings, and saved
+50-position reports. See [the current array instructions](array_rig/README.md).
 Real M25/HUB acquisition uses Windows and the ACCES driver; simulation also
 runs without hardware. No Arduino/ESP32 flash is needed for this offset/noise
 check. Earlier contiguous-channel instructions are the explicit legacy profile.

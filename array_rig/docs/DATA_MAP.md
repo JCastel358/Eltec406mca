@@ -2,6 +2,23 @@
 
 ## M25/HUB tray checks (2026-11-04)
 
+Updated 2026-11-11: each run records `selected_tests`, per-stage
+`test_status` (`NOT_TAKEN` for skipped tests), `run_id`, `family_id`, and
+operator-linked `part_id` values. Retests create new immutable run folders;
+they do not edit earlier recordings. `batch_summary`, `tray_summary`, and
+`current_parts` capture the deduplicated assessments at report creation.
+They distinguish incomplete/no-signal, provisional offset-only pass,
+uncalibrated noise review, and flagged checks. Screening yield is not a
+calibrated acceptance yield.
+
+`fixture_history.sqlite3` under `mod50_checks` stores actual part attempts,
+slot failures and explicit repair verifications; `simulation_history.sqlite3`
+is always separate. Back up this database and every run folder together.
+History starts with the new version; older reports are not retroactively
+treated as newly tested parts. Per-attempt `*_settling_raw.npz` files preserve
+settling data separately from the full measurement recording. JSON includes
+the one-second stability evidence, 80% threshold and any 90-second fallback.
+
 Actual runs append a new uniquely named directory beneath
 `Documents/Eltec_40623_Test_Results/40623_array_daq/mod50_checks/`.
 Each contains `report.html`, `summary.json`, `results.csv` (all 50 positions),

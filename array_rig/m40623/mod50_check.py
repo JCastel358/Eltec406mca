@@ -20,11 +20,15 @@ import uuid
 import numpy as np
 
 import mod50_hardware as hw
+from mod50_history import History
+from mod50_settling import SettlingMonitor, MAX_SECONDS as SETTLING_MAX_SECONDS
 from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
 DC_SECONDS = 10.0
 NOISE_SECONDS = 100.0
-TIMING_POLICY = "mod50_connect90_dc10_route90_noise100_v1"
+LEGACY_TIMING_POLICY = "mod50_connect90_dc10_route90_noise100_v1"
+TIMING_POLICY = "mod50_80percent_adaptive5to90_fallback_dc10_noise100_v2"
+SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, TIMING_POLICY)
 SCHEMA = "ELTEC_MOD50_TRAY_CHECK_1"
 PRESENCE_POLICY = "two_separated_one_second_dc_windows_within_one_adc_code_v1"
 NO_SIGNAL_NOTE = "No detector sensed: the slot may be empty, or the detector may be dead or disconnected."
@@ -185,18 +189,26 @@ def channel_statistics(raw, range_code, rate, mode, *, valid_data=True, excluded
     return rows
 
 
-def combine_rows(records, positions, complete):
+def normalize_tests(tests):
+    if not isinstance(tests, (list, tuple)) or not tests or any(m not in ("dc", "noise") for m in tests) or len(set(tests)) != len(tests):
+        raise ValueError("Choose Offset, Noise, or both tests.")
+    return tuple(m for m in ("dc", "noise") if m in tests)
+
+
+def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
     by_mode = {record["mode"]: record for record in records}
     rows = []
     for logical in range(50):
         row = {**hw.channel_identity(logical), "installed": hw.POSITIONS[logical] in positions,
-               "dc_v": None, "dc_check": "NOT_MEASURED", "daq_3hz_q3_rms_uv": None,
+               "dc_v": None, "dc_check": "NOT_MEASURED" if "dc" in selected_tests else "NOT_TAKEN", "daq_3hz_q3_rms_uv": None,
                "daq_1_100_hz_rms_uv": None, "result": "INCOMPLETE", "flags": [],
                "dc_detail": None, "noise_detail": None, "presence": "UNKNOWN", "presence_evidence": None,
                "noise_analysis_excluded": False, "acquisition_validity": {"dc": False, "noise": False},
-               "acquisition_errors": []}
+               "acquisition_errors": [],
+               "test_status": {m: "NOT_MEASURED" if m in selected_tests else "NOT_TAKEN" for m in ("dc", "noise")}}
         if not row["installed"]:
-            row.update(result="NOT_INSTALLED", dc_check="NOT_INSTALLED")
+            row.update(result="NOT_INSTALLED", dc_check="NOT_INSTALLED",
+                       test_status={"dc": "NOT_INSTALLED", "noise": "NOT_INSTALLED"})
             rows.append(row)
             continue
         for mode in ("dc", "noise"):
@@ -204,6 +216,7 @@ def combine_rows(records, positions, complete):
             if not record:
                 continue
             row["acquisition_validity"][mode] = bool(record["valid_data"])
+            row["test_status"][mode] = "MEASURED" if record["valid_data"] else "INCOMPLETE"
             if not record["valid_data"]:
                 row["acquisition_errors"].extend(mode.upper() + ": " + reason for reason in
                                                 (record.get("errors") or ["Acquisition incomplete"]))
@@ -219,6 +232,9 @@ def combine_rows(records, positions, complete):
             if not record["valid_data"]:
                 continue
             row["flags"].extend(mode.upper() + ": " + flag for flag in measured["flags"])
+            observation = record.get("stability_observation", {})
+            if len(observation.get("trace", [])) >= 5 and row["position"] in observation.get("never_settled_positions", []):
+                row["flags"].append(mode.upper() + ": Signal never settled during this test; check/retest part or slot")
             if mode == "dc":
                 row["presence"] = measured.get("presence", "UNKNOWN")
                 row["dc_v"] = measured["mean_v"]
@@ -231,7 +247,7 @@ def combine_rows(records, positions, complete):
                 for key in ("daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv"):
                     row[key] = measured[key]
         if complete:
-            row["result"] = "CHECK" if row["flags"] else "REVIEW_NO_NOISE_LIMIT"
+            row["result"] = "CHECK" if row["flags"] else "REVIEW_NO_NOISE_LIMIT" if "noise" in selected_tests else "PASS_OFFSET_ONLY"
         if row["presence"] == "NO_SIGNAL":
             row.update(result="NO_SIGNAL", dc_check="NO_SIGNAL", noise_analysis_excluded=True,
                        daq_1_100_hz_rms_uv=None, daq_3hz_q3_rms_uv=None)
@@ -264,13 +280,13 @@ def write_report(directory, result):
     fields = ("channel", "position", "card", "card_channel", "physical_daq_channel", "daq_jack",
               "installed", "presence", "noise_analysis_excluded", "dc_v", "dc_check",
               "daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv", "result", "flags", "acquisition_errors",
-              "acquisition_validity")
+              "acquisition_validity", "test_status", "offset_status", "noise_status", "part_id")
     detail_fields = ("dc_min_v", "dc_max_v", "dc_slope_v_per_s", "dc_start_v", "dc_end_v",
                      "dc_estimated_seconds_to_window", "noise_excerpt_start_s", "noise_excerpt_end_s",
                      "noise_excerpt_reason")
     csv_partial = directory / "results.csv.partial"
     with csv_partial.open("w", newline="", encoding="utf-8-sig") as stream:
-        writer = csv.DictWriter(stream, fieldnames=("lot", "tray", "operator", "simulated", *fields, *detail_fields))
+        writer = csv.DictWriter(stream, fieldnames=("lot", "tray", "operator", "simulated", "run_id", "family_id", "selected_tests", *fields, *detail_fields))
         writer.writeheader()
         for row in result["rows"]:
             values = {field: row.get(field) for field in fields}
@@ -280,8 +296,13 @@ def write_report(directory, result):
             values.update(noise_excerpt_start_s=noise.get("start_s"), noise_excerpt_end_s=noise.get("end_s"),
                           noise_excerpt_reason=noise.get("selection_reason"))
             writer.writerow({"lot": result["lot"], "tray": result["tray"], "operator": result["operator"],
+                             "run_id": result.get("run_id"), "family_id": result.get("family_id"),
+                             "selected_tests": ";".join(result.get("selected_tests", ["dc", "noise"])),
                              "simulated": result["simulated"], **values, "flags": "; ".join(row["flags"]),
                              "acquisition_errors": "; ".join(row.get("acquisition_errors", [])),
+                             "offset_status": row.get("test_status", {}).get("dc", "NOT_MEASURED"),
+                             "noise_status": row.get("test_status", {}).get("noise", "NOT_MEASURED"),
+                             "test_status": json.dumps(row.get("test_status", {}), sort_keys=True),
                              "acquisition_validity": json.dumps(row.get("acquisition_validity", {}), sort_keys=True)})
     csv_partial.replace(directory / "results.csv")
     (directory / "report.html").write_text(interactive_report(result), encoding="utf-8")
@@ -293,7 +314,8 @@ def write_report(directory, result):
 
 class TrayCheck(threading.Thread):
     def __init__(self, *, lot, operator, tray=1, installed_positions=hw.POSITIONS,
-                 simulate=False, output_root=None, rig_factory=hw.Mod50Rig, lease_factory=None, resume_dc=None):
+                 simulate=False, output_root=None, rig_factory=hw.Mod50Rig, lease_factory=None, resume_dc=None,
+                 selected_tests=("dc", "noise"), part_mapping=None, family_id=None, excluded_suspect_slots=()):
         super().__init__(name="eltec-mod50-owner", daemon=False)
         if not str(lot).strip() or not str(operator).strip():
             raise ValueError("Enter a lot number and technician name.")
@@ -304,15 +326,23 @@ class TrayCheck(threading.Thread):
             raise ValueError("Select at least one installed detector.")
         self.lot, self.operator, self.tray = str(lot).strip(), str(operator).strip(), tray
         self.simulate = bool(simulate)
+        self.selected_tests = normalize_tests(selected_tests)
+        self.run_id = uuid.uuid4().hex
+        self.family_id = family_id or self.run_id
+        self.part_mapping = dict(part_mapping or {})
+        if self.part_mapping and (set(self.part_mapping) != set(self.positions) or len(set(self.part_mapping.values())) != len(self.positions)):
+            raise ValueError("Each retested part needs one unique destination slot.")
+        self.excluded_suspect_slots = list(excluded_suspect_slots)
         self.output_root = Path(output_root) if output_root is not None else results_root(simulate)
         self.rig_factory = rig_factory
         self.lease_factory = lease_factory or (contextlib.nullcontext if simulate else hw.DaqLease)
         self.stop_event, self.finished = threading.Event(), threading.Event()
         self.lock = threading.Lock()
         self.state = {"phase": "Ready", "progress": 0.0, "message": "", "output": "",
-                      "rows": combine_rows([], self.positions, False)}
+                      "rows": combine_rows([], self.positions, False, self.selected_tests)}
         self.records, self.result, self.directory = [], None, None
         self.resume_dc = copy.deepcopy(resume_dc)
+        self._settled_path = None
 
     def update(self, **values):
         with self.lock:
@@ -329,26 +359,68 @@ class TrayCheck(threading.Thread):
         if self.stop_event.is_set():
             raise hw.daq.StreamIntegrityError("Stopped by operator; the check is incomplete.")
 
-    def wait_settled(self, rig, record, base, span):
-        start, initial = rig._clock(), rig.settling_remaining_s
-        record["settling"] = {"required_at_start_s": initial, "waited_s": 0., "complete": False,
-                              "clock": "simulation" if self.simulate else "monotonic"}
-        while rig.settling_remaining_s:
+    def wait_settled(self, rig, record, base, span, rate, raw_chunks):
+        path = (rig.mode, rig.range_code, rig.commanded, rig.generation)
+        positions = list(self.positions)
+        if record["mode"] == "noise":
+            no_signal = {r["position"] for r in combine_rows(self.records, self.positions, False, self.selected_tests)
+                         if r["presence"] == "NO_SIGNAL"}
+            positions = [p for p in positions if p not in no_signal]
+        monitor = SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), positions, record["mode"])
+        if self._settled_path == path and rig.settling_remaining_s == 0:
+            record["settling"] = {"complete": True, "waited_s": 0., "reused_unchanged_path": True}
+            return monitor
+        indexes = [hw.MAPPING[hw.POSITIONS.index(p)] for p in positions]
+        last_data, started, scans = time.monotonic(), time.monotonic(), 0
+        record["settling"] = monitor.evidence()
+        while scans < round(SETTLING_MAX_SECONDS * rate):
             self.check_cancelled()
             rig._verify(rig.commanded)
-            remaining = rig.settling_remaining_s
             self.update(phase="Settling " + record["mode"].upper(),
-                        message=f"{remaining:.0f} seconds remaining before {record['mode'].upper()} recording",
-                        progress=base + span * (1 - remaining / max(initial, .001)))
-            delay = min(.25, remaining)
-            if self.simulate:
-                rig._sleep(delay)
-            else:
-                self.stop_event.wait(delay)
-            record["settling"]["waited_s"] = rig._clock() - start
+                        message=f"Watching {record['mode'].upper()} stability · {scans/rate:.1f} s · {record['settling'].get('stable_count', 0)}/{len(positions)} stable · starts at 80%",
+                        progress=base + span * min(1, scans / (SETTLING_MAX_SECONDS * rate)))
+            self.check_cancelled()
+            try:
+                raw = rig.device.read_stream(timeout_s=.1)
+            except hw.daq.StreamTimeoutError:
+                record["failure_kind"] = "delivery_timeout"
+                raise
+            if raw is not None:
+                hw.convert_chunk(raw, record["range_code"])
+                raw = np.array(raw[:round(SETTLING_MAX_SECONDS * rate) - scans], dtype=np.uint16, copy=True)
+                volts, _ = hw.convert_chunk(raw, record["range_code"])
+                raw_chunks.append(raw)
+                scans += len(raw)
+                last_data = time.monotonic()
+                stable = monitor.feed(volts[indexes])
+                record["settling"] = monitor.evidence()
+                record["settling"]["observed_samples"] = scans
+                record["status_samples"].append({"samples": 0, "settling_samples": scans,
+                                                "raw_byte": rig._verify(rig.commanded)["raw_byte"]})
+                diag = getattr(rig.device, "_diagnostics", None)
+                if diag is not None and (diag.pool_too_small_events or diag.callback_error or diag.ended_early):
+                    record["failure_kind"] = "delivery_interrupted"
+                    raise hw.daq.StreamIntegrityError("DAQ delivery interrupted during settling")
+                if stable:
+                    self.check_cancelled()
+                    if path != (rig.mode, rig.range_code, rig.commanded, rig.generation):
+                        raise hw.daq.StreamIntegrityError("Signal path changed during settling")
+                    rig.settle_until = rig._clock()
+                    self._settled_path = path
+                    return monitor
+            if time.monotonic() - last_data > 2:
+                record["failure_kind"] = "delivery_timeout"
+                raise hw.daq.StreamTimeoutError("No fresh DAQ samples during settling")
+            if time.monotonic() - started > SETTLING_MAX_SECONDS + 5:
+                record["failure_kind"] = "delivery_timeout"
+                raise hw.daq.StreamTimeoutError("Settling sample delivery exceeded its time limit")
+        record["settling"].update(complete=True, deadline_fallback=True,
+            warning="Fewer than 80% settled within 90 seconds. All channels recorded together using the fixed-wait fallback.")
         self.check_cancelled()
         rig._verify(rig.commanded)
-        record["settling"]["complete"] = True
+        rig.settle_until = rig._clock()
+        self._settled_path = path
+        return monitor
 
     def capture_stage(self, rig, mode):
         seconds = DC_SECONDS if mode == "dc" else NOISE_SECONDS
@@ -358,11 +430,14 @@ class TrayCheck(threading.Thread):
                   "settling": {"complete": False}, "valid_data": False, "attempt": attempt,
                   "failure_kind": None, "retry_eligible": False}
         self.records.append(record)
-        raw_chunks, count, rate = [], 0, hw.SAMPLE_HZ
+        raw_chunks, settling_chunks, count, rate = [], [], 0, hw.SAMPLE_HZ
+        monitor = None
         expected_state, expected_config, clean_shutdown, verified_after = None, None, False, False
         target = round(seconds * rate)
-        base, wait_span, capture_base, capture_span = ((0., 90/290, 90/290, 10/290) if mode == "dc" else
-                                                     (100/290, 90/290, 190/290, 100/290))
+        modes = ("noise",) if self.resume_dc else self.selected_tests
+        base = modes.index(mode) / len(modes)
+        wait_span, capture_span = .25 / len(modes), .75 / len(modes)
+        capture_base = base + wait_span
         try:
             self.check_cancelled()
             if mode != rig.mode:
@@ -370,7 +445,6 @@ class TrayCheck(threading.Thread):
                 rig.set_frontend_mode(mode)
             if rig.range_code != record["range_code"]:
                 raise hw.daq.StreamIntegrityError("Unexpected DAQ range")
-            self.wait_settled(rig, record, base, wait_span)
             record["status_before"] = rig._verify(rig.commanded)
             expected_state = (rig.mode, rig.range_code, rig.commanded, rig.generation)
             expected_config = copy.deepcopy(rig.device.config)
@@ -382,6 +456,12 @@ class TrayCheck(threading.Thread):
                 raise hw.daq.StreamIntegrityError("DAQ sample clock differs by more than 1%")
             rate = granted
             target = round(seconds * rate)
+            settled = self.wait_settled(rig, record, base, wait_span, rate, settling_chunks)
+            # Judge persistence over the actual measured interval, independently
+            # of the windows that allowed the tray to start. Startup transients
+            # stay in settling evidence; no samples are joined across attempts.
+            monitor = SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), settled.positions, mode)
+            record["capture_started_at"] = dt.datetime.now().astimezone().isoformat()
             last_data = time.monotonic()
             while count < target:
                 self.check_cancelled()
@@ -395,6 +475,8 @@ class TrayCheck(threading.Thread):
                     hw.convert_chunk(raw, record["range_code"])
                     retained = np.array(raw[:target - count], dtype=np.uint16, copy=True)
                     raw_chunks.append(retained)
+                    values, _ = hw.convert_chunk(retained, record["range_code"])
+                    monitor.feed(values[[hw.MAPPING[hw.POSITIONS.index(p)] for p in monitor.positions]], stop_when_ready=False)
                     count += len(retained)
                     last_data = time.monotonic()
                 status = rig._verify(rig.commanded)
@@ -429,13 +511,14 @@ class TrayCheck(threading.Thread):
                 expected_controls = expected_state[2] if expected_state is not None else rig.commanded
                 record["status_after"] = rig._verify(expected_controls)
                 verified_after = (expected_state == (rig.mode, rig.range_code, rig.commanded, rig.generation) and
-                                  expected_config == rig.device.config and rig.settling_remaining_s == 0)
+                                  expected_config == rig.device.config and
+                                  (not record["settling"]["complete"] or rig.settling_remaining_s == 0))
                 if expected_state is not None and not verified_after:
                     record["errors"].append("Signal path/range or settling state changed during acquisition")
             except Exception as exc:
                 record["errors"].append("Final readback/shutdown: " + str(exc))
         record["retry_eligible"] = bool(record["failure_kind"] in ("delivery_timeout", "delivery_interrupted") and
-            clean_shutdown and verified_after and record["settling"]["complete"] and not self.stop_event.is_set())
+            clean_shutdown and verified_after and not self.stop_event.is_set())
         raw = np.concatenate(raw_chunks) if raw_chunks else np.empty((0, 57, 4), dtype=np.uint16)
         raw_file = mode + ("_raw.npz" if attempt == 1 else f"_attempt{attempt:02d}_raw.npz")
         record.update(samples=len(raw), target_samples=target, actual_rate_hz=rate,
@@ -443,6 +526,16 @@ class TrayCheck(threading.Thread):
         if len(raw) != target:
             record["errors"].append(f"Incomplete: {len(raw)} of {target} scans")
         record["valid_data"] = not record["errors"] and record["settling"]["complete"]
+        if monitor is not None:
+            record["stability_observation"] = monitor.evidence()
+            record["stability_observation"]["never_settled_positions"] = [p for p in monitor.positions if p not in monitor.ever_stable]
+        if settling_chunks:
+            settling_file = mode + f"_attempt{attempt:02d}_settling_raw.npz"
+            with (self.directory / settling_file).open("xb") as stream:
+                np.savez_compressed(stream, converter_counts=np.concatenate(settling_chunks),
+                    metadata_json=np.array(json.dumps({"mode": mode, "range_code": record["range_code"],
+                        "actual_rate_hz": rate, "settling": record["settling"], "map_sha256": hw.MAP_SHA256}, allow_nan=False)))
+            record["settling"]["raw_file"] = settling_file
         metadata = {key: value for key, value in record.items() if key != "rows"}
         metadata.update(schema=SCHEMA, profile=hw.PROFILE, application_revision=hw.APP_REVISION,
                         recovery_policy=RECOVERY_POLICY,
@@ -455,7 +548,9 @@ class TrayCheck(threading.Thread):
                         sample_layout="scans,57 physical channels,4 conversions; discard zero, mean 1:4",
                         range_limit_guard_counts=hw.RAIL_GUARD_COUNTS, voltage_reference="DAQ_OUTPUT",
                         battery_supervision="manual", noise_acceptance_limit=None,
-                        measurement_scope="offset and noise; no sensitivity/polarity")
+                        selected_tests=list(self.selected_tests), run_id=self.run_id, family_id=self.family_id,
+                        part_mapping=self.part_mapping,
+                        measurement_scope="selected offset/noise tests; no sensitivity/polarity")
         destination = self.directory / record["raw_file"]
         partial = destination.with_suffix(".npz.partial")
         with partial.open("xb") as stream:
@@ -469,11 +564,11 @@ class TrayCheck(threading.Thread):
         if len(raw):
             excluded = set(hw.POSITIONS) - set(self.positions)
             if mode == "noise":
-                excluded.update(row["position"] for row in combine_rows(self.records, self.positions, False)
+                excluded.update(row["position"] for row in combine_rows(self.records, self.positions, False, self.selected_tests)
                                 if row["presence"] == "NO_SIGNAL")
             record["rows"] = channel_statistics(raw, record["range_code"], rate, mode,
                                                  valid_data=record["valid_data"], excluded_positions=excluded)
-        self.update(rows=combine_rows(self.records, self.positions, False))
+        self.update(rows=combine_rows(self.records, self.positions, False, self.selected_tests))
         return record
 
     def restore_dc(self):
@@ -489,9 +584,11 @@ class TrayCheck(threading.Thread):
         if record.get("mode") != "dc" or not record.get("valid_data") or record.get("errors") or not record.get("settling", {}).get("complete"):
             raise ValueError("Saved DC acquisition is not valid for noise recovery")
         for key, expected in (("profile", hw.PROFILE), ("map_sha256", hw.MAP_SHA256),
-                              ("schema", SCHEMA), ("timing_policy", TIMING_POLICY)):
+                              ("schema", SCHEMA)):
             if source.get(key) != expected:
                 raise ValueError("Saved DC recovery " + key + " does not match this tester")
+        if source.get("timing_policy") not in SUPPORTED_TIMING_POLICIES:
+            raise ValueError("Saved DC recovery timing policy is unsupported")
         if not self.simulate and not source.get("daq_serial"):
             raise ValueError("Saved DC recovery has no DAQ identity")
         raw_path = Path(resume["raw_path"])
@@ -512,7 +609,7 @@ class TrayCheck(threading.Thread):
             os.fsync(stream.fileno())
         record["reused_from"] = copy.deepcopy(source)
         self.records.append(record)
-        self.update(rows=combine_rows(self.records, self.positions, False))
+        self.update(rows=combine_rows(self.records, self.positions, False, self.selected_tests))
 
     def run(self):
         rig, info, errors = None, None, []
@@ -539,14 +636,15 @@ class TrayCheck(threading.Thread):
                         raise hw.daq.StreamStateError("Selected source and connected device disagree")
                     if self.resume_dc is not None and self.resume_dc["source"].get("daq_serial") != info.serial_number:
                         raise hw.daq.StreamStateError("Connected DAQ identity differs from the saved DC acquisition; noise recovery refused")
-                    for mode in (("noise",) if self.resume_dc is not None else ("dc", "noise")):
+                    for mode in (("noise",) if self.resume_dc is not None else self.selected_tests):
                         for attempt in range(1, MAX_STAGE_ATTEMPTS + 1):
                             self.check_cancelled()
                             record = self.capture_stage(rig, mode)
                             if record["valid_data"] or not record["retry_eligible"] or attempt == MAX_STAGE_ATTEMPTS:
                                 break
                             self.update(phase="Retrying " + mode.upper(),
-                                message=f"DAQ delivery interrupted. Retrying a fresh {record['requested_seconds']:g} s {mode.upper()} recording ({attempt + 1}/{MAX_STAGE_ATTEMPTS}); the signal path remains settled.")
+                                message=f"DAQ delivery interrupted. Retrying {mode.upper()} ({attempt + 1}/{MAX_STAGE_ATTEMPTS}); " +
+                                        ("the unchanged signal path stays settled." if record["settling"]["complete"] else "checking settling again."))
                             # Brief, cancellable retry backoff; no control writes,
                             # reconnect, or artificial reset of the settling gate.
                             if self.simulate:
@@ -569,7 +667,7 @@ class TrayCheck(threading.Thread):
             if self.stop_event.is_set() and not errors:
                 errors.append("Stopped by operator")
             latest = {record["mode"]: record for record in self.records}
-            complete = set(latest) == {"dc", "noise"} and all(r["valid_data"] for r in latest.values()) and not errors
+            complete = set(latest) == set(self.selected_tests) and all(r["valid_data"] for r in latest.values()) and not errors
             rejected = [{"mode": record["mode"], "attempt": record.get("attempt", 1),
                          "raw_file": record.get("raw_file"), "errors": list(record["errors"])}
                         for record in self.records if not record["valid_data"]]
@@ -583,7 +681,12 @@ class TrayCheck(threading.Thread):
                 "control_events": getattr(rig, "control_events", []),
                 "restart_required": bool(getattr(getattr(rig, "device", None), "_shutdown_failed", False)),
                 "noise_acceptance_limit": None, "calibration_status": "PENDING",
-                "rows": combine_rows(self.records, self.positions, complete)}
+                "selected_tests": list(self.selected_tests), "run_id": self.run_id, "family_id": self.family_id,
+                "part_mapping": self.part_mapping, "excluded_suspect_slots": self.excluded_suspect_slots,
+                "rows": combine_rows(self.records, self.positions, complete, self.selected_tests)}
+            for row in self.result["rows"]:
+                row["part_id"] = (self.part_mapping.get(row["position"], self.run_id + ":" + row["position"])
+                                  if row["installed"] else None)
             self.result["recovery"] = {"policy": RECOVERY_POLICY, "max_attempts_per_stage": MAX_STAGE_ATTEMPTS,
                 "attempts_by_stage": {mode: sum(record["mode"] == mode for record in self.records) for mode in ("dc", "noise")},
                 "recovered_modes": [mode for mode, record in latest.items() if record["valid_data"] and
@@ -599,11 +702,19 @@ class TrayCheck(threading.Thread):
             try:
                 if self.directory is not None:
                     write_report(self.directory, self.result)
+                    history = History(self.output_root, self.simulate)
+                    history.record(self.result, self.directory)
+                    self.result["batch_summary"] = history.summary(self.lot)
+                    self.result["tray_summary"] = history.summary(self.lot, self.family_id)
+                    self.result["current_parts"] = history.current_parts(self.lot, self.family_id)
+                    self.result["slot_warnings"] = history.warnings()
+                    write_report(self.directory, self.result)
             except Exception as exc:
                 errors.append("Saving report: " + str(exc))
                 self.result["data_complete"] = False
             self.update(phase="Complete" if self.result["data_complete"] else "Incomplete",
                         progress=1. if self.result["data_complete"] else self.status()["progress"],
                         rows=self.result["rows"],
-                        message="Saved all readings. Review noise results; no noise pass/fail limit." if not errors else "; ".join(errors))
+                        message=("Saved selected tests. Noise results require review; no noise pass/fail limit." if "noise" in self.selected_tests
+                                 else "Saved offset results. Noise was not taken.") if not errors else "; ".join(errors))
             self.finished.set()

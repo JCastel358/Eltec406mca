@@ -1,6 +1,39 @@
 # Eltec Array Rig — fifty detectors at once on a USB DAQ
 
-## Current M25/HUB hardware — 2026-11-04
+## Current M25/HUB hardware — updated 2026-11-11
+
+Before **Start**, choose **Noise only** (default), **Offset only**, or
+**Offset and noise**. Use **Loaded slots** to select the installed parts;
+noise alone cannot reliably identify an empty slot. Unselected tests are
+saved as **NOT_TAKEN**, with blank numeric values, not zeros or failures.
+Offset plots use a common 0–1.5 V scale (expanded for excursions), while
+the exact measurements and raw recordings remain saved.
+
+Each selected stage monitors all channels together. Recording starts when
+at least **80% of loaded, nonexcluded parts** show five stable one-second
+windows (40 of 50 for a full tray). If this has not happened by **90 seconds**,
+the app records anyway and saves a fallback warning. Parts that never show
+a stable window sequence during the recording are flagged for checking/retesting;
+they do not stop the other parts. This scheduling policy still needs bench
+validation; it does not introduce calibrated noise acceptance limits.
+
+After a run, **Retest parts** lets the technician link each part's original
+position to a destination slot, including a different slot. Move parts using
+the established power-off procedure, restore readiness, confirm the mapping,
+then start. Each valid retested stage replaces that part's current assessment;
+stages not selected and earlier recordings remain saved. An interrupted retest
+does not erase the earlier valid result. Batch screening yield counts each
+linked part once, regardless of attempts. It means **no flagged issue among
+assessed parts**, not a calibrated detector acceptance yield.
+
+Three consecutive valid flagged checks at a slot produce a warning before
+subsequent starts, across batches and app restarts. Unchecked suspect slots
+are excluded from result analysis. Only check **verified repaired** after
+checking/fixing that slot; this records the technician and resets its warning.
+Empty/no-signal slots and acquisition interruptions do not build a failure
+streak. Retest attempts still contribute physical-slot evidence. History starts
+with this version, is local to this fixture/results root, and is separate for
+simulation. The latest tracked tray is available again after reopening.
 
 The current app uses the original Eltec logo and a short sequence of
 screens: **Batch setup → Power-on checklist → 50-detector tray**. It opens
@@ -33,11 +66,12 @@ settling period. Stop, power/readback faults and unsafe shutdowns do not retry.
 If noise still cannot finish, **Retry noise** retains the valid offset record.
 After reopening the app, **Recover interrupted batch** offers the latest
 eligible saved run. Confirm that the detectors, wiring, alignment and fixture
-power have remained unchanged; otherwise start a new full test. A saved-run
-retry switches back to noise, waits 90 seconds and records a fresh 100 seconds
-(about 3 minutes 10 seconds plus saving). It writes a new folder and preserves
-the original evidence. Changing detectors or cycling fixture power requires
-a new full check.
+power have remained unchanged; otherwise use Retest parts for the same parts
+or start a new batch for different parts. A saved-run
+retry switches back to noise, checks adaptive settling and records a fresh 100 seconds.
+It writes a new folder and preserves
+the original evidence. Moving parts or cycling fixture power requires fresh
+measurements rather than reusing the earlier offset acquisition.
 
 Automatic no-signal detection checks two separated DC windows near zero.
 Such slots are marked **No detector sensed — empty, dead or disconnected**
@@ -61,16 +95,17 @@ app uses the full modular channel map and both cards' status readbacks.
    **ON**, then physical **START/RUN** pressed. Confirm the other fixture
    preparation described above. Press **Enter** again to open the tray;
    this navigation does not start acquisition.
-4. Press **Start** on the tray screen. All 50 positions are scanned;
-   suspected no-signal slots are identified after DC. The app waits 90 s, records 10 s DC,
-   switches all channels to noise, waits another 90 s, records 100 s noise,
-   saves and returns to DC. Allow about **4 minutes 50 seconds**, plus
-   connection and saving. Keep the fixture undisturbed through both stages.
+4. Choose the test and loaded slots, then press **Start**. All 50 positions
+   are scanned together; only selected parts enter the results. Each selected
+   stage checks settling, then records **10 s offset** or **100 s noise**.
+   Review any slot warning, leave unverified suspect slots empty, then continue.
+   The app saves and returns to DC. Keep the fixture undisturbed during testing.
 5. When the run has finished saving, select any detector to inspect its
    waveforms. Use **Next batch** or **Enter** to enter the next batch number
    while retaining the model and technician, then repeat the checklist.
    Use **Main setup** or **Esc** to return to the initial screen while idle.
-   Every run repeats settling. **Stop** retains available data as incomplete
+   Use **Retest parts** for the same parts, so yield does not count them again.
+   Every new run checks settling. **Stop** retains available data as incomplete
    and attempts to restore DC; wait for acquisition and saving to finish
    before changing batches or leaving the tray screen.
 

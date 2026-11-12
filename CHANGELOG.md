@@ -13,6 +13,33 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## Array test selection, linked retests, slot warnings and adaptive settling (2026-11-11)
+
+- Default the dashboard to Noise only, with Offset only/both choices and a
+  loaded-slot selection before Start. Export skipped tests as NOT_TAKEN,
+  with null/blank numerical readings and completion based on selected stages.
+- Add explicit original-part → destination-slot retests, persistent attempt
+  history, unique-part batch screening yield, and latest-tray reopening.
+  Valid selected stages replace current assessments; other stages and every
+  original recording remain intact. No calibrated noise PASS is introduced.
+- Warn after three consecutive valid flagged checks at a physical slot.
+  Keep suspect slots excluded until explicit technician repair verification;
+  persist across batches, isolate simulation, ignore acquisition faults and
+  inferred empty/no-signal slots as slot-failure evidence.
+- Per user clarification, observe five one-second mean/RMS/drift windows and
+  start all channels together at 80% settled (40/50 full tray). Retain a
+  90-second fixed-wait fallback and flag parts that never settle individually.
+  Preserve raw settling evidence separately. Hardware holds, scan mapping,
+  10/100-second captures, cancellation and bounded transport retries remain.
+- Display offset on a common 0–1.5 V scale, expanded to include excursions,
+  with simpler labels and exact raw/statistical evidence retained.
+- Validation uses temporary simulation/fault fixtures and browser checks;
+  physical hardware/timing qualification remains outstanding.
+  Array regression suites, the selected-test/history cases, 18 browser
+  workflows and a full 50-position noise-only demo passed. Full-repository
+  runs also encountered intermittent timing failures in unchanged single-rig
+  tests (all passed individually) and the documented Windows installer case.
+
 ## Reopen the array dashboard after closing its browser window (2026-11-11)
 
 - Fix both Windows array launchers holding the shared `launcher.log` open

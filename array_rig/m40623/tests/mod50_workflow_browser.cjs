@@ -41,7 +41,7 @@ function snapshot({id = null, lot = 'BATCH-A', busy = false, complete = false} =
     rows, result, restart_required: false, run_id: id, run_metadata: id ? metadata : null};
 }
 
-async function fixture(browser, {initial = snapshot(), report = null, holdInitialPoll = false, stopFailure = null, retryFailure = null} = {}) {
+async function fixture(browser, {initial = snapshot(), report = null, holdInitialPoll = false, stopFailure = null, retryFailure = null, slotWarnings = []} = {}) {
   const context = await browser.newContext({viewport: {width: 1366, height: 650}});
   const page = await context.newPage();
   page.setDefaultTimeout(5000);
@@ -75,6 +75,12 @@ async function fixture(browser, {initial = snapshot(), report = null, holdInitia
       current = snapshot({id: `run-${requests.length}`, lot: payload.lot, busy: true});
       current.run_metadata.operator = payload.operator;
       current.run_metadata.tray = payload.tray;
+      return route.fulfill({json: {ok: true}});
+    }
+    if (resource === 'api/preflight') return route.fulfill({json: {slot_warnings: slotWarnings}});
+    if (resource === 'api/retest') {
+      const payload = request.postDataJSON(); requests.push({action: 'retest', payload});
+      current = snapshot({id: 'retest-run', busy: true});
       return route.fulfill({json: {ok: true}});
     }
     if (resource === 'api/stop') {
@@ -185,6 +191,100 @@ async function expectCompactViewport(page, {tray = false} = {}) {
 }
 
 const cases = [
+  ['noise is the default and selected tests and loaded slots reach Start', async browser => {
+    const test = await fixture(browser);
+    try {
+      const {page} = test;
+      await setupToTray(test);
+      assert.equal(await page.locator('#testChoice').inputValue(), 'noise');
+      await page.locator('#testChoice').selectOption('dc');
+      await page.locator('#populationSummary').click();
+      await page.locator('#loadNone').click();
+      await page.locator('#populationChoices input[value="1-1"]').check();
+      await page.locator('#populationChoices input[value="5-10"]').check();
+      await page.locator('#populationSummary').click();
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'test-choices.png'), fullPage: true});
+      await page.locator('#startButton').click();
+      await page.waitForFunction(() => document.querySelector('#phaseText').textContent.includes('Recording'));
+      const payload = test.requests.find(r => r.action === 'start').payload;
+      assert.deepEqual(payload.selected_tests, ['dc']);
+      assert.deepEqual(payload.installed_positions, ['1-1', '5-10']);
+    } finally {await test.close();}
+  }],
+  ['skipped offset is Not taken and valid noise remains Review in the offline report', async browser => {
+    const result = {...snapshot({id: 'noise-only', complete: true}).result, selected_tests: ['noise'],
+      rows: [{position: '1-1', installed: true, result: 'REVIEW_NO_NOISE_LIMIT', dc_check: 'NOT_TAKEN', dc_v: null,
+        test_status: {dc: 'NOT_TAKEN', noise: 'MEASURED'}, acquisition_validity: {dc: false, noise: true},
+        daq_3hz_q3_rms_uv: 30, flags: []}]};
+    const test = await fixture(browser, {report: result});
+    try {
+      assert.equal(await test.page.locator('.sensor-cell').first().getAttribute('data-status'), 'review');
+      assert((await test.page.locator('#detailBadges').textContent()).includes('Offset not taken'));
+      assert((await test.page.locator('#offsetChart').textContent()).includes('not selected'));
+      assert(!(await test.page.locator('#detailBadges').textContent()).includes('incomplete'));
+    } finally {await test.close();}
+  }],
+  ['offset plot uses a broad volts scale and does not inflate tiny variation', async browser => {
+    const result = {...snapshot({id: 'offset-only', complete: true}).result, selected_tests: ['dc'], rows: [{
+      position: '1-1', installed: true, result: 'PASS_OFFSET_ONLY', dc_check: 'IN_WINDOW_PROVISIONAL', dc_v: .7,
+      test_status: {dc: 'MEASURED', noise: 'NOT_TAKEN'}, acquisition_validity: {dc: true, noise: false}, flags: [],
+      dc_detail: {time_s: [0, 1, 2], volts: [.70001, .70002, .70001], min_v: .70001, max_v: .70002}}]};
+    const test = await fixture(browser, {report: result});
+    try {
+      const {page} = test;
+      assert.equal(await page.locator('.sensor-cell').first().getAttribute('data-status'), 'pass');
+      const ticks = await page.locator('#offsetChart svg text').allTextContents();
+      assert(ticks.includes('0.00') && ticks.includes('1.50'));
+      assert((await page.locator('#detailBadges').textContent()).includes('Noise not taken'));
+      const trace = await page.locator('#offsetChart svg path').getAttribute('d');
+      const ys = [...trace.matchAll(/,([\d.]+)/g)].map(m => Number(m[1]));
+      assert(Math.max(...ys) - Math.min(...ys) < .1, 'A 10 uV offset span should look flat on the volts scale');
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'offset-scale.png'), fullPage: true});
+    } finally {await test.close();}
+  }],
+  ['retest maps the original part to another slot and retains original part counts', async browser => {
+    const initial = snapshot({id: 'original', complete: true});
+    initial.result.run_id = 'original'; initial.result.selected_tests = ['noise']; initial.result.simulated = true;
+    initial.result.current_parts = [
+      {part_id: 'original:1-1', origin_position: '1-1', position: '1-1', result: 'CHECK'},
+      {part_id: 'original:1-2', origin_position: '1-2', position: '1-2', result: 'REVIEW_NO_NOISE_LIMIT'}];
+    const test = await fixture(browser, {initial});
+    try {
+      const {page} = test;
+      await page.locator('#retestButton').click();
+      await page.locator('.retest-row input').first().check();
+      await page.locator('.retest-row select').first().selectOption('3-4');
+      assert.equal(await page.locator('#totalCount').textContent(), '2');
+      await page.locator('#retestStart').click();
+      assert.equal(test.requests.length, 0, 'Retest requires move/readiness confirmation');
+      await page.locator('#retestConfirm').check();
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'retest.png')});
+      await page.locator('#retestStart').click();
+      await page.waitForFunction(() => !document.querySelector('#retestDialog').open);
+      const payload = test.requests.find(r => r.action === 'retest').payload;
+      assert.deepEqual(payload.moves, [{part_id: 'original:1-1', position: '3-4'}]);
+      assert.equal(payload.source_run_id, 'original');
+      assert.deepEqual(payload.selected_tests, ['noise']);
+    } finally {await test.close();}
+  }],
+  ['suspect-slot popup waits for review and sends only explicitly repaired slots', async browser => {
+    const test = await fixture(browser, {slotWarnings: [{position: '1-1'}, {position: '2-2'}]});
+    try {
+      const {page} = test;
+      await setupToTray(test);
+      await page.locator('#startButton').click();
+      await page.locator('#slotDialog').waitFor({state: 'visible'});
+      assert.equal(test.requests.length, 0);
+      assert.equal(await page.locator('#slotWarnings input:checked').count(), 0);
+      await page.locator('#slotWarnings input[value="2-2"]').check();
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'slot-warning.png')});
+      await page.locator('#slotContinue').click();
+      await page.waitForFunction(() => !document.querySelector('#slotDialog').open);
+      const payload = test.requests.find(r => r.action === 'start').payload;
+      assert.equal(payload.slot_warning_acknowledged, true);
+      assert.deepEqual(payload.repair_positions, ['2-2']);
+    } finally {await test.close();}
+  }],
   ['saved recovery requires confirmation and preserves identity and pending Stop', async browser => {
     const candidate = {id: 'saved-recovery-1', lot: 'ORIGINAL-BATCH', operator: 'Original Technician', tray: 7,
       simulate: true, created_at: '2026-11-04T12:10:00-05:00', dc_recorded_seconds: 10,
@@ -330,7 +430,10 @@ const cases = [
   }],
   ['setup, checklist and completed 50-detector tray fit compact desktop viewports', async browser => {
     for (const viewport of [{width: 1366, height: 650}, {width: 1280, height: 600}]) {
-      const test = await fixture(browser, {initial: snapshot({id: 'layout-run', complete: true})});
+      const initial = snapshot({id: 'layout-run', complete: true});
+      initial.result.batch_summary = {tracked_parts: 50, failed: 1, review: 49, offset_pass: 0, incomplete: 0, no_signal: 0, screening_yield_percent: 98};
+      initial.result.current_parts = [{part_id: 'original:1-1', origin_position: '1-1', position: '1-1', result: 'CHECK'}];
+      const test = await fixture(browser, {initial});
       try {
         await test.page.setViewportSize(viewport);
         await expectScreen(test.page, 'test');
@@ -374,6 +477,7 @@ const cases = [
       await page.waitForFunction(() => document.body.dataset.busy === 'true');
       await page.keyboard.press('Escape');
       await expectScreen(page, 'test');
+      await page.waitForFunction(() => document.querySelector('#phaseText').textContent.includes('Recording'));
       assert.equal(test.requests.filter(item => item.action === 'start').length, 1);
       test.setState(snapshot({id: 'run-1', complete: true}));
       await page.waitForFunction(() => !document.querySelector('#completionActions').hidden);
