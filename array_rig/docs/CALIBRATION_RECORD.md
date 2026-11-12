@@ -1,25 +1,85 @@
 # Calibration record — every production constant and where it came from
 
-## Current M25/HUB profile (updated 2026-11-11)
+## Current M25/HUB profile (updated 2026-11-12)
 
-The user authorized sample-observed settling with an **80% simultaneous
-start threshold** on 2026-11-11. All channels still share one continuous
-stream. Five consecutive one-second windows are examined per loaded,
+The 2026-11-12 legacy-equivalent display adds a **nominal, unvalidated**
+old-meter-scale estimate alongside the existing DAQ-output RMS. It assumes
+x1000 M25 gain and x1000 legacy filter gain (ratio 1), then applies a causal
+3 Hz/Q3 band-pass, absolute value x10, a single-pole 10 s smoother and ideal
+peak hold. Filter, smoothing and hold states reset at each independent
+recording start, after initial-sample DC subtraction. Both the held value at
+60 s and the final held value (at most 100 s) are stored. Actual sample rate
+sets all timing; no rolling window or invented 100 s droop constant is used.
+These are model assumptions, not measured calibration constants. The old
+fixture's pre-reset state, gain errors, complete analogue response and hold
+droop remain unvalidated. **No noise pass/fail limits are enabled**, including
+TP120's 10.0–37.9 mV. Invalid, clipped, flat, excluded or shorter-than-60 s
+records have no legacy reading. Original RMS calculations are unchanged.
+The versioned method is in `mod50_legacy_noise.py`; raw NPZ metadata, JSON,
+CSV and HTML record or display its identity and unvalidated status. Existing
+saved reports are not rewritten. See [the method](../m40623/NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
+
+**First paired comparison, 2026-11-12:** source run
+`MEASURED_test33_tray1_20261112_094739_6649b56e` in
+`Documents/Eltec_40623_Test_Results/40623_array_daq/mod50_checks/`.
+Only row 1 (ten detectors) was loaded. Both acquisitions completed without
+acquisition errors. The user supplied the legacy readings below and confirmed
+vacuum, the same detectors/positions, and legacy readout about 60–70 seconds
+after reset. Exact per-detector legacy timing is unknown. New 70-second values
+come from the saved held trace at exactly 70 s; 100-second values are shown
+for context, not substituted for the matched-time comparison. All values mV:
+
+| Position | Legacy, ~60–70 s | New, 60 s | New, 70 s | New, 100 s |
+| --- | ---: | ---: | ---: | ---: |
+| 1-1 | 14.69 | 14.53 | 15.39 | 15.39 |
+| 1-2 | 12.69 | 11.74 | 11.74 | 11.74 |
+| 1-3 | 17.26 | 15.12 | 15.58 | 16.81 |
+| 1-4 | 16.97 | 14.59 | 16.07 | 16.07 |
+| 1-5 | 18.38 | 14.70 | 17.71 | 17.71 |
+| 1-6 | 17.68 | 14.90 | 14.90 | 15.40 |
+| 1-7 | 17.46 | 16.70 | 17.09 | 17.70 |
+| 1-8 | 15.88 | 13.20 | 13.20 | 15.04 |
+| 1-9 | 18.26 | 16.60 | 16.60 | 16.60 |
+| 1-10 | 15.83 | 12.88 | 13.45 | 13.50 |
+| Mean | 16.51 | 14.50 | 15.17 | 15.60 |
+
+Mean paired relative differences are -11.97% at 60 s, -8.03% at 70 s,
+and -5.49% at 100 s. At 70 s nine of ten readings are lower, with mean
+paired bias -1.34 mV and maximum absolute difference 2.78 mV. This supports
+similar scale, not interchangeability or a correction factor; independent
+noise realizations, timing and meter model differences remain unresolved.
+This normal-range batch does not validate either acceptance boundary or
+detection of known noise failures. Repeated paired captures with a fixed
+readout time and boundary/failure samples remain necessary. No calibration
+constant or noise acceptance limit was changed from these results.
+
+On 2026-11-12 the user replaced the noise stability criterion with a **fixed
+90-second warm-up**, then a fresh software meter reset and 100-second capture.
+Normal noise fluctuations no longer generate a “never settled” detector or
+slot fault. Warm-up is measured using verified DAQ sample time, saved separately
+from measurement, and remains provisional rather than bench-qualified. Stop,
+delivery, hardware-readback, clipping and headroom checks are unchanged.
+Automatic retries can reuse a completed warm-up only on the same verified
+unchanged path; a fault before warm-up completion requires a fresh full wait.
+Historical run evidence and flags are not rewritten.
+
+The **offset-only** 80% simultaneous start threshold from 2026-11-11 remains.
+All channels share one continuous stream. Five consecutive one-second windows are examined per loaded,
 nonexcluded slot. The range of window means must be within the maximum of
 0.1 mV (carried from the legacy scheduling tolerance), two ADC codes, or
 three times the largest window RMS divided by sqrt(samples/window).
 Each window's half-window mean change must be within twice that tolerance.
-For noise, window RMS range must also be within max(0.1 mV, two codes,
-10% of mean window RMS). Noise is assessed about its observed DC level,
-without requiring a particular mean voltage. These statistical settings
-are provisional software scheduling choices and still require bench review.
+The superseded noise rule also required window RMS range within max(0.1 mV,
+two codes, 10% of mean window RMS). It flagged all ten detectors in the first
+paired comparison despite complete acquisitions; it is no longer used to
+schedule or judge noise. Offset scheduling settings still require bench review.
 
 At ceil(0.80 × monitored parts) stable slots, capture starts for the whole
 tray. At 90 s the fixed-wait fallback starts capture regardless, with a
 recorded warning. Raw settling samples and full measurement samples are
-saved separately. Stability continues to be observed during capture;
-parts with no stable five-window sequence during the measurement receive
-an individual CHECK, not a fabricated calibrated noise verdict. A recognized
+saved separately. DC stability continues to be observed during offset capture;
+parts with no stable five-window sequence during that measurement receive
+an individual CHECK. A recognized
 DAQ delivery fault remains an acquisition problem, never a detector failure.
 The settling optimization and slot warnings are software-verified only;
 they do not constitute hardware or TP120 qualification.
@@ -45,12 +105,14 @@ modular front-end's measured transfer function.
 | Detector transfer gain | Not applied; results remain DAQ-output µV RMS |
 | Acquisition | Working MOD50 bench configuration: 1000 scans/s, 57 rows, four conversions, discard first/average three, 64 buffers |
 | DC / noise range | Working bench's signed ±5 V / ±1 V |
-| Connect / AC-switch settling | 80% stable over 5 one-second windows; 90 s fixed-wait fallback, user direction 2026-11-11 |
+| Offset settling | 80% stable over 5 one-second windows; 90 s fallback, user direction 2026-11-11 |
+| Noise warm-up | Fixed 90 s of DAQ sample time after switching; no mean/RMS stability criterion, user direction 2026-11-12 |
 | Noise entry / DC return hold | Existing contract: 200 ms / 50 ms with gain disabled |
 | DC / noise record duration | 10 s functional DC record; 100 s noise record per MOD50 software's routine-record recommendation |
 | Range endpoint guard | Working bench's 328-count (0.5% full-scale) guard; acquisition quality only |
 | Raw noise headroom | Existing R4 ±0.8 V quality guard; not sensor acceptance |
 | Noise method | Finite-record FFT, mean removed, 1–100 Hz inclusive; second result weighted by nominal 3 Hz/Q3 band-pass power response |
+| Legacy-equivalent estimate | Nominal matched x1000 gains, causal 3 Hz/Q3, abs x10, 10 s exponential smoothing, ideal hold; 60 s / final (up to 100 s) readings; UNVALIDATED, never an amplitude verdict |
 | Delivery recovery (2026-11-04.3) | Up to 3 full attempts per stage after a recognized delivery interruption; 0.25 s cancellable pause between attempts. This is a recovery policy, not an acceptance threshold. The 2 s delivery timeout, ±1% clock/rate checks and prescribed record lengths remain unchanged. |
 
 Recovery never joins samples across an interruption or substitutes missing
@@ -58,8 +120,8 @@ data. Valid DC can be retained for noise retry; each accepted noise result
 requires a fresh uninterrupted 100-second record. Automatic retry preserves
 settling only with unchanged verified hardware state and clean shutdown.
 Saved-run retry requires explicit unchanged-fixture confirmation, validated
-raw evidence and matching DAQ identity, followed by a fresh adaptive
-noise settling check. The software policy was checked with injected faults and
+raw evidence and matching DAQ identity, followed by a fresh 90-second
+noise warm-up. The software policy was checked with injected faults and
 simulation; no new hardware qualification or calibration is implied.
 
 The M25/HUB scheduling policy is separate from the legacy adaptive wait.

@@ -152,7 +152,7 @@ def load_noise_recovery(directory, *, simulate: bool):
         _require(summary_path.stat().st_size <= 64 * 1024 * 1024, "the summary is too large.")
         summary_bytes = summary_path.read_bytes()
         summary = _json(summary_bytes)
-        revisions = {"2026-11-04.2", "2026-11-04.3", hw.APP_REVISION}
+        revisions = {"2026-11-04.2", "2026-11-04.3", "2026-11-11.1", "2026-11-12.1", hw.APP_REVISION}
         expected = {"schema": SCHEMA, "profile": hw.PROFILE,
                     "channel_map": hw.CHANNEL_MAP}
         _require(summary.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "the timing policy is unsupported.")

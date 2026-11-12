@@ -20,15 +20,17 @@ import uuid
 import numpy as np
 
 import mod50_hardware as hw
+import mod50_legacy_noise as legacy_meter
 from mod50_history import History
-from mod50_settling import SettlingMonitor, MAX_SECONDS as SETTLING_MAX_SECONDS
+from mod50_settling import SettlingMonitor, NoiseWarmup, NOISE_WARMUP_SECONDS, MAX_SECONDS as SETTLING_MAX_SECONDS
 from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
 DC_SECONDS = 10.0
 NOISE_SECONDS = 100.0
 LEGACY_TIMING_POLICY = "mod50_connect90_dc10_route90_noise100_v1"
-TIMING_POLICY = "mod50_80percent_adaptive5to90_fallback_dc10_noise100_v2"
-SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, TIMING_POLICY)
+ADAPTIVE_TIMING_POLICY = "mod50_80percent_adaptive5to90_fallback_dc10_noise100_v2"
+TIMING_POLICY = "mod50_dc_adaptive5to90_noise_fixed90_capture100_v3"
+SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, ADAPTIVE_TIMING_POLICY, TIMING_POLICY)
 SCHEMA = "ELTEC_MOD50_TRAY_CHECK_1"
 PRESENCE_POLICY = "two_separated_one_second_dc_windows_within_one_adc_code_v1"
 NO_SIGNAL_NOTE = "No detector sensed: the slot may be empty, or the detector may be dead or disconnected."
@@ -149,6 +151,7 @@ def noise_detail(y, clipping, rate, *, valid_data=True):
 def channel_statistics(raw, range_code, rate, mode, *, valid_data=True, excluded_positions=()):
     volts, clipping = hw.convert_chunk(raw, range_code)
     rows = []
+    legacy_channels = []
     for logical, physical in enumerate(hw.MAPPING):
         y = volts[physical]
         row = {**hw.channel_identity(logical), "mean_v": float(np.mean(y)),
@@ -164,6 +167,7 @@ def channel_statistics(raw, range_code, rate, mode, *, valid_data=True, excluded
             row["presence"], row["presence_evidence"] = presence_evidence(
                 y, rate, range_code, valid_data=valid_data, clipped=row["near_range_limit"])
         if mode == "noise":
+            row.update(legacy_meter.unavailable())
             row["noise_detail"] = noise_detail(y, clipping[physical], rate, valid_data=valid_data)
             headroom = bool(np.any(np.abs(y) > .8))
             row["frontend_headroom_exceeded"] = headroom
@@ -171,6 +175,7 @@ def channel_statistics(raw, range_code, rate, mode, *, valid_data=True, excluded
                 row["flags"].append("Outside +/-0.8 V noise headroom")
             if hw.POSITIONS[logical] in excluded_positions:
                 row.update(analysis_excluded=True, daq_1_100_hz_rms_uv=None, daq_3hz_q3_rms_uv=None)
+                row.update(legacy_meter.unavailable("EXCLUDED", "Noise analysis excluded for this slot."))
                 rows.append(row)
                 continue
             # Entire finite record, mean removed, inclusive 1..100 Hz bins.
@@ -185,7 +190,19 @@ def channel_statistics(raw, range_code, rate, mode, *, valid_data=True, excluded
             invalid = row["near_range_limit"] or headroom
             row["daq_1_100_hz_rms_uv"] = None if invalid else float(np.sqrt(np.sum(power[selected])) * 1e6)
             row["daq_3hz_q3_rms_uv"] = None if invalid else float(np.sqrt(np.sum(power[selected] * weight[selected])) * 1e6)
+            if not valid_data:
+                row.update(legacy_meter.unavailable("INVALID_ACQUISITION", "Incomplete or invalid noise recording; raw evidence is retained."))
+            elif invalid or np.ptp(y) < hw.daq.lsb_volts(range_code):
+                row.update(legacy_meter.unavailable("INVALID_SIGNAL", "Clipped, over-range or flat noise signal; check the recorded waveform."))
+            else:
+                legacy_channels.append((logical, physical))
         rows.append(row)
+    if legacy_channels:
+        # One full-rate, multichannel pass. Do not use FFT RMS or display
+        # excerpts as input to the nonlinear rectifier/smoother/hold model.
+        estimates = legacy_meter.analyze(volts[[p for _, p in legacy_channels]], rate)
+        for (logical, _), estimate in zip(legacy_channels, estimates):
+            rows[logical].update(estimate)
     return rows
 
 
@@ -206,9 +223,12 @@ def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
                "noise_analysis_excluded": False, "acquisition_validity": {"dc": False, "noise": False},
                "acquisition_errors": [],
                "test_status": {m: "NOT_MEASURED" if m in selected_tests else "NOT_TAKEN" for m in ("dc", "noise")}}
+        row.update(legacy_meter.unavailable("NOT_MEASURED" if "noise" in selected_tests else "NOT_TAKEN",
+                                           "No valid noise recording is available." if "noise" in selected_tests else "Noise was not selected."))
         if not row["installed"]:
             row.update(result="NOT_INSTALLED", dc_check="NOT_INSTALLED",
                        test_status={"dc": "NOT_INSTALLED", "noise": "NOT_INSTALLED"})
+            row.update(legacy_meter.unavailable("EXCLUDED", "No detector declared in this slot."))
             rows.append(row)
             continue
         for mode in ("dc", "noise"):
@@ -233,7 +253,7 @@ def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
                 continue
             row["flags"].extend(mode.upper() + ": " + flag for flag in measured["flags"])
             observation = record.get("stability_observation", {})
-            if len(observation.get("trace", [])) >= 5 and row["position"] in observation.get("never_settled_positions", []):
+            if mode == "dc" and len(observation.get("trace", [])) >= 5 and row["position"] in observation.get("never_settled_positions", []):
                 row["flags"].append(mode.upper() + ": Signal never settled during this test; check/retest part or slot")
             if mode == "dc":
                 row["presence"] = measured.get("presence", "UNKNOWN")
@@ -246,11 +266,15 @@ def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
             else:
                 for key in ("daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv"):
                     row[key] = measured[key]
+                for key in legacy_meter.RESULT_FIELDS:
+                    if key in measured:
+                        row[key] = copy.deepcopy(measured[key])
         if complete:
             row["result"] = "CHECK" if row["flags"] else "REVIEW_NO_NOISE_LIMIT" if "noise" in selected_tests else "PASS_OFFSET_ONLY"
         if row["presence"] == "NO_SIGNAL":
             row.update(result="NO_SIGNAL", dc_check="NO_SIGNAL", noise_analysis_excluded=True,
                        daq_1_100_hz_rms_uv=None, daq_3hz_q3_rms_uv=None)
+            row.update(legacy_meter.unavailable("EXCLUDED", NO_SIGNAL_NOTE))
             row["flags"].append(NO_SIGNAL_NOTE)
         rows.append(row)
     return rows
@@ -279,11 +303,13 @@ def write_report(directory, result):
     payload = json.dumps(result, indent=2, allow_nan=False)
     fields = ("channel", "position", "card", "card_channel", "physical_daq_channel", "daq_jack",
               "installed", "presence", "noise_analysis_excluded", "dc_v", "dc_check",
-              "daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv", "result", "flags", "acquisition_errors",
+              "daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv", *legacy_meter.VALUE_FIELDS,
+              "legacy_equivalent_method_id", "legacy_equivalent_status", "result", "flags", "acquisition_errors",
               "acquisition_validity", "test_status", "offset_status", "noise_status", "part_id")
     detail_fields = ("dc_min_v", "dc_max_v", "dc_slope_v_per_s", "dc_start_v", "dc_end_v",
                      "dc_estimated_seconds_to_window", "noise_excerpt_start_s", "noise_excerpt_end_s",
-                     "noise_excerpt_reason")
+                     "noise_excerpt_reason", "legacy_readout_elapsed_s", "legacy_reference_readout_elapsed_s",
+                     "legacy_estimate_note", "legacy_noise_method")
     csv_partial = directory / "results.csv.partial"
     with csv_partial.open("w", newline="", encoding="utf-8-sig") as stream:
         writer = csv.DictWriter(stream, fieldnames=("lot", "tray", "operator", "simulated", "run_id", "family_id", "selected_tests", *fields, *detail_fields))
@@ -295,6 +321,11 @@ def write_report(directory, result):
                            ("min_v", "max_v", "slope_v_per_s", "start_v", "end_v", "estimated_seconds_to_window")})
             values.update(noise_excerpt_start_s=noise.get("start_s"), noise_excerpt_end_s=noise.get("end_s"),
                           noise_excerpt_reason=noise.get("selection_reason"))
+            legacy = row.get("legacy_equivalent_detail") or {}
+            values.update(legacy_readout_elapsed_s=legacy.get("readout_elapsed_s"),
+                          legacy_reference_readout_elapsed_s=legacy.get("reference_readout_elapsed_s"),
+                          legacy_estimate_note=legacy.get("reason", "Unvalidated estimate; noise pass/fail disabled."),
+                          legacy_noise_method=json.dumps(result.get("legacy_noise_method"), sort_keys=True))
             writer.writerow({"lot": result["lot"], "tray": result["tray"], "operator": result["operator"],
                              "run_id": result.get("run_id"), "family_id": result.get("family_id"),
                              "selected_tests": ";".join(result.get("selected_tests", ["dc", "noise"])),
@@ -366,19 +397,23 @@ class TrayCheck(threading.Thread):
             no_signal = {r["position"] for r in combine_rows(self.records, self.positions, False, self.selected_tests)
                          if r["presence"] == "NO_SIGNAL"}
             positions = [p for p in positions if p not in no_signal]
-        monitor = SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), positions, record["mode"])
+        noise_warmup = record["mode"] == "noise"
+        wait_seconds = NOISE_WARMUP_SECONDS if noise_warmup else SETTLING_MAX_SECONDS
+        monitor = (NoiseWarmup(rate, positions, wait_seconds) if noise_warmup else
+                   SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), positions, "dc"))
         if self._settled_path == path and rig.settling_remaining_s == 0:
-            record["settling"] = {"complete": True, "waited_s": 0., "reused_unchanged_path": True}
+            record["settling"] = dict(monitor.evidence(), complete=True, waited_s=0., reused_unchanged_path=True)
             return monitor
         indexes = [hw.MAPPING[hw.POSITIONS.index(p)] for p in positions]
         last_data, started, scans = time.monotonic(), time.monotonic(), 0
         record["settling"] = monitor.evidence()
-        while scans < round(SETTLING_MAX_SECONDS * rate):
+        while scans < round(wait_seconds * rate):
             self.check_cancelled()
             rig._verify(rig.commanded)
-            self.update(phase="Settling " + record["mode"].upper(),
-                        message=f"Watching {record['mode'].upper()} stability · {scans/rate:.1f} s · {record['settling'].get('stable_count', 0)}/{len(positions)} stable · starts at 80%",
-                        progress=base + span * min(1, scans / (SETTLING_MAX_SECONDS * rate)))
+            self.update(phase="Warming up NOISE" if noise_warmup else "Settling DC",
+                        message=(f"Noise warm-up · {scans/rate:.1f} / {wait_seconds:g} seconds" if noise_warmup else
+                                 f"Watching DC stability · {scans/rate:.1f} s · {record['settling'].get('stable_count', 0)}/{len(positions)} stable · starts at 80%"),
+                        progress=base + span * min(1, scans / (wait_seconds * rate)))
             self.check_cancelled()
             try:
                 raw = rig.device.read_stream(timeout_s=.1)
@@ -387,7 +422,7 @@ class TrayCheck(threading.Thread):
                 raise
             if raw is not None:
                 hw.convert_chunk(raw, record["range_code"])
-                raw = np.array(raw[:round(SETTLING_MAX_SECONDS * rate) - scans], dtype=np.uint16, copy=True)
+                raw = np.array(raw[:round(wait_seconds * rate) - scans], dtype=np.uint16, copy=True)
                 volts, _ = hw.convert_chunk(raw, record["range_code"])
                 raw_chunks.append(raw)
                 scans += len(raw)
@@ -411,7 +446,7 @@ class TrayCheck(threading.Thread):
             if time.monotonic() - last_data > 2:
                 record["failure_kind"] = "delivery_timeout"
                 raise hw.daq.StreamTimeoutError("No fresh DAQ samples during settling")
-            if time.monotonic() - started > SETTLING_MAX_SECONDS + 5:
+            if time.monotonic() - started > wait_seconds + 5:
                 record["failure_kind"] = "delivery_timeout"
                 raise hw.daq.StreamTimeoutError("Settling sample delivery exceeded its time limit")
         record["settling"].update(complete=True, deadline_fallback=True,
@@ -457,10 +492,11 @@ class TrayCheck(threading.Thread):
             rate = granted
             target = round(seconds * rate)
             settled = self.wait_settled(rig, record, base, wait_span, rate, settling_chunks)
-            # Judge persistence over the actual measured interval, independently
-            # of the windows that allowed the tray to start. Startup transients
-            # stay in settling evidence; no samples are joined across attempts.
-            monitor = SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), settled.positions, mode)
+            # Only DC is judged for persistent drift. Noise has a fixed warm-up;
+            # normal fluctuations in its mean or RMS are not a detector fault.
+            # Every fresh recording independently resets the software meter.
+            if mode == "dc":
+                monitor = SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), settled.positions, mode)
             record["capture_started_at"] = dt.datetime.now().astimezone().isoformat()
             last_data = time.monotonic()
             while count < target:
@@ -476,7 +512,8 @@ class TrayCheck(threading.Thread):
                     retained = np.array(raw[:target - count], dtype=np.uint16, copy=True)
                     raw_chunks.append(retained)
                     values, _ = hw.convert_chunk(retained, record["range_code"])
-                    monitor.feed(values[[hw.MAPPING[hw.POSITIONS.index(p)] for p in monitor.positions]], stop_when_ready=False)
+                    if monitor is not None:
+                        monitor.feed(values[[hw.MAPPING[hw.POSITIONS.index(p)] for p in monitor.positions]], stop_when_ready=False)
                     count += len(retained)
                     last_data = time.monotonic()
                 status = rig._verify(rig.commanded)
@@ -523,6 +560,8 @@ class TrayCheck(threading.Thread):
         raw_file = mode + ("_raw.npz" if attempt == 1 else f"_attempt{attempt:02d}_raw.npz")
         record.update(samples=len(raw), target_samples=target, actual_rate_hz=rate,
                       recorded_seconds=len(raw)/rate, raw_file=raw_file)
+        if mode == "noise":
+            record["legacy_noise_method"] = legacy_meter.method_metadata(rate)
         if len(raw) != target:
             record["errors"].append(f"Incomplete: {len(raw)} of {target} scans")
         record["valid_data"] = not record["errors"] and record["settling"]["complete"]
@@ -681,6 +720,7 @@ class TrayCheck(threading.Thread):
                 "control_events": getattr(rig, "control_events", []),
                 "restart_required": bool(getattr(getattr(rig, "device", None), "_shutdown_failed", False)),
                 "noise_acceptance_limit": None, "calibration_status": "PENDING",
+                "legacy_noise_method": legacy_meter.method_metadata() if "noise" in self.selected_tests else None,
                 "selected_tests": list(self.selected_tests), "run_id": self.run_id, "family_id": self.family_id,
                 "part_mapping": self.part_mapping, "excluded_suspect_slots": self.excluded_suspect_slots,
                 "rows": combine_rows(self.records, self.positions, complete, self.selected_tests)}

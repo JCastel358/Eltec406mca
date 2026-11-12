@@ -1,6 +1,6 @@
 # Eltec Array Rig — fifty detectors at once on a USB DAQ
 
-## Current M25/HUB hardware — updated 2026-11-11
+## Current M25/HUB hardware — updated 2026-11-12
 
 Before **Start**, choose **Noise only** (default), **Offset only**, or
 **Offset and noise**. Use **Loaded slots** to select the installed parts;
@@ -9,13 +9,13 @@ saved as **NOT_TAKEN**, with blank numeric values, not zeros or failures.
 Offset plots use a common 0–1.5 V scale (expanded for excursions), while
 the exact measurements and raw recordings remain saved.
 
-Each selected stage monitors all channels together. Recording starts when
-at least **80% of loaded, nonexcluded parts** show five stable one-second
-windows (40 of 50 for a full tray). If this has not happened by **90 seconds**,
-the app records anyway and saves a fallback warning. Parts that never show
-a stable window sequence during the recording are flagged for checking/retesting;
-they do not stop the other parts. This scheduling policy still needs bench
-validation; it does not introduce calibrated noise acceptance limits.
+Offset recording starts when **80% of loaded, nonexcluded parts** show five
+stable one-second windows, or after **90 seconds** with a fallback warning.
+Persistent offset drift is flagged for checking/retesting. Noise uses a
+**fixed 90-second warm-up**, then a **100-second recording** with a fresh
+software meter reset. It does not require noise amplitude to stabilize or
+issue noise-only “not settled” faults. This timing is provisional; calibrated
+noise acceptance remains disabled.
 
 After a run, **Retest parts** lets the technician link each part's original
 position to a destination slot, including a different slot. Move parts using
@@ -49,9 +49,11 @@ open the app again. Closing requests Stop if a check is running; the app
 finishes saving available data before exiting. An idle app exits a few
 seconds after the page closes. Refreshing the page keeps the dashboard open.
 
-Click a position for its recorded DC trace, min/max, slope and cautious
-trend estimate, plus a noise waveform excerpt. The saved HTML report has
-the same interactive tray/details and works offline. Red indicates a valid
+Click a position for its **Mean offset** and **Noise at 3 Hz**. The offset
+graph shows the recorded slope; the noise graph shows the held reading over
+time with 10.0–37.9 mV shaded as a reference only. Saved HTML reports retain
+RMS, waveform excerpts, min/max, slope and engineering notes, and work offline.
+Red indicates a valid
 offset failure or channel-specific signal problem; a green **offset pass** badge refers
 only to the provisional offset window. Noise remains amber Review because
 no acceptance limits have been commissioned.
@@ -68,7 +70,7 @@ After reopening the app, **Recover interrupted batch** offers the latest
 eligible saved run. Confirm that the detectors, wiring, alignment and fixture
 power have remained unchanged; otherwise use Retest parts for the same parts
 or start a new batch for different parts. A saved-run
-retry switches back to noise, checks adaptive settling and records a fresh 100 seconds.
+retry switches back to noise, warms up for 90 seconds and records a fresh 100 seconds.
 It writes a new folder and preserves
 the original evidence. Moving parts or cycling fixture power requires fresh
 measurements rather than reusing the earlier offset acquisition.
@@ -97,7 +99,7 @@ app uses the full modular channel map and both cards' status readbacks.
    this navigation does not start acquisition.
 4. Choose the test and loaded slots, then press **Start**. All 50 positions
    are scanned together; only selected parts enter the results. Each selected
-   stage checks settling, then records **10 s offset** or **100 s noise**.
+   stage settles offset or warms up noise, then records **10 s offset** or **100 s noise**.
    Review any slot warning, leave unverified suspect slots empty, then continue.
    The app saves and returns to DC. Keep the fixture undisturbed during testing.
 5. When the run has finished saving, select any detector to inspect its
@@ -111,6 +113,12 @@ app uses the full modular channel map and both cards' status readbacks.
 
 DC is checked against the existing **provisional 0.3–1.2 V window**.
 Noise is DAQ-output RMS at 3 Hz/Q3 and 1–100 Hz, including front-end gain.
+The live **Noise at 3 Hz** reading is the **Legacy-equivalent estimate (mV)**: nominal
+gain scaling, causal 3 Hz/Q3 filtering, absolute-value rectification, 10 s
+smoothing and an ideal resettable peak hold over the 100 s recording. Both
+the 60 s reading and final held reading are saved alongside RMS. This is an
+unvalidated old-meter-scale estimate; measured gain and hold droop are not
+known. See [the method](m40623/NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
 **REVIEW is not PASS**: no detector-input transfer calibration or noise
 acceptance limits are applied. Sensitivity/polarity remain unimplemented.
 

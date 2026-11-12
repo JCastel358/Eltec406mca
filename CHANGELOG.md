@@ -13,6 +13,27 @@ Paths they mention may have moved since; the retired applications they refer
 to are preserved at git tag `archive/pre-cleanup-2026-08-28`
 (`git show archive/pre-cleanup-2026-08-28:<path>`).
 
+## M25/HUB legacy noise estimate, technician view and fixed noise warm-up (2026-11-12)
+
+- Add the nominal 3 Hz/Q3 filter, absolute-value rectifier, 10-second smoother
+  and ideal peak hold alongside unchanged RMS. Save 60-second and final
+  readings, trace and method identity; noise pass/fail stays disabled.
+- Simplify the live technician view to mean offset and Noise at 3 Hz, with
+  a held-noise trace and labelled 10.0–37.9 mV reference band. Saved reports
+  retain the full engineering measurements, waveform and explanations.
+- Per user direction, replace noise stability scheduling with a fixed
+  90-second warm-up before capture/reset. Remove future noise-only “never
+  settled” faults; keep DC settling, acquisition checks and historical evidence.
+  Version the timing policy and retain recovery support for earlier runs.
+- First ten paired detectors show comparable scale but a lower new reading
+  at matched 60–70-second timing. No gain adjustment or acceptance limit is
+  inferred from this batch. Software verification does not qualify hardware.
+- Validation: all 506 array tests and 20 browser workflows passed, including
+  exact sample-timed warm-up, cancellation, interrupted warm-up recovery,
+  prior-revision recovery and report/detail separation. Visually checked the
+  technician screen using the saved measured run without modifying it or
+  accessing hardware.
+
 ## Array test selection, linked retests, slot warnings and adaptive settling (2026-11-11)
 
 - Default the dashboard to Noise only, with Offset only/both choices and a

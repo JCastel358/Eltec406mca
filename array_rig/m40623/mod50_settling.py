@@ -14,9 +14,35 @@ MAX_SECONDS = 90.0
 BASE_TOLERANCE_V = .0001
 RMS_RELATIVE_TOLERANCE = .10
 READY_FRACTION = .80
+NOISE_WARMUP_SECONDS = 90.0
+NOISE_WARMUP_POLICY = "mod50_noise_fixed90_sample_clock_warmup_v1"
+
+
+class NoiseWarmup:
+    """Wait for startup recovery without judging stochastic noise stability."""
+    def __init__(self, rate, positions, seconds=NOISE_WARMUP_SECONDS):
+        self.rate, self.positions, self.seconds = rate, list(positions), seconds
+        self.samples = 0
+        self.complete = False
+
+    def feed(self, volts):
+        values = np.asarray(volts, dtype=float)
+        if values.ndim != 2 or values.shape[0] != len(self.positions) or not np.all(np.isfinite(values)):
+            raise ValueError("Invalid warm-up samples")
+        self.samples += values.shape[1]
+        self.complete = self.samples >= round(self.seconds * self.rate)
+        return self.complete
+
+    def evidence(self):
+        return {"policy": NOISE_WARMUP_POLICY, "complete": self.complete,
+                "waited_s": self.samples / self.rate, "required_seconds": self.seconds,
+                "positions": self.positions, "clock": "sample_clock",
+                "criterion": "elapsed_time_only", "noise_stability_required": False,
+                "acceptance_limit": False}
 
 
 class SettlingMonitor:
+    """V2 estimator retained for DC and historical diagnostics; noise uses NoiseWarmup."""
     def __init__(self, rate, lsb, positions, mode):
         self.rate, self.mode = rate, mode
         self.positions = list(positions)

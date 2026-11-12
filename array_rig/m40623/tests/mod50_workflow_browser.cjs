@@ -309,7 +309,7 @@ const cases = [
       assert((await page.locator('#recoveryBatch').textContent()).includes('ORIGINAL-BATCH / 7'));
       assert.equal(await page.locator('#recoveryOperator').textContent(), 'Original Technician');
       assert((await page.locator('#recoverySource').textContent()).includes('SIMULATION'));
-      assert((await page.locator('#recoveryTiming').textContent()).includes('4.07 / 100 s'));
+      assert((await page.locator('#recoveryTiming').textContent()).includes('90 s noise warm-up + 100 s recording'));
       assert(await page.locator('#recoveryStart').isDisabled());
       await page.keyboard.press('Enter');
       assert.deepEqual(test.requests, [], 'Opening recovery or Enter without confirmation must not start hardware');
@@ -359,8 +359,10 @@ const cases = [
       await page.setViewportSize({width: 1366, height: 650});
       await page.locator('.sensor-cell').first().click();
       assert((await page.locator('#detailBadges').textContent()).includes('Noise recording incomplete'));
-      assert((await page.locator('#noiseNote').textContent()).includes('Diagnostic excerpt only'));
-      test.setState({...current, busy: true, result: null, phase: 'Settling NOISE'});
+      assert((await page.locator('#noiseChart').textContent()).includes('Noise recording incomplete'));
+      assert.equal(await page.locator('#noiseChart svg').count(), 0);
+      assert(!(await page.locator('#noiseNote').isVisible()));
+      test.setState({...current, busy: true, result: null, phase: 'Warming up NOISE'});
       await page.waitForFunction(() => document.querySelectorAll('.sensor-cell[data-status=testing]').length === 4);
       assert.equal(await page.locator('.sensor-cell[data-status=fail]').count(), 46);
       assert.equal(await page.locator('.sensor-cell').first().locator('.slot-label').textContent(), 'Noise pending');
@@ -600,6 +602,98 @@ const cases = [
       assert.equal(await page.locator('#lotInput').inputValue(), 'OTHER-BATCH');
     } finally {await test.close();}
   }],
+  ['operator sees one value per test and the held noise trace, without amplitude verdicts', async browser => {
+    const current = snapshot({id: 'operator-meter', complete: true});
+    current.result.selected_tests = ['dc', 'noise'];
+    Object.assign(current.rows[0], {
+      dc_v: .825221, dc_check: 'IN_WINDOW_PROVISIONAL', result: 'REVIEW_NO_NOISE_LIMIT', flags: [],
+      acquisition_validity: {dc: true, noise: true},
+      dc_detail: {time_s: [0, 5, 10], volts: [.825, .8252, .8253], min_v: .825, max_v: .8253},
+      daq_3hz_q3_rms_uv: 1693.518, daq_1_100_hz_rms_uv: 4142.931,
+      legacy_equivalent_mv: 15.3932446, legacy_equivalent_60s_mv: 14.5334456,
+      legacy_equivalent_detail: {time_s: [0, 20, 40, 60, 70, 100], held_mv: [0, 8, 12, 14.5334456, 15.3932446, 15.3932446], readout_elapsed_s: 100},
+      noise_detail: {time_s: [48, 50, 52], volts: [-.01, .02, 0]}
+    });
+    const test = await fixture(browser, {initial: current});
+    try {
+      const {page} = test;
+      await expectScreen(page, 'test');
+      await page.locator('.sensor-cell').first().click();
+      assert.equal(await page.locator('#offsetMetrics>div').count(), 1);
+      assert.equal(await page.locator('#noiseMetrics>div').count(), 1);
+      assert.equal(await page.locator('#offsetMetrics').textContent(), 'Mean offset0.825 V');
+      assert.equal(await page.locator('#noiseMetrics').textContent(), 'Noise at 3 Hz15.39 mV');
+      assert.equal(await page.locator('#noiseChart [data-trace=held]').count(), 1);
+      assert.equal(await page.locator('#noiseChart [data-trace=noise]').count(), 0);
+      const band = page.locator('#noiseChart [data-reference-band=legacy-noise]');
+      assert.equal(await band.getAttribute('data-min'), '10');
+      assert.equal(await band.getAttribute('data-max'), '37.9');
+      assert((await page.locator('#noiseChart').textContent()).includes('100.0 s'));
+      assert.equal(await page.locator('#offsetChart [data-reference-band=offset]').count(), 1);
+      const path = await page.locator('#noiseChart [data-trace=held]').getAttribute('d');
+      const points = [...path.matchAll(/[ML]([\d.]+),([\d.]+)/g)].map(m => [+m[1], +m[2]]);
+      assert.equal(points.length, 6);
+      assert(points.every((p, i) => !i || p[0] >= points[i - 1][0] && p[1] <= points[i - 1][1]), 'Held trace must move only forward and upward');
+      assert((await page.locator('#legacyNoiseNote').textContent()).includes('pass/fail disabled'));
+      assert(!(await page.locator('#noiseNote').isVisible()));
+      assert(!(await page.locator('#detailReason').isVisible()));
+      for (const value of [5, 45]) {
+        current.rows[0].legacy_equivalent_mv = value;
+        current.rows[0].legacy_equivalent_detail = {time_s: [0, 100], held_mv: [0, value], readout_elapsed_s: 100};
+        test.setState(current);
+        await page.waitForFunction(v => document.querySelector('#noiseMetrics').textContent.includes(v.toFixed(2) + ' mV'), value);
+        assert.equal(await page.locator('.sensor-cell').first().getAttribute('data-status'), 'review');
+        assert((await page.locator('#detailBadges').textContent()).includes('Noise · review'));
+        assert.equal(await page.locator('#failCount').textContent(), '0');
+      }
+      // A historical estimate without a stored trajectory must not become a raw waveform.
+      delete current.rows[0].legacy_equivalent_detail;
+      test.setState(current);
+      await page.waitForFunction(() => document.querySelector('#noiseChart').textContent === 'Noise trace unavailable');
+      current.rows[0].flags = ['NOISE: Signal never settled during this test; check/retest part or slot'];
+      current.rows[0].result = 'CHECK';
+      test.setState(current);
+      await page.waitForFunction(() => document.querySelector('#detailReason').textContent.includes('Not settled; retest'));
+      assert.equal(await page.locator('.sensor-cell').first().getAttribute('data-status'), 'fail', 'Historical faults remain visible');
+    } finally {await test.close();}
+  }],
+  ['legacy meter estimate sits beside RMS and never becomes a noise pass', async browser => {
+    const report = snapshot({id: 'legacy-model', complete: true}).result;
+    report.selected_tests = ['noise'];
+    Object.assign(report.rows[0], {
+      dc_v: null, dc_detail: null, dc_check: 'NOT_TAKEN', result: 'REVIEW_NO_NOISE_LIMIT', flags: [],
+      selected_tests: ['noise'], test_status: {dc: 'NOT_TAKEN', noise: 'MEASURED'},
+      acquisition_validity: {dc: false, noise: true},
+      daq_3hz_q3_rms_uv: 1414.214, daq_1_100_hz_rms_uv: 1625.8,
+      legacy_equivalent_mv: 42.75, legacy_equivalent_60s_mv: 18.25,
+      legacy_equivalent_status: 'UNVALIDATED_ESTIMATE',
+      legacy_equivalent_detail: {readout_elapsed_s: 100},
+      noise_detail: {time_s: [48, 49, 50, 51, 52], volts: [0, .002, 0, -.002, 0],
+        start_s: 48, end_s: 52, min_v: -.002, max_v: .002, selection_reason: 'Representative recorded waveform.'}
+    });
+    const test = await fixture(browser, {report});
+    try {
+      const {page} = test;
+      await expectScreen(page, 'test');
+      const metrics = await page.locator('#noiseMetrics').textContent();
+      assert(metrics.includes('Legacy-equivalent estimate'));
+      assert(metrics.includes('42.75 mV'));
+      assert(metrics.includes('18.25 mV'));
+      assert(metrics.includes('1414.214 µV'));
+      assert(metrics.includes('Disabled · compare old fixture'));
+      assert((await page.locator('#legacyNoiseNote').textContent()).includes('Unvalidated'));
+      assert.equal(await page.locator('#noiseChart [data-trace=noise]').count(), 1);
+      assert.equal(await page.locator('#noiseChart [data-trace=held]').count(), 0);
+      assert((await page.locator('#detailBadges').textContent()).includes('Noise · review'));
+      assert(!(await page.locator('#detailBadges').textContent()).includes('pass'));
+      assert.equal(test.stateRequests, 0);
+      if (process.env.MOD50_QA_SCREENSHOT) {
+        await page.setViewportSize({width: 1440, height: 1000});
+        await page.locator('#detailSection').scrollIntoViewIfNeeded();
+        await page.locator('#detailSection').screenshot({path: process.env.MOD50_QA_SCREENSHOT});
+      }
+    } finally {await test.close();}
+  }],
   ['saved report remains interactive without polling or acquisition actions', async browser => {
     const test = await fixture(browser, {report: snapshot({id: 'saved', complete: true}).result});
     try {
@@ -607,6 +701,7 @@ const cases = [
       await expectScreen(page, 'test');
       assert(await page.locator('#detailSection').isVisible());
       await page.locator('.sensor-cell').nth(49).click();
+      assert(!(await page.locator('#noiseMetrics').textContent()).includes('NaN'));
       assert.equal(await page.locator('#detailTitle').textContent(), 'Detector 5-10');
       await page.keyboard.press('Enter');
       await page.keyboard.press('Escape');
@@ -630,6 +725,20 @@ const cases = [
     for (const [name, run] of cases) {
       try {await run(browser); console.log(`PASS ${name}`);}
       catch (error) {failures++; console.error(`FAIL ${name}\n${error.stack}`);}
+    }
+    // Optional read-only preview of an existing run using intercepted API calls.
+    // This never opens the DAQ or changes the source report/results.
+    if (process.env.MOD50_QA_RESULT_PATH && process.env.MOD50_QA_OPERATOR_SCREENSHOT) {
+      const result = JSON.parse(fs.readFileSync(process.env.MOD50_QA_RESULT_PATH, 'utf8'));
+      const initial = {...snapshot({id: 'saved-preview', complete: true}), result, rows: result.rows, simulate: result.simulated};
+      const test = await fixture(browser, {initial});
+      try {
+        await expectScreen(test.page, 'test');
+        await test.page.setViewportSize({width: 1440, height: 1000});
+        await test.page.locator('.sensor-cell').first().click();
+        await test.page.locator('#detailSection').screenshot({path: process.env.MOD50_QA_OPERATOR_SCREENSHOT});
+        assert.deepEqual(test.requests, []);
+      } finally {await test.close();}
     }
   } finally {await browser.close();}
   console.log(`${cases.length - failures}/${cases.length} browser workflow cases passed`);

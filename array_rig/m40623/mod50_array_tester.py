@@ -31,7 +31,7 @@ class ArrayWindow:
         self.source = tk.StringVar(value="Generated demo" if simulate else "Actual detectors")
         self.ready = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="Enter the lot and technician, then start the check.")
-        self.phase = tk.StringVar(value="Ready · about 4 minutes 50 seconds")
+        self.phase = tk.StringVar(value="Ready · 10 s offset + 100 s noise, plus settling/warm-up")
         self.source_note = tk.StringVar()
         self.population = tk.StringVar(value="50 detectors selected")
         self.selected = {position: tk.BooleanVar(value=True) for position in hw.POSITIONS}
@@ -53,7 +53,7 @@ class ArrayWindow:
         source.bind("<<ComboboxSelected>>", self.source_changed)
         self.source_widget = source
         ttk.Label(root, textvariable=self.source_note, padding=(20, 0)).pack(fill="x")
-        ttk.Label(root, text="Automatic sequence: settle 90 s → DC 10 s → switch → settle 90 s → noise 100 s → return to DC",
+        ttk.Label(root, text="Automatic sequence: settle DC → DC 10 s → switch → warm up 90 s → noise 100 s → return to DC",
                   padding=(20, 10), font=("Segoe UI", 11)).pack(fill="x")
 
         occupied = ttk.LabelFrame(root, text="Installed detectors · position labels follow the holder wiring map", padding=8)
@@ -93,11 +93,12 @@ class ArrayWindow:
 
         frame = ttk.Frame(root)
         frame.pack(fill="both", expand=True, padx=20, pady=(5, 8))
-        columns = ("position", "path", "dc", "dc_check", "noise3", "noise100", "result")
+        columns = ("position", "path", "dc", "dc_check", "noise3", "noise100", "legacy", "result")
         self.table = ttk.Treeview(frame, columns=columns, show="headings", height=10)
         for key, label, width in (("position", "Position", 70), ("path", "Card / DAQ CH", 120),
                                   ("dc", "DC (V)", 85), ("dc_check", "DC check · provisional", 205),
                                   ("noise3", "3 Hz/Q3 (µV RMS)", 140), ("noise100", "1–100 Hz (µV RMS)", 150),
+                                  ("legacy", "Legacy estimate (mV)", 155),
                                   ("result", "Review", 220)):
             self.table.heading(key, text=label)
             self.table.column(key, width=width, minwidth=60, stretch=True)
@@ -107,7 +108,8 @@ class ArrayWindow:
         scroll.pack(side="right", fill="y")
         self.table.tag_configure("check", background="#fff0d1")
         self.table.tag_configure("empty", foreground="#7b8796")
-        ttk.Label(root, text="Noise values are at the DAQ output. Calibration and noise acceptance limits are pending; REVIEW is not PASS.\n"
+        ttk.Label(root, text="RMS is at the DAQ output. Legacy estimate uses nominal gain, filtering, rectification, smoothing and ideal hold.\n"
+                  "Noise pass/fail is disabled until comparison with the old fixture; REVIEW is not PASS.\n"
                   "Supply supervision and physical RUN/STOP remain manual. Software Stop does not remove hardware power.",
                   padding=(20, 8), wraplength=1150).pack(fill="x", before=frame)
         root.protocol("WM_DELETE_WINDOW", self.close)
@@ -159,7 +161,7 @@ class ArrayWindow:
         self.table.delete(*self.table.get_children())
         for row in hw.CHANNEL_MAP:
             self.table.insert("", "end", iid=row["position"], values=(row["position"],
-                f"{row['card']} / {row['physical_daq_channel']}", "—", "Not measured", "—", "—", "Waiting"))
+                f"{row['card']} / {row['physical_daq_channel']}", "—", "Not measured", "—", "—", "—", "Waiting"))
 
     def start(self):
         if self.is_busy() or self.closing or self.restart_required:
@@ -191,7 +193,8 @@ class ArrayWindow:
                      "CHECK · " + "; ".join(row["flags"]) if row["flags"] else "REVIEW · no noise limit")
             self.table.item(row["position"], values=(row["position"], f"{row['card']} / {row['physical_daq_channel']}",
                 number(row["dc_v"], 5), row["dc_check"].replace("_", " ").lower(),
-                number(row["daq_3hz_q3_rms_uv"], 3), number(row["daq_1_100_hz_rms_uv"], 3), label),
+                number(row["daq_3hz_q3_rms_uv"], 3), number(row["daq_1_100_hz_rms_uv"], 3),
+                number(row.get("legacy_equivalent_mv"), 2), label),
                 tags=("empty" if not row["installed"] else "check" if row["flags"] or not result["data_complete"] else "",))
 
     def poll(self):

@@ -1,6 +1,17 @@
 # Eltec 40623 Array Tester (TP120) — 50 positions on the DAQ array rig
 
-## Current M25/HUB check — updated 2026-11-11
+## Current M25/HUB check — updated 2026-11-12
+
+The technician view shows **Mean offset** and **Noise at 3 Hz**, with the
+offset trace and the rising held-noise trace. The noise chart shades the
+old 10.0–37.9 mV range as **reference only**, never an acceptance verdict.
+Saved engineering reports retain **Legacy-equivalent estimate (mV)**,
+RMS measurements, raw waveform excerpts, slope/min/max and method notes.
+This nominal model applies
+3 Hz/Q3 filtering, absolute value, 10 s smoothing and an ideal peak hold;
+it saves readings at 60 s and at the end of the 100 s record. Noise pass/fail
+stays disabled until comparison with the old fixture. See
+[the model and its assumptions](NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
 
 Choose Noise only (default), Offset only, or both before Start. Skipped tests
 are `NOT_TAKEN` in exported row statuses; numeric values remain null/blank.
@@ -9,12 +20,14 @@ slots explicitly. Retest parts maps original part positions to new slots and
 replaces only valid selected stage assessments. Original recordings remain
 immutable. Batch counts represent unique operator-linked parts, not attempts.
 
-The settling gate is now 80% of selected, nonexcluded parts over five
-one-second windows, with a 90-second fixed-wait fallback. All 57 physical
-rows continue to be acquired together. Nonsettling parts receive an individual
-CHECK after a valid recording; no calibrated noise amplitude pass/fail limit
-has been introduced. See [the calibration record](../docs/CALIBRATION_RECORD.md)
-for the provisional stability statistics and validation limits.
+Offset retains its 80% settling gate over five one-second windows, with a
+90-second fallback and individual persistent-drift CHECKs. Per user direction
+on 2026-11-12, noise instead has a **fixed 90-second warm-up** after switching
+to noise mode. It does not wait for a steady mean or RMS, and does not issue
+noise-only “never settled” faults. The software noise meter resets when the
+100-second recording begins. All 57 physical rows are still acquired together;
+clipping, delivery and hardware checks remain. See
+[the calibration record](../docs/CALIBRATION_RECORD.md) for timing provenance.
 
 `mod50_history.py` stores immutable part attempts and slot events in SQLite.
 Three consecutive valid flagged checks latch a suspect-slot warning until
@@ -39,7 +52,7 @@ Offset evidence contains an extrema-preserving trace of the recorded DC
 interval, its minimum/maximum, fitted slope and a clearly labelled linear
 time-to-window estimate when drifting toward the existing limits. This is
 not a prediction that the detector will pass, and does not alter the
-settling or acceptance limits. Noise details show a short excerpt around
+settling or acceptance limits. Engineering reports show a short noise excerpt around
 clipping/headroom failure, or a representative excerpt for an ordinary
 record. Exact raw samples remain in NPZ files; downsampled chart data are
 also saved in summary JSON and the self-contained HTML report.
@@ -82,7 +95,7 @@ The full operator procedure is in [the array README](../README.md).
 | Connect / offset settling | Reserve dedicated DIO0–15, DC/unity, signed ±5 V; monitor selected slots | 80% stable over 5 one-second windows, or 90 s fallback |
 | DC | All 57 physical rows, four conversions/channel, drop first and average three | 10 s |
 | Enter noise | Stop/drain; gain off; select AC; wait; enable gain; ±1 V | 200 ms switching hold |
-| Settle noise | Verify both cards remain ready/present and match route/gain; monitor selected slots | Same 80% rule / 90 s fallback |
+| Warm up noise | Verify both cards remain ready/present and match route/gain; retain startup samples | Fixed 90 s; no noise-stability criterion |
 | Noise | Same physical scan and conversion policy | 100 s |
 | Finish / stop | Stop/drain; gain off; wait 50 ms; command DC; verify and close | No automatic restart |
 
@@ -123,7 +136,7 @@ confirmation of unchanged detectors, wiring, alignment and uninterrupted
 fixture power. `mod50_recovery.py` validates the saved profile, timing, map,
 stage diagnostics, raw hash, shape and metadata without opening the DAQ.
 The worker rechecks the DC hash and connected DAQ serial, copies DC evidence
-into a new run folder, switches to noise and checks adaptive settling before
+into a new run folder, switches to noise and waits 90 seconds before
 a fresh 100-second recording. The original folder is
 immutable. Startup offers only the latest run for its data source, and never
 automatically starts it. Repeated failure remains incomplete and retains
@@ -144,7 +157,10 @@ attempts and any source run used for retained DC.
 
 `*_attemptNN_settling_raw.npz` preserves the observations before measurement;
 raw measurement files keep the full prescribed recording only. JSON records
-per-window mean/RMS/drift, the 80% gate, fallback use and never-settled slots.
+per-window DC mean/RMS/drift, the DC 80% gate, fallback use and never-settled
+DC slots. Noise warm-up records its elapsed-sample timing policy and duration;
+random noise fluctuations are not stability failures. Historical reports keep
+their original noise-stability observations and flags.
 `fixture_history.sqlite3` at the results root stores actual part/slot history;
 `simulation_history.sqlite3` is separate even with an explicit output root.
 Back up the history database along with all original run directories.
@@ -153,8 +169,10 @@ DC reports the unchanged provisional 0.3–1.2 V window. Noise is mean-removed
 finite-record FFT RMS over inclusive 1–100 Hz bins; the 3 Hz/Q3 result applies
 the nominal second-order band-pass power weighting to the same bins. Both
 are **DAQ-output** µV, not input-referred noise or the legacy rectifier/hold
-DMM reading. No nominal gain division, noise acceptance limit or sensitivity
-test is introduced. Full records are saved before numerical analysis.
+DMM reading. The separate legacy-equivalent estimate uses nominal matched
+x1000 front-end gains and the rectifier/smoother/hold model; it does not
+convert or replace RMS. No noise acceptance limit or sensitivity test is
+introduced. Full records are saved before numerical analysis.
 
 Supply monitoring is manual, as in the working bench viewer. This profile
 does not claim the separate recorder's commissioned battery monitoring or

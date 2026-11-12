@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import mod50_check as check
 import mod50_hardware as hw
 from mod50_history import History
-from mod50_settling import SettlingMonitor
+from mod50_settling import SettlingMonitor, NoiseWarmup
 import mod50_web as web
 from test_mod50_web import FakeWorker
 
@@ -61,6 +61,22 @@ class SettlingRule(unittest.TestCase):
         self.assertTrue(monitor.complete)
         self.assertFalse(.3 <= .2 <= 1.2)
 
+    def test_noise_warmup_uses_elapsed_samples_regardless_of_fluctuations(self):
+        for rate in (1000., 999.9):
+            for varying in (False, True):
+                with self.subTest(rate=rate, varying=varying):
+                    monitor = NoiseWarmup(rate, ['1-1'])
+                    count = round(90 * rate)
+                    t = np.arange(count) / rate
+                    values = ((.001 + .0001 * t) * np.sin(2 * np.pi * 3 * t) + .0001 * t
+                              if varying else np.zeros(count))
+                    self.assertFalse(monitor.feed(values[None, :-1]))
+                    self.assertTrue(monitor.feed(values[None, -1:]))
+                    evidence = monitor.evidence()
+                    self.assertAlmostEqual(evidence['waited_s'], 90.)
+                    self.assertFalse(evidence['noise_stability_required'])
+                    self.assertFalse(evidence['acceptance_limit'])
+
 
 class SelectedStageRuns(unittest.TestCase):
     def setUp(self):
@@ -88,6 +104,55 @@ class SelectedStageRuns(unittest.TestCase):
         self.assertIn("NOT_TAKEN", saved[0]["test_status"])
         with np.load(worker.directory / "noise_raw.npz") as raw:
             self.assertEqual(raw["converter_counts"].shape, (1000, 57, 4))
+        record = result["records"][0]
+        self.assertEqual(record["settling"]["waited_s"], 90.)
+        self.assertEqual(record["settling"]["criterion"], "elapsed_time_only")
+        self.assertNotIn("warning", record["settling"])
+        self.assertNotIn("stability_observation", record)
+        self.assertFalse(any("settled" in flag for row in result["rows"] for flag in row["flags"]))
+
+    def test_stopping_noise_warmup_preserves_offset_without_a_noise_result(self):
+        worker = self.worker()
+        update = worker.update
+        def stop(**values):
+            update(**values)
+            if values.get("phase") == "Warming up NOISE":
+                worker.stop()
+        worker.update = stop
+        with patch.object(check, "DC_SECONDS", 1):
+            worker.run()
+        dc, noise = worker.result["records"]
+        self.assertTrue(dc["valid_data"])
+        self.assertFalse(noise["settling"]["complete"])
+        self.assertFalse(noise["valid_data"])
+        self.assertEqual(noise["samples"], 0)
+        self.assertFalse(worker.result["data_complete"])
+        self.assertTrue(all(row["legacy_equivalent_mv"] is None for row in worker.result["rows"]))
+
+    def test_delivery_failure_during_noise_warmup_requires_a_fresh_full_wait(self):
+        worker = self.worker(selected_tests=["noise"])
+        def factory(**kwargs):
+            rig = hw.Mod50Rig(**kwargs)
+            read = rig.device.read_stream
+            delivered = 0
+            def fail_once(**options):
+                nonlocal delivered
+                delivered += 1
+                if delivered == 4:
+                    raise hw.daq.StreamTimeoutError("Injected noise warm-up timeout")
+                return read(**options)
+            rig.device.read_stream = fail_once
+            return rig
+        worker.rig_factory = factory
+        with patch.object(check, "NOISE_SECONDS", 1):
+            worker.run()
+        self.assertTrue(worker.result["data_complete"], worker.result["errors"])
+        first, retry = worker.result["records"]
+        self.assertFalse(first["settling"]["complete"])
+        self.assertEqual(first["samples"], 0)
+        self.assertEqual(retry["settling"]["waited_s"], 90.)
+        self.assertNotIn("reused_unchanged_path", retry["settling"])
+        self.assertTrue((worker.directory / first["settling"]["raw_file"]).exists())
 
     def test_offset_only_is_complete_without_noise_and_retest_replaces_same_part(self):
         worker = self.worker(selected_tests=["dc"], installed_positions=["1-1", "1-2"])

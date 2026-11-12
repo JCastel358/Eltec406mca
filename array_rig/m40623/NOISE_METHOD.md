@@ -1,6 +1,79 @@
 # 40623 noise measurement and acceptance
 
-## What this rig measures
+## Current M25/HUB legacy-equivalent estimate
+
+Added 2026-11-12 for the current M25/HUB profile. The older direct-buffer
+method described below is a separate acquisition path.
+
+`mod50_legacy_noise.py` adds a **Legacy-equivalent estimate (mV)** alongside
+the unchanged DAQ-output RMS calculations. It is a nominal behavioural
+model of the old meter, **not a calibrated equivalent measurement**.
+`noise_pass_fail_enabled` is false and `acceptance_limits_mv` is null. The
+old 10.0–37.9 mV limits never enter this calculation or the decision logic.
+The technician display calls this value **Noise at 3 Hz** and plots the
+stored held trace. Green shading at 10.0–37.9 mV is a labelled historical
+reference only; reports retain both RMS values, the raw waveform excerpt and
+the full method explanation. No display-derived value changes acceptance.
+
+From application revision 2026-11-12.2, noise has a fixed 90-second warm-up
+before the meter resets and capture begins. The earlier five-window mean/RMS
+stability gate and noise-only “never settled” flag no longer apply. Warm-up
+counts verified DAQ sample time, saves startup samples separately, and retains
+the existing transport, clipping and hardware checks. Offset settling is
+unchanged. The 90-second duration is user-authorized and still provisional.
+
+The full-rate signed DAQ waveform passes through:
+
+1. Initial-sample DC subtraction, then a causal, single-pass 3 Hz/Q3
+   second-order band-pass. The bilinear transform is prewarped at 3 Hz.
+   Unlike the existing FFT RMS metric, this path does not truncate at 1 or
+   100 Hz and does not use a display excerpt, RMS-to-average factor,
+   one-second detrending or forward/backward filtering.
+2. Nominal old/new gain ratio = 1000 / 1000 = 1. The M25 already amplifies
+   before conversion; another x1000 must not be applied to its DAQ output.
+   There is no measured per-channel gain/phase or frequency-response
+   equalization. The nominal ratio is not an input-referred calibration.
+3. Absolute value with the nominal rectifier gain of 10.
+4. A zero-initialized, single-pole exponential smoother with tau = 10 s:
+   `s[n] = s[n-1] + (1-exp(-1/(fs*10))) * (abs(filtered[n])*10 - s[n-1])`.
+5. An ideal peak hold: `h[n] = max(h[n-1], s[n])`, starting at zero and
+   retaining the maximum since reset for this recording (up to 100 s).
+
+The drawing's **100-second peak hold** is treated as a retention interval,
+not as a measured decay time constant. No automatic discharge, rolling
+100-second maximum, droop, hold acquisition error or circuit offset is
+invented. All model states reset at recording start and on each retry;
+states/data are never carried across an acquisition interruption. This
+cold-start model does **not** reconstruct the old analogue filter/smoother
+state before its hold reset. That difference and the ideal hold assumption
+must be assessed during paired fixture comparison.
+
+The final held reading is `legacy_equivalent_mv`. The first sample boundary
+at or after 60 s supplies `legacy_equivalent_60s_mv`, allowing comparison
+at a consistent elapsed time; waiting 100 s may capture a later noise burst.
+The actual DAQ sample rate sets timing. The final smoother value, time of
+the held peak, readout times and reduced smoothed/held traces are retained
+in JSON. All computations precede display reduction. CSV includes the two
+readings, smoother/peak fields, method ID, status, elapsed times and complete
+model assumptions. Raw NPZ metadata includes method parameters and filter
+coefficients before processing; original converter counts remain available.
+
+At least 60 s of valid, uninterrupted data is needed for a displayed
+estimate. Incomplete recordings, clipped/over-headroom or flat signals,
+uninstalled positions and inferred no-signal positions do not receive a
+legacy number. The original waveform evidence remains available. No
+legacy amplitude changes a detector/slot verdict, history or yield count.
+Existing signal-quality checks remain in place. Old reports are not
+recalculated; missing legacy values show as unavailable.
+
+Drawing sources: [9000232 rev B](../docs/40623_legacy_fixture/9000232_revB_filter.jpeg),
+[9000272 rev J](../docs/40623_legacy_fixture/9000272_revJ_rectifier_hold.jpeg), and
+[TP120 noise procedure](../docs/40623_legacy_fixture/TP120_noise_page5.jpeg).
+Qualification still requires measured background/transfer and repeated
+paired detectors covering both specification boundaries and burst noise,
+under matching vacuum, bias, temperature and readout timing.
+
+## Earlier direct-buffer measurement
 
 Confirmed by the user on 2026-09-10: detector connector -> custom PCB with
 1x op-amp buffers -> ACCES USB-AIO16-64MA. The legacy filter and rectifier

@@ -25,3 +25,9 @@ body[data-report=true] #setupSection,body[data-report=true] #prepSection,body[da
 .test-screen{display:flex;flex-direction:column}.test-screen>:not(.tray-wrap){flex-shrink:0}.test-screen .tray-wrap{flex:1}.batch-yield{font-size:.7rem;line-height:1.4;margin:0}body[data-report=true] #testSection{display:flex!important}
 @media(max-height:750px) and (min-width:651px){.sensor-cell{flex-direction:row;gap:7px}.sensor-cell .slot-number{flex:none;white-space:nowrap}.sensor-cell .slot-label{min-width:0;text-align:center;line-height:1.05}.test-options{margin-bottom:0}.offset-dot{width:5px;height:5px;right:5px;top:5px}}
 @media print{body[data-report=true] #testSection,.test-screen{display:flex!important}.test-screen .tray-wrap{flex:auto}}
+/* Technician view: one reading per measurement; engineering reports keep detail. */
+body[data-report=false] .metric-grid{grid-template-columns:1fr}
+body[data-report=false] .metric-grid strong{font-size:1.8rem}
+body[data-report=false] .detail-navigation>span,body[data-report=false] .identity-note,
+body[data-report=false] .procedure-copy small{display:none}
+body[data-report=false] .chart{min-height:0}

@@ -86,6 +86,21 @@ class SavedNoiseRecovery(unittest.TestCase):
         result["record"]["rows"][0]["mean_v"] = 9
         self.assertEqual(self.dc["rows"][0]["mean_v"], original_mean)
 
+    def test_legacy_meter_revision_with_adaptive_timing_remains_recoverable(self):
+        self.summary["application_revision"] = self.metadata["application_revision"] = "2026-11-12.1"
+        self.summary["timing_policy"] = self.metadata["timing_policy"] = check.ADAPTIVE_TIMING_POLICY
+        self.save_raw()
+        self.assertEqual(self.load()["record"]["samples"], 10000)
+
+    def test_pre_legacy_meter_revision_still_recovers_unchanged_dc(self):
+        self.summary["application_revision"] = "2026-11-11.1"
+        self.metadata["application_revision"] = "2026-11-11.1"
+        self.save_raw()
+        self.save_summary()
+        resumed = self.load()
+        self.assertTrue(resumed["record"]["valid_data"])
+        self.assertEqual(resumed["record"]["mode"], "dc")
+
     def test_finite_ordered_summary_statistics_cannot_override_raw_counts(self):
         row = self.dc["rows"][0]
         row.update(min_v=1.25, mean_v=1.30, max_v=1.35)
