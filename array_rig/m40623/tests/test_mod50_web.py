@@ -40,8 +40,9 @@ class FakeWorker:
     def stop(self):
         self.stops += 1
 
-    def complete(self, *, restart_required=False):
-        self.result = {"data_complete": True, "rows": [{"position": "1-1", "dc_v": .7}],
+    def complete(self, *, restart_required=False, power_readiness_failed=False):
+        self.result = {"data_complete": not power_readiness_failed, "rows": [{"position": "1-1", "dc_v": .7}],
+                       "power_readiness_failed": power_readiness_failed,
                        "restart_required": restart_required}
         self.alive = False
         self.finished.set()
@@ -56,7 +57,7 @@ class DashboardHttp(unittest.TestCase):
             worker = FakeWorker(**kwargs)
             self.created.append(worker)
             return worker
-        self.dashboard = web.Dashboard(output_root=self.directory, worker_factory=factory)
+        self.dashboard = web.Dashboard(output_root=self.directory, worker_factory=factory, live_factory=factory)
         self.server = web.make_server(self.dashboard)
         self.thread = threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": .01})
         self.thread.start()
@@ -86,6 +87,59 @@ class DashboardHttp(unittest.TestCase):
             raw = json.loads(raw)
         return code, result_headers, raw
 
+    def test_live_requires_ready_and_excludes_parallel_tray_check(self):
+        payload = {"simulate": False, "installed_positions": ["1-1"], "box_side": "bottom"}
+        self.assertEqual(self.request("api/live-start", method="POST", data=payload)[0], 400)
+        payload["fixture_ready"] = True
+        self.assertEqual(self.request("api/live-start", method="POST", data=payload)[0], 200)
+        live = self.created[-1]
+        self.assertEqual(live.options["box_side"], "bottom")
+        self.assertEqual(live.options["installed_positions"], ("1-1",))
+        self.assertTrue(self.request("api/live-state")[2]["busy"])
+        self.assertTrue(self.request()[2]["busy"])
+        self.assertEqual(self.start()[0], 400)
+        self.assertEqual(self.request("api/live-start", method="POST", data=payload)[0], 400)
+        self.assertEqual(self.request("api/live-stop", method="POST")[0], 200)
+        self.assertEqual(live.stops, 1)
+        self.assertEqual(self.start()[0], 400, "Stop must retain ownership through cleanup")
+        live.complete()
+        self.assertEqual(self.start()[0], 200)
+
+    def test_tray_check_excludes_live_viewer_and_live_stop_keeps_check(self):
+        self.assertEqual(self.start()[0], 200)
+        self.assertTrue(self.request("api/live-state")[2]["check_busy"])
+        self.assertEqual(self.request("api/live-start", method="POST", data={"simulate": True})[0], 400)
+        self.assertEqual(self.request("api/live-stop", method="POST")[0], 200)
+        self.assertEqual(self.created[0].stops, 0)
+
+    def test_live_close_waits_for_cleanup_and_preserves_saved_batch(self):
+        saved = {"rows": [], "current_parts": [{"part_id": "original"}]}
+        self.dashboard.saved_result = saved
+        self.assertEqual(self.request("api/live-start", method="POST", data={"simulate": True})[0], 200)
+        live = self.created[-1]
+        self.assertEqual(self.request("api/close", method="POST")[0], 200)
+        self.assertEqual(live.stops, 1)
+        self.assertFalse(self.dashboard.should_shutdown())
+        live.complete()
+        self.assertIs(self.dashboard.saved_result, saved)
+        self.assertIs(self.dashboard.snapshot()["result"], saved)
+
+    def test_live_shutdown_failure_blocks_both_start_actions(self):
+        self.assertEqual(self.request("api/live-start", method="POST", data={"simulate": True})[0], 200)
+        live = self.created[-1]
+        live.complete(restart_required=True)
+        live.status = lambda: {"restart_required": True}
+        self.assertTrue(self.request()[2]["restart_required"])
+        self.assertEqual(self.start()[0], 400)
+        self.assertEqual(self.request("api/live-start", method="POST", data={"simulate": True})[0], 400)
+
+    def test_live_routes_are_local_and_selection_is_validated(self):
+        for name in ("live.html", "live.js", "live.css", "battery_warning.js"):
+            self.assertEqual(self.request(name)[0], 200)
+        self.assertEqual(self.request("api/live-start", method="POST", data={"simulate": True}, headers={"Origin": "https://example.com"})[0], 403)
+        for positions in ([], ["6-1"], ["1-1", "1-1"]):
+            self.assertEqual(self.request("api/live-start", method="POST", data={"simulate": True, "installed_positions": positions})[0], 400)
+
     def start(self, **overrides):
         payload = {"lot": "LOT-TEST", "operator": "Test only", "tray": 1, "simulate": False}
         payload.update(overrides)
@@ -105,6 +159,72 @@ class DashboardHttp(unittest.TestCase):
         self.assertGreater(self.dashboard.last_seen, 0)
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertEqual(headers["X-Frame-Options"], "DENY")
+
+    def test_battery_warning_counts_attempts_not_polls_and_resets(self):
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        for _ in range(4):
+            self.assertIsNone(self.request()[2]["battery_warning"])
+            self.assertIsNone(self.request("api/live-state")[2]["battery_warning"])
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        warning = self.request()[2]["battery_warning"]
+        self.assertEqual(warning["consecutive_failures"], 2)
+        self.assertEqual(self.request()[2]["battery_warning"], warning)
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        self.assertEqual(self.request()[2]["battery_warning"], {**warning, "consecutive_failures": 3})
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete()
+        self.assertIsNone(self.request()[2]["battery_warning"])
+        for attempt in range(2):
+            self.assertEqual(self.start()[0], 200)
+            self.created[-1].complete(power_readiness_failed=True)
+            current = self.request()[2]["battery_warning"]
+            if attempt == 0:
+                self.assertIsNone(current)
+        self.assertNotEqual(current["id"], warning["id"])
+
+    def test_battery_warning_combines_live_and_tray_without_recounting_old_workers(self):
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        # No state poll: starting another owner must account for the prior attempt.
+        self.assertEqual(self.request("api/live-start", method="POST",
+            data={"simulate": False, "fixture_ready": True})[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        warning = self.request("api/live-state")[2]["battery_warning"]
+        self.assertEqual(warning["consecutive_failures"], 2)
+        for _ in range(4):
+            self.assertEqual(self.request()[2]["battery_warning"], warning)
+            self.assertEqual(self.request("api/live-state")[2]["battery_warning"], warning)
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete()
+        self.assertIsNone(self.request("api/live-state")[2]["battery_warning"])
+        self.assertIsNone(self.request()[2]["battery_warning"])
+
+    def test_demo_saved_results_and_other_errors_do_not_trigger_battery_warning(self):
+        self.dashboard.saved_result = {"power_readiness_failed": True, "rows": []}
+        self.assertIsNone(self.request()[2]["battery_warning"])
+        for _ in range(2):
+            self.assertEqual(self.start(simulate=True)[0], 200)
+            self.created[-1].complete(power_readiness_failed=True)
+            self.assertIsNone(self.request()[2]["battery_warning"])
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        self.assertIsNone(self.request()[2]["battery_warning"])
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete()
+        self.created[-1].result.update(data_complete=False, errors=["No fresh DAQ samples"])
+        self.assertIsNone(self.request()[2]["battery_warning"])
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        self.assertIsNone(self.request()[2]["battery_warning"])
+        self.assertEqual(self.start(simulate=True)[0], 200)
+        self.created[-1].complete()
+        self.assertIsNone(self.request()[2]["battery_warning"])
+        self.assertEqual(self.start()[0], 200)
+        self.created[-1].complete(power_readiness_failed=True)
+        self.assertEqual(self.request()[2]["battery_warning"]["consecutive_failures"], 2)
 
     def test_start_stop_and_completion_keep_single_worker_owner(self):
         self.assertEqual(self.start()[0], 200)

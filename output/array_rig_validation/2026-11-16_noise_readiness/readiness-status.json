@@ -1,0 +1,80 @@
+{
+  "device": "DaqInfo(name='USB-AIO16-64MA', serial_number='40E68DEE0D501728', device_index=0, product_id=33093, dll_version='2.4.8796.22296', simulated=False, calibration_supported=True)",
+  "status": [
+    {
+      "raw_byte": 36,
+      "UPPER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      },
+      "LOWER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      }
+    },
+    {
+      "raw_byte": 36,
+      "UPPER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      },
+      "LOWER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      }
+    },
+    {
+      "raw_byte": 36,
+      "UPPER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      },
+      "LOWER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      }
+    },
+    {
+      "raw_byte": 36,
+      "UPPER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      },
+      "LOWER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      }
+    },
+    {
+      "raw_byte": 36,
+      "UPPER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      },
+      "LOWER": {
+        "route": false,
+        "gain": false,
+        "ready": false,
+        "present": true
+      }
+    }
+  ]
+}

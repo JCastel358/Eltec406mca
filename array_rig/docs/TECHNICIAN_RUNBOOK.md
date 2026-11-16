@@ -1,13 +1,17 @@
 # Technician runbook — Eltec sensor test rigs
 
-## Current M25/HUB array hardware (updated 2026-11-12)
+## Current M25/HUB array hardware (updated 2026-11-16)
 
 For the assembled HUB plus two M25 cards, use the
 [current 50-piece instructions](../README.md).
 Choose Noise only (default), Offset only, or both before Start. Offset starts
 recording together when 80% of loaded parts settle, or after the 90-second
-fallback, and records 10 seconds. Noise warms up for a fixed 90 seconds,
-then records 100 seconds.
+fallback, and records 10 seconds. Noise watches the five-second average for
+a near-zero, unclipped signal without persistent upward/downward drift.
+Normal variations between one-second averages do not by themselves block
+readiness. Five one-second windows and
+80% ready start all channels together; 90 seconds is the fallback. Noise
+records for 60 seconds. Unready slots are flagged for review, not omitted.
 From revision 2026-11-12.5 the DC settling tolerance is at least 1 mV across
 five one-second averages. Small changes can settle; larger persistent drift
 still gets an amber review warning. The offset range remains 0.3-1.2 V.
@@ -28,7 +32,8 @@ The current browser app has three screens:
    switch is **ON**, and the physical **START/RUN** button has been pressed.
    Confirm cooling, supply and vacuum preparation. Press **Enter** to view
    the tray; acquisition has not started yet.
-3. **Detector tray:** choose tests and **Loaded slots**, then press **Start**.
+3. **Detector tray:** choose tests and **Loaded slots** (each row has an
+   all/none/mixed checkbox), then press **Start**.
    Noise alone cannot identify empty slots. All 50 positions and progress remain
    together. **Stop** interrupts the check and saves the available data as
    incomplete; software Stop does not switch off hardware power. When saving
@@ -40,6 +45,30 @@ next run. **Main setup** or **Esc** returns to the initial screen while idle.
 Wait for the run to finish stopping and saving before navigating away.
 Results and the interactive HTML report save automatically; all detector
 details are also available directly on the tray screen.
+
+For watching startup, choose **Live noise viewer** from setup or open
+`array_rig/run_array_live_viewer.cmd`. Choose the source, box side and loaded
+slots; confirm the fixture is ready and press **Start viewing**. Click a slot
+to inspect its rolling waveform, baseline, slope and clipping. The viewer
+marks when the same settling rule would begin a 60-second recording and
+continues until Stop. It creates no saved measurements or yield history.
+Stop before returning to the tray check. Use Generated demo for a preview
+without touching hardware. Revision 2026-11-16.2 was checked on actual top
+slot 1-1; broader tray qualification remains pending. If hardware READY is
+inactive, the error now distinguishes present cards from missing cards and
+shows the readback byte. This is separate from waveform settling.
+
+From revision 2026-11-16.3, two consecutive actual attempts with both cards
+detected but hardware READY inactive show **Check the rig batteries**. The
+tray check and live viewer share this count while the app is open. Check both
+battery voltages; press physical STOP, turn main power OFF and disconnect both
+packs before charging or replacing them. Recharge both packs using the approved
+procedure or fit charged replacements, then restore DAQ/cooling, main power and
+physical RUN. This is troubleshooting guidance: the app does not measure battery
+voltage or prove that the RUN latch is unlatched. Acknowledging the popup keeps it
+closed for that failure streak, including refreshes and tray/live navigation in
+the same tab. A completed actual attempt without that readiness fault resets the
+count; demo attempts and saved reports do not count. READY checks remain enforced.
 
 For the same parts, use **Retest parts**. Leave **All detectors in the same
 slots** selected to repeat the previous run's loaded detectors and tests,
@@ -67,7 +96,7 @@ noise recordings. If noise remains incomplete, use **Retry noise**; after
 reopening the app, use **Recover interrupted batch** for the latest eligible
 saved run. Confirm the same detectors, wiring and alignment are still in
 place and fixture power has stayed on. A saved-run retry checks adaptive
-noise settling and records a fresh 100-second capture. If parts moved or
+noise settling and records a fresh 60-second capture. If parts moved or
 power was cycled, use Retest parts for linked new measurements instead.
 The previous data remain saved separately.
 

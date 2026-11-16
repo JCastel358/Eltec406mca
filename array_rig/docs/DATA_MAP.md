@@ -2,6 +2,24 @@
 
 ## M25/HUB tray checks (2026-11-04)
 
+Updated 2026-11-16: new runs use timing policy
+`mod50_dc_adaptive5to90_noise_baseline5to90_capture60_v4` and 60 s noise.
+Noise `settling` / `stability_observation` use
+`mod50_noise_centered_variation_trend_80percent_5to90_v2` in revision 2026-11-16.2
+(earlier 2026-11-16.1 used `mod50_noise_baseline_zero_clip_drift_80percent_5to90_v1`), saving thresholds,
+per-slot states/means/slopes/clipping, the 80% trigger and any 90 s fallback.
+Unready-at-start and never-ready-during-record slots retain review flags.
+All physical scans, including unready channels, remain in the raw files.
+Historical timing policies keep their original 100 s interpretation and
+recovery support. Live viewer waveforms/readiness are bounded in memory;
+they do not create report files, part attempts or slot-history events.
+The v2 policy adds `first_ready_s`, the five-second `center_v`, per-slot
+`latest_window_mean_v`, `trend_threshold_v_per_s`, `trend_significant` and
+`trend_consistent`. The viewer baseline is the window-center estimate, not
+the latest individual one-second mean. One-off 2026-11-16 bench evidence
+is under `output/array_rig_validation/2026-11-16_noise_readiness/`; its raw
+converter samples and replay results are diagnostics, not part/yield results.
+
 Updated 2026-11-12: setup assumes one tray per batch (`tray=1` for new
 browser runs) and saves `box_side` (`top` or `bottom`) in the summary and
 raw metadata. Summary rows and CSV exports include `detector_position`:

@@ -23,15 +23,16 @@ import mod50_hardware as hw
 from mod50_positions import detector_position, normalize_box_side
 import mod50_legacy_noise as legacy_meter
 from mod50_history import History
-from mod50_settling import SettlingMonitor, NoiseWarmup, NOISE_WARMUP_SECONDS, MAX_SECONDS as SETTLING_MAX_SECONDS
+from mod50_settling import SettlingMonitor, NoiseSettlingMonitor, MAX_SECONDS as SETTLING_MAX_SECONDS
 from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
 DC_SECONDS = 10.0
-NOISE_SECONDS = 100.0
+NOISE_SECONDS = 60.0
 LEGACY_TIMING_POLICY = "mod50_connect90_dc10_route90_noise100_v1"
 ADAPTIVE_TIMING_POLICY = "mod50_80percent_adaptive5to90_fallback_dc10_noise100_v2"
-TIMING_POLICY = "mod50_dc_adaptive5to90_noise_fixed90_capture100_v3"
-SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, ADAPTIVE_TIMING_POLICY, TIMING_POLICY)
+FIXED_NOISE_TIMING_POLICY = "mod50_dc_adaptive5to90_noise_fixed90_capture100_v3"
+TIMING_POLICY = "mod50_dc_adaptive5to90_noise_baseline5to90_capture60_v4"
+SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, ADAPTIVE_TIMING_POLICY, FIXED_NOISE_TIMING_POLICY, TIMING_POLICY)
 SCHEMA = "ELTEC_MOD50_TRAY_CHECK_1"
 PRESENCE_POLICY = "two_separated_one_second_dc_windows_within_one_adc_code_v1"
 NO_SIGNAL_NOTE = "No detector sensed: the slot may be empty, or the detector may be dead or disconnected."
@@ -254,8 +255,10 @@ def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
                 continue
             row["flags"].extend(mode.upper() + ": " + flag for flag in measured["flags"])
             observation = record.get("stability_observation", {})
-            if mode == "dc" and len(observation.get("trace", [])) >= 5 and row["position"] in observation.get("never_settled_positions", []):
+            if len(observation.get("trace", [])) >= 5 and row["position"] in observation.get("never_settled_positions", []):
                 row["flags"].append(mode.upper() + ": Signal never settled during this test; check/retest part or slot")
+            if mode == "noise" and row["position"] in record.get("settling", {}).get("unstable_positions", []):
+                row["flags"].append("NOISE: Baseline not ready when simultaneous recording started; review settling trace")
             if mode == "dc":
                 row["presence"] = measured.get("presence", "UNKNOWN")
                 row["dc_v"] = measured["mean_v"]
@@ -294,6 +297,8 @@ def interactive_report(result):
     html = html.replace('href="styles.css"', 'data-embedded-styles="true"')
     html = html.replace('src="assets/eltec-logo-transparent.webp"', 'src="data:image/webp;base64,' + logo + '"')
     html = html.replace('</head>', '<style>' + css + '</style></head>')
+    # Live troubleshooting prompts do not belong in saved/offline reports.
+    html = html.replace('<script src="battery_warning.js"></script>', '')
     html = html.replace('<script src="app.js"></script>', '<script>window.ELTEC_REPORT = ' + payload + ';</script><script>' + js + '</script>')
     return html
 
@@ -402,11 +407,16 @@ class TrayCheck(threading.Thread):
                          if r["presence"] == "NO_SIGNAL"}
             positions = [p for p in positions if p not in no_signal]
         noise_warmup = record["mode"] == "noise"
-        wait_seconds = NOISE_WARMUP_SECONDS if noise_warmup else SETTLING_MAX_SECONDS
-        monitor = (NoiseWarmup(rate, positions, wait_seconds) if noise_warmup else
+        wait_seconds = SETTLING_MAX_SECONDS
+        monitor = (NoiseSettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), positions, wait_seconds) if noise_warmup else
                    SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), positions, "dc"))
         if self._settled_path == path and rig.settling_remaining_s == 0:
-            record["settling"] = dict(monitor.evidence(), complete=True, waited_s=0., reused_unchanged_path=True)
+            # Preserve the original readiness evidence, including any channels
+            # that were unready at the simultaneous start, across a delivery retry.
+            previous = next((r["settling"] for r in reversed(self.records[:-1])
+                             if r["mode"] == record["mode"] and r.get("settling", {}).get("complete")), monitor.evidence())
+            record["settling"] = dict(copy.deepcopy(previous), complete=True, waited_s=0., reused_unchanged_path=True)
+            record["settling"].pop("raw_file", None)
             return monitor
         indexes = [hw.MAPPING[hw.POSITIONS.index(p)] for p in positions]
         last_data, started, scans = time.monotonic(), time.monotonic(), 0
@@ -414,8 +424,8 @@ class TrayCheck(threading.Thread):
         while scans < round(wait_seconds * rate):
             self.check_cancelled()
             rig._verify(rig.commanded)
-            self.update(phase="Warming up NOISE" if noise_warmup else "Settling DC",
-                        message=(f"Noise warm-up · {scans/rate:.1f} / {wait_seconds:g} seconds" if noise_warmup else
+            self.update(phase="Settling NOISE" if noise_warmup else "Settling DC",
+                        message=(f"Watching noise baseline · {scans/rate:.1f} s · {record['settling'].get('stable_count', 0)}/{len(positions)} ready · starts at 80%" if noise_warmup else
                                  f"Watching DC stability · {scans/rate:.1f} s · {record['settling'].get('stable_count', 0)}/{len(positions)} stable · starts at 80%"),
                         progress=base + span * min(1, scans / (wait_seconds * rate)))
             self.check_cancelled()
@@ -427,11 +437,11 @@ class TrayCheck(threading.Thread):
             if raw is not None:
                 hw.convert_chunk(raw, record["range_code"])
                 raw = np.array(raw[:round(wait_seconds * rate) - scans], dtype=np.uint16, copy=True)
-                volts, _ = hw.convert_chunk(raw, record["range_code"])
+                volts, clipping = hw.convert_chunk(raw, record["range_code"])
                 raw_chunks.append(raw)
                 scans += len(raw)
                 last_data = time.monotonic()
-                stable = monitor.feed(volts[indexes])
+                stable = (monitor.feed(volts[indexes], clipping[indexes]) if noise_warmup else monitor.feed(volts[indexes]))
                 record["settling"] = monitor.evidence()
                 record["settling"]["observed_samples"] = scans
                 record["status_samples"].append({"samples": 0, "settling_samples": scans,
@@ -454,7 +464,7 @@ class TrayCheck(threading.Thread):
                 record["failure_kind"] = "delivery_timeout"
                 raise hw.daq.StreamTimeoutError("Settling sample delivery exceeded its time limit")
         record["settling"].update(complete=True, deadline_fallback=True,
-            warning="Fewer than 80% settled within 90 seconds. All channels recorded together using the fixed-wait fallback.")
+            warning=f"Fewer than 80% settled within {wait_seconds:g} seconds. All channels recorded together using the fixed-wait fallback.")
         self.check_cancelled()
         rig._verify(rig.commanded)
         rig.settle_until = rig._clock()
@@ -472,7 +482,7 @@ class TrayCheck(threading.Thread):
         raw_chunks, settling_chunks, count, rate = [], [], 0, hw.SAMPLE_HZ
         monitor = None
         expected_state, expected_config, clean_shutdown, verified_after = None, None, False, False
-        target = round(seconds * rate)
+        target = int(np.ceil(seconds * rate - 1e-9)) if mode == "noise" else round(seconds * rate)
         modes = ("noise",) if self.resume_dc else self.selected_tests
         base = modes.index(mode) / len(modes)
         wait_span, capture_span = .25 / len(modes), .75 / len(modes)
@@ -494,13 +504,12 @@ class TrayCheck(threading.Thread):
             if not np.isfinite(granted) or granted <= 0 or abs(granted / hw.SAMPLE_HZ - 1) > .01:
                 raise hw.daq.StreamIntegrityError("DAQ sample clock differs by more than 1%")
             rate = granted
-            target = round(seconds * rate)
+            target = int(np.ceil(seconds * rate - 1e-9)) if mode == "noise" else round(seconds * rate)
             settled = self.wait_settled(rig, record, base, wait_span, rate, settling_chunks)
-            # Only DC is judged for persistent drift. Noise has a fixed warm-up;
-            # normal fluctuations in its mean or RMS are not a detector fault.
-            # Every fresh recording independently resets the software meter.
-            if mode == "dc":
-                monitor = SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), settled.positions, mode)
+            # Track baseline recovery throughout recording too; stochastic RMS
+            # variation is never used as a noise readiness/acceptance criterion.
+            monitor = (NoiseSettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), settled.positions)
+                       if mode == "noise" else SettlingMonitor(rate, hw.daq.lsb_volts(record["range_code"]), settled.positions, mode))
             record["capture_started_at"] = dt.datetime.now().astimezone().isoformat()
             last_data = time.monotonic()
             while count < target:
@@ -515,9 +524,13 @@ class TrayCheck(threading.Thread):
                     hw.convert_chunk(raw, record["range_code"])
                     retained = np.array(raw[:target - count], dtype=np.uint16, copy=True)
                     raw_chunks.append(retained)
-                    values, _ = hw.convert_chunk(retained, record["range_code"])
+                    values, clipping = hw.convert_chunk(retained, record["range_code"])
                     if monitor is not None:
-                        monitor.feed(values[[hw.MAPPING[hw.POSITIONS.index(p)] for p in monitor.positions]], stop_when_ready=False)
+                        indexes = [hw.MAPPING[hw.POSITIONS.index(p)] for p in monitor.positions]
+                        if mode == "noise":
+                            monitor.feed(values[indexes], clipping[indexes], stop_when_ready=False)
+                        else:
+                            monitor.feed(values[indexes], stop_when_ready=False)
                     count += len(retained)
                     last_data = time.monotonic()
                 status = rig._verify(rig.commanded)
@@ -726,6 +739,7 @@ class TrayCheck(threading.Thread):
                 "installed_positions": list(self.positions), "channel_map": hw.CHANNEL_MAP,
                 "daq": asdict(info) if info else None, "records": self.records, "errors": errors,
                 "shutdown_status": getattr(rig, "shutdown_status", None),
+                "power_readiness_failed": bool(getattr(rig, "power_readiness_failed", False)),
                 "control_events": getattr(rig, "control_events", []),
                 "restart_required": bool(getattr(getattr(rig, "device", None), "_shutdown_failed", False)),
                 "noise_acceptance_limit": None, "calibration_status": "PENDING",

@@ -1,5 +1,56 @@
 # Changelog — Eltec Test Rig
 
+## Repeated M25/HUB readiness failures prompt a battery check (2026-11-16)
+
+- In revision 2026-11-16.3, show a dismissible battery-voltage and recharge/replace
+  popup after two consecutive actual attempts with cards present but READY
+  inactive. Share the count across the tray check and live viewer; count each
+  completed attempt once, exclude demos/saved reports and reset after another
+  actual outcome. Keep the dismissal through polling and same-tab refreshes.
+- Preserve the observed readiness fault in the attempt summary. The prompt
+  suggests a possible cause; it does not claim to measure battery voltage or
+  change hardware checks, acquisition, automatic retries or acceptance limits.
+- Bench context: the operator reported both cards' RAW supplies collapsing after
+  RUN and reliable startup after replacing nearly discharged batteries with
+  charged packs. This observation does not establish the earlier fuse's cause.
+
+## M25/HUB noise readiness corrected against actual hardware (2026-11-16)
+
+- On actual top slot 1-1, reproduce centered, unclipped noise that never met
+  v1 readiness over 170 s. Replace raw-RMS/sqrt(samples) and tight span gates
+  with the five-second center and a trend test using variation between window
+  means. Retain a separate consistent-direction gate for ramps/steps, clipping,
+  headroom, 80% simultaneous start, 90 s fallback and 60 s recording.
+- Version the settling policy as v2 and the app as 2026-11-16.2. Saved replay
+  and a fresh 75 s actual hardware run both recognized readiness at 5 s;
+  acquisition/cleanup completed without errors. This validates the observed
+  single-slot behavior only. Noise acceptance remains uncommissioned.
+- Preserve the first-ready boundary even if readiness later changes within
+  one delivered block. Show the five-second baseline and trend allowance.
+- Distinguish card presence from inactive hardware READY, including the
+  readback byte. Make repeated cleanup after failed connection idempotent,
+  avoiding false shutdown/restart errors through an already closed handle.
+
+## M25/HUB row selection, baseline settling and live viewer (2026-11-16)
+
+- Add all/none/mixed row checkboxes to Loaded slots, including bottom box
+  numbering. Keep only individual slots in acquisition selections.
+- Replace fixed 90 s noise warm-up with five one-second near-zero, unclipped
+  baseline/drift windows. Start all channels together at 80% ready, with a
+  90 s fallback and per-slot review evidence. Noise RMS need not stabilize.
+  Provisional settings: ±10 mV mean, 1 mV baseline span with bounded noise
+  allowance, ±0.25 mV/s slope. No noise acceptance limits are enabled.
+- Reduce fresh noise recordings to 60 s; reset the legacy estimate at the
+  recording boundary and retain historical 100 s report/recovery support.
+- Add a continuous Live noise viewer from setup and
+  `array_rig/run_array_live_viewer.cmd`, using the same settling monitor.
+  Show waveforms, readiness states, clipping, baseline, slope and the example
+  recording timeline. Viewer sessions do not save batch results or yield.
+  Shared ownership prevents simultaneous viewer/check acquisition.
+- Version the app as 2026-11-16.1 and the acquisition timing as v4. Software
+  regression/simulation checks cover signal states, timing, interruptions,
+  recovery, lifecycle and browser interactions. Bench validation is pending.
+
 Newest first. One dated `##` entry per change that alters behaviour, a
 threshold, the firmware, the wiring or the documentation structure — added in
 the same commit as the change. This file is **history**: it records what

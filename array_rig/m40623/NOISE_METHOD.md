@@ -15,12 +15,27 @@ stored held trace. Green shading at 10.0–37.9 mV is a labelled historical
 reference only; reports retain both RMS values, the raw waveform excerpt and
 the full method explanation. No display-derived value changes acceptance.
 
-From application revision 2026-11-12.2, noise has a fixed 90-second warm-up
-before the meter resets and capture begins. The earlier five-window mean/RMS
-stability gate and noise-only “never settled” flag no longer apply. Warm-up
-counts verified DAQ sample time, saves startup samples separately, and retains
-the existing transport, clipping and hardware checks. Offset settling is
-unchanged. The 90-second duration is user-authorized and still provisional.
+From application revision 2026-11-16.1, the fixed 90-second noise warm-up is
+replaced by a baseline-only readiness check over five one-second windows.
+It checks near-zero means, clipping/headroom, baseline spread and slope;
+stochastic RMS amplitude need not stabilize. All channels start together at
+80% readiness, or at the 90-second fallback with warnings. The thresholds
+are documented in the current README and calibration record. Verified DAQ
+sample time sets the wait; startup samples remain separate from the fresh
+60-second recording. The meter resets at capture start. Unready slots retain
+review flags; acceptance limits and DC settling remain unchanged. The live
+viewer uses this identical monitor without creating noise results.
+
+Revision 2026-11-16.2 corrects a bench-observed false drift indication on top
+1-1. Low-frequency noise produced varying one-second means; raw RMS divided
+by sqrt(1000) underestimated that variation, and the tight mean-span/half-window
+gates never became ready in a 170 s capture. Readiness now checks the overall
+five-second center and trends relative to variation between the window means,
+with a separate consistent-direction rule for ramps/steps. Center, raw
+clipping/headroom, 80% simultaneous start, 90 s fallback and 60 s capture remain.
+The first ready sample boundary is retained even if a later window in the
+same delivered block becomes unready. See the calibration record for thresholds
+and actual single-slot evidence; these scheduling settings remain provisional.
 
 The full-rate signed DAQ waveform passes through:
 
@@ -37,7 +52,8 @@ The full-rate signed DAQ waveform passes through:
 4. A zero-initialized, single-pole exponential smoother with tau = 10 s:
    `s[n] = s[n-1] + (1-exp(-1/(fs*10))) * (abs(filtered[n])*10 - s[n-1])`.
 5. An ideal peak hold: `h[n] = max(h[n-1], s[n])`, starting at zero and
-   retaining the maximum since reset for this recording (up to 100 s).
+   retaining the maximum since reset for this recording (60 s in new runs;
+   up to 100 s in earlier runs).
 
 The drawing's **100-second peak hold** is treated as a retention interval,
 not as a measured decay time constant. No automatic discharge, rolling
@@ -50,7 +66,8 @@ must be assessed during paired fixture comparison.
 
 The final held reading is `legacy_equivalent_mv`. The first sample boundary
 at or after 60 s supplies `legacy_equivalent_60s_mv`, allowing comparison
-at a consistent elapsed time; waiting 100 s may capture a later noise burst.
+at a consistent elapsed time. New runs end at that boundary, so the two
+readings coincide; historical 100 s recordings may include later noise bursts.
 The actual DAQ sample rate sets timing. The final smoother value, time of
 the held peak, readout times and reduced smoothed/held traces are retained
 in JSON. All computations precede display reduction. CSV includes the two

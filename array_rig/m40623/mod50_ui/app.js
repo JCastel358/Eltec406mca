@@ -37,7 +37,7 @@
   const chosenTests = id => $(id).value === 'both' ? ['dc', 'noise'] : [$(id).value];
   const includesTest = (row, mode) => row.test_status?.[mode] !== 'NOT_TAKEN' &&
     (state.result?.selected_tests || state.run_metadata?.selected_tests || ['dc', 'noise']).includes(mode);
-  const loadedPositions = () => [...$('populationChoices').querySelectorAll('input:checked')].map(el => el.value);
+  const loadedPositions = () => [...$('populationChoices').querySelectorAll('.population-slot input:checked')].map(el => el.value);
   // Keys stay in wiring order; labels follow the selected physical box side.
   const boxSide = () => (state.result || state.run_metadata)?.box_side ||
     (state.result || state.run_metadata ? 'top' : $('boxSideInput').value);
@@ -451,7 +451,7 @@
     $('recoveryOperator').textContent = saved.operator;
     $('recoveryDate').textContent = recoveryDate(saved.created_at);
     $('recoverySource').textContent = saved.simulate ? 'SIMULATION · generated data' : 'ACTUAL DETECTORS · physical DAQ';
-    $('recoveryTiming').textContent = 'Offset saved · 90 s noise warm-up + 100 s recording.';
+    $('recoveryTiming').textContent = 'Offset saved · signal-based noise settling (5–90 s) + 60 s recording.';
     const stale = !noiseRecovery || noiseRecovery.id !== saved.id;
     const issue = recoveryError || (stale ? 'This recovery is no longer available. Return to Main setup to refresh the available check.' : '') ||
       (state.restart_required ? 'Restart the app after resolving the DAQ shutdown error before retrying.' : '') ||
@@ -479,7 +479,8 @@
       else if (result?.data_complete && !busy && !(result.errors || []).length && !state.restart_required) $('statusText').textContent = 'Results saved. Select a detector.';
     }
     const tests = result?.selected_tests || state.run_metadata?.selected_tests || chosenTests('testChoice');
-    $('timeNote').textContent = reportMode ? 'Saved report' : simulation ? 'Demo · accelerated waiting' : `${tests.includes('dc') ? '10 s offset + settling' : ''}${tests.length === 2 ? ' · ' : ''}${tests.includes('noise') ? '90 s warm-up + 100 s noise' : ''}`;
+    $('timeNote').textContent = reportMode ? 'Saved report' : simulation ? 'Demo · accelerated waiting' : `${tests.includes('dc') ? '10 s offset + settling' : ''}${tests.length === 2 ? ' · ' : ''}${tests.includes('noise') ? '5–90 s settling + 60 s noise' : ''}`;
+    $('liveViewerButton').disabled = busy || reportMode || !connected;
     $('runProgress').value = finite(state.progress) ? Math.max(0, Math.min(1, state.progress)) : 0;
     const runState = $('runState');
     runState.dataset.state = !connected ? 'fail' : busy ? 'testing' : result ? result.data_complete ? 'review' : 'fail' : 'ready';
@@ -488,8 +489,16 @@
     $('testOptions').hidden = reportMode || Boolean(result);
     for (const el of $('populationControl').querySelectorAll('input,button')) el.disabled = busy;
     $('populationSummary').textContent = `Loaded slots: ${loadedPositions().length} of 50`;
-    for (const label of $('populationChoices').children) {
+    for (const label of $('populationChoices').querySelectorAll('.population-slot')) {
       label.querySelector('span').textContent = positionLabel(label.querySelector('input').value);
+    }
+    for (const row of $('populationChoices').children) {
+      const checkbox = row.querySelector('.population-row-toggle input');
+      const slots = [...row.querySelectorAll('.population-slot input')];
+      const checked = slots.filter(input => input.checked).length;
+      checkbox.checked = checked === slots.length;
+      checkbox.indeterminate = checked > 0 && checked < slots.length;
+      row.querySelector('.population-row-toggle span').textContent = `Row ${positionLabel(`${row.dataset.row}-1`).split('-')[0]}`;
     }
     $('testSelectionNote').textContent = tests.includes('dc') ? (tests.includes('noise') ? 'Offset and noise.' : 'Offset only.') : 'Select only loaded slots.';
     $('retestButton').hidden = reportMode || !result?.current_parts?.length;
@@ -524,6 +533,7 @@
     paintTray();
     paintDetail();
     paintRecovery();
+    if (!reportMode) window.EltecBatteryWarning?.update(state.battery_warning, {busy, enabled: connected && !simulation});
   }
 
   function paintSetupNote() {
@@ -589,7 +599,7 @@
         }
         if (finished && ['startButton', 'stopButton'].includes(document.activeElement?.id)) $('trayTitle').focus({preventScroll: true});
       } else if (next.run_id && next.run_id === dismissedRun) {
-        state = {...blankState(), restart_required: next.restart_required};
+        state = {...blankState(), restart_required: next.restart_required, battery_warning: next.battery_warning};
       } else state = next;
       if (!state.busy) {stopQueued = false; stopPending = false; stopError = '';}
       if (state.busy || state.result) actionError = '';
@@ -832,8 +842,13 @@
   $('boxSideInput').addEventListener('change', paint);
   $('retestConfirm').addEventListener('change', () => {$('retestError').textContent = '';});
   for (const id of ['retestDialog', 'slotDialog']) $(id).addEventListener('cancel', event => {if (locked()) event.preventDefault();});
-  $('loadAll').addEventListener('click', () => {for (const el of $('populationChoices').querySelectorAll('input')) el.checked = true; paint();});
-  $('loadNone').addEventListener('click', () => {for (const el of $('populationChoices').querySelectorAll('input')) el.checked = false; paint();});
+  function selectPopulation(checked) {
+    if (locked()) return;
+    for (const el of $('populationChoices').querySelectorAll('.population-slot input:not(:disabled)')) el.checked = checked;
+    paint();
+  }
+  $('loadAll').addEventListener('click', () => selectPopulation(true));
+  $('loadNone').addEventListener('click', () => selectPopulation(false));
   $('recoveryCancel').addEventListener('click', mainSetup);
   $('recoveryConfirm').addEventListener('change', paintRecovery);
   $('recoveryForm').addEventListener('submit', event => {event.preventDefault(); retryNoise();});
@@ -878,13 +893,31 @@
       navigator.sendBeacon('api/close', new Blob(['{}'], {type: 'application/json'}));
     }
   });
+  $('liveViewerButton').addEventListener('click', () => {
+    if (locked() || reportMode) return;
+    try {sessionStorage.setItem('eltecLiveContext', JSON.stringify({simulate:$('sourceInput').value==='demo',box_side:$('boxSideInput').value,installed_positions:loadedPositions()}));} catch (_) {}
+    window.location.href='live.html';
+  });
   buildTray();
-  for (const position of positionNames) {
-    const label = document.createElement('label'), checkbox = document.createElement('input');
-    checkbox.type = 'checkbox'; checkbox.value = position; checkbox.checked = true;
-    checkbox.addEventListener('change', paint);
-    const text = document.createElement('span'); text.textContent = position;
-    label.append(checkbox, text); $('populationChoices').append(label);
+  for (let rowNumber = 1; rowNumber <= 5; rowNumber++) {
+    const row = document.createElement('div'); row.className = 'population-row'; row.dataset.row = rowNumber;
+    const rowLabel = document.createElement('label'); rowLabel.className = 'population-row-toggle';
+    const rowCheckbox = document.createElement('input'); rowCheckbox.type = 'checkbox'; rowCheckbox.checked = true;
+    const rowText = document.createElement('span'); rowText.textContent = `Row ${rowNumber}`;
+    rowLabel.append(rowCheckbox, rowText); row.append(rowLabel);
+    rowCheckbox.addEventListener('change', () => {
+      if (!locked()) for (const input of row.querySelectorAll('.population-slot input:not(:disabled)')) input.checked = rowCheckbox.checked;
+      paint();
+    });
+    for (const position of positionNames.filter(position => position.startsWith(`${rowNumber}-`))) {
+      const label = document.createElement('label'), checkbox = document.createElement('input');
+      label.className = 'population-slot';
+      checkbox.type = 'checkbox'; checkbox.value = position; checkbox.checked = true;
+      checkbox.addEventListener('change', paint);
+      const text = document.createElement('span'); text.textContent = position;
+      label.append(checkbox, text); row.append(label);
+    }
+    $('populationChoices').append(row);
   }
   if (reportMode) {
     const result = window.ELTEC_REPORT;

@@ -72,6 +72,35 @@ class HardwareContract(unittest.TestCase):
                 self.rig._verify((False, False))
         self.device.status_override = None
 
+    def test_present_cards_without_ready_have_specific_status_message(self):
+        self.device.status_override = 0x24
+        try:
+            with self.assertRaisesRegex(hw.daq.StreamIntegrityError,
+                    r"UPPER card present but READY inactive; LOWER card present but READY inactive \(status 0x24\)"):
+                self.rig._verify((False, False))
+            self.assertTrue(self.rig.power_readiness_failed)
+        finally:
+            self.device.status_override = None
+
+    def test_battery_guidance_only_marks_present_but_unready_cards(self):
+        try:
+            for status, expected in ((0x04, True), (0x20, True), (0x24, True),
+                                     (0x44, False), (0xff, False), (0x01, False), (0x08, False)):
+                with self.subTest(status=status):
+                    self.rig.power_readiness_failed = False
+                    self.device.status_override = status
+                    with self.assertRaises(hw.daq.StreamIntegrityError):
+                        self.rig._verify((False, False))
+                    self.assertIs(self.rig.power_readiness_failed, expected)
+            self.device.status_override = 0x24
+            with self.assertRaises(hw.daq.StreamIntegrityError):
+                self.rig._verify((False, False))
+            self.device.status_override = None
+            self.rig._verify((False, False))
+            self.assertTrue(self.rig.power_readiness_failed, "Retain the failure even if cleanup reads healthy")
+        finally:
+            self.device.status_override = None
+
     def test_conversion_zero_discarded_and_clipped_retained_slots_detected(self):
         raw = np.full((10, 57, 4), 32768, dtype=np.uint16)
         raw[:, :, 0] = 0
@@ -130,15 +159,15 @@ class TraySequence(unittest.TestCase):
         result = worker.result
         self.assertTrue(result["data_complete"], result["errors"])
         self.assertEqual(len(result["rows"]), 50)
-        self.assertEqual([r["samples"] for r in result["records"]], [10000, 100000])
+        self.assertEqual([r["samples"] for r in result["records"]], [10000, 60000])
         self.assertTrue(all(r["settling"]["complete"] for r in result["records"]))
         self.assertTrue(5 <= result["records"][0]["settling"]["waited_s"] < 90)
-        self.assertEqual(result["records"][1]["settling"]["waited_s"], 90.)
+        self.assertTrue(5 <= result["records"][1]["settling"]["waited_s"] < 90)
         self.assertEqual(self.rig.device.controls, (False, False))
         self.assertTrue(all(r["result"] != "PASS" for r in result["rows"]))
         self.assertTrue(all(.59 < r["dc_v"] < .86 for r in result["rows"]))
         self.assertIsNone(result["noise_acceptance_limit"])
-        for mode, n in (("dc", 10000), ("noise", 100000)):
+        for mode, n in (("dc", 10000), ("noise", 60000)):
             with np.load(worker.directory / f"{mode}_raw.npz", allow_pickle=False) as data:
                 self.assertEqual(data["converter_counts"].shape, (n, 57, 4))
                 meta = json.loads(str(data["metadata_json"].item()))
@@ -155,6 +184,24 @@ class TraySequence(unittest.TestCase):
             self.assertEqual(row["legacy_equivalent_status"], "UNVALIDATED_ESTIMATE")
         self.assertTrue((worker.directory / "report.html").exists())
         self.assertTrue((worker.directory / "results.csv").exists())
+
+    def test_failed_ready_connection_saves_battery_guidance_evidence(self):
+        def factory(**kwargs):
+            device = hw.DemoDaq(real_time=False)
+            device.status_override = 0x24
+            self.rig = hw.Mod50Rig(device=device, **kwargs)
+            return self.rig
+        worker = self.worker(selected_tests=["noise"], installed_positions=["1-1"])
+        worker.rig_factory = factory
+        worker.run()
+        self.assertTrue(worker.result["power_readiness_failed"])
+        self.assertFalse(worker.result["data_complete"])
+        self.assertFalse(worker.result["restart_required"])
+        self.assertEqual(worker.result["records"], [])
+        saved = json.loads((worker.directory / "summary.json").read_text(encoding="utf-8"))
+        self.assertTrue(saved["power_readiness_failed"])
+        report = (worker.directory / "report.html").read_text(encoding="utf-8")
+        self.assertNotIn('<script src="battery_warning.js">', report)
 
     def test_subset_preserves_scan_and_does_not_infer_empty(self):
         worker = self.worker(installed_positions=("1-1", "3-7", "5-10"))
@@ -294,7 +341,7 @@ class TraySequence(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual([r["mode"] for r in result["records"]], ["dc", "noise", "noise"])
         self.assertEqual([r["valid_data"] for r in result["records"]], [True, False, True])
-        self.assertEqual(result["records"][1]["settling"]["waited_s"], 90.)
+        self.assertTrue(5 <= result["records"][1]["settling"]["waited_s"] < 90)
         self.assertEqual(result["records"][2]["settling"]["waited_s"], 0)
         self.assertEqual(self.rig.device.control_history.count((True, True)), 1)
         self.assertEqual(result["recovery"]["recovered_modes"], ["noise"])

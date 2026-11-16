@@ -32,6 +32,7 @@
           <label class="field source-field"><span>Data source</span><select id="sourceInput"><option value="real">Actual detectors</option><option value="demo">Generated demo</option></select></label>
           <button class="primary full-field continue-button" id="setupContinue" type="submit">Continue <span aria-hidden="true">→</span><kbd>Enter</kbd></button>
           <p class="form-note full-field">Results save automatically.</p>
+          <button class="secondary full-field" id="liveViewerButton" type="button">Live noise viewer →</button>
         </form>
       </div>
       <nav class="workflow-steps" aria-label="Workflow"><span class="current">1 · Set up</span><i></i><span>2 · Power check</span><i></i><span>3 · Test tray</span></nav>
@@ -60,7 +61,7 @@
         <p id="testSelectionNote">Select only loaded slots.</p>
       </div>
       <div class="progress-band" aria-label="Test progress">
-        <div class="progress-copy"><strong id="phaseText">Ready for your tray</strong><span id="timeNote">90 s warm-up + 100 s noise</span></div>
+        <div class="progress-copy"><strong id="phaseText">Ready for your tray</strong><span id="timeNote">Signal-based settling + 60 s noise</span></div>
         <progress id="runProgress" max="1" value="0" aria-label="Check progress"></progress>
         <div class="progress-bottom"><p id="statusText" role="status">Press Start when the fixture is ready.</p><div class="sequence" aria-label="Measurement sequence"><span>Settle</span><i>→</i><span>Offset</span><i>→</i><span>Settle</span><i>→</i><span>Noise</span><i>→</i><span>Save</span></div></div>
       </div>
@@ -122,6 +123,7 @@
     <div class="workflow-actions"><button class="secondary" id="slotCancel" type="button">Back</button><button class="primary" id="slotContinue" type="button">Continue with these choices</button></div>
   </dialog>
   <footer><span>Eltec Instruments · M25/HUB</span><span id="footerSource">Actual detectors · data saved automatically</span></footer>
+  <script src="battery_warning.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

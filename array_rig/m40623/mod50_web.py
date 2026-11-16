@@ -28,16 +28,21 @@ UI_DIR = Path(__file__).with_name("mod50_ui")
 
 
 class Dashboard:
-    def __init__(self, *, simulate=False, output_root=None, worker_factory=TrayCheck):
+    def __init__(self, *, simulate=False, output_root=None, worker_factory=TrayCheck, live_factory=None):
         self.simulate = simulate
         self.output_root = output_root
         self.worker_factory = worker_factory
         self.worker = None
+        self.live_worker = None
+        self.live_factory = live_factory
         self.lock = threading.RLock()
         self.last_seen = time.monotonic()
         self.closed_at = None
         self.closing = False
         self.restart_required = False
+        self._battery_failures = 0
+        self._battery_warning = None
+        self._battery_seen = {"tray": None, "live": None}
         self.run_metadata = None
         self.run_id = None
         self.noise_recovery = None
@@ -99,17 +104,26 @@ class Dashboard:
             # A refresh also emits pagehide. Let a returning page cancel the
             # pending exit during the short close grace period.
             self.closed_at = None
+            self._check_live_shutdown()
             worker = self.worker
+            if self.live_worker is not None and self.live_worker.is_alive():
+                return {"busy": True, "phase": "Live viewer running", "message": "Stop the live viewer before starting a tray check.",
+                        "progress": 0., "simulate": self.live_worker.simulate, "rows": [], "result": None,
+                        "report_url": None, "restart_required": self.restart_required,
+                        "battery_warning": self._battery_warning,
+                        "run_metadata": self.run_metadata, "run_id": self.run_id, "noise_recovery": None}
             if worker is None:
                 if self.saved_result:
                     result = self.saved_result
                     return {"busy": False, "phase": "Saved check", "message": "Last saved tray. Retest a part or start the next batch.",
                             "progress": 1., "simulate": self.simulate, "report_url": None, "result": result,
-                            "rows": result["rows"], "restart_required": bool(result.get("restart_required")),
+                            "rows": result["rows"], "restart_required": self.restart_required,
+                            "battery_warning": self._battery_warning,
                             "run_metadata": self.run_metadata, "run_id": self.run_id, "noise_recovery": self.noise_recovery}
                 return {"busy": False, "phase": "Ready", "message": "Load the tray, then press Start.",
                         "progress": 0., "simulate": self.simulate, "report_url": None,
-                        "result": None, "rows": [], "restart_required": False,
+                        "result": None, "rows": [], "restart_required": self.restart_required,
+                        "battery_warning": self._battery_warning,
                         "run_metadata": None, "run_id": None, "noise_recovery": self.noise_recovery}
             state = worker.status()
             busy = worker.is_alive()
@@ -125,14 +139,90 @@ class Dashboard:
                     "rows": result["rows"] if result else state.get("rows", []),
                     "report_url": "report/report.html" if report_exists and not busy else None,
                     "restart_required": self.restart_required,
+                    "battery_warning": self._battery_warning,
                     "run_metadata": dict(self.run_metadata) if self.run_metadata else None,
                     "run_id": self.run_id, "noise_recovery": None if busy else self.noise_recovery}
 
     def start(self, payload):
         return self._begin(payload)
 
+    def _check_live_shutdown(self):
+        if self.live_worker is not None and not self.live_worker.is_alive():
+            self.restart_required |= bool(self.live_worker.status().get("restart_required"))
+        self._update_battery_warning()
+
+    def _update_battery_warning(self):
+        """Count completed actual attempts, never status polls or saved runs."""
+        for source, worker in (("tray", self.worker), ("live", self.live_worker)):
+            if (worker is None or worker.is_alive() or not worker.finished.is_set()
+                    or worker.result is None or self._battery_seen[source] is worker):
+                continue
+            self._battery_seen[source] = worker
+            if worker.simulate:
+                continue
+            if worker.result.get("power_readiness_failed") is True:
+                self._battery_failures += 1
+                if self._battery_failures >= 2:
+                    # One identity per failure streak lets the browser dismiss
+                    # it across polling, refreshes and tray/live navigation.
+                    warning_id = (self._battery_warning or {}).get("id") or secrets.token_urlsafe(18)
+                    self._battery_warning = {"id": warning_id, "consecutive_failures": self._battery_failures}
+            else:
+                self._battery_failures = 0
+                self._battery_warning = None
+
+    def live_snapshot(self):
+        with self.lock:
+            self.last_seen = time.monotonic()
+            self.closed_at = None
+            self._check_live_shutdown()
+            state = self.live_worker.status() if self.live_worker else {}
+            return {**state, "busy": bool(self.live_worker and self.live_worker.is_alive()),
+                    "check_busy": bool(self.worker and self.worker.is_alive()),
+                    "simulate": self.live_worker.simulate if self.live_worker else self.simulate,
+                    "battery_warning": self._battery_warning,
+                    "restart_required": self.restart_required or bool(state.get("restart_required"))}
+
+    def start_live(self, payload):
+        with self.lock:
+            if self.closing or self.closed_at is not None:
+                raise ValueError("The app is closing. Open Eltec Array Rig again.")
+            if any(worker and worker.is_alive() for worker in (self.worker, self.live_worker)):
+                raise ValueError("Stop the current acquisition before starting the live viewer.")
+            self._check_live_shutdown()
+            if self.worker and self.worker.result:
+                self.restart_required |= bool(self.worker.result.get("restart_required"))
+            if self.restart_required:
+                raise ValueError("Close and restart this app after the driver shutdown error.")
+            if not isinstance(payload, dict) or type(payload.get("simulate")) is not bool:
+                raise ValueError("Select Actual detectors or Generated demo")
+            if not payload["simulate"] and payload.get("fixture_ready") is not True:
+                raise ValueError("Confirm the fixture is ready before viewing actual detectors.")
+            side = normalize_box_side(payload.get("box_side", "top"))
+            positions = hw.normalize_positions(payload.get("installed_positions", hw.POSITIONS))
+            suspect = {w["position"] for w in self.history(payload["simulate"]).warnings(side)}
+            positions = tuple(p for p in positions if p not in suspect)
+            if not positions:
+                raise ValueError("Select at least one loaded slot without a fixture warning.")
+            factory = self.live_factory
+            if factory is None:
+                from mod50_live import LiveNoiseViewer
+                factory = LiveNoiseViewer
+            worker = factory(simulate=payload["simulate"], installed_positions=positions, box_side=side)
+            worker.start()
+            self.live_worker = worker
+            self.last_seen = time.monotonic()
+
+    def stop_live(self):
+        with self.lock:
+            if self.live_worker is not None:
+                self.live_worker.stop()
+
     def _begin(self, payload, *, resume_dc=None, part_mapping=None, family_id=None):
         with self.lock:
+            if self.live_worker is not None and self.live_worker.is_alive():
+                raise ValueError("Stop the live viewer before starting a tray check.")
+            self._check_live_shutdown()
             if self.closing or self.closed_at is not None:
                 raise ValueError("The app is closing. Open Eltec Array Rig again.")
             if self.worker is not None and self.worker.is_alive():
@@ -254,6 +344,7 @@ class Dashboard:
 
     def stop(self):
         with self.lock:
+            self.stop_live()
             if self.worker is not None:
                 self.worker.stop()
 
@@ -266,7 +357,7 @@ class Dashboard:
         with self.lock:
             # Closing the page requests Stop, but the worker must finish
             # shutdown and saving before the server releases the launcher.
-            if self.worker is not None and self.worker.is_alive():
+            if any(worker and worker.is_alive() for worker in (self.worker, self.live_worker)):
                 return False
             now = time.monotonic()
             if ((self.closed_at is not None and now - self.closed_at >= 2)
@@ -316,7 +407,12 @@ def make_server(dashboard, *, port=0):
             if route == "api/state":
                 self.respond(200, dashboard.snapshot())
                 return
+            if route == "api/live-state":
+                self.respond(200, dashboard.live_snapshot())
+                return
             static = {"": "index.html", "index.html": "index.html", "app.js": "app.js", "styles.css": "styles.css",
+                      "battery_warning.js": "battery_warning.js",
+                      "live.html": "live.html", "live.js": "live.js", "live.css": "live.css",
                       "assets/eltec-logo-transparent.webp": "assets/eltec-logo-transparent.webp"}
             path = UI_DIR / static[route] if route in static else None
             if route.startswith("report/"):
@@ -373,6 +469,10 @@ def make_server(dashboard, *, port=0):
                 payload = json.loads(raw)
                 if route == "api/start":
                     dashboard.start(payload)
+                elif route == "api/live-start":
+                    dashboard.start_live(payload)
+                elif route == "api/live-stop":
+                    dashboard.stop_live()
                 elif route == "api/preflight":
                     self.respond(200, dashboard.preflight(payload))
                     return
@@ -400,6 +500,7 @@ def make_server(dashboard, *, port=0):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--simulate", action="store_true")
+    parser.add_argument("--live", action="store_true", help="Open the live noise and settling viewer")
     parser.add_argument("--output-root", type=Path)
     args = parser.parse_args(argv)
     dashboard = Dashboard(simulate=args.simulate or os.environ.get("ELTEC_ARRAY_SIMULATE") == "1", output_root=args.output_root)
@@ -416,7 +517,7 @@ def main(argv=None):
     watcher.start()
     try:
         print("Eltec array dashboard: " + server.dashboard_url, flush=True)
-        webbrowser.open(server.dashboard_url)
+        webbrowser.open(server.dashboard_url + ("live.html" if args.live else ""))
         server.serve_forever(poll_interval=.2)
     except KeyboardInterrupt:
         pass
@@ -424,6 +525,8 @@ def main(argv=None):
         dashboard.stop()
         if dashboard.worker is not None:
             dashboard.worker.join()
+        if dashboard.live_worker is not None:
+            dashboard.live_worker.join()
         done.set()
         server.server_close()
     return 0

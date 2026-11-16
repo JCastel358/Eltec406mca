@@ -106,10 +106,10 @@ class SelectedStageRuns(unittest.TestCase):
         with np.load(worker.directory / "noise_raw.npz") as raw:
             self.assertEqual(raw["converter_counts"].shape, (1000, 57, 4))
         record = result["records"][0]
-        self.assertEqual(record["settling"]["waited_s"], 90.)
-        self.assertEqual(record["settling"]["criterion"], "elapsed_time_only")
+        self.assertTrue(5 <= record["settling"]["waited_s"] < 90)
+        self.assertEqual(record["settling"]["criterion"], "centered_unclipped_no_persistent_trend")
         self.assertNotIn("warning", record["settling"])
-        self.assertNotIn("stability_observation", record)
+        self.assertIn("stability_observation", record)
         self.assertFalse(any("settled" in flag for row in result["rows"] for flag in row["flags"]))
 
     def test_stopping_noise_warmup_preserves_offset_without_a_noise_result(self):
@@ -117,7 +117,7 @@ class SelectedStageRuns(unittest.TestCase):
         update = worker.update
         def stop(**values):
             update(**values)
-            if values.get("phase") == "Warming up NOISE":
+            if values.get("phase") == "Settling NOISE":
                 worker.stop()
         worker.update = stop
         with patch.object(check, "DC_SECONDS", 1):
@@ -151,7 +151,7 @@ class SelectedStageRuns(unittest.TestCase):
         first, retry = worker.result["records"]
         self.assertFalse(first["settling"]["complete"])
         self.assertEqual(first["samples"], 0)
-        self.assertEqual(retry["settling"]["waited_s"], 90.)
+        self.assertTrue(5 <= retry["settling"]["waited_s"] < 90)
         self.assertNotIn("reused_unchanged_path", retry["settling"])
         self.assertTrue((worker.directory / first["settling"]["raw_file"]).exists())
 

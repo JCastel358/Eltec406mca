@@ -1,6 +1,6 @@
 # Calibration record — every production constant and where it came from
 
-## Current M25/HUB profile (updated 2026-11-12)
+## Current M25/HUB profile (updated 2026-11-16)
 
 The 2026-11-12 legacy-equivalent display adds a **nominal, unvalidated**
 old-meter-scale estimate alongside the existing DAQ-output RMS. It assumes
@@ -8,7 +8,8 @@ x1000 M25 gain and x1000 legacy filter gain (ratio 1), then applies a causal
 3 Hz/Q3 band-pass, absolute value x10, a single-pole 10 s smoother and ideal
 peak hold. Filter, smoothing and hold states reset at each independent
 recording start, after initial-sample DC subtraction. Both the held value at
-60 s and the final held value (at most 100 s) are stored. Actual sample rate
+60 s and the final held value are stored (new runs end at 60 s; historical
+records may extend to 100 s). Actual sample rate
 sets all timing; no rolling window or invented 100 s droop constant is used.
 These are model assumptions, not measured calibration constants. The old
 fixture's pre-reset state, gain errors, complete analogue response and hold
@@ -53,17 +54,45 @@ detection of known noise failures. Repeated paired captures with a fixed
 readout time and boundary/failure samples remain necessary. No calibration
 constant or noise acceptance limit was changed from these results.
 
-On 2026-11-12 the user replaced the noise stability criterion with a **fixed
-90-second warm-up**, then a fresh software meter reset and 100-second capture.
-Normal noise fluctuations no longer generate a “never settled” detector or
-slot fault. Warm-up is measured using verified DAQ sample time, saved separately
-from measurement, and remains provisional rather than bench-qualified. Stop,
-delivery, hardware-readback, clipping and headroom checks are unchanged.
-Automatic retries can reuse a completed warm-up only on the same verified
-unchanged path; a fault before warm-up completion requires a fresh full wait.
-Historical run evidence and flags are not rewritten.
+On 2026-11-16 the user requested revisiting the fixed 90-second noise wait
+and reducing capture to 60 seconds. Revision 2026-11-16.2 uses
+`mod50_noise_centered_variation_trend_80percent_5to90_v2`. Each loaded,
+nonexcluded slot needs five full one-second windows with their overall
+average within ±10 mV at the DAQ output, no retained-conversion clipping,
+no ±0.8 V headroom excursion and no persistent trend. A fitted trend blocks
+if its absolute slope exceeds 0.25 mV/s plus three times the slope variation
+estimated from residuals of the five window means (3 fit degrees of freedom).
+This is an empirical noise allowance, not a calibrated confidence bound.
+A separate consistent-direction test blocks when the span exceeds max(1 mV,
+two ADC codes), slope exceeds 0.25 mV/s and no successive mean reverses by
+more than that span floor. It catches curved recovery and steps that inflate
+fit residuals. These are provisional scheduling settings, not calibration.
+RMS amplitude need not become constant. At 80% ready all channels begin the
+same fresh 60-second recording; at 90 s the fallback starts with a warning.
+Individual unready-at-start and never-ready-during-record slots remain
+flagged for review, with their raw samples retained. The live viewer uses
+the same monitor without saving detector assessments.
 
-The **offset-only** 80% simultaneous start threshold from 2026-11-11 remains.
+**Bench check, 2026-11-16, actual top slot 1-1 only:** the original v1 rule
+never became ready during 170.105 s of unclipped, centered noise and used its
+90 s fallback. Raw RMS/sqrt(1000) incorrectly treated temporally correlated
+noise as independent samples, while hard mean-span/half-window/slope gates
+treated fluctuating one-second averages as persistent drift. Replaying all
+170,105 original scans with v2 first becomes ready at 5 s (158 of 170 windows
+ready, including collecting windows in the denominator). A fresh actual
+75.087 s live run also first became ready at 5 s, completed the example 60 s
+recording and stopped cleanly with no DAQ errors. Raw diagnostic files and
+replay comparison are under
+`output/array_rig_validation/2026-11-16_noise_readiness/`. This single-slot
+observation is not qualification of every detector, noise condition or tray.
+No acceptance limit changed; old report evidence retains its original policy.
+
+Startup uses verified DAQ sample time and is saved separately. Automatic
+retries reuse completed readiness only on the unchanged verified path;
+startup interruption requires fresh evidence. Historical fixed90/100 s
+records and flags are not rewritten and remain readable/recoverable.
+
+The **DC** 80% simultaneous start threshold from 2026-11-11 remains.
 All channels share one continuous stream. Five consecutive one-second windows are examined per loaded,
 nonexcluded slot. The range of window means must be within the maximum of
 1.0 mV (user-requested relaxation on 2026-11-12), two ADC codes, or
@@ -122,22 +151,22 @@ modular front-end's measured transfer function.
 | Acquisition | Working MOD50 bench configuration: 1000 scans/s, 57 rows, four conversions, discard first/average three, 64 buffers |
 | DC / noise range | Working bench's signed ±5 V / ±1 V |
 | Offset settling | 80% stable over 5 one-second windows; mean-spread tolerance max(1 mV, two ADC codes, finite-window allowance); 90 s fallback. User directions 2026-11-11/12 |
-| Noise warm-up | Fixed 90 s of DAQ sample time after switching; no mean/RMS stability criterion, user direction 2026-11-12 |
+| Noise settling | Five 1 s baseline/clip/drift windows; 80% ready simultaneous start, 90 s fallback; provisional thresholds above, user request 2026-11-16 |
 | Noise entry / DC return hold | Existing contract: 200 ms / 50 ms with gain disabled |
-| DC / noise record duration | 10 s functional DC record; 100 s noise record per MOD50 software's routine-record recommendation |
+| DC / noise record duration | 10 s functional DC record; 60 s noise record, user request 2026-11-16 |
 | Range endpoint guard | Working bench's 328-count (0.5% full-scale) guard; acquisition quality only |
 | Raw noise headroom | Existing R4 ±0.8 V quality guard; not sensor acceptance |
 | Noise method | Finite-record FFT, mean removed, 1–100 Hz inclusive; second result weighted by nominal 3 Hz/Q3 band-pass power response |
-| Legacy-equivalent estimate | Nominal matched x1000 gains, causal 3 Hz/Q3, abs x10, 10 s exponential smoothing, ideal hold; 60 s / final (up to 100 s) readings; UNVALIDATED, never an amplitude verdict |
+| Legacy-equivalent estimate | Nominal matched x1000 gains, causal 3 Hz/Q3, abs x10, 10 s exponential smoothing, ideal hold; 60 s / final readings (now same endpoint); UNVALIDATED, never an amplitude verdict |
 | Delivery recovery (2026-11-04.3) | Up to 3 full attempts per stage after a recognized delivery interruption; 0.25 s cancellable pause between attempts. This is a recovery policy, not an acceptance threshold. The 2 s delivery timeout, ±1% clock/rate checks and prescribed record lengths remain unchanged. |
 
 Recovery never joins samples across an interruption or substitutes missing
 data. Valid DC can be retained for noise retry; each accepted noise result
-requires a fresh uninterrupted 100-second record. Automatic retry preserves
+requires a fresh uninterrupted 60-second record. Automatic retry preserves
 settling only with unchanged verified hardware state and clean shutdown.
 Saved-run retry requires explicit unchanged-fixture confirmation, validated
-raw evidence and matching DAQ identity, followed by a fresh 90-second
-noise warm-up. The software policy was checked with injected faults and
+raw evidence and matching DAQ identity, followed by fresh signal-based
+noise settling (5–90 s). The software policy was checked with injected faults and
 simulation; no new hardware qualification or calibration is implied.
 
 The M25/HUB scheduling policy is separate from the legacy adaptive wait.

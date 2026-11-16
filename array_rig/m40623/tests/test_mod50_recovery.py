@@ -45,7 +45,7 @@ class SavedNoiseRecovery(unittest.TestCase):
                                   "Incomplete: 4070 of 100000 scans"])
         self.noise["diagnostics"].update(scans_received=4070, stopped_monotonic=106.1146681)
         self.summary = {"schema": check.SCHEMA, "profile": hw.PROFILE, "application_revision": "2026-11-04.2",
-                        "timing_policy": check.TIMING_POLICY, "created_at": "2026-11-04T13:07:31-05:00",
+                        "timing_policy": check.LEGACY_TIMING_POLICY, "created_at": "2026-11-04T13:07:31-05:00",
                         "lot": "TEST", "operator": "Test technician", "tray": 1, "simulated": False,
                         "data_complete": False, "restart_required": False, "shutdown_status": hw.decode_status(0),
                         "installed_positions": list(hw.POSITIONS), "channel_map": hw.CHANNEL_MAP,
@@ -53,7 +53,7 @@ class SavedNoiseRecovery(unittest.TestCase):
                         "records": [self.dc, self.noise], "errors": ["NOISE: " + e for e in self.noise["errors"]]}
         self.metadata = {key: copy.deepcopy(value) for key, value in self.dc.items() if key != "rows"}
         self.metadata.update(schema=check.SCHEMA, profile=hw.PROFILE, application_revision="2026-11-04.2",
-                             timing_policy=check.TIMING_POLICY, lot="TEST", operator="Test technician", tray=1,
+                             timing_policy=check.LEGACY_TIMING_POLICY, lot="TEST", operator="Test technician", tray=1,
                              simulated=False, daq_serial="TEST-SERIAL", installed_positions=list(hw.POSITIONS),
                              channel_map=hw.CHANNEL_MAP, map_sha256=hw.MAP_SHA256, physical_channels=list(range(57)),
                              logical_to_physical=list(hw.MAPPING), nominal_rate_hz=1000., oversample_extra=3,
@@ -91,6 +91,24 @@ class SavedNoiseRecovery(unittest.TestCase):
         self.summary["timing_policy"] = self.metadata["timing_policy"] = check.ADAPTIVE_TIMING_POLICY
         self.save_raw()
         self.assertEqual(self.load()["record"]["samples"], 10000)
+
+    def test_fixed90_100second_run_stays_recoverable(self):
+        self.summary["application_revision"] = self.metadata["application_revision"] = "2026-11-12.5"
+        self.summary["timing_policy"] = self.metadata["timing_policy"] = check.FIXED_NOISE_TIMING_POLICY
+        self.save_raw()
+        self.assertEqual(self.load()["source"]["recorded_noise_seconds"], 4.07)
+
+    def test_new_60second_run_checks_its_own_duration(self):
+        self.summary["application_revision"] = self.metadata["application_revision"] = hw.APP_REVISION
+        self.summary["timing_policy"] = self.metadata["timing_policy"] = check.TIMING_POLICY
+        self.noise.update(requested_seconds=60., target_samples=60000)
+        self.noise["errors"][-1] = "Incomplete: 4070 of 60000 scans"
+        self.summary["errors"] = ["NOISE: " + e for e in self.noise["errors"]]
+        self.save_raw()
+        self.assertEqual(self.load()["record"]["samples"], 10000)
+        self.noise["requested_seconds"] = 100.
+        with self.assertRaisesRegex(ValueError, "noise duration"):
+            self.load()
 
     def test_bottom_recovery_requires_matching_side_in_raw_evidence(self):
         self.summary["box_side"] = self.metadata["box_side"] = "bottom"

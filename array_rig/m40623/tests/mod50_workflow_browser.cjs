@@ -78,6 +78,7 @@ async function fixture(browser, {initial = snapshot(), report = null, holdInitia
       return route.fulfill({json: {ok: true}});
     }
     if (resource === 'api/preflight') return route.fulfill({json: {slot_warnings: slotWarnings}});
+    if (resource === 'api/close') return route.fulfill({json: {ok: true}});
     if (resource === 'api/retest') {
       const payload = request.postDataJSON(); requests.push({action: 'retest', payload});
       current = snapshot({id: 'retest-run', busy: true, boxSide: current.result.box_side});
@@ -105,7 +106,7 @@ async function fixture(browser, {initial = snapshot(), report = null, holdInitia
       current.run_metadata.tray = candidate.tray;
       return route.fulfill({json: {ok: true}});
     }
-    const allowed = ['index.html', 'app.js', 'styles.css', 'assets/eltec-logo-transparent.webp'];
+    const allowed = ['index.html', 'app.js', 'battery_warning.js', 'styles.css', 'assets/eltec-logo-transparent.webp'];
     assert(allowed.includes(resource), `Unexpected network request: ${request.url()}`);
     let body = fs.readFileSync(path.join(ui, resource));
     if (resource === 'index.html' && report) {
@@ -191,6 +192,81 @@ async function expectCompactViewport(page, {tray = false} = {}) {
 }
 
 const cases = [
+  ['battery guidance opens once per failure streak and stays dismissed after refresh', async browser => {
+    const failed = (warning = null) => {
+      const value = snapshot({id: 'failed-power', complete: true});
+      value.simulate = value.result.simulated = false;
+      value.result.data_complete = false;
+      value.result.errors = ['UPPER card present but READY inactive; LOWER card present but READY inactive (status 0x24)'];
+      value.battery_warning = warning;
+      return value;
+    };
+    const test = await fixture(browser, {initial: failed()});
+    try {
+      const {page} = test;
+      const dialog = page.locator('#batteryWarningDialog');
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false, 'One failed attempt must not open the popup');
+      const warning = {id: 'battery-streak-1', consecutive_failures: 2};
+      test.setState(failed(warning));
+      await dialog.waitFor({state: 'visible'});
+      assert.equal(await page.locator('#batteryWarningTitle').textContent(), 'Check the rig batteries');
+      assert.match(await dialog.textContent(), /Recharge both batteries or replace them with charged packs/);
+      assert.match(await dialog.textContent(), /does not measure battery voltage/);
+      assert.equal(await page.locator('#batteryWarningDismiss').evaluate(el => el === document.activeElement), true);
+      for (const [name, width, height] of [['desktop',1366,650], ['mobile',390,844]]) {
+        await page.setViewportSize({width,height});
+        const bounds = await dialog.boundingBox();
+        assert(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1);
+        assert(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth), 'Popup content must not overflow horizontally');
+        if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, `battery-warning-${name}.png`)});
+      }
+      await page.locator('#batteryWarningDismiss').click();
+      test.setState(failed({...warning, consecutive_failures: 3}));
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false, 'Repeated polls/failures must not undo dismissal');
+      await page.reload();
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false, 'Dismissal must survive refresh');
+      test.setState(failed());
+      await waitForPolls(test);
+      test.setState(failed({id: 'battery-streak-2', consecutive_failures: 2}));
+      await dialog.waitFor({state: 'visible'});
+      await page.keyboard.press('Escape');
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false, 'Escape must acknowledge the popup');
+      assert.deepEqual(test.requests, [], 'Battery advice must not start, stop or retry the hardware');
+    } finally {await test.close();}
+  }],
+  ['battery guidance waits for idle and existing dialogs and stays out of demo and saved reports', async browser => {
+    const warning = {id: 'idle-warning', consecutive_failures: 2};
+    const current = {...snapshot({id: 'run', busy: true}), simulate: false, battery_warning: warning};
+    const test = await fixture(browser, {initial: current});
+    try {
+      const {page} = test, dialog = page.locator('#batteryWarningDialog');
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false, 'Do not interrupt an active run');
+      test.setState({...snapshot({id: 'demo', complete: true}), battery_warning: warning});
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false, 'No battery prompt for demo source');
+      // Use an existing dialog to verify the advisory defers instead of stacking.
+      await page.evaluate(() => document.querySelector('#slotDialog').showModal());
+      await page.locator('#sourceInput').evaluate(el => {el.value = 'real';});
+      test.setState({...snapshot(), simulate: false, battery_warning: warning});
+      await waitForPolls(test);
+      assert.equal(await dialog.isVisible(), false);
+      await page.evaluate(() => document.querySelector('#slotDialog').close());
+      await dialog.waitFor({state: 'visible'});
+      test.setState({...current, busy: true});
+      await dialog.waitFor({state: 'hidden'});
+      test.setState({...snapshot(), simulate: false, battery_warning: warning});
+      await dialog.waitFor({state: 'visible'});
+    } finally {await test.close();}
+    const report = {...snapshot({complete: true}).result, battery_warning: warning, power_readiness_failed: true};
+    const saved = await fixture(browser, {report});
+    try {assert.equal(await saved.page.locator('#batteryWarningDialog').isVisible(), false);}
+    finally {await saved.close();}
+  }],
   ['DC settling warnings stay amber while noise is pending and after completion', async browser => {
     const current = snapshot({id: 'dc-drift', busy: true, boxSide: 'bottom'});
     current.phase = 'Recording NOISE';
@@ -278,7 +354,7 @@ const cases = [
       assert.deepEqual(await page.locator('.slot-number').allTextContents(), labels(1));
       await page.locator('#boxSideInput').selectOption('bottom');
       assert.deepEqual(await page.locator('.slot-number').allTextContents(), labels(6));
-      assert.deepEqual(await page.locator('#populationChoices span').allTextContents(), labels(6));
+      assert.deepEqual(await page.locator('#populationChoices .population-slot span').allTextContents(), labels(6));
       if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'box-side-setup.png')});
       await setupToTray(test);
       assert((await page.locator('#boxRange').textContent()).includes('Bottom · 6-1 through 10-10'));
@@ -354,6 +430,41 @@ const cases = [
       const payload = test.requests.find(r => r.action === 'start').payload;
       assert.deepEqual(payload.selected_tests, ['dc']);
       assert.deepEqual(payload.installed_positions, ['1-1', '5-10']);
+    } finally {await test.close();}
+  }],
+  ['loaded row checkboxes select ten slots, show partial selection, and preserve bottom wiring labels', async browser => {
+    const test = await fixture(browser);
+    try {
+      const {page} = test;
+      await page.locator('#boxSideInput').selectOption('bottom');
+      await setupToTray(test);
+      await page.locator('#populationSummary').click();
+      assert.equal(await page.locator('.population-row-toggle input:checked').count(), 5);
+      assert.deepEqual(await page.locator('.population-row-toggle span').allTextContents(), ['Row 6', 'Row 7', 'Row 8', 'Row 9', 'Row 10']);
+      await page.locator('#loadNone').click();
+      assert.equal(await page.locator('.population-row-toggle input:checked').count(), 0);
+      await page.getByLabel('Row 7', {exact: true}).check();
+      assert.equal(await page.locator('#populationSummary').textContent(), 'Loaded slots: 10 of 50');
+      const row = page.getByLabel('Row 7', {exact: true});
+      await page.getByLabel('7-4', {exact: true}).uncheck();
+      assert.equal(await row.isChecked(), false);
+      assert.equal(await row.evaluate(input => input.indeterminate), true);
+      assert.equal(await page.locator('#populationSummary').textContent(), 'Loaded slots: 9 of 50');
+      await row.check();
+      assert.equal(await row.evaluate(input => input.indeterminate), false);
+      await row.uncheck();
+      assert.equal(await page.locator('.population-slot input:checked').count(), 0);
+      await page.locator('#loadAll').click();
+      assert.equal(await page.locator('.population-row-toggle input:checked').count(), 5);
+      await page.locator('#loadNone').click();
+      await page.getByLabel('Row 7', {exact: true}).check();
+      if (process.env.ELTEC_SCREENSHOT_DIR) await page.screenshot({path: path.join(process.env.ELTEC_SCREENSHOT_DIR, 'loaded-row-selection.png'), fullPage: true});
+      await page.locator('#populationSummary').click();
+      await page.locator('#startButton').click();
+      await page.waitForFunction(() => document.querySelector('#phaseText').textContent.includes('Recording'));
+      assert.deepEqual(test.requests.find(request => request.action === 'start').payload.installed_positions,
+        Array.from({length: 10}, (_, index) => `2-${index + 1}`));
+      assert.equal(await page.locator('.population-row-toggle input:disabled').count(), 5);
     } finally {await test.close();}
   }],
   ['skipped offset is Not taken and valid noise remains Review in the offline report', async browser => {
@@ -528,7 +639,7 @@ const cases = [
       assert((await page.locator('#recoveryBatch').textContent()).includes('ORIGINAL-BATCH / Bottom'));
       assert.equal(await page.locator('#recoveryOperator').textContent(), 'Original Technician');
       assert((await page.locator('#recoverySource').textContent()).includes('SIMULATION'));
-      assert((await page.locator('#recoveryTiming').textContent()).includes('90 s noise warm-up + 100 s recording'));
+      assert((await page.locator('#recoveryTiming').textContent()).includes('signal-based noise settling (5–90 s) + 60 s recording'));
       assert(await page.locator('#recoveryStart').isDisabled());
       await page.keyboard.press('Enter');
       assert.deepEqual(test.requests, [], 'Opening recovery or Enter without confirmation must not start hardware');

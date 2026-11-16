@@ -1,6 +1,6 @@
 # Eltec Array Rig — fifty detectors at once on a USB DAQ
 
-## Current M25/HUB hardware — updated 2026-11-12
+## Current M25/HUB hardware — updated 2026-11-16
 
 Each batch uses one tray. In setup, choose **Detector box side**:
 **Top** labels the array **1-1 through 5-10**; **Bottom** labels it
@@ -12,7 +12,9 @@ the original run's side. Reports and CSV exports include the box labels.
 
 Before **Start**, choose **Noise only** (default), **Offset only**, or
 **Offset and noise**. Use **Loaded slots** to select the installed parts;
-noise alone cannot reliably identify an empty slot. Unselected tests are
+noise alone cannot reliably identify an empty slot. Each row has a checkbox
+to select or clear its ten slots; a mixed checkbox indicates a partial row.
+Unselected tests are
 saved as **NOT_TAKEN**, with blank numeric values, not zeros or failures.
 Offset plots use a common 0–1.5 V scale (expanded for excursions), while
 the exact measurements and raw recordings remain saved.
@@ -21,11 +23,29 @@ Offset recording starts when **80% of loaded, nonexcluded parts** show five
 stable one-second windows, or after **90 seconds** with a fallback warning.
 The DC check allows **1 mV of change across the five window means** (or the
 larger ADC/measurement allowance), so tiny changes do not prevent settling.
-Persistent offset drift is flagged for checking/retesting. Noise uses a
-**fixed 90-second warm-up**, then a **100-second recording** with a fresh
-software meter reset. It does not require noise amplitude to stabilize or
-issue noise-only “not settled” faults. This timing is provisional; calibrated
-noise acceptance remains disabled.
+Persistent offset drift is flagged for checking/retesting. Noise now watches
+five one-second windows for an overall average near zero, no clipping, and
+no persistent upward/downward trend. Normal noise fluctuations between those
+averages are allowed. It starts **all channels together when 80% are ready**,
+or after **90 seconds** with a fallback warning, then takes a **60-second
+recording** with a fresh software meter reset. Unready slots are recorded and
+flagged for review. Changing noise amplitude alone does not block readiness.
+This timing is provisional; calibrated noise acceptance remains disabled.
+
+Open **Live noise viewer** from setup, or double-click
+`run_array_live_viewer.cmd`, to watch these same readiness checks before
+testing. Select Actual detectors or Generated demo, the box side and loaded
+slots, then press **Start viewing**. The grid shows ready, rising, falling,
+clipped, or away-from-zero states; click a slot for its rolling waveform,
+baseline and slope. The display shows when the 60-second recording would
+begin and finish, and continues until **Stop**. This diagnostic viewer does
+not save results or update yield. Stop it before returning to the tray check.
+Saved suspect slots are excluded. No hardware starts just by opening the page.
+
+The 2026-11-16.2 correction was checked on actual top slot **1-1**: the earlier
+rule never became ready during 170 s of centered, unclipped noise; the revised
+rule recognized readiness after 5 s on replay and a fresh hardware run. This
+single-slot check is not a qualification of all channels or noise acceptance.
 
 After a run, **Retest parts** defaults to **All detectors in the same slots**.
 It repeats the previous run's loaded detectors, box side and tests, including
@@ -85,7 +105,7 @@ After reopening the app, **Recover interrupted batch** offers the latest
 eligible saved run. Confirm that the detectors, wiring, alignment and fixture
 power have remained unchanged; otherwise use Retest parts for the same parts
 or start a new batch for different parts. A saved-run
-retry switches back to noise, warms up for 90 seconds and records a fresh 100 seconds.
+retry switches back to noise, checks readiness again and records a fresh 60 seconds.
 It writes a new folder and preserves
 the original evidence. Moving parts or cycling fixture power requires fresh
 measurements rather than reusing the earlier offset acquisition.
@@ -115,7 +135,7 @@ app uses the full modular channel map and both cards' status readbacks.
    this navigation does not start acquisition.
 4. Choose the test and loaded slots, then press **Start**. All 50 positions
    are scanned together; only selected parts enter the results. Each selected
-   stage settles offset or warms up noise, then records **10 s offset** or **100 s noise**.
+   stage checks settling, then records **10 s offset** or **60 s noise**.
    Review any slot warning, leave unverified suspect slots empty, then continue.
    The app saves and returns to DC. Keep the fixture undisturbed during testing.
 5. When the run has finished saving, select any detector to inspect its
@@ -131,8 +151,9 @@ DC is checked against the existing **provisional 0.3–1.2 V window**.
 Noise is DAQ-output RMS at 3 Hz/Q3 and 1–100 Hz, including front-end gain.
 The live **Noise at 3 Hz** reading is the **Legacy-equivalent estimate (mV)**: nominal
 gain scaling, causal 3 Hz/Q3 filtering, absolute-value rectification, 10 s
-smoothing and an ideal resettable peak hold over the 100 s recording. Both
-the 60 s reading and final held reading are saved alongside RMS. This is an
+smoothing and an ideal resettable peak hold over the 60 s recording. Both
+the 60 s reading and final held reading are saved alongside RMS (they now
+refer to the same endpoint). Earlier 100 s recordings remain readable. This is an
 unvalidated old-meter-scale estimate; measured gain and hold droop are not
 known. See [the method](m40623/NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
 **REVIEW is not PASS**: no detector-input transfer calibration or noise

@@ -1,0 +1,26 @@
+{
+  "phase": "Live viewer error",
+  "message": "DAQ shutdown: Gain-off: Not connected - call connect() first.; Return to DC: Not connected - call connect() first.; UPPER not ready/present; LOWER not ready/present. Check physical RUN, power and control cable.",
+  "progress": 0.0,
+  "elapsed_s": 0.0,
+  "ready": false,
+  "first_ready_s": null,
+  "would_record": false,
+  "recording_start_s": null,
+  "recording_remaining_s": null,
+  "deadline_fallback": false,
+  "preview_complete": false,
+  "settling": {},
+  "rows": [],
+  "errors": [
+    "DAQ shutdown: Gain-off: Not connected - call connect() first.; Return to DC: Not connected - call connect() first.",
+    "UPPER not ready/present; LOWER not ready/present. Check physical RUN, power and control cable."
+  ],
+  "restart_required": true,
+  "box_side": "top",
+  "simulate": false,
+  "saved": false,
+  "diagnostic_only": true,
+  "diagnostics": null,
+  "stopped": true
+}

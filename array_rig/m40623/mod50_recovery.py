@@ -142,7 +142,7 @@ def load_noise_recovery(directory, *, simulate: bool):
     No driver is opened and no file is written by this function.
     """
     # Local import keeps this helper usable by the acquisition module itself.
-    from mod50_check import DC_SECONDS, NOISE_SECONDS, SCHEMA, SUPPORTED_TIMING_POLICIES, channel_statistics
+    from mod50_check import DC_SECONDS, NOISE_SECONDS, SCHEMA, TIMING_POLICY, SUPPORTED_TIMING_POLICIES, channel_statistics
     from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
     try:
@@ -154,7 +154,7 @@ def load_noise_recovery(directory, *, simulate: bool):
         summary_bytes = summary_path.read_bytes()
         summary = _json(summary_bytes)
         revisions = {"2026-11-04.2", "2026-11-04.3", "2026-11-11.1", "2026-11-12.1",
-                     "2026-11-12.2", "2026-11-12.3", "2026-11-12.4", hw.APP_REVISION}
+                     "2026-11-12.2", "2026-11-12.3", "2026-11-12.4", "2026-11-12.5", "2026-11-16.1", hw.APP_REVISION}
         expected = {"schema": SCHEMA, "profile": hw.PROFILE,
                     "channel_map": hw.CHANNEL_MAP}
         _require(summary.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "the timing policy is unsupported.")
@@ -203,11 +203,16 @@ def load_noise_recovery(directory, *, simulate: bool):
         _require(noise.get("range_code") == hw.NOISE_RANGE
                  and _status(noise.get("status_before"), 27) and _status(noise.get("status_after"), 27),
                  "the noise range or both cards' ready/routing state was not confirmed.")
-        _require(noise.get("requested_seconds") == NOISE_SECONDS, "the noise duration does not match.")
+        # Validate the saved attempt against its own versioned recipe. A fresh
+        # retry uses today's 60 s recipe, without rewriting the old 100 s data.
+        current_timing = summary["timing_policy"] == TIMING_POLICY
+        saved_noise_seconds = NOISE_SECONDS if current_timing else 100.0
+        _require(noise.get("requested_seconds") == saved_noise_seconds, "the noise duration does not match.")
         noise_rate = noise.get("actual_rate_hz")
         _require(_number(noise_rate) and abs(noise_rate / hw.SAMPLE_HZ - 1) <= .01,
                  "noise used an unexpected sample clock.")
-        noise_target = round(NOISE_SECONDS * noise_rate)
+        noise_target = (int(np.ceil(saved_noise_seconds * noise_rate - 1e-9)) if current_timing else
+                        round(saved_noise_seconds * noise_rate))
         _require(type(noise.get("samples")) is int and 0 <= noise["samples"] <= noise_target
                  and type(noise.get("target_samples")) is int and noise["target_samples"] == noise_target
                  and _number(noise.get("recorded_seconds"))

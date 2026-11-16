@@ -1,6 +1,6 @@
 # Eltec 40623 Array Tester (TP120) — 50 positions on the DAQ array rig
 
-## Current M25/HUB check — updated 2026-11-12
+## Current M25/HUB check — updated 2026-11-16
 
 Setup uses one tray per batch and a **Detector box side** selector:
 **Top: 1-1 through 5-10** or **Bottom: 6-1 through 10-10**.
@@ -19,14 +19,16 @@ Saved engineering reports retain **Legacy-equivalent estimate (mV)**,
 RMS measurements, raw waveform excerpts, slope/min/max and method notes.
 This nominal model applies
 3 Hz/Q3 filtering, absolute value, 10 s smoothing and an ideal peak hold;
-it saves readings at 60 s and at the end of the 100 s record. Noise pass/fail
+it saves readings at 60 s and at the record end (now the same 60 s endpoint;
+historical 100 s records keep their original values). Noise pass/fail
 stays disabled until comparison with the old fixture. See
 [the model and its assumptions](NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
 
 Choose Noise only (default), Offset only, or both before Start. Skipped tests
 are `NOT_TAKEN` in exported row statuses; numeric values remain null/blank.
 Noise-only runs do not infer occupancy from the AC signal: select loaded
-slots explicitly. **Retest parts → All detectors in the same slots** repeats
+slots explicitly. A checkbox beside each row selects/clears ten slots and
+shows a mixed state for partial rows. **Retest parts → All detectors in the same slots** repeats
 the previous run's loaded detectors and tests on the saved box side, including
 an incomplete run after a DAQ/power issue. It takes fresh measurements after
 settling/warm-up; after a partial retest it repeats only that partial run.
@@ -41,12 +43,34 @@ Offset retains its 80% settling gate over five one-second windows, with a
 windows**, so small DC changes do not trigger unnecessary warnings. The
 two-ADC-code floor, finite-window allowance and within-window drift check
 remain; the 0.3-1.2 V offset comparison is unchanged. Per user direction
-on 2026-11-12, noise instead has a **fixed 90-second warm-up** after switching
-to noise mode. It does not wait for a steady mean or RMS, and does not issue
-noise-only “never settled” faults. The software noise meter resets when the
-100-second recording begins. All 57 physical rows are still acquired together;
+on 2026-11-16, noise now checks the startup baseline over five one-second
+windows: their overall average within ±10 mV, no retained-conversion clipping
+or ±0.8 V headroom excursion, and no persistent trend. Revision 2026-11-16.2
+estimates slope variation from the five window means, avoiding the invalid
+assumption that 1000 noise samples are independent. A trend blocks when its
+absolute slope exceeds 0.25 mV/s plus three times the fitted slope variation,
+or when it is consistently one-directional (slope over 0.25 mV/s, span over
+1 mV/two codes, no reverse step larger than that span floor). The center
+and clipping gates remain independent. These are provisional DAQ-output
+scheduling settings, not noise amplitude limits. At 80% ready, all channels
+start together; after 90 s, the fallback records with warnings. RMS amplitude
+is not required to stabilize. Unready-at-start and never-ready-during-record
+slots retain individual review evidence. The software noise meter resets when
+the 60-second recording begins. All 57 physical rows are still acquired together;
 clipping, delivery and hardware checks remain. See
 [the calibration record](../docs/CALIBRATION_RECORD.md) for timing provenance.
+
+**Live noise viewer** on setup opens `mod50_ui/live.html`, backed by
+`mod50_live.py` and the same `NoiseSettlingMonitor` as tray checks. Or launch
+`../run_array_live_viewer.cmd` (`--simulate` selects Generated demo).
+Choose loaded slots/box side, confirm fixture readiness, and Start viewing.
+The continuously updating grid and ten-second waveform show baseline, slope,
+clipping, current readiness and a simulated 60-second recording timeline.
+The demo runs in real time; no actual DAQ is opened until Start with Actual
+detectors selected. Stop releases the DAQ and returns the route to DC before
+another check can start. Viewer data are diagnostic, bounded in memory, and
+not saved as a batch or used in yield/history. Existing suspect slots are
+excluded from its readiness population.
 
 `mod50_history.py` stores immutable part attempts and slot events in SQLite.
 Three consecutive valid flagged checks latch a suspect-slot warning until
@@ -120,8 +144,8 @@ The full operator procedure is in [the array README](../README.md).
 | Connect / offset settling | Reserve dedicated DIO0–15, DC/unity, signed ±5 V; monitor selected slots | 80% stable over 5 one-second windows, or 90 s fallback |
 | DC | All 57 physical rows, four conversions/channel, drop first and average three | 10 s |
 | Enter noise | Stop/drain; gain off; select AC; wait; enable gain; ±1 V | 200 ms switching hold |
-| Warm up noise | Verify both cards remain ready/present and match route/gain; retain startup samples | Fixed 90 s; no noise-stability criterion |
-| Noise | Same physical scan and conversion policy | 100 s |
+| Settle noise | Verify both cards and routing; watch center, clipping and persistent trend; retain startup samples | 80% ready over five 1 s windows; 90 s fallback |
+| Noise | Same physical scan and conversion policy | 60 s |
 | Finish / stop | Stop/drain; gain off; wait 50 ms; command DC; verify and close | No automatic restart |
 
 The working bench's 1000 scans/s and 64-buffer pool are retained. This is
@@ -161,8 +185,9 @@ confirmation of unchanged detectors, wiring, alignment and uninterrupted
 fixture power. `mod50_recovery.py` validates the saved profile, timing, map,
 stage diagnostics, raw hash, shape and metadata without opening the DAQ.
 The worker rechecks the DC hash and connected DAQ serial, copies DC evidence
-into a new run folder, switches to noise and waits 90 seconds before
-a fresh 100-second recording. The original folder is
+into a new run folder, switches to noise and checks readiness (5–90 s) before
+a fresh 60-second recording. Historical 100-second runs remain recoverable.
+The original folder is
 immutable. Startup offers only the latest run for its data source, and never
 automatically starts it. Repeated failure remains incomplete and retains
 diagnostics; power cycles, detector changes or unsafe errors require a new

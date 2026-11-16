@@ -1,0 +1,26 @@
+{
+  "application_revision": "2026-11-16.3",
+  "date": "2026-11-16",
+  "feature": "Repeated hardware-readiness failure battery guidance",
+  "trigger": {
+    "consecutive_completed_actual_attempts": 2,
+    "observed_condition": "Both M25 cards present and at least one hardware READY inactive",
+    "shared_between": ["tray check", "live noise viewer"],
+    "scope": "current app process",
+    "exclusions": ["status polls", "demo attempts", "saved reports", "other error types"],
+    "reset": "Completed actual attempt without this hardware-readiness fault",
+    "dismissal": "Once per failure streak, retained through same-tab refresh and tray/live navigation"
+  },
+  "validation": {
+    "test_mod50_check": {"passed": 37, "failed": 0},
+    "test_mod50_live": {"passed": 11, "failed": 0},
+    "test_mod50_web": {"passed": 36, "failed": 0},
+    "mod50_workflow_browser": {"passed": 30, "failed": 0},
+    "mod50_live_browser": {"passed": 9, "failed": 0},
+    "git_diff_check": "passed",
+    "visual_review": "Desktop 1366x650 and mobile 390x844 popup screenshots inspected; readable with no clipping",
+    "hardware_access": "None; fault injection and fake API responses only"
+  },
+  "screenshots": ["battery-warning-desktop.png", "battery-warning-mobile.png"],
+  "limits": "Advisory only: battery voltage and physical RUN-latch state are not measured. Existing READY checks, acquisition, retry policy and detector acceptance limits are unchanged."
+}

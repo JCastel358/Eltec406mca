@@ -31,7 +31,7 @@ class ArrayWindow:
         self.source = tk.StringVar(value="Generated demo" if simulate else "Actual detectors")
         self.ready = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value="Enter the lot and technician, then start the check.")
-        self.phase = tk.StringVar(value="Ready · 10 s offset + 100 s noise, plus settling/warm-up")
+        self.phase = tk.StringVar(value="Ready · 10 s offset + 60 s noise, plus signal-based settling")
         self.source_note = tk.StringVar()
         self.population = tk.StringVar(value="50 detectors selected")
         self.selected = {position: tk.BooleanVar(value=True) for position in hw.POSITIONS}
@@ -53,7 +53,7 @@ class ArrayWindow:
         source.bind("<<ComboboxSelected>>", self.source_changed)
         self.source_widget = source
         ttk.Label(root, textvariable=self.source_note, padding=(20, 0)).pack(fill="x")
-        ttk.Label(root, text="Automatic sequence: settle DC → DC 10 s → switch → warm up 90 s → noise 100 s → return to DC",
+        ttk.Label(root, text="Automatic sequence: settle DC → DC 10 s → switch → settle noise (5–90 s) → noise 60 s → return to DC",
                   padding=(20, 10), font=("Segoe UI", 11)).pack(fill="x")
 
         occupied = ttk.LabelFrame(root, text="Installed detectors · position labels follow the holder wiring map", padding=8)

@@ -20,7 +20,7 @@ import r4_frontend as r4
 from daq_rig_readout import _live_callback_buffer_bytes
 
 PROFILE = "M25_HUB_DIRECT_DB37_R2_ARRAY_CHECK"
-APP_REVISION = "2026-11-12.5"
+APP_REVISION = "2026-11-16.3"
 SAMPLE_HZ = 1000.0
 BUFFER_COUNT = 64
 POSITIONS = tuple(f"{i // 10 + 1}-{i % 10 + 1}" for i in range(50))
@@ -169,6 +169,7 @@ class Mod50Rig(r4.R4Rig):
                          buffer_count=BUFFER_COUNT, quiet=True, **kwargs)
         self.control_events = []
         self.shutdown_status = None
+        self.power_readiness_failed = False
 
     def connect(self):
         try:
@@ -184,15 +185,23 @@ class Mod50Rig(r4.R4Rig):
     def _verify(self, expected):
         try:
             self.readback = decode_status(self.device.read_mod50_status())
+            # Retain this observed condition for the attempt's troubleshooting
+            # prompt. READY is not a measurement of battery voltage or RUN.
+            cards = [self.readback[slot] for slot in ("UPPER", "LOWER")]
+            if all(card["present"] for card in cards) and any(not card["ready"] for card in cards):
+                self.power_readiness_failed = True
             issues = []
             for slot in ("UPPER", "LOWER"):
                 card = self.readback[slot]
-                if not card["ready"] or not card["present"]:
-                    issues.append(slot + " not ready/present")
+                if not card["present"]:
+                    issues.append(slot + " card not detected")
+                elif not card["ready"]:
+                    issues.append(slot + " card present but READY inactive")
                 if (card["route"], card["gain"]) != expected:
                     issues.append(slot + " switching mismatch")
             if issues:
-                raise daq.StreamIntegrityError("; ".join(issues) + ". Check physical RUN, power and control cable.")
+                raise daq.StreamIntegrityError("; ".join(issues) +
+                    f" (status 0x{self.readback['raw_byte']:02X}). Check physical RUN, power and control cable.")
         except Exception:
             self.settle_until = self._clock() + r4.NOISE_SETTLE_S
             raise
@@ -222,7 +231,10 @@ class Mod50Rig(r4.R4Rig):
             failed_shutdown = getattr(self.device, "_shutdown_failed", False)
             if failed_shutdown:
                 errors.append("Driver shutdown was not confirmed. Use physical STOP and restart the app before another check.")
-            if not failed_shutdown and not self.device.is_streaming and getattr(self.device, "_r4_dio_owned", False):
+            # A failed connect already closes the device. Repeating cleanup
+            # must not issue writes through that released handle or turn the
+            # original readiness error into a false shutdown/restart fault.
+            if self.connected and not failed_shutdown and not self.device.is_streaming and getattr(self.device, "_r4_dio_owned", False):
                 try:
                     self.device.write_r4_controls(self.commanded[0], False)
                     self._sleep(r4.TRANSITION_S)
