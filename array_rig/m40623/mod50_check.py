@@ -22,7 +22,7 @@ import numpy as np
 import mod50_hardware as hw
 from mod50_positions import detector_position, normalize_box_side
 import mod50_legacy_noise as legacy_meter
-from mod50_history import History
+from mod50_history import History, part_result, assessed_stage
 from mod50_settling import SettlingMonitor, NoiseSettlingMonitor, MAX_SECONDS as SETTLING_MAX_SECONDS
 from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
@@ -31,8 +31,10 @@ NOISE_SECONDS = 60.0
 LEGACY_TIMING_POLICY = "mod50_connect90_dc10_route90_noise100_v1"
 ADAPTIVE_TIMING_POLICY = "mod50_80percent_adaptive5to90_fallback_dc10_noise100_v2"
 FIXED_NOISE_TIMING_POLICY = "mod50_dc_adaptive5to90_noise_fixed90_capture100_v3"
-TIMING_POLICY = "mod50_dc_adaptive5to90_noise_baseline5to90_capture60_v4"
-SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, ADAPTIVE_TIMING_POLICY, FIXED_NOISE_TIMING_POLICY, TIMING_POLICY)
+BASELINE_1KHZ_TIMING_POLICY = "mod50_dc_adaptive5to90_noise_baseline5to90_capture60_v4"
+TIMING_POLICY = "mod50_dc_adaptive5to90_noise_baseline5to90_capture60_500sps_v5"
+SUPPORTED_TIMING_POLICIES = (LEGACY_TIMING_POLICY, ADAPTIVE_TIMING_POLICY, FIXED_NOISE_TIMING_POLICY,
+                             BASELINE_1KHZ_TIMING_POLICY, TIMING_POLICY)
 SCHEMA = "ELTEC_MOD50_TRAY_CHECK_1"
 PRESENCE_POLICY = "two_separated_one_second_dc_windows_within_one_adc_code_v1"
 NO_SIGNAL_NOTE = "No detector sensed: the slot may be empty, or the detector may be dead or disconnected."
@@ -140,7 +142,7 @@ def noise_detail(y, clipping, rate, *, valid_data=True):
         reason = "Last recorded samples of an incomplete acquisition"
     else:
         center = len(y) // 2
-        reason = "Representative middle-of-record excerpt; no noise acceptance limit is configured"
+        reason = "Representative middle-of-record excerpt"
     start = max(0, min(len(y) - width, center - width // 2))
     values = y[start:start + width]
     return {**display_trace(values, rate, first_sample=start), "start_s": start / rate,
@@ -223,7 +225,7 @@ def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
                "daq_1_100_hz_rms_uv": None, "result": "INCOMPLETE", "flags": [],
                "dc_detail": None, "noise_detail": None, "presence": "UNKNOWN", "presence_evidence": None,
                "noise_analysis_excluded": False, "acquisition_validity": {"dc": False, "noise": False},
-               "acquisition_errors": [],
+               "acquisition_errors": [], "noise_verdict": None,
                "test_status": {m: "NOT_MEASURED" if m in selected_tests else "NOT_TAKEN" for m in ("dc", "noise")}}
         row.update(legacy_meter.unavailable("NOT_MEASURED" if "noise" in selected_tests else "NOT_TAKEN",
                                            "No valid noise recording is available." if "noise" in selected_tests else "Noise was not selected."))
@@ -273,13 +275,16 @@ def combine_rows(records, positions, complete, selected_tests=("dc", "noise")):
                 for key in legacy_meter.RESULT_FIELDS:
                     if key in measured:
                         row[key] = copy.deepcopy(measured[key])
-        if complete:
-            row["result"] = "CHECK" if row["flags"] else "REVIEW_NO_NOISE_LIMIT" if "noise" in selected_tests else "PASS_OFFSET_ONLY"
         if row["presence"] == "NO_SIGNAL":
             row.update(result="NO_SIGNAL", dc_check="NO_SIGNAL", noise_analysis_excluded=True,
                        daq_1_100_hz_rms_uv=None, daq_3hz_q3_rms_uv=None)
             row.update(legacy_meter.unavailable("EXCLUDED", NO_SIGNAL_NOTE))
             row["flags"].append(NO_SIGNAL_NOTE)
+        else:
+            row["noise_verdict"] = legacy_meter.noise_verdict(row["legacy_equivalent_60s_mv"])
+            if complete:
+                stages = {mode: row for mode in selected_tests if assessed_stage(row, mode)}
+                row["result"] = part_result(stages, selected_tests)
         rows.append(row)
     return rows
 
@@ -310,7 +315,7 @@ def write_report(directory, result):
     fields = ("channel", "detector_position", "position", "card", "card_channel", "physical_daq_channel", "daq_jack",
               "installed", "presence", "noise_analysis_excluded", "dc_v", "dc_check",
               "daq_3hz_q3_rms_uv", "daq_1_100_hz_rms_uv", *legacy_meter.VALUE_FIELDS,
-              "legacy_equivalent_method_id", "legacy_equivalent_status", "result", "flags", "acquisition_errors",
+              "legacy_equivalent_method_id", "legacy_equivalent_status", "noise_verdict", "result", "flags", "acquisition_errors",
               "acquisition_validity", "test_status", "offset_status", "noise_status", "part_id")
     detail_fields = ("dc_min_v", "dc_max_v", "dc_slope_v_per_s", "dc_start_v", "dc_end_v",
                      "dc_estimated_seconds_to_window", "noise_excerpt_start_s", "noise_excerpt_end_s",
@@ -331,7 +336,7 @@ def write_report(directory, result):
             legacy = row.get("legacy_equivalent_detail") or {}
             values.update(legacy_readout_elapsed_s=legacy.get("readout_elapsed_s"),
                           legacy_reference_readout_elapsed_s=legacy.get("reference_readout_elapsed_s"),
-                          legacy_estimate_note=legacy.get("reason", "Unvalidated estimate; noise pass/fail disabled."),
+                          legacy_estimate_note=legacy.get("reason", "Nominal legacy-equivalent estimate."),
                           legacy_noise_method=json.dumps(result.get("legacy_noise_method"), sort_keys=True))
             writer.writerow({"lot": result["lot"], "tray": result["tray"], "operator": result["operator"],
                              "box_side": result.get("box_side", "top"),
@@ -605,7 +610,7 @@ class TrayCheck(threading.Thread):
                         nominal_rate_hz=hw.SAMPLE_HZ, oversample_extra=3, drop_first=1,
                         sample_layout="scans,57 physical channels,4 conversions; discard zero, mean 1:4",
                         range_limit_guard_counts=hw.RAIL_GUARD_COUNTS, voltage_reference="DAQ_OUTPUT",
-                        battery_supervision="manual", noise_acceptance_limit=None,
+                        battery_supervision="manual", noise_acceptance_limit=legacy_meter.NOISE_LIMITS_MV if mode == "noise" else None,
                         selected_tests=list(self.selected_tests), run_id=self.run_id, family_id=self.family_id,
                         part_mapping=self.part_mapping,
                         measurement_scope="selected offset/noise tests; no sensitivity/polarity")
@@ -742,7 +747,8 @@ class TrayCheck(threading.Thread):
                 "power_readiness_failed": bool(getattr(rig, "power_readiness_failed", False)),
                 "control_events": getattr(rig, "control_events", []),
                 "restart_required": bool(getattr(getattr(rig, "device", None), "_shutdown_failed", False)),
-                "noise_acceptance_limit": None, "calibration_status": "PENDING",
+                "noise_acceptance_limit": legacy_meter.NOISE_LIMITS_MV if "noise" in self.selected_tests else None,
+                "calibration_status": "PENDING",
                 "legacy_noise_method": legacy_meter.method_metadata() if "noise" in self.selected_tests else None,
                 "selected_tests": list(self.selected_tests), "run_id": self.run_id, "family_id": self.family_id,
                 "part_mapping": self.part_mapping, "excluded_suspect_slots": self.excluded_suspect_slots,
@@ -780,6 +786,6 @@ class TrayCheck(threading.Thread):
             self.update(phase="Complete" if self.result["data_complete"] else "Incomplete",
                         progress=1. if self.result["data_complete"] else self.status()["progress"],
                         rows=self.result["rows"],
-                        message=("Saved selected tests. Noise results require review; no noise pass/fail limit." if "noise" in self.selected_tests
+                        message=("Saved noise measurements and verdicts." if "noise" in self.selected_tests
                                  else "Saved offset results. Noise was not taken.") if not errors else "; ".join(errors))
             self.finished.set()

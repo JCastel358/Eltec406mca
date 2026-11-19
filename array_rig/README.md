@@ -1,6 +1,6 @@
 # Eltec Array Rig — fifty detectors at once on a USB DAQ
 
-## Current M25/HUB hardware — updated 2026-11-16
+## Current M25/HUB hardware — updated 2026-11-19
 
 Each batch uses one tray. In setup, choose **Detector box side**:
 **Top** labels the array **1-1 through 5-10**; **Bottom** labels it
@@ -30,7 +30,9 @@ averages are allowed. It starts **all channels together when 80% are ready**,
 or after **90 seconds** with a fallback warning, then takes a **60-second
 recording** with a fresh software meter reset. Unready slots are recorded and
 flagged for review. Changing noise amplitude alone does not block readiness.
-This timing is provisional; calibrated noise acceptance remains disabled.
+Both stages and the live viewer acquire **500 samples per second per channel**.
+**Noise PASS** means the unrounded 60-second held reading is within
+**8.90–20.22 mV inclusive**. Values below or above this range fail low or high.
 
 Open **Live noise viewer** from setup, or double-click
 `run_array_live_viewer.cmd`, to watch these same readiness checks before
@@ -86,12 +88,10 @@ seconds after the page closes. Refreshing the page keeps the dashboard open.
 
 Click a position for its **Mean offset** and **Noise at 3 Hz**. The offset
 graph shows the recorded slope; the noise graph shows the held reading over
-time with 10.0–37.9 mV shaded as a reference only. Saved HTML reports retain
+time with the run's acceptance range shaded. Saved HTML reports retain
 RMS, waveform excerpts, min/max, slope and engineering notes, and work offline.
-Red indicates a valid
-offset failure or channel-specific signal problem; a green **offset pass** badge refers
-only to the provisional offset window. Noise remains amber Review because
-no acceptance limits have been commissioned.
+Red indicates a failed limit or channel-specific signal problem. Each detector
+has separate offset and noise badges. Historical noise reviews keep their original status.
 
 Interrupted acquisition is shown separately from detector failures. A brief
 DAQ delivery timeout can retry only the affected stage, up to three total
@@ -156,8 +156,8 @@ the 60 s reading and final held reading are saved alongside RMS (they now
 refer to the same endpoint). Earlier 100 s recordings remain readable. This is an
 unvalidated old-meter-scale estimate; measured gain and hold droop are not
 known. See [the method](m40623/NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
-**REVIEW is not PASS**: no detector-input transfer calibration or noise
-acceptance limits are applied. Sensitivity/polarity remain unimplemented.
+The app applies the noise limits to the held reading at 60 seconds.
+RMS values are diagnostic. Sensitivity/polarity remain unimplemented.
 
 Every run gets a unique folder under
 `Documents/Eltec_40623_Test_Results/40623_array_daq/mod50_checks/`, containing

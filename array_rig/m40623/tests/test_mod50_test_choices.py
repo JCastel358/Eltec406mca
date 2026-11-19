@@ -96,15 +96,15 @@ class SelectedStageRuns(unittest.TestCase):
         self.assertEqual([r["mode"] for r in result["records"]], ["noise"])
         self.assertFalse((worker.directory / "dc_raw.npz").exists())
         self.assertTrue(all(r["dc_check"] == "NOT_TAKEN" and r["dc_v"] is None and r["presence"] == "UNKNOWN" for r in result["rows"]))
-        self.assertTrue(all(r["result"] in ("REVIEW_NO_NOISE_LIMIT", "CHECK") for r in result["rows"]))
-        self.assertTrue(any(r["result"] == "REVIEW_NO_NOISE_LIMIT" for r in result["rows"]))
+        self.assertTrue(all(r["result"] in ("INCOMPLETE", "CHECK") for r in result["rows"]))
+        self.assertTrue(all(r["noise_verdict"] is None for r in result["rows"]))
         with (worker.directory / "results.csv").open(encoding="utf-8-sig", newline="") as stream:
             saved = list(csv.DictReader(stream))
         self.assertEqual(saved[0]["dc_check"], "NOT_TAKEN")
         self.assertEqual(saved[0]["dc_v"], "")
         self.assertIn("NOT_TAKEN", saved[0]["test_status"])
         with np.load(worker.directory / "noise_raw.npz") as raw:
-            self.assertEqual(raw["converter_counts"].shape, (1000, 57, 4))
+            self.assertEqual(raw["converter_counts"].shape, (500, 57, 4))
         record = result["records"][0]
         self.assertTrue(5 <= record["settling"]["waited_s"] < 90)
         self.assertEqual(record["settling"]["criterion"], "centered_unclipped_no_persistent_trend")
@@ -264,7 +264,7 @@ class SelectedStageRuns(unittest.TestCase):
         self.assertTrue(result["data_complete"], result["errors"])
         record = result["records"][0]
         self.assertTrue(record["settling"]["deadline_fallback"])
-        self.assertEqual(record["samples"], 6000)
+        self.assertEqual(record["samples"], 3000)
         self.assertTrue(all(any("never settled" in f for f in r["flags"]) for r in result["rows"]))
         self.assertTrue(all(r["result"] == "CHECK" for r in result["rows"]))
 
@@ -345,6 +345,20 @@ class RetestHistory(unittest.TestCase):
         self.assertEqual(self.history.warnings(), [])
         self.assertEqual(self.history.summary("LOT")["offset_pass"], 0)
         self.assertEqual(self.history.summary("LOT")["review"], 1)
+
+    def test_noise_verdict_tracks_latest_graded_retest_and_preserves_legacy_reviews(self):
+        self.save(saved_run("A", noise=True, failure=False))
+        self.assertEqual(self.history.current_parts("LOT")[0]["result"], "REVIEW_NO_NOISE_LIMIT")
+        for name, verdict, valid, outcome, failed in (
+                ("B", "FAIL_LOW", True, "FAIL", 1), ("C", None, False, "FAIL", 1),
+                ("D", "PASS", True, "PASS", 0), ("E", "FAIL_HIGH", True, "FAIL", 1)):
+            run = saved_run(name, noise=True, failure=False, valid=valid, family="A", mapping={"1-1": "A:1-1"})
+            run["rows"][0]["noise_verdict"] = verdict
+            self.save(run)
+            self.assertEqual(self.history.current_parts("LOT")[0]["result"], outcome)
+            summary = self.history.summary("LOT")
+            self.assertEqual((summary["tracked_parts"], summary["assessed_parts"], summary["failed"]), (1, 1, failed))
+            self.assertEqual(summary["screening_yield_percent"], 0 if failed else 100)
 
     def test_noise_retest_clears_signal_failure_without_creating_an_acceptance_pass(self):
         self.save(saved_run("A", noise=True))

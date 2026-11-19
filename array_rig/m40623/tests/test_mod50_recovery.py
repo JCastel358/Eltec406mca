@@ -98,9 +98,9 @@ class SavedNoiseRecovery(unittest.TestCase):
         self.save_raw()
         self.assertEqual(self.load()["source"]["recorded_noise_seconds"], 4.07)
 
-    def test_new_60second_run_checks_its_own_duration(self):
-        self.summary["application_revision"] = self.metadata["application_revision"] = hw.APP_REVISION
-        self.summary["timing_policy"] = self.metadata["timing_policy"] = check.TIMING_POLICY
+    def test_1khz_60second_run_checks_its_own_duration(self):
+        self.summary["application_revision"] = self.metadata["application_revision"] = "2026-11-16.3"
+        self.summary["timing_policy"] = self.metadata["timing_policy"] = check.BASELINE_1KHZ_TIMING_POLICY
         self.noise.update(requested_seconds=60., target_samples=60000)
         self.noise["errors"][-1] = "Incomplete: 4070 of 60000 scans"
         self.summary["errors"] = ["NOISE: " + e for e in self.noise["errors"]]
@@ -108,6 +108,20 @@ class SavedNoiseRecovery(unittest.TestCase):
         self.assertEqual(self.load()["record"]["samples"], 10000)
         self.noise["requested_seconds"] = 100.
         with self.assertRaisesRegex(ValueError, "noise duration"):
+            self.load()
+
+    def test_failed_500hz_recovery_preserves_original_1khz_dc(self):
+        self.summary.update(application_revision=hw.APP_REVISION, timing_policy=check.TIMING_POLICY)
+        self.dc["reused_from"] = {"timing_policy": self.metadata["timing_policy"]}
+        self.noise.update(requested_seconds=60., target_samples=30000, actual_rate_hz=500., recorded_seconds=8.14)
+        self.noise["diagnostics"].update(nominal_scan_hz=500., actual_timer_hz=500.)
+        self.noise["errors"] = ["No fresh DAQ samples for two seconds", "Incomplete: 4070 of 30000 scans"]
+        self.summary["errors"] = ["NOISE: " + e for e in self.noise["errors"]]
+        recovered = self.load()
+        self.assertEqual(recovered["record"]["actual_rate_hz"], 1000.)
+        self.assertEqual(recovered["source"]["recorded_noise_seconds"], 8.14)
+        self.noise["diagnostics"]["actual_timer_hz"] = 1000.
+        with self.assertRaises(ValueError):
             self.load()
 
     def test_bottom_recovery_requires_matching_side_in_raw_evidence(self):

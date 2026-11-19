@@ -8,10 +8,8 @@
     $('noiseChartTitle').textContent = 'Noise over time';
     $('noiseChartUnit').textContent = 'Held reading · mV';
     $('noiseChart').setAttribute('aria-label', 'Held noise estimate');
-    $('limitNote').textContent = 'Offset limits provisional · noise pass/fail disabled.';
   }
-  // Display reference only. Never feed these values into classification.
-  const noiseReference = [10.0, 37.9];
+  let configuredNoiseLimits = null;
   const positionNames = Array.from({length: 50}, (_, i) => `${Math.floor(i / 10) + 1}-${i % 10 + 1}`);
   let state = {busy: false, phase: 'Ready', progress: 0, rows: [], result: null};
   let selected = null;
@@ -34,6 +32,22 @@
   const tiles = new Map();
   const finite = x => typeof x === 'number' && Number.isFinite(x);
   const fmt = (x, digits = 3, suffix = '') => finite(x) ? x.toFixed(digits) + suffix : '—';
+  // A reopened run uses the limits and verdicts saved with that run.
+  const noiseLimits = () => state.result ? state.result.noise_acceptance_limit : configuredNoiseLimits;
+  const noiseRange = () => noiseLimits()?.map(value => value.toFixed(2)).join('–') + ' mV';
+  const noiseFailed = row => ['FAIL_LOW', 'FAIL_HIGH'].includes(row.noise_verdict);
+  function noiseReading(row) {
+    if (!row.noise_verdict) return fmt(row.legacy_equivalent_mv, 2, ' mV');
+    const value = row.legacy_equivalent_60s_mv;
+    const limits = noiseLimits();
+    // Keep a just-outside reading from looking exactly equal to a passing endpoint.
+    if (limits && noiseFailed(row) && finite(value)) {
+      const low = row.noise_verdict === 'FAIL_LOW';
+      const bound = limits[low ? 0 : 1].toFixed(2);
+      if (value.toFixed(2) === bound) return (low ? '< ' : '> ') + bound + ' mV';
+    }
+    return fmt(value, 2, ' mV');
+  }
   const chosenTests = id => $(id).value === 'both' ? ['dc', 'noise'] : [$(id).value];
   const includesTest = (row, mode) => row.test_status?.[mode] !== 'NOT_TAKEN' &&
     (state.result?.selected_tests || state.run_metadata?.selected_tests || ['dc', 'noise']).includes(mode);
@@ -88,6 +102,7 @@
     if (row.presence === 'NO_SIGNAL' || row.result === 'NO_SIGNAL') return ['empty', 'No signal'];
     if (row.result === 'NOT_INSTALLED' || row.installed === false) return ['empty', 'Excluded'];
     if (row.dc_check === 'OUTSIDE_WINDOW_PROVISIONAL' || row.dc_check === 'RANGE_LIMIT') return ['fail', 'Offset fail'];
+    if (noiseFailed(row)) return ['fail', row.noise_verdict === 'FAIL_LOW' ? 'Noise fail · low' : 'Noise fail · high'];
     const settlingReview = needsDcSettlingReview(row);
     if (signalFlags(row).some(flag => !dcSettlingFlag.test(flag)) ||
         (row.result === 'CHECK' && !settlingReview && !acquisitionFlags(row).length && !(row.acquisition_errors || []).length)) return ['fail', 'Check'];
@@ -97,7 +112,11 @@
         (state.result && ['dc', 'noise'].some(m => includesTest(row, m) && stageValidity(row, m) !== true))) {
       return ['incomplete', stageValidity(row, 'dc') === true ? 'Noise incomplete' : 'Incomplete'];
     }
-    if (stageValidity(row, 'noise') === true) return ['review', 'Noise review'];
+    if (state.result && row.result === 'INCOMPLETE') return ['incomplete', 'Incomplete'];
+    if (stageValidity(row, 'noise') === true) {
+      if (row.noise_verdict === 'PASS') return ['pass', 'Noise pass'];
+      return 'noise_verdict' in row ? ['incomplete', 'Noise ungraded'] : ['review', 'Noise review'];
+    }
     if (row.dc_check === 'IN_WINDOW_PROVISIONAL') {
       return finite(row.daq_3hz_q3_rms_uv) && stageValidity(row, 'noise') !== false ? ['review', 'Review'] : ['pass', 'Offset pass'];
     }
@@ -131,7 +150,7 @@
 
   function paintTray() {
     const data = rows();
-    let good = 0, flagged = 0, empty = 0, review = 0;
+    let good = 0, flagged = 0, empty = 0, review = 0, noisePass = 0;
     for (const row of data) {
       const [type, label] = classification(row);
       const button = tiles.get(row.position);
@@ -146,19 +165,24 @@
       if (type === 'fail' || type === 'settling') flagged++;
       if (row.presence === 'NO_SIGNAL' || row.result === 'NO_SIGNAL') empty++;
       if (type === 'review') review++;
+      if (row.noise_verdict === 'PASS') noisePass++;
     }
     const parts = state.result?.current_parts;
     if (parts?.length) {
       good = parts.filter(p => p.dc_check === 'IN_WINDOW_PROVISIONAL').length;
-      flagged = parts.filter(p => p.result === 'CHECK').length;
+      flagged = parts.filter(p => ['CHECK', 'FAIL'].includes(p.result)).length;
       empty = parts.filter(p => p.result === 'NO_SIGNAL').length;
       review = parts.filter(p => p.result === 'REVIEW_NO_NOISE_LIMIT').length;
+      noisePass = parts.filter(p => p.noise_verdict === 'PASS').length;
     }
     $('totalCount').textContent = parts?.length || (state.result ? data.filter(r => r.installed !== false).length : loadedPositions().length);
     $('passCount').textContent = good;
     $('failCount').textContent = flagged;
     $('emptyCount').textContent = empty;
-    $('reviewCount').textContent = review;
+    const graded = Boolean(noiseLimits()) || data.some(row => 'noise_verdict' in row);
+    $('noiseCountLabel').textContent = graded ? 'Noise pass' : 'Noise review';
+    $('reviewCount').parentElement.className = graded ? 'good' : 'warn';
+    $('reviewCount').textContent = graded ? noisePass : review;
     if (state.result) {
       const result = state.result;
       $('traySummary').textContent = `${Object.keys(result.part_mapping || {}).length ? 'Retest slots shown · totals track original parts · ' : ''}Batch ${result.lot || '—'}`;
@@ -187,6 +211,7 @@
 
   function chart(target, detail, mode) {
     const held = mode === 'held';
+    const noiseBand = held && (noiseLimits() || [10.0, 37.9]);
     const values = held ? detail?.held_mv : detail?.volts;
     const emptyText = reportMode ? (mode === 'dc' ? 'Offset trace will appear after DC recording.' : 'Noise trace will appear after noise recording.') : 'Waiting for recording';
     if (!detail || !Array.isArray(detail.time_s) || !Array.isArray(values)) {
@@ -232,8 +257,8 @@
     const tickDigits = mode === 'dc' ? 2 : Math.min(4, Math.max(1, 1 - Math.floor(Math.log10(high - low))));
     let svg = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${mode === 'dc' ? 'Offset over time in volts' : held ? 'Held noise estimate over time in millivolts' : 'Noise excerpt in millivolts'}"><rect width="${w}" height="${h}" fill="white"/>`;
     if (mode === 'dc' || held) {
-      const bandLow = held ? noiseReference[0] : Math.max(low, finite(detail.limit_min_v) ? detail.limit_min_v : .3);
-      const bandHigh = held ? noiseReference[1] : Math.min(high, finite(detail.limit_max_v) ? detail.limit_max_v : 1.2);
+      const bandLow = held ? noiseBand[0] : Math.max(low, finite(detail.limit_min_v) ? detail.limit_min_v : .3);
+      const bandHigh = held ? noiseBand[1] : Math.min(high, finite(detail.limit_max_v) ? detail.limit_max_v : 1.2);
       if (bandHigh > bandLow) svg += `<rect data-reference-band="${held ? 'legacy-noise' : 'offset'}" data-min="${bandLow}" data-max="${bandHigh}" x="${left}" y="${y(bandHigh)}" width="${w-left-right}" height="${y(bandLow)-y(bandHigh)}" fill="#edf9f3"/>`;
     }
     for (let i = 0; i <= 4; i++) {
@@ -242,7 +267,7 @@
       const time = x0 + i * (x1 - x0) / 4, px = x(time);
       svg += `<text x="${px}" y="${h-16}" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" fill="#5c6979">${time.toFixed(1)} s</text>`;
     }
-    if (mode === 'dc' || held) for (const limit of held ? noiseReference : [.3, 1.2]) {
+    if (mode === 'dc' || held) for (const limit of held ? noiseBand : [.3, 1.2]) {
       if (limit >= low && limit <= high) svg += `<line x1="${left}" y1="${y(limit)}" x2="${w-right}" y2="${y(limit)}" stroke="#13805a" stroke-width="1.5" stroke-dasharray="6 5"/>`;
     }
     const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(2)},${y(p[1]).toFixed(2)}`).join(' ');
@@ -252,7 +277,7 @@
       const labelWidth = 126, labelX = Math.max(left + 3, Math.min(eventX + 7, w - right - labelWidth - 3));
       svg += `<g aria-label="Flagged event at ${detail.event_time_s.toFixed(3)} seconds"><line x1="${eventX}" y1="${top}" x2="${eventX}" y2="${h-bottom}" stroke="#b42318" stroke-width="1.8" stroke-dasharray="5 4"/><rect x="${labelX}" y="${top+5}" width="${labelWidth}" height="23" rx="4" fill="#fde7e5" stroke="#efa9a2"/><text x="${labelX+7}" y="${top+20}" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#b42318">Flag at ${detail.event_time_s.toFixed(3)} s</text></g>`;
     }
-    const caption = held ? 'Legacy reference 10.0–37.9 mV' : mode === 'dc'
+    const caption = held ? (noiseLimits() ? '60 s pass range ' + noiseRange() : 'Legacy reference 10.0–37.9 mV') : mode === 'dc'
       ? reportMode ? 'Common voltage scale · green area is inside offset limits' : 'Offset range 0.3–1.2 V'
       : 'Recorded excerpt · time is relative to the noise recording';
     svg += `<text x="${left}" y="13" font-family="Segoe UI, sans-serif" font-size="11" fill="#5c6979">${caption}</text></svg>`;
@@ -275,10 +300,11 @@
         : stageValidity(row, 'noise') === false ? 'Noise recording incomplete' : 'Noise trace unavailable';
     }
     metrics($('offsetMetrics'), [['Mean offset', fmt(dcValid ? row.dc_v : null, 3, ' V')]]);
-    metrics($('noiseMetrics'), [['Noise at 3 Hz', fmt(noiseValid ? row.legacy_equivalent_mv : null, 2, ' mV')]]);
+    metrics($('noiseMetrics'), [['Noise at 3 Hz', noiseValid ? noiseReading(row) : '—']]);
     $('offsetNote').textContent = stageValidity(row, 'dc') === false && row.dc_detail ? 'Incomplete recording — retest offset.' : '';
     $('offsetNote').hidden = !$('offsetNote').textContent;
-    $('legacyNoiseNote').textContent = 'Reference only · noise pass/fail disabled.';
+    $('legacyNoiseNote').textContent = noiseLimits() ? 'Pass range at 60 s · ' + noiseRange() + ' inclusive'
+      : includesTest(row, 'noise') ? 'Reference only · noise pass/fail disabled for this run.' : '';
     $('noiseNote').textContent = '';
     $('noiseNote').hidden = true;
     $('detailIdentity').textContent = '';
@@ -299,11 +325,14 @@
     else if (['OUTSIDE_WINDOW_PROVISIONAL', 'RANGE_LIMIT'].includes(row.dc_check)) badges.append(badge('Offset FAIL · provisional', 'fail'));
     else badges.append(badge(includesTest(row, 'dc') ? 'Offset not measured' : 'Offset not taken', 'empty'));
     if (!noSignal && needsDcSettlingReview(row)) badges.append(badge('DC settling · review', 'review'));
-    if (noSignal) badges.append(badge('Noise analysis excluded', 'empty'));
+    if (noSignal || row.installed === false) badges.append(badge('Noise analysis excluded', 'empty'));
     else if (!includesTest(row, 'noise')) badges.append(badge('Noise not taken', 'empty'));
+    else if (noiseFailed(row)) badges.append(badge(row.noise_verdict === 'FAIL_LOW' ? 'Noise FAIL · low' : 'Noise FAIL · high', 'fail'));
+    else if (row.noise_verdict === 'PASS') badges.append(badge('Noise PASS', 'pass'));
     else if (signalFlags(row).some(f => /^NOISE:/i.test(f))) badges.append(badge('Noise · signal check', 'fail'));
     else if (state.busy && stageValidity(row, 'noise') !== true) badges.append(badge(pendingNoiseText(), 'empty'));
     else if (stageValidity(row, 'noise') === false || (state.result && !finite(row.daq_3hz_q3_rms_uv))) badges.append(badge('Noise recording incomplete', 'incomplete'));
+    else if ('noise_verdict' in row) badges.append(badge('Noise ungraded', 'incomplete'));
     else if (finite(row.daq_3hz_q3_rms_uv)) badges.append(badge('Noise · review', 'review'));
     else badges.append(badge(noSignal ? 'Noise analysis excluded' : 'Noise not measured', 'empty'));
     if (!reportMode) {
@@ -315,7 +344,9 @@
       : [...signalFlags(row).map(issueText), ...(row.acquisition_errors || []), ...acquisitionFlags(row),
           stageValidity(row, 'dc') === true && includesTest(row, 'noise') && stageValidity(row, 'noise') !== true
             ? 'The valid offset result is retained. Noise has not completed a valid recording; this is an acquisition issue, not a detector failure.'
-            : finite(row.daq_3hz_q3_rms_uv) ? 'Noise is saved for review; no calibrated noise pass/fail limit is applied yet.'
+            : row.noise_verdict ? '60 s noise reading ' + noiseReading(row) + ' · pass range ' + noiseRange() + ' inclusive.'
+            : 'noise_verdict' in row && includesTest(row, 'noise') ? 'A valid 60-second reading is required to grade noise.'
+            : finite(row.daq_3hz_q3_rms_uv) ? 'This run saved the noise reading for review.'
             : !includesTest(row, 'noise') && stageValidity(row, 'dc') === true ? 'Offset test saved. Noise was not taken.'
             : 'This position has not completed its measurements yet.'].join(' · ');
     const dc = row.dc_detail, noise = row.noise_detail;
@@ -335,10 +366,11 @@
     const noiseMetrics = [
       ['3 Hz / Q3 RMS', fmt(row.daq_3hz_q3_rms_uv, 3, ' µV')], ['1–100 Hz RMS', fmt(row.daq_1_100_hz_rms_uv, 3, ' µV')],
       ['Legacy-equivalent estimate', fmt(row.legacy_equivalent_mv, 2, ' mV')],
-      ['Legacy estimate at 60 s', fmt(row.legacy_equivalent_60s_mv, 2, ' mV')],
+      ['Legacy estimate at 60 s', row.noise_verdict ? noiseReading(row) : fmt(row.legacy_equivalent_60s_mv, 2, ' mV')],
       ['Excerpt', finite(noise?.start_s) && finite(noise?.end_s) ? `${noise.start_s.toFixed(1)}–${noise.end_s.toFixed(1)} s` : '—'],
       ['Excerpt minimum', finite(noise?.min_v) ? fmt(noise.min_v * 1000, 3, ' mV') : '—'],
-      ['Excerpt maximum', finite(noise?.max_v) ? fmt(noise.max_v * 1000, 3, ' mV') : '—'], ['Noise acceptance', 'Disabled · compare old fixture']
+      ['Excerpt maximum', finite(noise?.max_v) ? fmt(noise.max_v * 1000, 3, ' mV') : '—'],
+      ['Noise acceptance', noiseLimits() ? noiseRange() + ' inclusive' : includesTest(row, 'noise') ? 'Disabled for this run' : 'Noise not taken']
     ];
     if (finite(noise?.event_time_s) && finite(noise?.start_s) && finite(noise?.end_s) &&
         noise.event_time_s >= noise.start_s && noise.event_time_s <= noise.end_s) {
@@ -347,9 +379,9 @@
     metrics($('noiseMetrics'), noiseMetrics);
     const legacy = row.legacy_equivalent_detail;
     $('legacyNoiseNote').textContent = finite(row.legacy_equivalent_mv)
-      ? `Legacy-equivalent estimate: highest smoothed reading over ${fmt(legacy?.readout_elapsed_s, 1, ' s')} since reset. Nominal gain, 3 Hz / Q3 filtering, absolute-value rectification, 10-second smoothing and an ideal peak hold. Unvalidated; compare with the old fixture before using noise limits.`
+      ? `Legacy-equivalent estimate: highest smoothed reading over ${fmt(legacy?.readout_elapsed_s, 1, ' s')} since reset. Nominal gain, 3 Hz / Q3 filtering, absolute-value rectification, 10-second smoothing and an ideal peak hold. Unvalidated as a calibration of the old fixture.`
       : !includesTest(row, 'noise') ? 'Legacy estimate not taken — noise was not selected.'
-      : legacy?.reason || (state.result && noise ? 'This saved recording has no legacy estimate; its original RMS readings are retained.' : 'A legacy estimate will appear after a valid noise recording of at least 60 seconds. Noise pass/fail stays disabled.');
+      : legacy?.reason || (state.result && noise ? 'This saved recording has no legacy estimate; its original RMS readings are retained.' : 'A valid 60-second recording supplies the held noise estimate.');
     $('noiseNote').textContent = noise ? `${stageValidity(row, 'noise') === false ? 'Diagnostic excerpt only: the interrupted recording is not a valid noise result. ' : ''}${noise.selection_reason || 'Representative recorded waveform.'} Waveform and RMS values are at the DAQ output and include front-end gain. The legacy estimate uses a separate nominal old-meter scale. Full raw data are saved.` : 'No valid noise recording is available yet. A waveform will appear after recording; no sensitivity test is performed.';
     $('detailIdentity').textContent = `Position ${positionLabel(row.position)} · ${sideName(boxSide())} · ${row.card || 'M25'}${finite(row.card_channel) ? ` channel ${row.card_channel}` : ''}${finite(row.physical_daq_channel) ? ` · DAQ CH${row.physical_daq_channel}` : ''} · Full recordings and these charts are retained with the run.`;
   }
@@ -479,6 +511,8 @@
       else if (result?.data_complete && !busy && !(result.errors || []).length && !state.restart_required) $('statusText').textContent = 'Results saved. Select a detector.';
     }
     const tests = result?.selected_tests || state.run_metadata?.selected_tests || chosenTests('testChoice');
+    $('limitNote').textContent = 'Offset 0.3–1.2 V (provisional)' + (!tests.includes('noise') ? '' :
+      noiseLimits() ? ' · Noise ' + noiseRange() + ' inclusive at 60 s' : result ? ' · Noise saved for review' : '');
     $('timeNote').textContent = reportMode ? 'Saved report' : simulation ? 'Demo · accelerated waiting' : `${tests.includes('dc') ? '10 s offset + settling' : ''}${tests.length === 2 ? ' · ' : ''}${tests.includes('noise') ? '5–90 s settling + 60 s noise' : ''}`;
     $('liveViewerButton').disabled = busy || reportMode || !connected;
     $('runProgress').value = finite(state.progress) ? Math.max(0, Math.min(1, state.progress)) : 0;
@@ -507,7 +541,12 @@
     $('retestChoice').disabled = busy || $('retestAll').checked;
     const yieldData = result?.batch_summary;
     $('batchYield').hidden = !yieldData;
-    if (yieldData) $('batchYield').textContent = `Batch: ${yieldData.tracked_parts} parts · ${yieldData.failed} flagged · ${yieldData.review} noise review · ${yieldData.incomplete} incomplete` + (reportMode ? ` · Screening yield ${fmt(yieldData.screening_yield_percent, 1, '%')}. Retests counted once; noise review is not an acceptance pass.` : '');
+    if (yieldData) {
+      const passed = finite(yieldData.pass) ? ` · ${yieldData.pass + yieldData.offset_pass} passed selected tests` : '';
+      const reviews = yieldData.review ? ` · ${yieldData.review} noise review` : '';
+      $('batchYield').textContent = `Batch: ${yieldData.tracked_parts} parts${passed} · ${yieldData.failed} flagged${reviews} · ${yieldData.incomplete} incomplete` +
+        (reportMode ? ` · Screening yield ${fmt(yieldData.screening_yield_percent, 1, '%')}. Retests counted once.` : '');
+    }
     $('startButton').disabled = Boolean(reportMode || busy || result || screen !== 'test' || state.restart_required || !connected);
     $('stopButton').disabled = reportMode || (!busy && connected);
     $('completionActions').hidden = reportMode || busy || !result;
@@ -576,6 +615,7 @@
       // A poll may have read the previous run just before Start was accepted.
       // Never let that delayed response overwrite a new run or a new batch.
       if (version !== stateVersion || requestPending) return;
+      configuredNoiseLimits = next.configured_noise_limits_mv || null;
       connected = true;
       if (!initialSourceSet) {
         $('sourceInput').value = next.simulate ? 'demo' : 'real';

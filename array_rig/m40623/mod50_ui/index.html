@@ -66,11 +66,11 @@
         <div class="progress-bottom"><p id="statusText" role="status">Press Start when the fixture is ready.</p><div class="sequence" aria-label="Measurement sequence"><span>Settle</span><i>→</i><span>Offset</span><i>→</i><span>Settle</span><i>→</i><span>Noise</span><i>→</i><span>Save</span></div></div>
       </div>
       <div class="summary-strip" aria-label="Tray result counts">
-        <div><span>Positions</span><strong id="totalCount">50</strong></div><div class="good"><span>Offset pass</span><strong id="passCount">0</strong></div><div class="warn"><span>Flagged</span><strong id="failCount">0</strong></div><div class="muted"><span>No signal</span><strong id="emptyCount">0</strong></div><div class="warn"><span>Noise review</span><strong id="reviewCount">0</strong></div>
+        <div><span>Positions</span><strong id="totalCount">50</strong></div><div class="good"><span>Offset pass</span><strong id="passCount">0</strong></div><div class="warn"><span>Flagged</span><strong id="failCount">0</strong></div><div class="muted"><span>No signal</span><strong id="emptyCount">0</strong></div><div class="good"><span id="noiseCountLabel">Noise pass</span><strong id="reviewCount">0</strong></div>
       </div>
       <div class="tray-wrap"><div class="tray-toolbar"><span id="boxRange">Top · 1-1 through 5-10</span><span id="traySummary">50 positions · select any detector for details</span></div><div class="sensor-grid" id="sensorGrid" aria-label="Detector positions"></div></div>
-      <div class="legend"><span><i class="legend-dot pass"></i>Green badge: offset pass</span><span><i class="legend-dot fail"></i>Red: offset / signal fault</span><span><i class="legend-dot review"></i>Amber: settling / review / incomplete</span><span><i class="legend-dot empty"></i>Gray: no signal</span></div>
-      <p class="limit-note" id="limitNote">Offset: provisional 0.3–1.2 V. Noise limits await calibration. An offset pass is not a complete detector pass.</p>
+      <div class="legend"><span><i class="legend-dot pass"></i>Pass</span><span><i class="legend-dot fail"></i>Failed limit or signal fault</span><span><i class="legend-dot review"></i>Settling / review / incomplete</span><span><i class="legend-dot empty"></i>No signal</span></div>
+      <p class="limit-note" id="limitNote"></p>
       <p class="batch-yield" id="batchYield" hidden></p>
       <div class="completion-actions" id="completionActions" hidden><span id="completionPrompt">All set with this tray?</span><div class="button-row"><button class="secondary" id="homeButton" type="button">Main setup <kbd>Esc</kbd></button><button class="secondary" id="retestButton" type="button">Retest parts</button><button class="secondary" id="retryNoiseButton" type="button" hidden>Retry noise →</button><button class="primary" id="nextBatchButton" type="button">Next batch <kbd>Enter</kbd></button></div></div>
     </section>

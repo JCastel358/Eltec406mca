@@ -39,7 +39,7 @@ class HardwareContract(unittest.TestCase):
         self.assertEqual(hw.channel_identity(24)["daq_jack"], "J2")
         self.assertEqual(hw.channel_identity(25)["daq_jack"], "J1")
         self.assertEqual(self.rig.config.channels, 57)
-        self.assertEqual(self.rig.scan_hz, 1000)
+        self.assertEqual(self.rig.scan_hz, 500)
         self.assertEqual(self.rig.buffer_count, 64)
 
     def test_modes_hold_gain_off_and_repeat_settling(self):
@@ -159,29 +159,32 @@ class TraySequence(unittest.TestCase):
         result = worker.result
         self.assertTrue(result["data_complete"], result["errors"])
         self.assertEqual(len(result["rows"]), 50)
-        self.assertEqual([r["samples"] for r in result["records"]], [10000, 60000])
+        self.assertEqual([r["samples"] for r in result["records"]], [5000, 30000])
         self.assertTrue(all(r["settling"]["complete"] for r in result["records"]))
         self.assertTrue(5 <= result["records"][0]["settling"]["waited_s"] < 90)
         self.assertTrue(5 <= result["records"][1]["settling"]["waited_s"] < 90)
         self.assertEqual(self.rig.device.controls, (False, False))
-        self.assertTrue(all(r["result"] != "PASS" for r in result["rows"]))
         self.assertTrue(all(.59 < r["dc_v"] < .86 for r in result["rows"]))
-        self.assertIsNone(result["noise_acceptance_limit"])
-        for mode, n in (("dc", 10000), ("noise", 60000)):
+        self.assertEqual(tuple(result["noise_acceptance_limit"]), (8.90, 20.22))
+        for mode, n in (("dc", 5000), ("noise", 30000)):
             with np.load(worker.directory / f"{mode}_raw.npz", allow_pickle=False) as data:
                 self.assertEqual(data["converter_counts"].shape, (n, 57, 4))
                 meta = json.loads(str(data["metadata_json"].item()))
                 self.assertEqual(meta["logical_to_physical"], list(hw.MAPPING))
                 self.assertTrue(meta["simulated"])
+                self.assertEqual(meta["nominal_rate_hz"], 500)
                 self.assertEqual(meta["voltage_reference"], "DAQ_OUTPUT")
                 if mode == "noise":
                     self.assertEqual(meta["legacy_noise_method"]["validation_status"], "UNVALIDATED")
-                    self.assertFalse(meta["legacy_noise_method"]["noise_pass_fail_enabled"])
+                    self.assertTrue(meta["legacy_noise_method"]["noise_pass_fail_enabled"])
+                    self.assertEqual(meta["noise_acceptance_limit"], [8.90, 20.22])
                     self.assertEqual(meta["legacy_noise_method"]["actual_sample_rate_hz"], meta["actual_rate_hz"])
         for row in result["rows"]:
             self.assertGreater(row["legacy_equivalent_mv"], 0)
             self.assertGreaterEqual(row["legacy_equivalent_mv"], row["legacy_equivalent_60s_mv"])
             self.assertEqual(row["legacy_equivalent_status"], "UNVALIDATED_ESTIMATE")
+            mv = row["legacy_equivalent_60s_mv"]
+            self.assertEqual(row["noise_verdict"], "FAIL_LOW" if mv < 8.90 else "FAIL_HIGH" if mv > 20.22 else "PASS")
         self.assertTrue((worker.directory / "report.html").exists())
         self.assertTrue((worker.directory / "results.csv").exists())
 
@@ -349,7 +352,7 @@ class TraySequence(unittest.TestCase):
         with np.load(worker.directory / "noise_raw.npz") as rejected:
             self.assertTrue(np.all(rejected["converter_counts"] == 60000))
         with np.load(worker.directory / "noise_attempt02_raw.npz") as accepted:
-            self.assertEqual(accepted["converter_counts"].shape, (1000, 57, 4))
+            self.assertEqual(accepted["converter_counts"].shape, (500, 57, 4))
             self.assertLess(accepted["converter_counts"].max(), 40000)
         self.assertTrue(all(row["acquisition_validity"] == {"dc": True, "noise": True} for row in result["rows"]))
         self.assertTrue(all(not row["acquisition_errors"] and not row["flags"] for row in result["rows"]))
@@ -365,7 +368,7 @@ class TraySequence(unittest.TestCase):
         self.assertTrue(result["data_complete"], result["errors"])
         self.assertEqual(result["records"][1]["failure_kind"], "delivery_interrupted")
         self.assertTrue(result["records"][1]["retry_eligible"])
-        self.assertEqual(result["records"][2]["samples"], 1000)
+        self.assertEqual(result["records"][2]["samples"], 500)
 
     def test_rate_failure_alone_does_not_retry_or_weaken_acceptance(self):
         worker = self.worker()

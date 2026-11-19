@@ -9,6 +9,7 @@ from tkinter import ttk
 import webbrowser
 
 import mod50_hardware as hw
+from mod50_legacy_noise import NOISE_LIMITS_MV
 from mod50_check import TrayCheck, results_root
 
 
@@ -99,7 +100,7 @@ class ArrayWindow:
                                   ("dc", "DC (V)", 85), ("dc_check", "DC check · provisional", 205),
                                   ("noise3", "3 Hz/Q3 (µV RMS)", 140), ("noise100", "1–100 Hz (µV RMS)", 150),
                                   ("legacy", "Legacy estimate (mV)", 155),
-                                  ("result", "Review", 220)):
+                                  ("result", "Result", 220)):
             self.table.heading(key, text=label)
             self.table.column(key, width=width, minwidth=60, stretch=True)
         scroll = ttk.Scrollbar(frame, orient="vertical", command=self.table.yview)
@@ -109,7 +110,7 @@ class ArrayWindow:
         self.table.tag_configure("check", background="#fff0d1")
         self.table.tag_configure("empty", foreground="#7b8796")
         ttk.Label(root, text="RMS is at the DAQ output. Legacy estimate uses nominal gain, filtering, rectification, smoothing and ideal hold.\n"
-                  "Noise pass/fail is disabled until comparison with the old fixture; REVIEW is not PASS.\n"
+                  f"60 s noise passes from {NOISE_LIMITS_MV[0]:.2f} to {NOISE_LIMITS_MV[1]:.2f} mV inclusive.\n"
                   "Supply supervision and physical RUN/STOP remain manual. Software Stop does not remove hardware power.",
                   padding=(20, 8), wraplength=1150).pack(fill="x", before=frame)
         root.protocol("WM_DELETE_WINDOW", self.close)
@@ -126,7 +127,7 @@ class ArrayWindow:
         self.ready.set(False)
         demo = self.source.get() == "Generated demo"
         self.source_note.set("SIMULATION · generated data, accelerated waits, separate result files" if demo else
-                             "Actual M25/HUB hardware · 1 kHz · both cards checked throughout the run")
+                             f"Actual M25/HUB hardware · {hw.SAMPLE_HZ:g} samples/s per channel · both cards checked throughout the run")
         self.report_path = None
         self.reset_table()
         self.controls()
@@ -188,14 +189,16 @@ class ArrayWindow:
         def number(value, places):
             return "—" if value is None else f"{value:.{places}f}"
         for row in result["rows"]:
-            label = ("Not installed" if not row["installed"] else
-                     "Incomplete" if not result["data_complete"] else
-                     "CHECK · " + "; ".join(row["flags"]) if row["flags"] else "REVIEW · no noise limit")
+            label = row["result"].replace("_", " ")
+            if row.get("noise_verdict"):
+                label += " · Noise " + row["noise_verdict"].replace("_", " ")
+            if row["flags"]:
+                label += " · " + "; ".join(row["flags"])
             self.table.item(row["position"], values=(row["position"], f"{row['card']} / {row['physical_daq_channel']}",
                 number(row["dc_v"], 5), row["dc_check"].replace("_", " ").lower(),
                 number(row["daq_3hz_q3_rms_uv"], 3), number(row["daq_1_100_hz_rms_uv"], 3),
                 number(row.get("legacy_equivalent_mv"), 2), label),
-                tags=("empty" if not row["installed"] else "check" if row["flags"] or not result["data_complete"] else "",))
+                tags=("empty" if not row["installed"] else "check" if row["result"] == "FAIL" or row["flags"] or not result["data_complete"] else "",))
 
     def poll(self):
         if self.worker is not None:

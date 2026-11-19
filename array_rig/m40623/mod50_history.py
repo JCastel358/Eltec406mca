@@ -4,6 +4,7 @@ Parts are operator-linked original tray positions, not serial identities.
 Every attempt stays immutable; only valid selected stages replace the current
 assessment. SQLite transactions make importing an already saved run idempotent.
 """
+from collections import Counter
 from contextlib import contextmanager
 import datetime as dt
 import json
@@ -18,7 +19,32 @@ def stage_failure(row, mode):
     if not row.get("acquisition_validity", {}).get(mode) or row.get("presence") == "NO_SIGNAL":
         return False
     return ((mode == "dc" and row.get("dc_check") in ("OUTSIDE_WINDOW_PROVISIONAL", "RANGE_LIMIT"))
+            or (mode == "noise" and row.get("noise_verdict") in ("FAIL_LOW", "FAIL_HIGH"))
             or any(flag.startswith(mode.upper() + ":") for flag in row.get("flags", [])))
+
+
+def assessed_stage(row, mode):
+    return (row.get("acquisition_validity", {}).get(mode)
+            and not (mode == "noise" and "noise_verdict" in row and row.get("legacy_equivalent_status") == "TOO_SHORT"))
+
+
+def part_result(stages, requested):
+    noise = stages.get("noise", {})
+    if stages and all(row.get("presence") == "NO_SIGNAL" for row in stages.values()):
+        return "NO_SIGNAL"
+    if "noise_verdict" in noise and stages.get("dc", {}).get("presence") == "NO_SIGNAL":
+        return "NO_SIGNAL"
+    if noise.get("noise_verdict") in ("FAIL_LOW", "FAIL_HIGH"):
+        return "FAIL"
+    if any(stage_failure(row, mode) for mode, row in stages.items()):
+        return "CHECK"
+    if not all(mode in stages for mode in requested):
+        return "INCOMPLETE"
+    if "noise" not in requested:
+        return "PASS_OFFSET_ONLY"
+    if "noise_verdict" not in noise:  # Historic run acquired before new-rig limits.
+        return "REVIEW_NO_NOISE_LIMIT"
+    return "PASS" if noise["noise_verdict"] == "PASS" else "INCOMPLETE"
 
 
 class History:
@@ -86,7 +112,7 @@ class History:
                 # are not evidence of a defective slot. Reused DC in noise
                 # recovery must not count as a second slot test.
                 observed = [m for m in tests if not (result.get("resumed_from") and m == "dc")]
-                valid = [m for m in observed if row.get("acquisition_validity", {}).get(m)]
+                valid = [m for m in observed if assessed_stage(row, m)]
                 if row.get("presence") != "NO_SIGNAL" and valid:
                     failed = any(stage_failure(row, m) for m in valid)
                     if failed or len(valid) == len(observed):
@@ -117,27 +143,24 @@ class History:
                     tests = json.loads(attempt["tests"])
                     requested.update(tests)
                     for mode in tests:
-                        if row.get("acquisition_validity", {}).get(mode):
+                        if assessed_stage(row, mode):
                             stages[mode] = row
                 dc, noise = stages.get("dc", {}), stages.get("noise", {})
-                no_signal = bool(stages) and all(r.get("presence") == "NO_SIGNAL" for r in stages.values())
-                failure = any(stage_failure(row, mode) for mode, row in stages.items())
-                complete = requested.issubset(stages)
-                outcome = ("NO_SIGNAL" if no_signal else "CHECK" if failure else "INCOMPLETE" if not complete
-                           else "REVIEW_NO_NOISE_LIMIT" if "noise" in requested else "PASS_OFFSET_ONLY")
+                outcome = part_result(stages, requested)
                 item.update(part_id=item.pop("id"), position=latest["position"], latest_run_id=latest["run_id"],
                             attempts=count, result=outcome, dc_check=dc.get("dc_check", "NOT_TAKEN"),
-                            dc_v=dc.get("dc_v"), selected_tests=sorted(requested),
+                            dc_v=dc.get("dc_v"), noise_verdict=noise.get("noise_verdict"), selected_tests=sorted(requested),
                             acquisition_validity={m: m in stages for m in ("dc", "noise")})
                 parts.append(item)
             return parts
 
     def summary(self, lot, family=None):
         parts = self.current_parts(lot, family)
-        counts = {key: sum(p["result"] == value for p in parts) for key, value in
-                  (("offset_pass", "PASS_OFFSET_ONLY"), ("review", "REVIEW_NO_NOISE_LIMIT"),
-                   ("failed", "CHECK"), ("incomplete", "INCOMPLETE"), ("no_signal", "NO_SIGNAL"))}
-        assessed = counts["offset_pass"] + counts["review"] + counts["failed"]
+        results = Counter(p["result"] for p in parts)
+        counts = {"pass": results["PASS"], "offset_pass": results["PASS_OFFSET_ONLY"],
+                  "review": results["REVIEW_NO_NOISE_LIMIT"], "failed": results["FAIL"] + results["CHECK"],
+                  "incomplete": results["INCOMPLETE"], "no_signal": results["NO_SIGNAL"]}
+        assessed = counts["pass"] + counts["offset_pass"] + counts["review"] + counts["failed"]
         return {"lot": lot, "tracked_parts": len(parts), "assessed_parts": assessed, **counts,
                 "screening_yield_percent": 100 * (assessed - counts["failed"]) / assessed if assessed else None,
                 "attempts": sum(p["attempts"] for p in parts),

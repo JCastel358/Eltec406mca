@@ -1,4 +1,4 @@
-"""Physical-scale, time-response and no-verdict checks for the nominal meter."""
+"""Physical scale, time response and 60-second grading for the M25/HUB meter."""
 import csv
 import json
 import math
@@ -98,8 +98,9 @@ class NominalMeter(unittest.TestCase):
     def test_metadata_never_claims_calibration_or_invents_hold_decay(self):
         method = meter.method_metadata(1000)
         self.assertEqual(method["validation_status"], "UNVALIDATED")
-        self.assertFalse(method["noise_pass_fail_enabled"])
-        self.assertIsNone(method["acceptance_limits_mv"])
+        self.assertTrue(method["noise_pass_fail_enabled"])
+        self.assertEqual(method["acceptance_limits_mv"], (8.90, 20.22))
+        self.assertEqual(method["acceptance_field"], "legacy_equivalent_60s_mv")
         self.assertIsNone(method["hold_decay_tau_s"])
         self.assertEqual(method["nominal_gain_ratio"], 1)
         self.assertEqual(method["filter"]["band_truncation"], None)
@@ -123,21 +124,34 @@ class MeterIntegration(unittest.TestCase):
         cls.measured = check.channel_statistics(cls.raw, hw.NOISE_RANGE, cls.rate, "noise",
                                                 excluded_positions=cls.excluded)
 
-    def test_mapped_channels_keep_rms_and_never_apply_old_meter_limits(self):
+    def test_mapped_channels_keep_rms_and_grade_the_60s_meter_reading(self):
         record = {"mode": "noise", "valid_data": True, "rows": self.measured}
         rows = check.combine_rows([record], self.positions, True, ("noise",))
         observed = [rows[hw.POSITIONS.index(p)] for p in self.positions]
         self.assertLess(observed[0]["legacy_equivalent_mv"], 10)
         self.assertTrue(10 < observed[1]["legacy_equivalent_mv"] < 37.9)
         self.assertGreater(observed[2]["legacy_equivalent_mv"], 37.9)
+        self.assertEqual([row["noise_verdict"] for row in observed], ["FAIL_LOW", "PASS", "FAIL_HIGH"])
+        self.assertEqual([row["result"] for row in observed], ["FAIL", "PASS", "FAIL"])
         for row, amplitude in zip(observed, (.0007, .0025, .015)):
-            self.assertEqual(row["result"], "REVIEW_NO_NOISE_LIMIT")
             self.assertEqual(row["flags"], [])
             expected_rms_uv = amplitude / math.sqrt(2) * 1e6
             self.assertAlmostEqual(row["daq_3hz_q3_rms_uv"], expected_rms_uv, delta=5)
             self.assertAlmostEqual(row["daq_1_100_hz_rms_uv"], expected_rms_uv, delta=5)
         self.assertIsNone(rows[1]["legacy_equivalent_mv"])
         self.assertEqual(rows[1]["result"], "NOT_INSTALLED")
+        self.assertIsNone(rows[1]["noise_verdict"])
+
+    def test_inclusive_unrounded_bounds_apply_only_to_the_60s_readout(self):
+        for value, verdict in ((math.nextafter(8.90, -math.inf), "FAIL_LOW"), (8.90, "PASS"),
+                               (20.22, "PASS"), (math.nextafter(20.22, math.inf), "FAIL_HIGH")):
+            with self.subTest(value=value):
+                measured = [{**self.measured[0], "legacy_equivalent_60s_mv": value,
+                             "legacy_equivalent_mv": 55.0}] * 50
+                rows = check.combine_rows([{"mode": "noise", "valid_data": True, "rows": measured}],
+                                          ["1-1"], True, ["noise"])
+                self.assertEqual(rows[0]["noise_verdict"], verdict)
+                self.assertEqual(rows[0]["result"], "PASS" if verdict == "PASS" else "FAIL")
 
     def test_invalid_and_excluded_signals_never_enter_meter_analysis(self):
         with patch.object(meter, "analyze", side_effect=AssertionError("Invalid meter analysis")):
@@ -159,34 +173,38 @@ class MeterIntegration(unittest.TestCase):
         row = check.combine_rows([record], self.positions, False, ("noise",))[0]
         self.assertIsNone(row["legacy_equivalent_mv"])
         self.assertEqual(row["result"], "INCOMPLETE")
+        self.assertIsNone(row["noise_verdict"])
         dc = [{"mean_v": 0, "near_range_limit": False, "flags": [], "presence": "NO_SIGNAL"} for _ in hw.POSITIONS]
         rows = check.combine_rows([{"mode": "dc", "valid_data": True, "rows": dc},
                                    {**record, "valid_data": True}], self.positions, True)
         self.assertEqual(rows[0]["result"], "NO_SIGNAL")
+        self.assertIsNone(rows[0]["noise_verdict"])
         self.assertIsNone(rows[0]["legacy_equivalent_mv"])
         self.assertEqual(rows[0]["legacy_equivalent_status"], "EXCLUDED")
 
-    def test_exports_preserve_scale_method_timing_and_disabled_acceptance(self):
+    def test_exports_preserve_scale_method_timing_and_verdict(self):
         rows = check.combine_rows([{"mode": "noise", "valid_data": True, "rows": self.measured}],
                                   self.positions, True, ("noise",))
         result = {"rows": rows, "lot": "MODEL TEST", "tray": 1, "operator": "Test", "simulated": True,
-                  "selected_tests": ["noise"], "noise_acceptance_limit": None,
+                  "selected_tests": ["noise"], "noise_acceptance_limit": meter.NOISE_LIMITS_MV,
                   "legacy_noise_method": meter.method_metadata()}
         with tempfile.TemporaryDirectory() as tmp:
             check.write_report(tmp, result)
             saved = json.loads((Path(tmp) / "summary.json").read_text())
             self.assertEqual(saved["rows"][0]["legacy_equivalent_mv"], rows[0]["legacy_equivalent_mv"])
-            self.assertFalse(saved["legacy_noise_method"]["noise_pass_fail_enabled"])
+            self.assertEqual(saved["noise_acceptance_limit"], [8.90, 20.22])
+            self.assertEqual(saved["rows"][0]["noise_verdict"], "FAIL_LOW")
             with (Path(tmp) / "results.csv").open(encoding="utf-8-sig", newline="") as stream:
                 csv_row = next(csv.DictReader(stream))
             self.assertEqual(float(csv_row["legacy_equivalent_mv"]), rows[0]["legacy_equivalent_mv"])
             self.assertEqual(csv_row["legacy_equivalent_method_id"], meter.METHOD_ID)
             self.assertEqual(float(csv_row["legacy_reference_readout_elapsed_s"]), 60)
-            self.assertFalse(json.loads(csv_row["legacy_noise_method"])["noise_pass_fail_enabled"])
-            self.assertEqual(csv_row["result"], "REVIEW_NO_NOISE_LIMIT")
+            self.assertTrue(json.loads(csv_row["legacy_noise_method"])["noise_pass_fail_enabled"])
+            self.assertEqual(csv_row["noise_verdict"], "FAIL_LOW")
+            self.assertEqual(csv_row["result"], "FAIL")
             html = (Path(tmp) / "report.html").read_text(encoding="utf-8")
             self.assertIn("Legacy-equivalent estimate", html)
-            self.assertIn("Disabled · compare old fixture", html)
+            self.assertIn('"noise_verdict": "FAIL_LOW"', html)
 
 
 if __name__ == "__main__":

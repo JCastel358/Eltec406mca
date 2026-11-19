@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 import webbrowser
 
 import mod50_hardware as hw
+from mod50_legacy_noise import NOISE_LIMITS_MV
 from mod50_check import TrayCheck, results_root, normalize_tests, SCHEMA
 from mod50_history import History
 from mod50_recovery import load_noise_recovery
@@ -405,7 +406,7 @@ def make_server(dashboard, *, port=0):
             if route is None:
                 return
             if route == "api/state":
-                self.respond(200, dashboard.snapshot())
+                self.respond(200, {**dashboard.snapshot(), "configured_noise_limits_mv": NOISE_LIMITS_MV})
                 return
             if route == "api/live-state":
                 self.respond(200, dashboard.live_snapshot())

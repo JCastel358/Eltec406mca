@@ -14,14 +14,14 @@ Older records without a side keep their original 1-1 through 5-10 labels.
 
 The technician view shows **Mean offset** and **Noise at 3 Hz**, with the
 offset trace and the rising held-noise trace. The noise chart shades the
-old 10.0–37.9 mV range as **reference only**, never an acceptance verdict.
+**8.90–20.22 mV inclusive** acceptance range for new runs.
 Saved engineering reports retain **Legacy-equivalent estimate (mV)**,
 RMS measurements, raw waveform excerpts, slope/min/max and method notes.
 This nominal model applies
 3 Hz/Q3 filtering, absolute value, 10 s smoothing and an ideal peak hold;
 it saves readings at 60 s and at the record end (now the same 60 s endpoint;
-historical 100 s records keep their original values). Noise pass/fail
-stays disabled until comparison with the old fixture. See
+historical 100 s records keep their original values). The app grades the
+unrounded 60 s reading and displays Noise PASS, Noise FAIL low or Noise FAIL high. See
 [the model and its assumptions](NOISE_METHOD.md#current-m25hub-legacy-equivalent-estimate).
 
 Choose Noise only (default), Offset only, or both before Start. Skipped tests
@@ -107,15 +107,15 @@ visible/clickable with an empty/dead/disconnected explanation. Their raw
 physical scans remain recorded; inferred exclusions are separate from the
 declared population. Never infer missing detectors from a failed acquisition.
 
-Offset passing is green, valid failed offset/channel checks are red, and
-uncalibrated noise is Review. A DC settling-only warning is amber and labelled
+Passing offset and noise results are green. Failed limits and signal faults
+are red. A DC settling-only warning is amber and labelled
 **DC not settled**; it can coexist with an offset pass because the mean voltage
 is in range while the recorded DC still drifts. The **Flagged** count includes
 these warnings as well as offset/channel faults; it can overlap **Offset pass**.
 The warning remains in saved evidence, retest accounting and slot history.
 It is separate from the noise result. Noise in progress is labelled as recording;
-an ended invalid recording is labelled incomplete. There is no overall detector
-PASS while noise limits are absent. Acquisition interruption is separate from channel faults;
+an ended invalid recording is labelled incomplete. A pass covers the selected tests.
+Acquisition interruption is separate from channel faults;
 retained valid DC results stay visible while noise is incomplete. Gray
 no-signal slots do not count as passed detectors.
 
@@ -148,8 +148,9 @@ The full operator procedure is in [the array README](../README.md).
 | Noise | Same physical scan and conversion policy | 60 s |
 | Finish / stop | Stop/drain; gain off; wait 50 ms; command DC; verify and close | No automatic restart |
 
-The working bench's 1000 scans/s and 64-buffer pool are retained. This is
-228,000 raw conversions/s. The actual granted rate drives spectral analysis.
+The tray test and live viewer request 500 scans/s with a 64-buffer pool.
+The 57 channels and four conversions per channel use 114,000 raw conversions/s.
+The actual granted rate drives timing and spectral analysis.
 Mapping is UPPER: physical 0–15,32–40; LOWER: 16–31,48–56. Physical 41–47 are
 retained in raw data but are not detector results. Both M25 cards' eight
 status bits use active-low READY/presence, unlike the older R4 profile.
@@ -221,8 +222,8 @@ the nominal second-order band-pass power weighting to the same bins. Both
 are **DAQ-output** µV, not input-referred noise or the legacy rectifier/hold
 DMM reading. The separate legacy-equivalent estimate uses nominal matched
 x1000 front-end gains and the rectifier/smoother/hold model; it does not
-convert or replace RMS. No noise acceptance limit or sensitivity test is
-introduced. Full records are saved before numerical analysis.
+convert or replace RMS. The app applies the noise limits to the 60 s held
+value. Full records are saved before numerical analysis.
 
 Supply monitoring is manual, as in the working bench viewer. This profile
 does not claim the separate recorder's commissioned battery monitoring or

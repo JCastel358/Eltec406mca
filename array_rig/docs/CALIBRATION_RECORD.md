@@ -1,6 +1,16 @@
 # Calibration record — every production constant and where it came from
 
-## Current M25/HUB profile (updated 2026-11-16)
+## Current M25/HUB profile (updated 2026-11-19)
+
+Revision 2026-11-19.1 applies the operator-selected inclusive **8.90–20.22 mV**
+window to the unrounded `legacy_equivalent_60s_mv` reading. The November 18
+*40623 New Rig Noise Limits Proposal* used the mean ±3 sample standard deviations
+of 196 offset-passing production readings from the 1,000 samples/s setup.
+The operator also selected **500 samples/s per channel** for new M25/HUB runs.
+In a software replay, taking every other scan of the five saved source recordings
+preserved all 196 in-range noise verdicts and all three low reject verdicts.
+The largest absolute change in the 60 s reading was 0.027 mV. A fresh hardware
+comparison at 500 samples/s remains unverified.
 
 The 2026-11-12 legacy-equivalent display adds a **nominal, unvalidated**
 old-meter-scale estimate alongside the existing DAQ-output RMS. It assumes
@@ -13,8 +23,8 @@ records may extend to 100 s). Actual sample rate
 sets all timing; no rolling window or invented 100 s droop constant is used.
 These are model assumptions, not measured calibration constants. The old
 fixture's pre-reset state, gain errors, complete analogue response and hold
-droop remain unvalidated. **No noise pass/fail limits are enabled**, including
-TP120's 10.0–37.9 mV. Invalid, clipped, flat, excluded or shorter-than-60 s
+droop remain unvalidated. Runs before 2026-11-19 saved this estimate for review.
+Invalid, clipped, flat, excluded or shorter-than-60 s
 records have no legacy reading. Original RMS calculations are unchanged.
 The versioned method is in `mod50_legacy_noise.py`; raw NPZ metadata, JSON,
 CSV and HTML record or display its identity and unvalidated status. Existing

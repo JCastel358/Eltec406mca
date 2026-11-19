@@ -92,7 +92,7 @@ class LiveWorker(unittest.TestCase):
                     result.clock_stop_status = 7
                 return result
 
-        self.device = Device(real_time=False, chunk_scans=1000)
+        self.device = Device(real_time=False, chunk_scans=int(hw.SAMPLE_HZ))
         self.rig = hw.Mod50Rig(simulate=True, device=self.device,
                              monotonic=clock.monotonic, sleep=clock.sleep)
         self.worker = live.LiveNoiseViewer(simulate=True, installed_positions=positions,

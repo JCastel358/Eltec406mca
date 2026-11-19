@@ -6,8 +6,7 @@ another x1000. Apply the nominal old/new gain ratio, the causal 3 Hz/Q3
 band-pass, absolute value x10, a 10 s exponential smoother, then an ideal
 peak hold reset at record start. The drawing's "100 second peak hold" is a
 retention description, not evidence for a 100 s exponential decay constant.
-No droop, circuit offsets, measured transfer correction or acceptance limits
-are invented. All states restart for each independent recording/attempt.
+All states restart for each independent recording/attempt.
 """
 from __future__ import annotations
 
@@ -23,6 +22,8 @@ MOD50_NOMINAL_GAIN = 1000.0
 LEGACY_FILTER_NOMINAL_GAIN = 1000.0
 RECTIFIER_GAIN = 10.0
 REFERENCE_SECONDS = 60.0
+# 40623 new-rig noise limits proposal, adopted 2026-11-19 for the 60 s held reading.
+NOISE_LIMITS_MV = (8.90, 20.22)
 HOLD_SECONDS = 100.0
 VALUE_FIELDS = ("legacy_equivalent_mv", "legacy_equivalent_60s_mv",
                 "legacy_smoothed_final_mv", "legacy_peak_time_s")
@@ -34,7 +35,8 @@ def method_metadata(sample_rate_hz=None):
     """Versioned assumptions, included in raw recordings and saved reports."""
     result = {
         "method_id": METHOD_ID, "validation_status": "UNVALIDATED",
-        "noise_pass_fail_enabled": False, "acceptance_limits_mv": None,
+        "noise_pass_fail_enabled": True, "acceptance_limits_mv": NOISE_LIMITS_MV,
+        "acceptance_field": "legacy_equivalent_60s_mv", "acceptance_endpoints": "inclusive",
         "input_reference": "DAQ_OUTPUT", "output_reference": "NOMINAL_LEGACY_METER_MV",
         "mod50_nominal_gain_v_per_v": MOD50_NOMINAL_GAIN,
         "legacy_filter_nominal_gain_v_per_v": LEGACY_FILTER_NOMINAL_GAIN,
@@ -54,7 +56,6 @@ def method_metadata(sample_rate_hz=None):
             "Ideal hold omits leakage, droop, acquisition time and circuit offsets.",
             "Cold-start filter/smoother does not reconstruct the old fixture's pre-reset state.",
             "Full legacy analogue response and background have not been qualified.",
-            "Compare paired detectors under matched vacuum, bias, temperature and timing before enabling limits.",
         ],
         "sources": ["40623_legacy_fixture/9000232_revB_filter.jpeg",
                     "40623_legacy_fixture/9000272_revJ_rectifier_hold.jpeg",
@@ -65,6 +66,18 @@ def method_metadata(sample_rate_hz=None):
         result.update(actual_sample_rate_hz=float(sample_rate_hz))
         result["filter"].update(b=b.tolist(), a=a.tolist())
     return result
+
+
+def noise_verdict(reading_mv):
+    """Grade the unrounded held reading at 60 seconds on the M25/HUB scale."""
+    if reading_mv is None or not math.isfinite(reading_mv):
+        return None
+    low, high = NOISE_LIMITS_MV
+    if reading_mv < low:
+        return "FAIL_LOW"
+    if reading_mv > high:
+        return "FAIL_HIGH"
+    return "PASS"
 
 
 def unavailable(status="NOT_MEASURED", reason="No valid noise recording is available."):

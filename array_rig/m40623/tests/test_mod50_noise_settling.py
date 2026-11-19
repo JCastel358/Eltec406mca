@@ -137,8 +137,8 @@ class NoiseRuns(unittest.TestCase):
             start = rig.device.start_stream
             def fractional_clock(**options):
                 header = start(**options)
-                rig.device._diagnostics.actual_timer_hz = 999.991
-                return replace(header, actual_timer_hz=999.991)
+                rig.device._diagnostics.actual_timer_hz = 499.991
+                return replace(header, actual_timer_hz=499.991)
             rig.device.start_stream = fractional_clock
             return rig
         with tempfile.TemporaryDirectory() as directory:
@@ -147,7 +147,7 @@ class NoiseRuns(unittest.TestCase):
             worker.run()
             self.assertTrue(worker.result["data_complete"], worker.result["errors"])
             record = worker.result["records"][0]
-            self.assertEqual(record["samples"], 60000)
+            self.assertEqual(record["samples"], 30000)
             self.assertGreaterEqual(record["recorded_seconds"], 60.)
             self.assertEqual(worker.result["rows"][0]["legacy_equivalent_status"], "UNVALIDATED_ESTIMATE")
 
@@ -178,7 +178,7 @@ class NoiseRuns(unittest.TestCase):
                 self.assertTrue(any("Baseline not ready" in flag for flag in row["flags"]))
                 self.assertTrue(any("never settled" in flag for flag in row["flags"]))
             with np.load(worker.directory / "noise_raw.npz") as raw:
-                self.assertEqual(raw["converter_counts"].shape, (6000, 57, 4))
+                self.assertEqual(raw["converter_counts"].shape, (3000, 57, 4))
                 metadata = json.loads(str(raw["metadata_json"]))
                 self.assertEqual(metadata["timing_policy"], check.TIMING_POLICY)
                 self.assertEqual(metadata["settling"]["stable_count"], ready)

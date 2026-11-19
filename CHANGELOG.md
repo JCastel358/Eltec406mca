@@ -1,5 +1,10 @@
 # Changelog — Eltec Test Rig
 
+## 40623 M25/HUB noise grading and 500 samples/s acquisition (2026-11-19)
+
+- Revision 2026-11-19.1 grades the unrounded 60-second held noise reading. Both 8.90 and 20.22 mV pass. Readings outside those limits fail low or high.
+- Tray checks and the live viewer request 500 samples/s per channel. At the nominal clock, 10 seconds of offset yields 5,000 scans and 60 seconds of noise yields 30,000. Historical runs keep their recorded rates and verdicts.
+
 ## Repeated M25/HUB readiness failures prompt a battery check (2026-11-16)
 
 - In revision 2026-11-16.3, show a dismissible battery-voltage and recharge/replace

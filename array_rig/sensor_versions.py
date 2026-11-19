@@ -68,18 +68,16 @@ SENSOR_VERSIONS: tuple[SensorVersion, ...] = (
         display_name="Model 40623 array (50 positions, TP120)",
         summary=(
             "Model 40623 detectors, fifty at a time: TP120 offset check and noise "
-            "test on the M25/HUB array rig. Automatic switching and settling. CALIBRATION PENDING."
+            "test on the M25/HUB array rig. Noise grading enabled. Offset fixture verification PENDING."
         ),
         details=(
             "Flow: technician + batch + installed positions -> physical RUN -> Start check. "
-            "Automatic 90-second settling, 10-second DC recording, switch to noise, "
-            "90-second settling, 100-second noise recording, save, return to DC.",
+            "Signal-based settling, 10-second offset and/or 60-second noise recording, save, return to DC.",
             "Offset: TP120 0.3-1.2 V, PROVISIONAL until the PCB loading is confirmed "
             "against fixture 9000054 (+8 V, 100 kOhm).",
-            "Noise: DAQ-output 3 Hz/Q3 and 1-100 Hz RMS, including front-end gain; "
-            "no pin-level limit yet (TP120's 10.0-37.9 mV are DMM readings behind the "
-            "legacy amplifier + rectifier-hold) - results remain REVIEW, not PASS.",
-            "The raw 1000 SPS capture retains all 57 physical DAQ rows and four converter "
+            "Noise: the 60-second held reading passes from 8.90 through 20.22 mV inclusive. "
+            "DAQ-output RMS is recorded separately; no pin-level limit is applied.",
+            "The raw 500 SPS capture retains all 57 physical DAQ rows and four converter "
             "readings per channel, with the 50-position map, CSV and readable report.",
             "Sensitivity / polarity (3 Hz chopper) is not implemented yet: no emitter board.",
         ),

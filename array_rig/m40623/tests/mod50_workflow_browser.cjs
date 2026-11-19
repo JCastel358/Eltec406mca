@@ -933,7 +933,7 @@ const cases = [
       assert.equal(await page.locator('#lotInput').inputValue(), 'OTHER-BATCH');
     } finally {await test.close();}
   }],
-  ['operator sees one value per test and the held noise trace, without amplitude verdicts', async browser => {
+  ['historical operator results retain their original reference band and review status', async browser => {
     const current = snapshot({id: 'operator-meter', complete: true});
     current.result.selected_tests = ['dc', 'noise'];
     Object.assign(current.rows[0], {
@@ -988,7 +988,39 @@ const cases = [
       assert.equal(await page.locator('.sensor-cell').first().getAttribute('data-status'), 'fail', 'Historical faults remain visible');
     } finally {await test.close();}
   }],
-  ['legacy meter estimate sits beside RMS and never becomes a noise pass', async browser => {
+  ['new 60 s verdicts appear on the tray, in detail and in the offline report', async browser => {
+    const current = snapshot({id: 'graded-noise', complete: true});
+    current.result.noise_acceptance_limit = [8.90, 20.22];
+    current.result.selected_tests = ['noise'];
+    current.result.rows = current.rows = [[8.90, 'PASS'], [20.22, 'PASS'], [8.8999, 'FAIL_LOW'], [20.2201, 'FAIL_HIGH']]
+      .map(([mv, verdict], i) => ({position: `1-${i+1}`, installed: true, dc_check: 'NOT_TAKEN',
+        flags: [], acquisition_validity: {dc: false, noise: true}, result: verdict === 'PASS' ? 'PASS' : 'FAIL',
+        noise_verdict: verdict, legacy_equivalent_mv: mv, legacy_equivalent_60s_mv: mv,
+        daq_3hz_q3_rms_uv: 100, legacy_equivalent_detail: {time_s: [0, 60], held_mv: [0, mv]}}));
+    for (const options of [{initial: current}, {report: current.result}]) {
+      const test = await fixture(browser, options);
+      try {
+        const {page} = test;
+        await expectScreen(page, 'test');
+        assert.equal(await page.locator('.sensor-cell[data-status=pass]').count(), 2);
+        assert.equal(await page.locator('.sensor-cell[data-status=fail]').count(), 2);
+        assert.equal(await page.locator('#failCount').textContent(), '2');
+        assert.equal(await page.locator('#reviewCount').textContent(), '2');
+        assert.match(await page.locator('#limitNote').textContent(), /8\.90–20\.22 mV inclusive/);
+        for (const [index, text] of ['Noise PASS', 'Noise PASS', 'Noise FAIL · low', 'Noise FAIL · high'].entries()) {
+          await page.locator('.sensor-cell').nth(index).click();
+          assert((await page.locator('#detailBadges').textContent()).includes(text));
+        }
+        if (!options.report) {
+          const band = page.locator('#noiseChart [data-reference-band=legacy-noise]');
+          assert.equal(await band.getAttribute('data-min'), '8.9');
+          assert.equal(await band.getAttribute('data-max'), '20.22');
+          assert.match(await page.locator('#noiseMetrics').textContent(), /> 20\.22 mV/);
+        }
+      } finally {await test.close();}
+    }
+  }],
+  ['historical report keeps the legacy meter estimate beside RMS without a noise pass', async browser => {
     const report = snapshot({id: 'legacy-model', complete: true}).result;
     report.selected_tests = ['noise'];
     Object.assign(report.rows[0], {
@@ -1011,7 +1043,7 @@ const cases = [
       assert(metrics.includes('42.75 mV'));
       assert(metrics.includes('18.25 mV'));
       assert(metrics.includes('1414.214 µV'));
-      assert(metrics.includes('Disabled · compare old fixture'));
+      assert(metrics.includes('Disabled for this run'));
       assert((await page.locator('#legacyNoiseNote').textContent()).includes('Unvalidated'));
       assert.equal(await page.locator('#noiseChart [data-trace=noise]').count(), 1);
       assert.equal(await page.locator('#noiseChart [data-trace=held]').count(), 0);

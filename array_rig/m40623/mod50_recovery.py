@@ -103,7 +103,7 @@ def _delivery_error(error):
     return False
 
 
-def _delivery_failure(record, *, simulate=False):
+def _delivery_failure(record, nominal_hz, *, simulate=False):
     errors = record.get("errors")
     if not isinstance(errors, list) or not errors or not all(_delivery_error(error) for error in errors):
         return False
@@ -122,8 +122,8 @@ def _delivery_failure(record, *, simulate=False):
     # A granted clock mismatch is not a USB interruption, even if another
     # symptom also looks transient. Do not weaken the existing 1% contract.
     return (_number(diagnostics.get("actual_timer_hz"))
-            and abs(diagnostics["actual_timer_hz"] / hw.SAMPLE_HZ - 1) <= .01
-            and diagnostics.get("nominal_scan_hz") == hw.SAMPLE_HZ)
+            and abs(diagnostics["actual_timer_hz"] / nominal_hz - 1) <= .01
+            and diagnostics.get("nominal_scan_hz") == nominal_hz)
 
 
 def _local_file(directory, name):
@@ -142,7 +142,8 @@ def load_noise_recovery(directory, *, simulate: bool):
     No driver is opened and no file is written by this function.
     """
     # Local import keeps this helper usable by the acquisition module itself.
-    from mod50_check import DC_SECONDS, NOISE_SECONDS, SCHEMA, TIMING_POLICY, SUPPORTED_TIMING_POLICIES, channel_statistics
+    from mod50_check import (DC_SECONDS, NOISE_SECONDS, SCHEMA, TIMING_POLICY, BASELINE_1KHZ_TIMING_POLICY,
+                             SUPPORTED_TIMING_POLICIES, channel_statistics)
     from array_analysis import OFFSET_MIN_V, OFFSET_MAX_V
 
     try:
@@ -154,7 +155,8 @@ def load_noise_recovery(directory, *, simulate: bool):
         summary_bytes = summary_path.read_bytes()
         summary = _json(summary_bytes)
         revisions = {"2026-11-04.2", "2026-11-04.3", "2026-11-11.1", "2026-11-12.1",
-                     "2026-11-12.2", "2026-11-12.3", "2026-11-12.4", "2026-11-12.5", "2026-11-16.1", hw.APP_REVISION}
+                     "2026-11-12.2", "2026-11-12.3", "2026-11-12.4", "2026-11-12.5", "2026-11-16.1",
+                     "2026-11-16.2", "2026-11-16.3", hw.APP_REVISION}
         expected = {"schema": SCHEMA, "profile": hw.PROFILE,
                     "channel_map": hw.CHANNEL_MAP}
         _require(summary.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "the timing policy is unsupported.")
@@ -191,12 +193,13 @@ def load_noise_recovery(directory, *, simulate: bool):
         _require(dc_records and noise_records and records[-1]["mode"] == "noise", "there is no failed noise stage to retry.")
         dc, noise = dc_records[-1], noise_records[-1]
         _require(records.index(dc) < records.index(noise_records[0]), "DC was not completed before noise.")
-        _require(noise.get("valid_data") is False and _delivery_failure(noise, simulate=simulate),
+        nominal_hz = hw.SAMPLE_HZ if summary["timing_policy"] == TIMING_POLICY else 1000.0
+        _require(noise.get("valid_data") is False and _delivery_failure(noise, nominal_hz, simulate=simulate),
                  "noise did not end with a recoverable delivery interruption.")
         for record in records:
             if record is dc or record is noise or record.get("valid_data") is True:
                 continue
-            _require(_delivery_failure(record, simulate=simulate), "an earlier stage had an unsafe or unrecognized error.")
+            _require(_delivery_failure(record, nominal_hz, simulate=simulate), "an earlier stage had an unsafe or unrecognized error.")
         expected_errors = ["NOISE: " + error for error in noise["errors"]]
         _require(summary.get("errors") == expected_errors,
                  "the run includes another fault, cancellation, or save/shutdown error.")
@@ -205,13 +208,13 @@ def load_noise_recovery(directory, *, simulate: bool):
                  "the noise range or both cards' ready/routing state was not confirmed.")
         # Validate the saved attempt against its own versioned recipe. A fresh
         # retry uses today's 60 s recipe, without rewriting the old 100 s data.
-        current_timing = summary["timing_policy"] == TIMING_POLICY
-        saved_noise_seconds = NOISE_SECONDS if current_timing else 100.0
+        uses_60s_record = summary["timing_policy"] in (BASELINE_1KHZ_TIMING_POLICY, TIMING_POLICY)
+        saved_noise_seconds = NOISE_SECONDS if uses_60s_record else 100.0
         _require(noise.get("requested_seconds") == saved_noise_seconds, "the noise duration does not match.")
         noise_rate = noise.get("actual_rate_hz")
-        _require(_number(noise_rate) and abs(noise_rate / hw.SAMPLE_HZ - 1) <= .01,
+        _require(_number(noise_rate) and abs(noise_rate / nominal_hz - 1) <= .01,
                  "noise used an unexpected sample clock.")
-        noise_target = (int(np.ceil(saved_noise_seconds * noise_rate - 1e-9)) if current_timing else
+        noise_target = (int(np.ceil(saved_noise_seconds * noise_rate - 1e-9)) if uses_60s_record else
                         round(saved_noise_seconds * noise_rate))
         _require(type(noise.get("samples")) is int and 0 <= noise["samples"] <= noise_target
                  and type(noise.get("target_samples")) is int and noise["target_samples"] == noise_target
@@ -222,7 +225,13 @@ def load_noise_recovery(directory, *, simulate: bool):
                  "the noise stage did not finish settling.")
 
         rate = dc.get("actual_rate_hz")
-        _require(_number(rate) and abs(rate / hw.SAMPLE_HZ - 1) <= .01, "DC used an unexpected sample clock.")
+        # A previous retry may have copied the original DC archive byte-for-byte.
+        source = dc.get("reused_from", {})
+        _require(isinstance(source, dict), "DC source information is invalid.")
+        dc_policy = source.get("timing_policy", summary["timing_policy"])
+        _require(dc_policy in SUPPORTED_TIMING_POLICIES, "DC timing policy is unsupported.")
+        dc_nominal_hz = hw.SAMPLE_HZ if dc_policy == TIMING_POLICY else 1000.0
+        _require(_number(rate) and abs(rate / dc_nominal_hz - 1) <= .01, "DC used an unexpected sample clock.")
         target = round(DC_SECONDS * rate)
         _require(dc.get("valid_data") is True and dc.get("errors") == [], "DC is not a valid completed record.")
         _require(type(dc.get("samples")) is int and dc["samples"] == target
@@ -240,7 +249,7 @@ def load_noise_recovery(directory, *, simulate: bool):
         _require(_clean_shutdown(diagnostics, simulate=simulate), "DC stream shutdown was not confirmed.")
         _require(diagnostics.get("callback_error") is None and diagnostics.get("pool_too_small_events") == 0
                  and diagnostics.get("ended_early") is False, "DC has a delivery integrity fault.")
-        _require(diagnostics.get("actual_timer_hz") == rate and diagnostics.get("nominal_scan_hz") == hw.SAMPLE_HZ,
+        _require(diagnostics.get("actual_timer_hz") == rate and diagnostics.get("nominal_scan_hz") == dc_nominal_hz,
                  "DC clock diagnostics disagree.")
         start, stop, received = (diagnostics.get(k) for k in ("started_monotonic", "stopped_monotonic", "scans_received"))
         _require(_number(start) and _number(stop) and stop > start and type(received) is int and received >= target,
@@ -249,7 +258,7 @@ def load_noise_recovery(directory, *, simulate: bool):
         # diagnostics may measure host time. Only actual-device evidence can
         # be judged by this wall-clock throughput check.
         if not simulate:
-            _require(abs(received / (stop - start) / hw.SAMPLE_HZ - 1) <= .01, "DC delivery rate was outside tolerance.")
+            _require(abs(received / (stop - start) / dc_nominal_hz - 1) <= .01, "DC delivery rate was outside tolerance.")
         for record, status in ((dc, 0), (noise, 27)):
             samples = record.get("status_samples")
             _require(isinstance(samples, list) and samples
@@ -293,12 +302,12 @@ def load_noise_recovery(directory, *, simulate: bool):
         for key, value in {**expected, "lot": summary["lot"], "operator": summary["operator"], "tray": summary["tray"],
                            "map_sha256": hw.MAP_SHA256, "daq_serial": serial, "installed_positions": population,
                            "physical_channels": list(range(57)), "logical_to_physical": list(hw.MAPPING),
-                           "nominal_rate_hz": hw.SAMPLE_HZ, "oversample_extra": 3, "drop_first": 1,
+                           "nominal_rate_hz": dc_nominal_hz, "oversample_extra": 3, "drop_first": 1,
                            "voltage_reference": "DAQ_OUTPUT", "range_limit_guard_counts": hw.RAIL_GUARD_COUNTS}.items():
             _require(metadata.get(key) == value, "DC raw metadata disagrees on " + key + ".")
         _require(metadata.get("simulated") is simulate and metadata.get("application_revision") in revisions,
                  "DC raw source or software revision is unsupported.")
-        _require(metadata.get("timing_policy") in SUPPORTED_TIMING_POLICIES, "DC timing policy is unsupported.")
+        _require(metadata.get("timing_policy") == dc_policy, "DC raw timing policy disagrees with the DC record.")
         _require(metadata.get("valid_data") is True, "DC raw metadata does not confirm a valid acquisition.")
         if "attempt" in metadata or "attempt" in dc:
             _require(metadata.get("attempt") == dc.get("attempt"), "DC attempt identity disagrees with raw metadata.")

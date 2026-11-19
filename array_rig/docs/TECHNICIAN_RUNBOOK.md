@@ -1,6 +1,6 @@
 # Technician runbook — Eltec sensor test rigs
 
-## Current M25/HUB array hardware (updated 2026-11-16)
+## Current M25/HUB array hardware (updated 2026-11-19)
 
 For the assembled HUB plus two M25 cards, use the
 [current 50-piece instructions](../README.md).
@@ -11,7 +11,10 @@ a near-zero, unclipped signal without persistent upward/downward drift.
 Normal variations between one-second averages do not by themselves block
 readiness. Five one-second windows and
 80% ready start all channels together; 90 seconds is the fallback. Noise
-records for 60 seconds. Unready slots are flagged for review, not omitted.
+records for 60 seconds at 500 samples/s per channel. The 60-second noise
+reading passes from **8.90 through 20.22 mV**, including both endpoints.
+An out-of-range detector shows **Noise fail · low** or **Noise fail · high**.
+Unready slots retain their settling flags.
 From revision 2026-11-12.5 the DC settling tolerance is at least 1 mV across
 five one-second averages. Small changes can settle; larger persistent drift
 still gets an amber review warning. The offset range remains 0.3-1.2 V.
@@ -109,10 +112,9 @@ If the error remains, finish stopping/saving, close Eltec Array Rig, check the
 DAQ USB connection, wait five seconds, and reopen the app. Use **Retest parts**
 for the same parts after reconnecting or cycling power.
 
-`No fresh DAQ samples` followed by a rate below `1000/s` means delivery stopped
+`No fresh DAQ samples` followed by a rate below the requested rate means delivery stopped
 and the pause lowered the average delivered sample rate. This alone does not
-prove the hardware clock is slow or that a detector failed. Keep the 1,000 Hz
-setting and the incomplete-record protection. Repeated failures need a
+prove the hardware clock is slow or that a detector failed. Repeated failures need a
 known-good USB cable / another computer USB port check, then engineer-led
 DAQ/driver investigation; a restart may restore communication without
 eliminating the underlying stall. Preserve the saved failed attempts.

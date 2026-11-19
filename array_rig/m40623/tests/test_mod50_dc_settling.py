@@ -95,7 +95,7 @@ class DcSettlingTolerance(unittest.TestCase):
             self.assertEqual(rows["9-7"]["result"], "CHECK")
             self.assertIn("DC: outside provisional 0.3-1.2 V window", rows["9-7"]["flags"])
             with np.load(worker.directory / "dc_raw.npz", allow_pickle=False) as raw:
-                self.assertEqual(raw["converter_counts"].shape, (10000, 57, 4))
+                self.assertEqual(raw["converter_counts"].shape, (5000, 57, 4))
                 metadata = json.loads(str(raw["metadata_json"]))
             for key in ("settling", "stability_observation"):
                 self.assertEqual(metadata[key]["policy"], POLICY)

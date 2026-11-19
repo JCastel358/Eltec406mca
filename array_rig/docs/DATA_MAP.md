@@ -2,6 +2,11 @@
 
 ## M25/HUB tray checks (2026-11-04)
 
+From 2026-11-19, new tray checks request 500 scans/s. The nominal raw record sizes
+are 5,000 scans for DC and 30,000 for noise. The summary and CSV row field
+`noise_verdict` is PASS, FAIL_LOW or FAIL_HIGH when a valid 60 s reading exists.
+The summary and noise raw metadata include the applied bounds in mV.
+
 Updated 2026-11-16: new runs use timing policy
 `mod50_dc_adaptive5to90_noise_baseline5to90_capture60_v4` and 60 s noise.
 Noise `settling` / `stability_observation` use

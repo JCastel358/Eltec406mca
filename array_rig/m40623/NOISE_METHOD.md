@@ -8,12 +8,12 @@ method described below is a separate acquisition path.
 `mod50_legacy_noise.py` adds a **Legacy-equivalent estimate (mV)** alongside
 the unchanged DAQ-output RMS calculations. It is a nominal behavioural
 model of the old meter, **not a calibrated equivalent measurement**.
-`noise_pass_fail_enabled` is false and `acceptance_limits_mv` is null. The
-old 10.0–37.9 mV limits never enter this calculation or the decision logic.
-The technician display calls this value **Noise at 3 Hz** and plots the
-stored held trace. Green shading at 10.0–37.9 mV is a labelled historical
-reference only; reports retain both RMS values, the raw waveform excerpt and
-the full method explanation. No display-derived value changes acceptance.
+From 2026-11-19 the app compares the unrounded held value at 60 s with
+**8.90–20.22 mV inclusive**. The technician display calls this value
+**Noise at 3 Hz** and shades the acceptance interval on the stored held trace.
+New captures request **500 samples/s per channel**. The granted sample rate
+sets the filter coefficients, smoother and 60 s endpoint. Reports retain both
+RMS values, the raw waveform excerpt and the recorded verdict.
 
 From application revision 2026-11-16.1, the fixed 90-second noise warm-up is
 replaced by a baseline-only readiness check over five one-second windows.
@@ -78,10 +78,9 @@ coefficients before processing; original converter counts remain available.
 At least 60 s of valid, uninterrupted data is needed for a displayed
 estimate. Incomplete recordings, clipped/over-headroom or flat signals,
 uninstalled positions and inferred no-signal positions do not receive a
-legacy number. The original waveform evidence remains available. No
-legacy amplitude changes a detector/slot verdict, history or yield count.
-Existing signal-quality checks remain in place. Old reports are not
-recalculated; missing legacy values show as unavailable.
+legacy number. The original waveform evidence remains available. A graded
+noise failure counts as a flagged part and contributes to the slot history.
+Older runs retain their recorded reviews.
 
 Drawing sources: [9000232 rev B](../docs/40623_legacy_fixture/9000232_revB_filter.jpeg),
 [9000272 rev J](../docs/40623_legacy_fixture/9000272_revJ_rectifier_hold.jpeg), and
